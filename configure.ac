@@ -21,14 +21,14 @@ AC_LANG(C)
 AC_CHECK_HEADERS([openssl/engine.h])
 
 AX_CHECK_OPENSSL(
-  [have_openssl=yes],
-  AC_MSG_FAILURE([could not locate OpenSSL])
+    [have_openssl=yes],
+    AC_MSG_FAILURE([could not locate OpenSSL])
 )
 
 if test "x$have_openssl" = "xyes"; then
-  LIBS="$LIBS $OPENSSL_LIBS"
-  CFLAGS="$CFLAGS $OPENSSL_INCLUDES"
-  LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
+    LIBS="$LIBS $OPENSSL_LIBS"
+    CFLAGS="$CFLAGS $OPENSSL_INCLUDES"
+    LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
 fi
 
 # DEBUG
@@ -139,7 +139,15 @@ AC_ARG_ENABLE([ec-key],
 
 if test "$ENABLED_EC_KEY" = "yes"
 then
-    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_KEY"
+    AC_CHECK_FUNC([ENGINE_set_EC], [], [])
+
+    if test "x$ac_cv_func_ENGINE_set_EC" = "xyes"
+    then
+        AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_KEY"
+    else
+        ENABLED_EC_KEY="no"
+        AC_MSG_WARN([--enable-ec-key ignored because OpenSSL doesn't have ENGINE_set_EC.])
+    fi
 fi
 
 AC_ARG_ENABLE([ecdsa],

@@ -29,6 +29,8 @@
 #include <wolfssl/wolfcrypt/aes.h>
 #include <wolfssl/wolfcrypt/ecc.h>
 
+#include "openssl_bc.h"
+
 /* May not be available in FIPS builds of wolfSSL */
 #ifndef GCM_NONCE_MAX_SZ
 #define GCM_NONCE_MAX_SZ        16
@@ -44,7 +46,11 @@
 #endif
 
 /* Engine library name - implementation uses wolfSSL */
-static const char *wolfengine_lib = "libwolfengine";
+#if OPENSSL_VERSION_NUMBER >= 0x10101004L
+    static const char *wolfengine_lib = "libwolfengine";
+#else
+    static const char *wolfengine_lib = "wolfengine";
+#endif
 /* Engine id - implementation uses wolfSSL */
 static const char *wolfengine_id = "wolfSSL";
 /* Engine name ... or description.  */
