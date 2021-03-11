@@ -27,6 +27,8 @@
 #include <openssl/ssl.h>
 #include <openssl/aes.h>
 
+#include "openssl_bc.h"
+
 #define PRINT_MSG(str)         printf("MSG: %s\n", str)
 #define PRINT_ERR_MSG(str)     printf("ERR: %s\n", str)
 #ifdef WOLFENGINE_DEBUG
@@ -1960,7 +1962,11 @@ int main(int argc, char* argv[])
 {
     int err = 0;
     ENGINE *e = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x10101004L
     const char *name = "libwolfengine";
+#else
+    const char *name = "wolfengine";
+#endif
     const char *dir = ".libs";
     int i;
     int runAll = 1;
@@ -2030,8 +2036,12 @@ int main(int argc, char* argv[])
         /* Set directory where wolfsslengine library is stored */
         setenv("OPENSSL_ENGINES", dir, 1);
 
+    #if OPENSSL_VERSION_NUMBER >= 0x10100000L
         OPENSSL_init_ssl(OPENSSL_INIT_ENGINE_ALL_BUILTIN |
                          OPENSSL_INIT_LOAD_CONFIG, NULL);
+    #else
+        ENGINE_load_builtin_engines();
+    #endif
 
         e = ENGINE_by_id(name);
         if (e == NULL) {
@@ -2083,7 +2093,9 @@ int main(int argc, char* argv[])
         }
 
         ENGINE_free(e);
+    #if OPENSSL_VERSION_NUMBER >= 0x10100000L
         OPENSSL_cleanup();
+    #endif
     }
 
     return err;
