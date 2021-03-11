@@ -1185,11 +1185,12 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
     if (ret == 1) {
         ret = wc_ecc_init(&ecc->key) == 0;
     }
-#ifndef HAVE_FIPS_VERSION
+#if !defined(HAVE_FIPS) || \
+    (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
     if (ret == 1) {
         ret = wc_ecc_set_rng(&ecc->key, &we_globalRng) == 0;
     }
-#endif /* HAVE_FIPS_VERSION */
+#endif /* !HAVE_FIPS || (HAVE_FIPS_VERSION && HAVE_FIPS_VERSION != 2) */
     if (ret == 1) {
         EVP_PKEY_CTX_set_data(ctx, ecc);
     }
@@ -1906,11 +1907,12 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     if (ret == 1) {
         ret = wc_ecc_init(&key) == 0;
     }
-#ifndef HAVE_FIPS_VERSION
+#if !defined(HAVE_FIPS) || \
+    (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
     if (ret == 1) {
         ret = wc_ecc_set_rng(&key, &we_globalRng) == 0;
     }
-#endif /* HAVE_FIPS_VERSION */
+#endif /* !HAVE_FIPS || (HAVE_FIPS_VERSION && HAVE_FIPS_VERSION != 2) */
     if (ret == 1) {
         pKey = &key;
 
