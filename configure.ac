@@ -1,4 +1,7 @@
-
+# configure.ac
+#
+# Copyright (C) 2019-2021 wolfSSL Inc.
+#
 
 AC_PREREQ([2.69])
 AC_INIT([wolfengine], [1.0])
