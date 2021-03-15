@@ -19,6 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+/* OpenSSL 3.0.0 has deprecated the ENGINE API. */
+#define OPENSSL_API_COMPAT      10101
+
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
@@ -46,7 +49,7 @@
 #endif
 
 /* Engine library name - implementation uses wolfSSL */
-#if OPENSSL_VERSION_NUMBER >= 0x10101004L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     static const char *wolfengine_lib = "libwolfengine";
 #else
     static const char *wolfengine_lib = "wolfengine";
@@ -740,21 +743,6 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     ret = (aes = (we_AesGcm *)EVP_CIPHER_CTX_get_cipher_data(ctx)) != NULL;
     if (ret == 1) {
         switch (type) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-            case EVP_CTRL_GET_IV:
-                /* Get the IV stored in wolfengine object
-                 *   arg [in] length of IV/nonce buffer
-                 *   ptr [in] buffer to hold IV/nonce
-                 */
-                if (arg != aes->ivLen) {
-                    ret = 0;
-                }
-                else {
-                    XMEMCPY(ptr, aes->iv, arg);
-                }
-                break;
-#endif
-
             case EVP_CTRL_AEAD_SET_IVLEN:
                 /* Set the IV/nonce length to use
                  *   arg [in] length of IV/nonce to use
@@ -1349,7 +1337,11 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
 
     ret = (pkey = EVP_PKEY_CTX_get0_pkey(ctx)) != NULL;
     if (ret == 1) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        ret = (*ecKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(pkey)) != NULL;
+#else
         ret = (*ecKey = EVP_PKEY_get0_EC_KEY(pkey)) != NULL;
+#endif
     }
     if (ret == 1) {
         ret = (group = EC_KEY_get0_group(*ecKey)) != NULL;
@@ -1525,7 +1517,11 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
                                         &dLen) == 0;
     }
     if (ret == 1) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        ret = (ecKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(pkey)) != NULL;
+#else
         ret = (ecKey = EVP_PKEY_get0_EC_KEY(pkey)) != NULL;
+#endif
     }
     if (ret == 1) {
         buf[0] = ECC_POINT_UNCOMP;
@@ -1656,7 +1652,12 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     #ifdef WE_HAVE_ECDH
             case EVP_PKEY_CTRL_PEER_KEY:
                 peerKey = (EVP_PKEY *)ptr;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+                ret = (ecPeerKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(peerKey)) !=
+                                                                           NULL;
+#else
                 ret = (ecPeerKey = EVP_PKEY_get0_EC_KEY(peerKey)) != NULL;
+#endif
                 if (ret == 1) {
                     OPENSSL_free(ecc->peerKey);
                     /* Get the EC key public key as and uncompressed point. */

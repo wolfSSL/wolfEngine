@@ -18,6 +18,8 @@ USER_CFLAGS="$CFLAGS"
 AC_PROG_CC
 AC_LANG(C)
 
+LIBS="$LIBS -ldl"
+
 AC_CHECK_HEADERS([openssl/engine.h])
 
 AX_CHECK_OPENSSL(

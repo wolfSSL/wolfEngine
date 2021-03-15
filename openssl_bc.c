@@ -35,17 +35,6 @@ void *OPENSSL_zalloc(size_t num)
     return ret;
 }
 
-EVP_MD_CTX *EVP_MD_CTX_new(void)
-{
-    return OPENSSL_zalloc(sizeof(EVP_MD_CTX));
-}
-
-void EVP_MD_CTX_free(EVP_MD_CTX *ctx)
-{
-    EVP_MD_CTX_cleanup(ctx);
-    OPENSSL_free(ctx);
-}
-
 const unsigned char *EVP_CIPHER_CTX_iv(const EVP_CIPHER_CTX *ctx)
 {
     return ctx->iv;
