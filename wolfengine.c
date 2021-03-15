@@ -56,6 +56,23 @@ static const char *wolfengine_id = "wolfSSL";
 /* Engine name ... or description.  */
 static const char *wolfengine_name = "An engine using wolfSSL";
 
+#if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
+/** List of public key types supported as ids. */
+static const int we_pkey_nids[] = {
+#ifdef WE_HAVE_ECC
+    NID_X9_62_id_ecPublicKey,
+#ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P256
+    NID_X9_62_prime256v1,
+#endif
+#ifdef WE_HAVE_EC_P384
+    NID_secp384r1,
+#endif
+#endif
+#endif
+};
+#endif /* WE_HAVE_EVP_PKEY || WE_USE_HASH */
+
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM)
 
 /*
@@ -315,6 +332,9 @@ static int we_digest_cleanup(EVP_MD_CTX *ctx)
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
+    if (digest == NULL)
+        return 1;
+
     return wc_HashFree(&digest->hash, digest->hashType) == 0;
 #else
     WOLFENGINE_MSG("Free Digest");
@@ -345,6 +365,14 @@ static int we_init_digest_meth(EVP_MD *method)
     if (ret == 1) {
         ret = EVP_MD_meth_set_app_datasize(method, sizeof(we_Digest));
     }
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    if (ret == 1) {
+        XMEMCPY(method->required_pkey_type, we_pkey_nids,
+               sizeof(we_pkey_nids) / sizeof(int));
+        method->flags |= EVP_MD_FLAG_PKEY_METHOD_SIGNATURE;
+    }
+#endif
 
     return ret;
 }
@@ -1758,20 +1786,6 @@ static int we_init_ecc_meths()
 #endif /* WE_HAVE_ECC */
 
 #ifdef WE_HAVE_EVP_PKEY
-/** List of public key types supported as ids. */
-static const int we_pkey_nids[] = {
-#ifdef WE_HAVE_ECC
-    NID_X9_62_id_ecPublicKey,
-#ifdef WE_HAVE_ECKEYGEN
-#ifdef WE_HAVE_EC_P256
-    NID_X9_62_prime256v1,
-#endif
-#ifdef WE_HAVE_EC_P384
-    NID_secp384r1,
-#endif
-#endif
-#endif
-};
 
 /**
  * Returns the list of public keys supported or the public key method for the
