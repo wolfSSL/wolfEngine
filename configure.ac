@@ -33,6 +33,14 @@ if test "x$have_openssl" = "xyes"; then
     LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
 fi
 
+AC_RUN_IFELSE([AC_LANG_PROGRAM([
+    #include <openssl/opensslv.h>
+    ],[
+    #if OPENSSL_VERSION_NUMBER < 0x10101000L
+    exit(1);
+    #endif
+])], [OPENSSL_111_PLUS=yes], [OPENSSL_111_PLUS=no])
+
 # DEBUG
 DEBUG_CFLAGS="-g -O0 -DWOLFENGINE_DEBUG"
 
@@ -95,6 +103,77 @@ then
     fi
 fi
 
+AC_ARG_ENABLE([sha3-224],
+    [AS_HELP_STRING([--enable-sha3-224],[Enable SHA3-224 (default: enabled)])],
+    [ ENABLED_SHA3_224=$enableval ],
+    [ ENABLED_SHA3_224=yes ]
+    )
+
+if test "$ENABLED_SHA3_224" = "yes"
+then
+    if test "$OPENSSL_111_PLUS" = "no"
+    then
+        ENABLED_SHA3_224="no"
+        AC_MSG_WARN([--enable-sha3-224 ignored because OpenSSL doesn't have support for SHA-3.])
+    else
+        ENABLED_DIGEST="yes"
+        AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_SHA3_224"
+    fi
+fi
+
+AC_ARG_ENABLE([sha3-256],
+    [AS_HELP_STRING([--enable-sha3-256],[Enable SHA3-256 (default: enabled)])],
+    [ ENABLED_SHA3_256=$enableval ],
+    [ ENABLED_SHA3_256=yes ]
+    )
+
+if test "$ENABLED_SHA3_256" = "yes"
+then
+    if test "$OPENSSL_111_PLUS" = "no"
+    then
+        ENABLED_SHA3_256="no"
+        AC_MSG_WARN([--enable-sha3-256 ignored because OpenSSL doesn't have support for SHA-3.])
+    else
+        ENABLED_DIGEST="yes"
+        AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_SHA3_256"
+    fi
+fi
+
+AC_ARG_ENABLE([sha3-384],
+    [AS_HELP_STRING([--enable-sha3-384],[Enable SHA3-384 (default: enabled)])],
+    [ ENABLED_SHA3_384=$enableval ],
+    [ ENABLED_SHA3_384=yes ]
+    )
+
+if test "$ENABLED_SHA3_384" = "yes"
+then
+    if test "$OPENSSL_111_PLUS" = "no"
+    then
+        ENABLED_SHA3_384="no"
+        AC_MSG_WARN([--enable-sha3-384 ignored because OpenSSL doesn't have support for SHA-3.])
+    else
+        ENABLED_DIGEST="yes"
+        AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_SHA3_384"
+    fi
+fi
+
+AC_ARG_ENABLE([sha3-512],
+    [AS_HELP_STRING([--enable-sha3-512],[Enable SHA3-512 (default: enabled)])],
+    [ ENABLED_SHA3_512=$enableval ],
+    [ ENABLED_SHA3_512=yes ]
+    )
+
+if test "$ENABLED_SHA3_512" = "yes"
+then
+    if test "$OPENSSL_111_PLUS" = "no"
+    then
+        ENABLED_SHA3_512="no"
+        AC_MSG_WARN([--enable-sha3-512 ignored because OpenSSL doesn't have support for SHA-3.])
+    else
+        ENABLED_DIGEST="yes"
+        AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_SHA3_512"
+    fi
+fi
 
 # AES-GCM
 AC_ARG_ENABLE([aesgcm],
@@ -108,7 +187,6 @@ then
     ENABLED_AESGCM="yes"
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESGCM"
 fi
-
 
 # ECC
 AC_ARG_ENABLE([ecc],
@@ -288,6 +366,10 @@ echo "   * Digest:"
 echo "   *  - SHA-256:                 $ENABLED_SHA256"
 echo "   *  - SHA-384:                 $ENABLED_SHA384"
 echo "   *  - SHA-512:                 $ENABLED_SHA512"
+echo "   *  - SHA3-224:                $ENABLED_SHA3_224"
+echo "   *  - SHA3-256:                $ENABLED_SHA3_256"
+echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
+echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
 echo "   * AES-GCM:                    $ENABLED_AESGCM"
 echo "   * ECC:                        $ENABLED_ECC"
 echo "   *  - EVP_PKEY:                $ENABLED_EVP_PKEY"

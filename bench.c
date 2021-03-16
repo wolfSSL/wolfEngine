@@ -124,6 +124,63 @@ static int sha512_bench(ENGINE *e)
     return err;
 }
 #endif
+
+#ifdef WE_HAVE_SHA3_224
+static int sha3_224_bench(ENGINE *e)
+{
+    int err = 0;
+    size_t i;
+
+    for (i = 0; err == 0 && i < DGST_LEN_SIZE; i++) {
+        err = digest_bench(e, "SHA3-224", EVP_sha3_224(), dgst_len[i]);
+    }
+
+    return err;
+}
+#endif
+
+#ifdef WE_HAVE_SHA3_256
+static int sha3_256_bench(ENGINE *e)
+{
+    int err = 0;
+    size_t i;
+
+    for (i = 0; err == 0 && i < DGST_LEN_SIZE; i++) {
+        err = digest_bench(e, "SHA3-256", EVP_sha3_256(), dgst_len[i]);
+    }
+
+    return err;
+}
+#endif
+
+#ifdef WE_HAVE_SHA3_384
+static int sha3_384_bench(ENGINE *e)
+{
+    int err = 0;
+    size_t i;
+
+    for (i = 0; err == 0 && i < DGST_LEN_SIZE; i++) {
+        err = digest_bench(e, "SHA3-384", EVP_sha3_384(), dgst_len[i]);
+    }
+
+    return err;
+}
+#endif
+
+#ifdef WE_HAVE_SHA3_512
+static int sha3_512_bench(ENGINE *e)
+{
+    int err = 0;
+    size_t i;
+
+    for (i = 0; err == 0 && i < DGST_LEN_SIZE; i++) {
+        err = digest_bench(e, "SHA3-512", EVP_sha3_512(), dgst_len[i]);
+    }
+
+    return err;
+}
+#endif
+
 #endif /* WE_HAVE_DIGEST */
 
 #ifdef WE_HAVE_AESGCM
@@ -820,6 +877,18 @@ BENCH_ALG bench_alg[] = {
 #endif
 #ifdef WE_HAVE_SHA512
     BENCH_DECL("SHA512", sha512_bench),
+#endif
+#ifdef WE_HAVE_SHA3_224
+    BENCH_DECL("SHA3_224", sha3_224_bench),
+#endif
+#ifdef WE_HAVE_SHA3_256
+    BENCH_DECL("SHA3_256", sha3_256_bench),
+#endif
+#ifdef WE_HAVE_SHA3_384
+    BENCH_DECL("SHA3_384", sha3_384_bench),
+#endif
+#ifdef WE_HAVE_SHA3_512
+    BENCH_DECL("SHA3_512", sha3_512_bench),
 #endif
 #ifdef WE_HAVE_AESGCM
     BENCH_DECL("AES128-GCM", aes128_gcm_bench),
