@@ -440,12 +440,8 @@ static int test_aes128_gcm_fixed_enc(ENGINE *e, const EVP_CIPHER *cipher,
                                  EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
     }
     if (err == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-       err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GET_IV, 12, iv) != 1;
-#else
        memcpy(iv, EVP_CIPHER_CTX_iv(ctx), 12);
        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN, 12, iv) != 1;
-#endif
     }
     if (err == 0) {
         err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad, 1) != 1;
@@ -650,7 +646,11 @@ static int test_aes128_gcm_tls_dec(ENGINE *e, const EVP_CIPHER *cipher,
     }
 
     if (err == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        PRINT_BUFFER("Decrypted", msg + EVP_GCM_TLS_EXPLICIT_IV_LEN, len);
+#else
         PRINT_BUFFER("Decrypted", msg + EVP_GCM_TLS_EXPLICIT_IV_LEN, decLen);
+#endif
     }
 
     EVP_CIPHER_CTX_free(ctx);
@@ -968,7 +968,14 @@ static int test_ecdh_derive(ENGINE *e, EVP_PKEY *key, EVP_PKEY *peerKey,
     unsigned char *secret = NULL;
     size_t outLen;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    err = EVP_PKEY_set1_engine(key, e) != 1;
+    if (err == 0) {
+        err = (ctx = EVP_PKEY_CTX_new(key, NULL)) == NULL;
+    }
+#else
     err = (ctx = EVP_PKEY_CTX_new(key, e)) == NULL;
+#endif
     if (err == 0) {
         err = EVP_PKEY_derive_init(ctx) != 1;
     }
@@ -1149,7 +1156,14 @@ static int test_ecdsa_pkey_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *hash,
     EVP_PKEY_CTX *ctx = NULL;
     size_t sigLen = *ecdsaSigLen;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    err = EVP_PKEY_set1_engine(pkey, e) != 1;
+    if (err == 0) {
+        err = (ctx = EVP_PKEY_CTX_new(pkey, NULL)) == NULL;
+    }
+#else
     err = (ctx = EVP_PKEY_CTX_new(pkey, e)) == NULL;
+#endif
     if (err == 0) {
         err = EVP_PKEY_sign_init(ctx) != 1;
     }
@@ -1182,7 +1196,14 @@ static int test_ecdsa_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
     int err;
     EVP_PKEY_CTX *ctx = NULL;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    err = EVP_PKEY_set1_engine(pkey, e) != 1;
+    if (err == 0) {
+        err = (ctx = EVP_PKEY_CTX_new(pkey, NULL)) == NULL;
+    }
+#else
     err = (ctx = EVP_PKEY_CTX_new(pkey, e)) == NULL;
+#endif
     if (err == 0) {
         err = EVP_PKEY_verify_init(ctx) != 1;
     }
@@ -1335,7 +1356,14 @@ static int test_ecdsa_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,
 
     err = (mdCtx = EVP_MD_CTX_new()) == NULL;
     if (err == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        err = EVP_PKEY_set1_engine(pkey, e) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestSignInit(mdCtx, &pkeyCtx, md, NULL, pkey) != 1;
+#else
         err = EVP_DigestSignInit(mdCtx, &pkeyCtx, md, e, pkey) != 1;
+#endif
     }
 #if OPENSSL_VERSION_NUMBER >= 0x1010100fL
     if (err == 0) {
@@ -1368,7 +1396,14 @@ static int test_ecdsa_verify(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,
 
     err = (mdCtx = EVP_MD_CTX_new()) == NULL;
     if (err == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        err = EVP_PKEY_set1_engine(pkey, e) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestVerifyInit(mdCtx, &pkeyCtx, md, NULL, pkey) != 1;
+#else
         err = EVP_DigestVerifyInit(mdCtx, &pkeyCtx, md, e, pkey) != 1;
+#endif
     }
 #if OPENSSL_VERSION_NUMBER >= 0x1010100fL
     if (err == 0) {
@@ -1962,7 +1997,7 @@ int main(int argc, char* argv[])
 {
     int err = 0;
     ENGINE *e = NULL;
-#if OPENSSL_VERSION_NUMBER >= 0x10101004L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     const char *name = "libwolfengine";
 #else
     const char *name = "wolfengine";
