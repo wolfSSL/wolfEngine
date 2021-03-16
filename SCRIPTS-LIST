@@ -1,0 +1,18 @@
+
+pre-commit.sh - Development, git
+    Pre commit hook, saves current state before running commit tests to allow a
+    restore back to current state
+
+commit-tests.sh - Development, git
+    Commit tests, must pass before a commit is accepted.
+    Use -n (--no-verify) to disable.
+
+test-openssl-version.sh - Testing
+    Builds against different versions of OpenSSL.
+    Set OPENSSL_VER_DIR to a directory containing builds.
+    Alternatively set ENV variable for each version:
+     - OPENSSL300_DIR for OpensSL 3.0.0
+     - OPENSSL111_DIR for OpensSL 1.1.1
+     - OPENSSL110_DIR for OpensSL 1.1.0
+     - OPENSSL102_DIR for OpensSL 1.0.2
+
