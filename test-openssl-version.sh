@@ -11,7 +11,7 @@ CONFIG_STATUS=config.status
 CONFIG_STATUS_TMP=/tmp/config.status.$$
 
 # See README.md for change to make to OpenSSL to enable this to work.
-EXTRA_OPTS="--disable-aesgcm"
+EXTRA_OPTS=""
 VERBOSE="no"
 
 # User can set the directory to find different versions of OpenSSL

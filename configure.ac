@@ -98,9 +98,9 @@ fi
 
 # AES-GCM
 AC_ARG_ENABLE([aesgcm],
-    [AS_HELP_STRING([--enable-aesgcm],[Enable AES-GCM (default: enabled)])],
+    [AS_HELP_STRING([--enable-aesgcm],[Enable AES-GCM (default: disabled)])],
     [ ENABLED_AESGCM=$enableval ],
-    [ ENABLED_AESGCM=yes ]
+    [ ENABLED_AESGCM=no ]
     )
 
 if test "$ENABLED_AESGCM" = "yes"
