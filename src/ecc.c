@@ -1,4 +1,4 @@
-/* pubkey.c
+/* ecc.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
@@ -159,7 +159,7 @@ typedef struct we_Ecc
 } we_Ecc;
 
 /**
- * Initialize and set the data required to complete an EC operations.
+ * Initialize and set the data required to complete an EC operation.
  *
  * @param  ctx  [in]  Public key context of operation.
  * @returns  1 on success and 0 on failure.

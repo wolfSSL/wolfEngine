@@ -36,6 +36,9 @@ static const char *wolfengine_name = "An engine using wolfSSL";
 #if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
 /** List of public key types supported as ids. */
 static const int we_pkey_nids[] = {
+#ifdef WE_HAVE_RSA
+    NID_rsaEncryption,
+#endif
 #ifdef WE_HAVE_ECC
     NID_X9_62_id_ecPublicKey,
 #ifdef WE_HAVE_ECKEYGEN
@@ -62,7 +65,7 @@ int we_pkey_get_nids(const int **nids)
 }
 #endif /* WE_HAVE_EVP_PKEY || WE_USE_HASH */
 
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
 
 /*
  * Random number generator
@@ -94,7 +97,7 @@ static int we_init_random()
     return ret;
 }
 
-#endif /* WE_HAVE_ECC || WE_HAVE_AESGCM */
+#endif /* WE_HAVE_ECC || WE_HAVE_AESGCM || WE_HAVE_RSA */
 
 /** List of supported digest algorithms. */
 static const int we_digest_nids[] = {
@@ -121,6 +124,59 @@ static const int we_digest_nids[] = {
 #endif
 };
 
+/**
+ * Convert an OpenSSL hash NID to a wolfCrypt hash OID.
+ *
+ * @param  nid  [in]  OpenSSL NID to convert.
+ * @return  Returns the OID if a NID -> OID mapping exists and a negative value
+ *          if it doesn't.
+ */
+int we_nid_to_wc_hash_oid(int nid)
+{
+    int hashType = WC_HASH_TYPE_NONE;
+
+    switch (nid) {
+#ifdef WE_HAVE_SHA256
+        case NID_sha256:
+            hashType = WC_HASH_TYPE_SHA256;
+            break;
+#endif
+#ifdef WE_HAVE_SHA384
+        case NID_sha384:
+            hashType = WC_HASH_TYPE_SHA384;
+            break;
+#endif
+#ifdef WE_HAVE_SHA512
+        case NID_sha512:
+            hashType = WC_HASH_TYPE_SHA512;
+            break;
+#endif
+#ifdef WE_HAVE_SHA3_224
+        case NID_sha3_224:
+            hashType = WC_HASH_TYPE_SHA3_224;
+            break;
+#endif
+#ifdef WE_HAVE_SHA3_256
+        case NID_sha3_256:
+            hashType = WC_HASH_TYPE_SHA3_256;
+            break;
+#endif
+#ifdef WE_HAVE_SHA3_384
+        case NID_sha3_384:
+            hashType = WC_HASH_TYPE_SHA3_384;
+            break;
+#endif
+#ifdef WE_HAVE_SHA3_512
+        case NID_sha3_512:
+            hashType = WC_HASH_TYPE_SHA3_512;
+            break;
+        default:
+            break;
+#endif
+    }
+
+    return wc_HashGetOID(hashType);
+}
 
 /*
  * Digests
@@ -289,6 +345,11 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
     }
     else {
         switch (nid) {
+#ifdef WE_HAVE_RSA
+        case NID_rsaEncryption:
+            *pkey = we_rsa_pkey_method;
+            break;
+#endif /* WE_HAVE_RSA */
         case NID_X9_62_id_ecPublicKey:
             *pkey = we_ec_method;
             break;
@@ -376,6 +437,13 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_aesgcm_meths();
     }
 #endif
+#ifdef WE_HAVE_RSA
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_rsa_pkey_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
+#endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_ECC
 #ifdef WE_HAVE_EVP_PKEY
     if (ret == 1) {
@@ -445,7 +513,7 @@ static int wolfengine_destroy(ENGINE *e)
     EVP_MD_meth_free(we_sha3_512_md);
     we_sha3_512_md = NULL;
 #endif
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     if (we_globalRngInited) {
         wc_FreeRng(&we_globalRng);
         we_globalRngInited = 0;
