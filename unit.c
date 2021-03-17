@@ -235,6 +235,162 @@ static int test_sha512(ENGINE *e, void *data)
 
 /******************************************************************************/
 
+#ifdef WE_HAVE_SHA3_224
+
+static int test_sha3_224(ENGINE *e, void *data)
+{
+    int err = 0;
+    const EVP_MD *md = EVP_sha3_224();
+    unsigned char *msg = (unsigned char *)"Test pattern";
+    unsigned char longMsg[1300];
+    unsigned char digest[28];
+    unsigned int dLen;
+
+    (void)data;
+
+    RAND_bytes(longMsg, sizeof(longMsg));
+
+    dLen = 0;
+    PRINT_MSG("Digest with OpenSSL");
+    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
+    if (err == 0) {
+        PRINT_MSG("Digest with wolfengine");
+        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
+    }
+    if (err == 0) {
+        dLen = 0;
+        PRINT_MSG("Digest with OpenSSL");
+        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Digest with wolfengine");
+        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+
+    return err;
+}
+
+#endif
+
+/******************************************************************************/
+
+#ifdef WE_HAVE_SHA3_256
+
+static int test_sha3_256(ENGINE *e, void *data)
+{
+    int err = 0;
+    const EVP_MD *md = EVP_sha3_256();
+    unsigned char *msg = (unsigned char *)"Test pattern";
+    unsigned char longMsg[1300];
+    unsigned char digest[32];
+    unsigned int dLen;
+
+    (void)data;
+
+    RAND_bytes(longMsg, sizeof(longMsg));
+
+    dLen = 0;
+    PRINT_MSG("Digest with OpenSSL");
+    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
+    if (err == 0) {
+        PRINT_MSG("Digest with wolfengine");
+        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
+    }
+    if (err == 0) {
+        dLen = 0;
+        PRINT_MSG("Digest with OpenSSL");
+        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Digest with wolfengine");
+        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+
+    return err;
+}
+
+#endif
+
+/******************************************************************************/
+
+#ifdef WE_HAVE_SHA3_384
+
+static int test_sha3_384(ENGINE *e, void *data)
+{
+    int err = 0;
+    const EVP_MD *md = EVP_sha3_384();
+    unsigned char *msg = (unsigned char *)"Test pattern";
+    unsigned char longMsg[1300];
+    unsigned char digest[48];
+    unsigned int dLen;
+
+    (void)data;
+
+    RAND_bytes(longMsg, sizeof(longMsg));
+
+    dLen = 0;
+    PRINT_MSG("Digest with OpenSSL");
+    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
+    if (err == 0) {
+        PRINT_MSG("Digest with wolfengine");
+        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
+    }
+    if (err == 0) {
+        dLen = 0;
+        PRINT_MSG("Digest with OpenSSL");
+        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Digest with wolfengine");
+        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+
+    return err;
+}
+
+#endif
+
+/******************************************************************************/
+
+#ifdef WE_HAVE_SHA3_512
+
+static int test_sha3_512(ENGINE *e, void *data)
+{
+    int err = 0;
+    const EVP_MD *md = EVP_sha3_512();
+    unsigned char *msg = (unsigned char *)"Test pattern";
+    unsigned char longMsg[1300];
+    unsigned char digest[64];
+    unsigned int dLen;
+
+    (void)data;
+
+    RAND_bytes(longMsg, sizeof(longMsg));
+
+    dLen = 0;
+    PRINT_MSG("Digest with OpenSSL");
+    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
+    if (err == 0) {
+        PRINT_MSG("Digest with wolfengine");
+        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
+    }
+    if (err == 0) {
+        dLen = 0;
+        PRINT_MSG("Digest with OpenSSL");
+        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Digest with wolfengine");
+        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+
+    return err;
+}
+
+#endif
+
+/******************************************************************************/
+
 #endif /* WE_HAVE_DIGEST */
 
 /******************************************************************************/
@@ -1922,6 +2078,18 @@ TEST_CASE test_case[] = {
 #endif
 #ifdef WE_HAVE_SHA512
     TEST_DECL(test_sha512),
+#endif
+#ifdef WE_HAVE_SHA3_224
+    TEST_DECL(test_sha3_224),
+#endif
+#ifdef WE_HAVE_SHA3_256
+    TEST_DECL(test_sha3_256),
+#endif
+#ifdef WE_HAVE_SHA3_384
+    TEST_DECL(test_sha3_384),
+#endif
+#ifdef WE_HAVE_SHA3_512
+    TEST_DECL(test_sha3_512),
 #endif
 #ifdef WE_HAVE_AESGCM
     TEST_DECL(test_aes128_gcm),
