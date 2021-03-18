@@ -1,0 +1,7 @@
+# vim:ft=automake
+# All paths should be given relative to the root
+#
+
+noinst_HEADERS = include/openssl_bc.h
+noinst_HEADERS+= include/openssl_bc.h
+

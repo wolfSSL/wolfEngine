@@ -6,7 +6,6 @@
 /autom4te.cache/
 /compile
 /config.guess
-/config.h.in
 /config.sub
 /configure
 /depcomp
@@ -17,12 +16,13 @@
 /.libs
 /Makefile
 /.deps
-/config.h
-/config.h.in~
+/include/config.h.in
+/include/config.h
+/include/config.h.in~
 /config.status
 /include.am
 /libtool
-/stamp-h1
+/include/stamp-h1
 /libwolfengine.la
 /wolfengine.lo
 /openssl_bc.lo
@@ -37,3 +37,9 @@
 /bench-bench.o
 /bench-openssl_bc.o
 /bench
+/build-aux
+/src/*.o
+/src/*.lo
+/src/.deps
+/src/.libs
+/src/.dirstamp
