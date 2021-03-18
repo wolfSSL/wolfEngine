@@ -266,7 +266,7 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
 #endif
 
 /**
- * Copy the EVP public key method rom/to EVP public key contexts.
+ * Copy the EVP public key method from/to EVP public key contexts.
  *
  * @param  dst  [in]  Destination public key context.
  * @param  src  [in]  Source public key context.
@@ -278,17 +278,13 @@ static int we_ec_copy(EVP_PKEY_CTX *dst, const EVP_PKEY_CTX *src)
 static int we_ec_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 #endif
 {
-    int ret = 1;
-
-    (void)src;
-
     WOLFENGINE_MSG("ECC - Copy");
 
-    if (EVP_PKEY_CTX_get_data(dst) != NULL) {
-        ret = we_ec_init(dst) == 0;
-    }
+    /* Nothing to copy as src is empty. */
+    (void)src;
+    (void)dst;
 
-    return ret;
+    return 1;
 }
 
 /**
