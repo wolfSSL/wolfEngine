@@ -1,0 +1,11 @@
+# vim:ft=automake
+# included from Top Level Makefile.am
+# All paths should be given relative to the root
+
+libwolfengine_la_SOURCES =
+libwolfengine_la_SOURCES += src/wolfengine.c
+libwolfengine_la_SOURCES += src/digest.c
+libwolfengine_la_SOURCES += src/cipher.c
+libwolfengine_la_SOURCES += src/ecc.c
+libwolfengine_la_SOURCES += src/openssl_bc.c
+

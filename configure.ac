@@ -3,14 +3,17 @@
 # Copyright (C) 2019-2021 wolfSSL Inc.
 #
 
+AC_COPYRIGHT([Copyright (C) 2019-2021 wolfSSL Inc.])
 AC_PREREQ([2.69])
-AC_INIT([wolfengine], [1.0])
-AC_CONFIG_HEADERS([config.h])
+AC_INIT([wolfengine], [1.0.0])
+AC_CONFIG_AUX_DIR([build-aux])
+
+AC_CONFIG_HEADERS([include/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
 dnl m4_include([m4/ax_check_openssl.m4])
 
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([1.11  -Wall -Werror -Wno-portability foreign tar-ustar subdir-objects no-define color-tests])
 LT_INIT([disable-static pic-only])
 
 # capture user C_EXTRA_FLAGS from ./configure line, CFLAGS may hold -g -O2 even
@@ -106,13 +109,19 @@ then
     fi
 fi
 
+AC_ARG_ENABLE([sha3],
+    [AS_HELP_STRING([--enable-sha3],[Enable SHA3 (default: enabled)])],
+    [ ENABLED_SHA3=$enableval ],
+    [ ENABLED_SHA3=no ]
+    )
+
 AC_ARG_ENABLE([sha3-224],
     [AS_HELP_STRING([--enable-sha3-224],[Enable SHA3-224 (default: enabled)])],
     [ ENABLED_SHA3_224=$enableval ],
     [ ENABLED_SHA3_224=yes ]
     )
 
-if test "$ENABLED_SHA3_224" = "yes"
+if test "$ENABLED_SHA3_224" = "yes" || test "$ENABLED_SHA3" = "yes"
 then
     if test "$OPENSSL_111_PLUS" = "no"
     then
@@ -130,7 +139,7 @@ AC_ARG_ENABLE([sha3-256],
     [ ENABLED_SHA3_256=yes ]
     )
 
-if test "$ENABLED_SHA3_256" = "yes"
+if test "$ENABLED_SHA3_256" = "yes" || test "$ENABLED_SHA3" = "yes"
 then
     if test "$OPENSSL_111_PLUS" = "no"
     then
@@ -148,7 +157,7 @@ AC_ARG_ENABLE([sha3-384],
     [ ENABLED_SHA3_384=yes ]
     )
 
-if test "$ENABLED_SHA3_384" = "yes"
+if test "$ENABLED_SHA3_384" = "yes" || test "$ENABLED_SHA3" = "yes"
 then
     if test "$OPENSSL_111_PLUS" = "no"
     then
@@ -166,7 +175,7 @@ AC_ARG_ENABLE([sha3-512],
     [ ENABLED_SHA3_512=yes ]
     )
 
-if test "$ENABLED_SHA3_512" = "yes"
+if test "$ENABLED_SHA3_512" = "yes" || test "$ENABLED_SHA3" = "yes"
 then
     if test "$OPENSSL_111_PLUS" = "no"
     then

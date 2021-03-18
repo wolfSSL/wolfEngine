@@ -1160,7 +1160,7 @@ static int test_ecdh_derive(ENGINE *e, EVP_PKEY *key, EVP_PKEY *peerKey,
         err = (expLen == outLen) == 0;
     }
     if (err == 0) {
-        err = (secret = OPENSSL_malloc(outLen)) == NULL;
+        err = (secret = (unsigned char*)OPENSSL_malloc(outLen)) == NULL;
     }
     if (err == 0) {
         err = EVP_PKEY_derive(ctx, secret, &outLen) != 1;
@@ -1938,14 +1938,14 @@ static int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
     int err;
     unsigned int sigLen;
 
-    sigLen = *ecdsaSigLen;
-    err = ECDSA_sign(0, hash, hashLen, ecdsaSig, &sigLen, key) != 1;
+    sigLen = (unsigned int)*ecdsaSigLen;
+    err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
     if (err == 0) {
         PRINT_BUFFER("Signture", ecdsaSig, sigLen);
     }
     if (err == 0) {
-        sigLen = *ecdsaSigLen;
-        err = ECDSA_sign(0, hash, hashLen, ecdsaSig, &sigLen, key) != 1;
+        sigLen = (unsigned int)*ecdsaSigLen;
+        err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
     }
     if (err == 0) {
         PRINT_BUFFER("Signture", ecdsaSig, sigLen);
@@ -1961,7 +1961,8 @@ static int test_ec_key_ecdsa_verify(EC_KEY *key, unsigned char *hash,
 {
     int err;
 
-    err = ECDSA_verify(0, hash, hashLen, ecdsaSig, ecdsaSigLen, key) != 1;
+    err = ECDSA_verify(0, hash, (int)hashLen, ecdsaSig, (int)ecdsaSigLen,
+                       key) != 1;
     if (err == 0) {
         PRINT_MSG("Signature verified");
     }
@@ -1969,7 +1970,8 @@ static int test_ec_key_ecdsa_verify(EC_KEY *key, unsigned char *hash,
         PRINT_MSG("Signature not verified");
     }
     if (err == 0) {
-        err = ECDSA_verify(0, hash, hashLen, ecdsaSig, ecdsaSigLen, key) != 1;
+        err = ECDSA_verify(0, hash, (int)hashLen, ecdsaSig, (int)ecdsaSigLen,
+                           key) != 1;
     }
     if (err == 0) {
         PRINT_MSG("Signature verified");

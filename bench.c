@@ -786,7 +786,7 @@ static int ecdsa_ec_key_verify_bench(EC_KEY *key, const char* curve, int dLen,
     if (err == 0) {
         BENCH_START();
         do {
-            err |= ECDSA_verify(0, dgst, dLen, sig, len, key) != 1;
+            err |= ECDSA_verify(0, dgst, dLen, sig, (int)len, key) != 1;
             cnt++;
         }
         while (BENCH_COND(1));
