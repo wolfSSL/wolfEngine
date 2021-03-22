@@ -30,6 +30,7 @@
 #include <openssl/evp.h>
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
+#include <openssl/rsa.h>
 
 #define EVP_CTRL_AEAD_GET_TAG   EVP_CTRL_GCM_GET_TAG
 #define EVP_CTRL_AEAD_SET_TAG   EVP_CTRL_GCM_SET_TAG
@@ -80,6 +81,7 @@ int EVP_CIPHER_meth_set_impl_ctx_size(EVP_CIPHER *cipher, int ctx_size);
 EVP_CIPHER *EVP_CIPHER_meth_new(int cipher_type, int block_size, int key_len);
 void EVP_CIPHER_meth_free(EVP_CIPHER *cipher);
 
+RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey);
 EC_KEY *EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey);
 
 size_t EC_KEY_priv2buf(const EC_KEY *eckey, unsigned char **pbuf);

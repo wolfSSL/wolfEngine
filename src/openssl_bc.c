@@ -244,6 +244,14 @@ size_t EC_KEY_key2buf(const EC_KEY *key, point_conversion_form_t form,
     return EC_POINT_point2buf(group, pub_key, form, pbuf, ctx);
 }
 
+RSA *EVP_PKEY_get0_RSA(EVP_PKEY *pkey)
+{
+    if (pkey->type != EVP_PKEY_RSA)
+        return NULL;
+
+    return pkey->pkey.rsa;
+}
+
 EC_KEY *EVP_PKEY_get0_EC_KEY(EVP_PKEY *pkey)
 {
     if (pkey->type != EVP_PKEY_EC)

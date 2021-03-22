@@ -33,6 +33,10 @@
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/aes.h>
+#include <wolfssl/wolfcrypt/rsa.h>
+#include <wolfssl/wolfcrypt/error-crypt.h>
+#include <wolfssl/wolfcrypt/signature.h>
+#include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/ecc.h>
 
 #include "openssl_bc.h"
@@ -77,6 +81,8 @@ int we_init_sha3_384_meth(void);
 extern EVP_MD *we_sha3_512_md;
 int we_init_sha3_512_meth(void);
 
+int we_nid_to_wc_hash_oid(int nid);
+
 /*
  * Cipher methods.
  */
@@ -84,6 +90,18 @@ int we_init_sha3_512_meth(void);
 extern EVP_CIPHER* we_aes128_gcm_ciph;
 extern EVP_CIPHER* we_aes256_gcm_ciph;
 int we_init_aesgcm_meths(void);
+
+/*
+ * RSA methods.
+ */
+
+#ifdef WE_HAVE_RSA
+
+extern EVP_PKEY_METHOD *we_rsa_pkey_method;
+
+int we_init_rsa_pkey_meth(void);
+
+#endif /* WE_HAVE_RSA */
 
 /*
  * ECC methods.

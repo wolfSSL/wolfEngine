@@ -200,6 +200,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESGCM"
 fi
 
+# RSA
+AC_ARG_ENABLE([rsa],
+    [AS_HELP_STRING([--enable-rsa],[Enable RSA (default: enabled)])],
+    [ ENABLED_RSA=$enableval ],
+    [ ENABLED_RSA=yes ]
+    )
+
+if test "$ENABLED_RSA" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_RSA"
+fi
+
 # ECC
 AC_ARG_ENABLE([ecc],
     [AS_HELP_STRING([--enable-ecc],[Enable ECC (default: enabled)])],
@@ -382,6 +394,7 @@ echo "   *  - SHA3-224:                $ENABLED_SHA3_224"
 echo "   *  - SHA3-256:                $ENABLED_SHA3_256"
 echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
 echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
+echo "   * RSA:                        $ENABLED_RSA"
 echo "   * AES-GCM:                    $ENABLED_AESGCM"
 echo "   * ECC:                        $ENABLED_ECC"
 echo "   *  - EVP_PKEY:                $ENABLED_EVP_PKEY"
