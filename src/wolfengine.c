@@ -394,7 +394,7 @@ static int wolfengine_init(ENGINE *e)
 
     (void)e;
 
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     ret = we_init_random();
 #endif
 #ifdef WE_HAVE_SHA256
