@@ -3,5 +3,3 @@
 #
 
 noinst_HEADERS = include/openssl_bc.h
-noinst_HEADERS+= include/openssl_bc.h
-
