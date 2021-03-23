@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "wolfengine.h"
+#include "internal.h"
 
 /* May not be available in FIPS builds of wolfSSL */
 #ifndef GCM_NONCE_MAX_SZ

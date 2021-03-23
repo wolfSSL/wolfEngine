@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "wolfengine.h"
+#include "internal.h"
 
 #if defined(WE_HAVE_SHA256) && defined(WE_SHA256_DIRECT)
 

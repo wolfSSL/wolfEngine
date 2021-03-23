@@ -4,6 +4,7 @@
 
 libwolfengine_la_SOURCES =
 libwolfengine_la_SOURCES += src/wolfengine.c
+libwolfengine_la_SOURCES += src/internal.c
 libwolfengine_la_SOURCES += src/digest.c
 libwolfengine_la_SOURCES += src/cipher.c
 libwolfengine_la_SOURCES += src/rsa.c

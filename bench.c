@@ -23,6 +23,8 @@
 #include <sys/time.h>
 #include <string.h>
 
+#include "wolfengine.h"
+
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
@@ -950,6 +952,7 @@ static void usage()
     printf("\n");
     printf("Usage: bench [options]\n");
     printf("  --help          Show this usage information.\n");
+    printf("  --static        Run the benchmarks using the static engine.\n");
     printf("  --dir <path>    Location of wolfengine shared library.\n");
     printf("                  Default: .libs\n");
     printf("  --engine <str>  Name of wolfsslengine. Default: libwolfengine\n");
@@ -963,11 +966,13 @@ int main(int argc, char *argv[])
 {
     int err = 0;
     ENGINE *e = NULL;
-#if OPENSSL_VERSION_NUMBER >= 0x10101004L
-    const char *name = "libwolfengine";
+#ifdef WE_NO_DYNAMIC_ENGINE
+    int staticBench = 1;
+    const char *name = wolfengine_id;
 #else
-    const char *name = "wolfengine";
-#endif
+    int staticBench = 0;
+    const char *name = wolfengine_lib;
+#endif /* WE_NO_DYNAMIC_ENGINE */
     const char *dir = ".libs";
     int i;
     int runAll = 1;
@@ -978,6 +983,9 @@ int main(int argc, char *argv[])
             usage();
             runAll = 0;
             break;
+        }
+        else if (strncmp(*argv, "--static", 9) == 0) {
+            staticBench = 1;
         }
         else if (strncmp(*argv, "--dir", 6) == 0) {
             argc--;
@@ -1036,7 +1044,7 @@ int main(int argc, char *argv[])
             }
             if (i == BENCH_ALG_COUNT) {
                 printf("\n");
-                printf("Unrecognisze option: %s\n", *argv);
+                printf("Unrecognized option: %s\n", *argv);
                 usage();
                 err = 1;
                 break;
@@ -1050,12 +1058,23 @@ int main(int argc, char *argv[])
         /* Set directory where wolfsslengine library is stored */
         setenv("OPENSSL_ENGINES", dir, 1);
 
-    #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-        OPENSSL_init_ssl(OPENSSL_INIT_ENGINE_ALL_BUILTIN |
-                         OPENSSL_INIT_LOAD_CONFIG, NULL);
-    #else
-        ENGINE_load_builtin_engines();
-    #endif
+        if (staticBench == 1) {
+                printf("Running benchmarks using static engine.\n");
+                ENGINE_load_wolfengine();
+                name = wolfengine_id;
+            }
+        #ifndef WE_NO_DYNAMIC_ENGINE
+            else {
+                printf("Running benchmarks using dynamic engine.\n");
+            #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+                OPENSSL_init_ssl(OPENSSL_INIT_ENGINE_DYNAMIC |
+                                 OPENSSL_INIT_LOAD_CONFIG,
+                                 NULL);
+            #else
+                ENGINE_load_dynamic();
+            #endif
+            }
+        #endif /* WE_NO_DYNAMIC_ENGINE */
 
         e = ENGINE_by_id(name);
         if (e == NULL) {

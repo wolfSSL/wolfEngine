@@ -56,6 +56,17 @@ AS_IF([test "$ax_enable_debug" = "yes"],
       [AM_CFLAGS="$DEBUG_CFLAGS $AM_CFLAGS"],
       [])
 
+# Dynamic engine support
+AC_ARG_ENABLE([dynamic-engine],
+    [AS_HELP_STRING([--enable-dynamic-engine],[Enable loading wolfEngine as a dynamic engine (default: enabled).])],
+    [ ENABLED_DYNAMIC_ENGINE=$enableval ],
+    [ ENABLED_DYNAMIC_ENGINE=yes ]
+    )
+
+if test "$ENABLED_DYNAMIC_ENGINE" != "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_NO_DYNAMIC_ENGINE"
+fi
 
 # Digest options
 AC_ARG_ENABLE([hash],
@@ -386,6 +397,7 @@ echo "   * C Flags:                    $CFLAGS"
 echo "   * Debug enabled:              $ax_enable_debug"
 echo
 echo "   Features "
+echo "   * Dynamic engine:             $ENABLED_DYNAMIC_ENGINE"
 echo "   * Digest:"
 echo "   *  - SHA-256:                 $ENABLED_SHA256"
 echo "   *  - SHA-384:                 $ENABLED_SHA384"
