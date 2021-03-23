@@ -1,0 +1,20 @@
+# vim:ft=automake
+# included from Top Level Makefile.am
+# All paths should be given relative to the root
+
+TEST_EXTENSIONS=.test
+TESTS += $(check_PROGRAMS)
+
+check_PROGRAMS += test/unit.test
+noinst_PROGRAMS += test/unit.test
+DISTCLEANFILES += test/.libs/unit.test
+
+test_unit_test_SOURCES = \
+	test/test_cipher.c \
+	test/test_digest.c \
+	test/test_ecc.c \
+	test/test_pkey.c \
+	test/test_rsa.c \
+	test/unit.c \
+	src/openssl_bc.c
+test_unit_test_CFLAGS = $(AM_CFLAGS)

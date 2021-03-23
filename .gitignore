@@ -31,9 +31,6 @@
 /*.trs
 /m4/libtool.m4
 /m4/lt*.m4
-/unit_test-unit.o
-/unit_test-openssl_bc.o
-/unit.test
 /bench-bench.o
 /bench-openssl_bc.o
 /bench
@@ -43,3 +40,8 @@
 /src/.deps
 /src/.libs
 /src/.dirstamp
+/test/*.o
+/test/.deps
+/test/.libs
+/test/.dirstamp
+/test/unit.test
