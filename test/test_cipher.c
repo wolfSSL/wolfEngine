@@ -21,42 +21,34 @@
 
 #include "unit.h"
 
-#ifdef WE_HAVE_AESGCM
+#ifdef WE_HAVE_AESCBC
 
-int test_aes_gcm_enc(ENGINE *e, const EVP_CIPHER *cipher,
-                     unsigned char *key, unsigned char *iv,
-                     unsigned char *aad, unsigned char *msg, size_t len,
-                     unsigned char *enc, unsigned char *tag)
+static int test_cipher_enc(ENGINE *e, const EVP_CIPHER *cipher,
+                           unsigned char *key, unsigned char *iv,
+                           unsigned char *msg, int len, unsigned char *enc,
+                           int pad)
 {
     int err;
     EVP_CIPHER_CTX *ctx;
-    int encLen = len;
-    unsigned int tagLen = 16;
+    int encLen;
+    int fLen;
 
     err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
     if (err == 0) {
        err = EVP_EncryptInit_ex(ctx, cipher, e, key, iv) != 1;
     }
     if (err == 0) {
-        err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad, 1) != 1;
-    }
-    if (err == 0) {
-        err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad + 1,
-                                strlen((char *)aad) - 1) != 1;
+        err = EVP_CIPHER_CTX_set_padding(ctx, pad) != 1;
     }
     if (err == 0) {
         err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, len) != 1;
     }
     if (err == 0) {
-        err = EVP_EncryptFinal_ex(ctx, enc + encLen, &encLen) != 1;
-    }
-    if (err == 0) {
-        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tagLen, tag) != 1;
+        err = EVP_EncryptFinal_ex(ctx, enc + encLen, &fLen) != 1;
     }
 
     if (err == 0) {
-        PRINT_BUFFER("Encrypted", enc, len);
-        PRINT_BUFFER("Tag", tag, 16);
+        PRINT_BUFFER("Encrypted", enc, encLen + fLen);
     }
 
     EVP_CIPHER_CTX_free(ctx);
@@ -64,39 +56,34 @@ int test_aes_gcm_enc(ENGINE *e, const EVP_CIPHER *cipher,
     return err;
 }
 
-int test_aes_gcm_dec(ENGINE *e, const EVP_CIPHER *cipher,
-                     unsigned char *key, unsigned char *iv,
-                     unsigned char *aad, unsigned char *msg, size_t len,
-                     unsigned char *enc, unsigned char *tag,
-                     unsigned char *dec)
+static int test_cipher_dec(ENGINE *e, const EVP_CIPHER *cipher,
+                           unsigned char *key, unsigned char *iv,
+                           unsigned char *msg, int len, unsigned char *enc,
+                           int encLen, unsigned char *dec, int pad)
 {
     int err;
     EVP_CIPHER_CTX *ctx;
-    int decLen = len;
-    unsigned int tagLen = 16;
+    int decLen;
+    int fLen;
 
     err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
     if (err == 0) {
         err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
     }
     if (err == 0) {
-        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tagLen, tag) != 1;
+        err = EVP_CIPHER_CTX_set_padding(ctx, pad) != 1;
     }
     if (err == 0) {
-        err = EVP_DecryptUpdate(ctx, NULL, &decLen, aad,
-                                strlen((char *)aad)) != 1;
+        err = EVP_DecryptUpdate(ctx, dec, &decLen, enc, encLen) != 1;
     }
     if (err == 0) {
-        err = EVP_DecryptUpdate(ctx, dec, &decLen, enc, len) != 1;
-    }
-    if (err == 0) {
-        err = EVP_DecryptFinal_ex(ctx, dec + decLen, &decLen) != 1;
+        err = EVP_DecryptFinal_ex(ctx, dec + decLen, &fLen) != 1;
     }
 
     if (err == 0) {
-        PRINT_BUFFER("Decrypted", dec, len);
+        PRINT_BUFFER("Decrypted", dec, decLen + fLen);
 
-        if (memcmp(dec, msg, len) != 0) {
+        if (decLen + fLen != (int)len || memcmp(dec, msg, len) != 0) {
             err = 1;
         }
     }
@@ -106,261 +93,71 @@ int test_aes_gcm_dec(ENGINE *e, const EVP_CIPHER *cipher,
     return err;
 }
 
-int test_aes128_gcm(ENGINE *e, void *data)
+static int test_cipher_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
+                               int keyLen, int ivLen)
 {
     int err = 0;
-    const EVP_CIPHER *cipher = EVP_aes_128_gcm();
-    unsigned char msg[] = "Test pattern";
-    unsigned char key[16];
-    unsigned char iv[12];
-    unsigned char aad[] = "AAD";
-    unsigned char enc[sizeof(msg)];
-    unsigned char tag[AES_BLOCK_SIZE];
-    unsigned char dec[sizeof(msg)];
-
-    (void)data;
-
-    if (RAND_bytes(key, sizeof(key)) == 0) {
-        err = 1;
-    }
-    if (err == 0) {
-        if (RAND_bytes(iv, sizeof(iv)) == 0) {
-            err = 0;
-        }
-    }
-
-    if (err == 0) {
-        PRINT_BUFFER("Key", key, sizeof(key));
-        PRINT_BUFFER("IV", iv, sizeof(iv));
-        PRINT_BUFFER("Message", msg, sizeof(msg));
-    }
-
-    if (err == 0) {
-        PRINT_MSG("Encrypt with OpenSSL");
-        err = test_aes_gcm_enc(NULL, cipher, key, iv, aad, msg, sizeof(msg),
-                               enc, tag);
-    }
-    if (err == 0) {
-        PRINT_MSG("Decrypt with wolfengine");
-        err = test_aes_gcm_dec(e, cipher, key, iv, aad, msg, sizeof(msg), enc,
-                               tag, dec);
-    }
-
-    if (err == 0) {
-        PRINT_MSG("Encrypt with wolfengine");
-        err = test_aes_gcm_enc(e, cipher, key, iv, aad, msg, sizeof(msg), enc,
-                               tag);
-    }
-    if (err == 0) {
-        PRINT_MSG("Decrypt with OpenSSL");
-        err = test_aes_gcm_dec(NULL, cipher, key, iv, aad, msg, sizeof(msg),
-                               enc, tag, dec);
-    }
-
-    return err;
-}
-
-/******************************************************************************/
-
-int test_aes256_gcm(ENGINE *e, void *data)
-{
-    int err = 0;
-    const EVP_CIPHER *cipher = EVP_aes_256_gcm();
-    unsigned char msg[] = "Test pattern";
+    unsigned char msg[16] = "Test pattern";
     unsigned char key[32];
-    unsigned char iv[12];
-    unsigned char aad[] = "AAD";
-    unsigned char enc[sizeof(msg)];
-    unsigned char tag[AES_BLOCK_SIZE];
-    unsigned char dec[sizeof(msg)];
+    unsigned char iv[16];
+    unsigned char enc[sizeof(msg) + 16];
+    unsigned char dec[sizeof(msg) + 16];
 
     (void)data;
 
-    if (RAND_bytes(key, sizeof(key)) == 0) {
+    if (RAND_bytes(key, keyLen) == 0) {
         err = 1;
     }
     if (err == 0) {
-        if (RAND_bytes(iv, sizeof(iv)) == 0) {
-            err = 0;
-        }
-    }
-
-    if (err == 0) {
-        PRINT_BUFFER("Key", key, sizeof(key));
-        PRINT_BUFFER("IV", iv, sizeof(iv));
-        PRINT_BUFFER("Message", msg, sizeof(msg));
-    }
-
-    if (err == 0) {
-        PRINT_MSG("Encrypt with OpenSSL");
-        err = test_aes_gcm_enc(NULL, cipher, key, iv, aad, msg, sizeof(msg),
-                               enc, tag);
-    }
-    if (err == 0) {
-        PRINT_MSG("Decrypt with wolfengine");
-        err = test_aes_gcm_dec(e, cipher, key, iv, aad, msg, sizeof(msg), enc,
-                               tag, dec);
-    }
-
-    if (err == 0) {
-        PRINT_MSG("Encrypt with wolfengine");
-        err = test_aes_gcm_enc(e, cipher, key, iv, aad, msg, sizeof(msg), enc,
-                               tag);
-    }
-    if (err == 0) {
-        PRINT_MSG("Decrypt with OpenSSL");
-        err = test_aes_gcm_dec(NULL, cipher, key, iv, aad, msg, sizeof(msg),
-                               enc, tag, dec);
-    }
-
-    return err;
-}
-
-/******************************************************************************/
-
-int test_aes128_gcm_fixed_enc(ENGINE *e, const EVP_CIPHER *cipher,
-                              unsigned char *key, unsigned char *iv,
-                              unsigned char *aad, unsigned char *msg,
-                              size_t len, unsigned char *enc,
-                              unsigned char *tag)
-{
-    int err;
-    EVP_CIPHER_CTX *ctx;
-    int encLen = len;
-    unsigned int tagLen = 16;
-
-    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
-    if (err == 0) {
-       err = EVP_EncryptInit_ex(ctx, cipher, e, key, NULL) != 1;
-    }
-    if (err == 0) {
-       err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
-                                 EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
-    }
-    if (err == 0) {
-       memcpy(iv, EVP_CIPHER_CTX_iv(ctx), 12);
-       err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN, 12, iv) != 1;
-    }
-    if (err == 0) {
-        err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad, 1) != 1;
-    }
-    if (err == 0) {
-        err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad + 1,
-                                strlen((char *)aad) - 1) != 1;
-    }
-    if (err == 0) {
-        err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, len) != 1;
-    }
-    if (err == 0) {
-        err = EVP_EncryptFinal_ex(ctx, enc + encLen, &encLen) != 1;
-    }
-    if (err == 0) {
-        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tagLen, tag) != 1;
-    }
-    if (err == 0) {
-    }
-
-    if (err == 0) {
-        PRINT_BUFFER("Encrypted", enc, len);
-        PRINT_BUFFER("Tag", tag, 16);
-    }
-
-    EVP_CIPHER_CTX_free(ctx);
-
-    return err;
-}
-
-int test_aes128_gcm_fixed_dec(ENGINE *e, const EVP_CIPHER *cipher,
-                              unsigned char *key, unsigned char *iv,
-                              unsigned char *aad, unsigned char *msg,
-                              size_t len, unsigned char *enc,
-                              unsigned char *tag, unsigned char *dec)
-{
-    int err;
-    EVP_CIPHER_CTX *ctx;
-    int decLen = len;
-    unsigned int tagLen = 16;
-
-    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
-    if (err == 0) {
-        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
-    }
-    if (err == 0) {
-        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tagLen, tag) != 1;
-    }
-    if (err == 0) {
-        err = EVP_DecryptUpdate(ctx, NULL, &decLen, aad,
-                                strlen((char *)aad)) != 1;
-    }
-    if (err == 0) {
-        err = EVP_DecryptUpdate(ctx, dec, &decLen, enc, len) != 1;
-    }
-    if (err == 0) {
-        err = EVP_DecryptFinal_ex(ctx, dec + decLen, &decLen) != 1;
-    }
-
-    if (err == 0) {
-        PRINT_BUFFER("Decrypted", dec, len);
-
-        if (memcmp(dec, msg, len) != 0) {
+        if (RAND_bytes(iv, ivLen) == 0) {
             err = 1;
         }
     }
 
-    EVP_CIPHER_CTX_free(ctx);
-
-    return err;
-}
-
-int test_aes128_gcm_fixed(ENGINE *e, void *data)
-{
-    int err = 0;
-    const EVP_CIPHER *cipher = EVP_aes_128_gcm();
-    unsigned char msg[] = "Test pattern";
-    unsigned char key[16];
-    unsigned char iv[12];
-    unsigned char aad[] = "AAD";
-    unsigned char enc[sizeof(msg)];
-    unsigned char tag[AES_BLOCK_SIZE];
-    unsigned char dec[sizeof(msg)];
-
-    (void)data;
-
-    if (RAND_bytes(key, sizeof(key)) == 0) {
-        err = 1;
-    }
     if (err == 0) {
-        if (RAND_bytes(iv, sizeof(iv)) == 0) {
-            err = 0;
-        }
-    }
-
-    if (err == 0) {
-        PRINT_BUFFER("Key", key, sizeof(key));
-        PRINT_BUFFER("IV", iv, sizeof(iv));
+        PRINT_BUFFER("Key", key, keyLen);
+        PRINT_BUFFER("IV", iv, ivLen);
         PRINT_BUFFER("Message", msg, sizeof(msg));
     }
 
     if (err == 0) {
-        PRINT_MSG("Encrypt with OpenSSL");
-        err = test_aes128_gcm_fixed_enc(NULL, cipher, key, iv, aad, msg,
-                                        sizeof(msg), enc, tag);
+        PRINT_MSG("Encrypt with OpenSSL - padding");
+        err = test_cipher_enc(NULL, cipher, key, iv, msg, sizeof(msg), enc, 1);
     }
     if (err == 0) {
-        PRINT_MSG("Decrypt with wolfengine");
-        err = test_aes128_gcm_fixed_dec(e, cipher, key, iv, aad, msg,
-                                        sizeof(msg), enc, tag, dec);
+        PRINT_MSG("Decrypt with wolfengine - padding");
+        err = test_cipher_dec(e, cipher, key, iv, msg, sizeof(msg), enc,
+                              sizeof(msg) + ivLen, dec, 1);
     }
 
     if (err == 0) {
-        PRINT_MSG("Encrypt with wolfengine");
-        err = test_aes128_gcm_fixed_enc(e, cipher, key, iv, aad, msg,
-                                        sizeof(msg), enc, tag);
+        PRINT_MSG("Encrypt with wolfengine - padding");
+        err = test_cipher_enc(e, cipher, key, iv, msg, sizeof(msg), enc, 1);
     }
     if (err == 0) {
-        PRINT_MSG("Decrypt with OpenSSL");
-        err = test_aes128_gcm_fixed_dec(NULL, cipher, key, iv, aad, msg,
-                                        sizeof(msg), enc, tag, dec);
+        PRINT_MSG("Decrypt with OpenSSL - padding");
+        err = test_cipher_dec(NULL, cipher, key, iv, msg, sizeof(msg), enc,
+                              sizeof(msg) + ivLen, dec, 1);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Encrypt with OpenSSL - no pad");
+        err = test_cipher_enc(NULL, cipher, key, iv, msg, sizeof(msg), enc, 0);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt with wolfengine - no pad");
+        err = test_cipher_dec(e, cipher, key, iv, msg, sizeof(msg), enc,
+                              sizeof(msg), dec, 0);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Encrypt with wolfengine - no pad");
+        err = test_cipher_enc(e, cipher, key, iv, msg, sizeof(msg), enc, 0);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt with OpenSSL - no pad");
+        err = test_cipher_dec(NULL, cipher, key, iv, msg, sizeof(msg), enc,
+                              sizeof(msg), dec, 0);
     }
 
     return err;
@@ -368,42 +165,67 @@ int test_aes128_gcm_fixed(ENGINE *e, void *data)
 
 /******************************************************************************/
 
-int test_aes128_gcm_tls_enc(ENGINE *e, const EVP_CIPHER *cipher,
-                            unsigned char *key, unsigned char *iv,
-                            unsigned char *aad, unsigned char *msg,
-                            size_t len)
+int test_aes128_cbc(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16);
+}
+
+/******************************************************************************/
+
+int test_aes192_cbc(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_192_cbc(), 24, 16);
+}
+
+/******************************************************************************/
+
+int test_aes256_cbc(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16);
+}
+
+
+/******************************************************************************/
+
+static int test_stream_enc(ENGINE *e, const EVP_CIPHER *cipher,
+                           unsigned char *key, unsigned char *iv,
+                           unsigned char *msg, int len, unsigned char *enc,
+                           unsigned char *encExp, int expLen)
 {
     int err;
     EVP_CIPHER_CTX *ctx;
+    int eLen;
+    int encLen;
+    int i;
+    int j;
 
     err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
-    if (err == 0) {
-       err = EVP_EncryptInit_ex(ctx, cipher, e, key, NULL) != 1;
-    }
-    if (err == 0) {
-       err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
-                                 EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
-    }
-    if (err == 0) {
-       err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
-                                 EVP_AEAD_TLS1_AAD_LEN,
-                                 aad) != EVP_GCM_TLS_TAG_LEN;
-    }
-    if (err == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-        err = EVP_Cipher(ctx, msg, msg, len) != 1;
-#else
-        err = EVP_Cipher(ctx, msg, msg, len) != (int)len;
-#endif
-    }
+    for (i = 1; (err == 0) && (i <= (int)len); i++) {
+        eLen = 0;
+        err = EVP_EncryptInit_ex(ctx, cipher, e, key, iv) != 1;
 
+        for (j = 0; (err == 0) && (j < (int)len); j += i) {
+            int l = len - j;
+            if (i < l)
+                l = i;
+            err = EVP_EncryptUpdate(ctx, enc + eLen, &encLen, msg + j, l) != 1;
+            if (err == 0) {
+                eLen += encLen;
+            }
+        }
+
+        if (err == 0) {
+            err = EVP_EncryptFinal_ex(ctx, enc + eLen, &encLen) != 1;
+            if (err == 0) {
+                eLen += encLen;
+            }
+        }
+        if (err == 0 && (eLen != expLen || memcmp(enc, encExp, expLen) != 0)) {
+            err = 1;
+        }
+    }
     if (err == 0) {
-        size_t encLen = len - EVP_GCM_TLS_EXPLICIT_IV_LEN - EVP_GCM_TLS_TAG_LEN;
-        PRINT_BUFFER("Message Buffer", msg, len);
-        PRINT_BUFFER("Explicit IV", msg, EVP_GCM_TLS_EXPLICIT_IV_LEN);
-        PRINT_BUFFER("Encrypted", msg + EVP_GCM_TLS_EXPLICIT_IV_LEN, encLen);
-        PRINT_BUFFER("Tag", msg + (len - 16), 16);
-        (void)encLen;
+        PRINT_BUFFER("Encrypted", enc, eLen);
     }
 
     EVP_CIPHER_CTX_free(ctx);
@@ -411,44 +233,45 @@ int test_aes128_gcm_tls_enc(ENGINE *e, const EVP_CIPHER *cipher,
     return err;
 }
 
-int test_aes128_gcm_tls_dec(ENGINE *e, const EVP_CIPHER *cipher,
-                            unsigned char *key, unsigned char *iv,
-                            unsigned char *aad, unsigned char *msg,
-                            size_t len)
+static int test_stream_dec(ENGINE *e, const EVP_CIPHER *cipher,
+                           unsigned char *key, unsigned char *iv,
+                           unsigned char *msg, int len, unsigned char *enc,
+                           int encLen, unsigned char *dec)
 {
     int err;
     EVP_CIPHER_CTX *ctx;
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-    size_t decLen = len - EVP_GCM_TLS_EXPLICIT_IV_LEN - EVP_GCM_TLS_TAG_LEN;
-#endif
+    int dLen;
+    int decLen;
+    int i;
+    int j;
 
     err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
-    if (err == 0) {
-       err = EVP_DecryptInit_ex(ctx, cipher, e, key, NULL) != 1;
-    }
-    if (err == 0) {
-       err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
-                                 EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
-    }
-    if (err == 0) {
-       err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
-                                 EVP_AEAD_TLS1_AAD_LEN,
-                                 aad) != EVP_GCM_TLS_TAG_LEN;
-    }
-    if (err == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-        err = EVP_Cipher(ctx, msg, msg, len) != 1;
-#else
-        err = EVP_Cipher(ctx, msg, msg, len) != (int)decLen;
-#endif
-    }
+    for (i = 1; (err == 0) && (i < (int)encLen - 1); i++) {
+        dLen = 0;
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
 
+        for (j = 0; (err == 0) && (j < (int)encLen); j += i) {
+            int l = encLen - j;
+            if (i < l)
+                l = i;
+            err = EVP_DecryptUpdate(ctx, dec + dLen, &decLen, enc + j, l) != 1;
+            if (err == 0) {
+                dLen += decLen;
+            }
+        }
+
+        if (err == 0) {
+            err = EVP_DecryptFinal_ex(ctx, dec + dLen, &decLen) != 1;
+            if (err == 0) {
+                dLen += decLen;
+            }
+        }
+        if ((err == 0) && ((dLen != len) || (memcmp(dec, msg, len) != 0))) {
+            err = 1;
+        }
+    }
     if (err == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-        PRINT_BUFFER("Decrypted", msg + EVP_GCM_TLS_EXPLICIT_IV_LEN, len);
-#else
-        PRINT_BUFFER("Decrypted", msg + EVP_GCM_TLS_EXPLICIT_IV_LEN, decLen);
-#endif
+        PRINT_BUFFER("Decrypted", dec, len);
     }
 
     EVP_CIPHER_CTX_free(ctx);
@@ -456,79 +279,94 @@ int test_aes128_gcm_tls_dec(ENGINE *e, const EVP_CIPHER *cipher,
     return err;
 }
 
-int test_aes128_gcm_tls(ENGINE *e, void *data)
+static int test_stream_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
+                               int keyLen, int ivLen, int msgLen)
 {
     int err = 0;
-    const EVP_CIPHER *cipher = EVP_aes_128_gcm();
-    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
-    unsigned char msg[24];
-    unsigned char buf[48] = {0,};
-    unsigned char key[16];
-    unsigned char iv[EVP_GCM_TLS_FIXED_IV_LEN];
-    size_t dataLen = sizeof(msg);
+    unsigned char msg[16] = "Test pattern";
+    unsigned char key[32];
+    unsigned char iv[16];
+    unsigned char enc[sizeof(msg) + 16];
+    unsigned char encExp[sizeof(msg) + 16];
+    unsigned char dec[sizeof(msg) + 16];
+    int encLen = (msgLen + ivLen) & (~(ivLen-1));
 
     (void)data;
 
-    aad[8]  = 23; /* Content type */
-    aad[9]  = 3;  /* Protocol major version */
-    aad[10] = 2;  /* Protocol minor version */
-
-    if (RAND_bytes(key, sizeof(key)) == 0) {
+    if (RAND_bytes(key, keyLen) == 0) {
         err = 1;
     }
     if (err == 0) {
-        if (RAND_bytes(iv, sizeof(iv)) == 0) {
-            err = 0;
-        }
-    }
-    if (err == 0) {
-        if (RAND_bytes(msg, dataLen) == 0) {
-            err = 0;
+        if (RAND_bytes(iv, ivLen) == 0) {
+            err = 1;
         }
     }
 
     if (err == 0) {
-        memcpy(buf + EVP_GCM_TLS_EXPLICIT_IV_LEN, msg, dataLen);
-
-        PRINT_BUFFER("Key", key, sizeof(key));
-        PRINT_BUFFER("Implicit IV", iv, sizeof(iv));
-        PRINT_BUFFER("Message Buffer", buf, sizeof(buf));
-        PRINT_BUFFER("Message", msg, dataLen);
+        PRINT_BUFFER("Key", key, keyLen);
+        PRINT_BUFFER("IV", iv, ivLen);
+        PRINT_BUFFER("Message", msg, sizeof(msg));
     }
 
     if (err == 0) {
-        PRINT_MSG("Encrypt with OpenSSL - TLS");
-        aad[12] = sizeof(buf) - EVP_GCM_TLS_TAG_LEN;
-        err = test_aes128_gcm_tls_enc(NULL, cipher, key, iv, aad, buf,
-                                      sizeof(buf));
-    }
-    if (err == 0) {
-        PRINT_MSG("Decrypt with wolfengine - TLS");
-        aad[12] = sizeof(buf);
-        err = test_aes128_gcm_tls_dec(e, cipher, key, iv, aad, buf,
-                                      sizeof(buf));
+        PRINT_MSG("Encrypt with OpenSSL");
+        err = test_cipher_enc(NULL, cipher, key, iv, msg, msgLen, encExp, 1);
     }
 
     if (err == 0) {
-        memset(buf, 0, sizeof(buf));
-        memcpy(buf + EVP_GCM_TLS_EXPLICIT_IV_LEN, msg, dataLen);
+        PRINT_MSG("Encrypt Stream with wolfengine");
+        err = test_stream_enc(e, cipher, key, iv, msg, msgLen, enc, encExp,
+                              encLen);
     }
     if (err == 0) {
-        PRINT_BUFFER("Message Buffer", buf, sizeof(buf));
-
-        aad[12] = sizeof(buf) - EVP_GCM_TLS_TAG_LEN;
-        PRINT_MSG("Encrypt with wolfengine - TLS");
-        err = test_aes128_gcm_tls_enc(e, cipher, key, iv, aad, buf,
-                                      sizeof(buf));
-    }
-    if (err == 0) {
-        PRINT_MSG("Decrypt with OpenSSL - TLS");
-        aad[12] = sizeof(buf);
-        err = test_aes128_gcm_tls_dec(NULL, cipher, key, iv, aad, buf,
-                                      sizeof(buf));
+        PRINT_MSG("Decrypt Stream with wolfengine");
+        err = test_stream_dec(e, cipher, key, iv, msg, msgLen, enc, encLen,
+                              dec);
     }
 
     return err;
 }
 
-#endif /* WE_HAVE_AESGCM */
+/******************************************************************************/
+
+int test_aes128_cbc_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 16);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 1);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes192_cbc_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_192_cbc(), 24, 16, 15);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 2);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes256_cbc_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16, 14);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16, 3);
+
+    return err;
+}
+
+/******************************************************************************/
+
+#endif /* WE_HAVE_AESCBC */
+

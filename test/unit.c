@@ -20,11 +20,11 @@
  */
 
 #include "wolfengine.h"
+#include "we_logging.h"
 #include "unit.h"
 
 #ifdef WOLFENGINE_DEBUG
-void print_buffer(const char *desc, const unsigned char *buffer,
-                         size_t len)
+void print_buffer(const char *desc, const unsigned char *buffer, size_t len)
 {
     size_t i;
 
@@ -64,8 +64,17 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_SHA3_512
     TEST_DECL(test_sha3_512),
 #endif
+#ifdef WE_HAVE_AESCBC
+    TEST_DECL(test_aes128_cbc),
+    TEST_DECL(test_aes192_cbc),
+    TEST_DECL(test_aes256_cbc),
+    TEST_DECL(test_aes128_cbc_stream),
+    TEST_DECL(test_aes192_cbc_stream),
+    TEST_DECL(test_aes256_cbc_stream),
+#endif
 #ifdef WE_HAVE_AESGCM
     TEST_DECL(test_aes128_gcm),
+    TEST_DECL(test_aes192_gcm),
     TEST_DECL(test_aes256_gcm),
     TEST_DECL(test_aes128_gcm_fixed),
     TEST_DECL(test_aes128_gcm_tls),
@@ -150,6 +159,7 @@ static void usage()
     printf("  --dir <path>    Location of wolfengine shared library.\n");
     printf("                  Default: .libs\n");
     printf("  --engine <str>  Name of wolfsslengine. Default: libwolfengine\n");
+    printf("  --no-debug      Disable debug logging\n");
     printf("  --list          Display all test cases\n");
     printf("  <num>           Run this test case, but not all\n");
 }
@@ -165,6 +175,9 @@ int main(int argc, char* argv[])
     int staticTest = 0;
     const char *name = wolfengine_lib;
 #endif /* WE_NO_DYNAMIC_ENGINE */
+#ifdef WOLFENGINE_DEBUG
+    int debug = 1;
+#endif
     const char *dir = ".libs";
     int i;
     int runAll = 1;
@@ -205,6 +218,11 @@ int main(int argc, char* argv[])
             name = *argv;
             printf("Engine: %s\n", name);
         }
+#ifdef WOLFENGINE_DEBUG
+        else if (strncmp(*argv, "--no-debug", 11) == 0) {
+            debug = 0;
+        }
+#endif
         else if (strncmp(*argv, "--list", 7) == 0) {
             for (i = 0; i < TEST_CASE_CNT; i++) {
                 printf("%2d: %s\n", i + 1, test_case[i].name);
@@ -230,6 +248,12 @@ int main(int argc, char* argv[])
             break;
         }
     }
+
+#ifdef WOLFENGINE_DEBUG
+    if ((err == 0) && debug) {
+        wolfEngine_Debugging_ON();
+    }
+#endif
 
     if (err == 0 && runTests) {
         printf("\n");

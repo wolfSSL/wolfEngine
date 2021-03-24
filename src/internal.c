@@ -245,8 +245,14 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
 
 /** List of supported cipher algorithms as numeric ids. */
 static const int we_cipher_nids[] = {
+#ifdef WE_HAVE_AESCBC
+    NID_aes_128_cbc,
+    NID_aes_192_cbc,
+    NID_aes_256_cbc,
+#endif
 #ifdef WE_HAVE_AESGCM
     NID_aes_128_gcm,
+    NID_aes_192_gcm,
     NID_aes_256_gcm,
 #endif
 };
@@ -282,9 +288,23 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
     }
     else {
         switch (nid) {
+#ifdef WE_HAVE_AESCBC
+        case NID_aes_128_cbc:
+            *cipher = we_aes128_cbc_ciph;
+            break;
+        case NID_aes_192_cbc:
+            *cipher = we_aes192_cbc_ciph;
+            break;
+        case NID_aes_256_cbc:
+            *cipher = we_aes256_cbc_ciph;
+            break;
+#endif
 #ifdef WE_HAVE_AESGCM
         case NID_aes_128_gcm:
             *cipher = we_aes128_gcm_ciph;
+            break;
+        case NID_aes_192_gcm:
+            *cipher = we_aes192_gcm_ciph;
             break;
         case NID_aes_256_gcm:
             *cipher = we_aes256_gcm_ciph;
@@ -369,10 +389,12 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
  * Initialize all wolfengine global data.
  * This includes:
  *  - Global random
- *  - SHA-256 method
- *  - AES128-GCM method
- *  - AES256-GCM method
- *  - EC method
+ *  - SHA-2 methods
+ *  - SHA-3 methods
+ *  - AES-CBC methods
+ *  - AES-GCM methods
+ *  - RSA method
+ *  - EC methods
  *
  * @param  e  [in]  Engine object.
  * @returns  1 on success and 0 on failure.
@@ -419,6 +441,11 @@ static int wolfengine_init(ENGINE *e)
 #ifdef WE_HAVE_SHA3_512
     if (ret == 1) {
         ret = we_init_sha3_512_meth();
+    }
+#endif
+#ifdef WE_HAVE_AESCBC
+    if (ret == 1) {
+        ret = we_init_aescbc_meths();
     }
 #endif
 #ifdef WE_HAVE_AESGCM
@@ -468,9 +495,19 @@ static int wolfengine_destroy(ENGINE *e)
     we_ec_key_method = NULL;
 #endif
 #endif
+#ifdef WE_HAVE_AESCBC
+    EVP_CIPHER_meth_free(we_aes128_cbc_ciph);
+    we_aes128_cbc_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes192_cbc_ciph);
+    we_aes192_cbc_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes256_cbc_ciph);
+    we_aes256_cbc_ciph = NULL;
+#endif
 #ifdef WE_HAVE_AESGCM
     EVP_CIPHER_meth_free(we_aes128_gcm_ciph);
     we_aes128_gcm_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes192_gcm_ciph);
+    we_aes192_gcm_ciph = NULL;
     EVP_CIPHER_meth_free(we_aes256_gcm_ciph);
     we_aes256_gcm_ciph = NULL;
 #endif

@@ -72,38 +72,23 @@ int test_sha3_512(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_DIGEST */
 
+#ifdef WE_HAVE_AESCBC
+
+int test_aes128_cbc(ENGINE *e, void *data);
+int test_aes192_cbc(ENGINE *e, void *data);
+int test_aes256_cbc(ENGINE *e, void *data);
+int test_aes128_cbc_stream(ENGINE *e, void *data);
+int test_aes192_cbc_stream(ENGINE *e, void *data);
+int test_aes256_cbc_stream(ENGINE *e, void *data);
+
+#endif
+
 #ifdef WE_HAVE_AESGCM
 
-int test_aes_gcm_enc(ENGINE *e, const EVP_CIPHER *cipher,
-                     unsigned char *key, unsigned char *iv,
-                     unsigned char *aad, unsigned char *msg, size_t len,
-                     unsigned char *enc, unsigned char *tag);
-int test_aes_gcm_dec(ENGINE *e, const EVP_CIPHER *cipher,
-                     unsigned char *key, unsigned char *iv,
-                     unsigned char *aad, unsigned char *msg, size_t len,
-                     unsigned char *enc, unsigned char *tag,
-                     unsigned char *dec);
 int test_aes128_gcm(ENGINE *e, void *data);
+int test_aes192_gcm(ENGINE *e, void *data);
 int test_aes256_gcm(ENGINE *e, void *data);
-int test_aes128_gcm_fixed_enc(ENGINE *e, const EVP_CIPHER *cipher,
-                              unsigned char *key, unsigned char *iv,
-                              unsigned char *aad, unsigned char *msg,
-                              size_t len, unsigned char *enc,
-                              unsigned char *tag);
-int test_aes128_gcm_fixed_dec(ENGINE *e, const EVP_CIPHER *cipher,
-                              unsigned char *key, unsigned char *iv,
-                              unsigned char *aad, unsigned char *msg,
-                              size_t len, unsigned char *enc,
-                              unsigned char *tag, unsigned char *dec);
 int test_aes128_gcm_fixed(ENGINE *e, void *data);
-int test_aes128_gcm_tls_enc(ENGINE *e, const EVP_CIPHER *cipher,
-                            unsigned char *key, unsigned char *iv,
-                            unsigned char *aad, unsigned char *msg,
-                            size_t len);
-int test_aes128_gcm_tls_dec(ENGINE *e, const EVP_CIPHER *cipher,
-                            unsigned char *key, unsigned char *iv,
-                            unsigned char *aad, unsigned char *msg,
-                            size_t len);
 int test_aes128_gcm_tls(ENGINE *e, void *data);
 
 
