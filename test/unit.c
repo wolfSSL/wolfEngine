@@ -22,7 +22,7 @@
 #include "unit.h"
 
 #ifdef WOLFENGINE_DEBUG
-static void print_buffer(const char *desc, const unsigned char *buffer,
+void print_buffer(const char *desc, const unsigned char *buffer,
                          size_t len)
 {
     size_t i;
@@ -41,6 +41,7 @@ static void print_buffer(const char *desc, const unsigned char *buffer,
 #endif
 
 TEST_CASE test_case[] = {
+    TEST_DECL(test_logging),
 #ifdef WE_HAVE_SHA256
     TEST_DECL(test_sha256),
 #endif
