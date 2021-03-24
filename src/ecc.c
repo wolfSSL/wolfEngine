@@ -127,6 +127,50 @@ static int we_ec_set_public(ecc_key *key, int curveId, EC_KEY *ecKey)
     return ret;
 }
 
+/**
+ * Export the key from the wolfSSL EC key object into OpenSSL EC_KEY object.
+ *
+ * @param  ecc  [in]      wolfSSL ECC Key.
+ * @param  len  [in]      Length of modulus.
+ * @param  key  [in/out]  OpenSSL EC_KEY oject.
+ * @returns  1 on success and 0 no failure.
+ */
+static int we_ec_export_key(ecc_key *ecc, int len, EC_KEY *key)
+{
+    int ret;
+    unsigned char *buf = NULL;
+    unsigned char *d = NULL;
+
+    /* Allocate buffer to hold private and public key data. */
+    ret = (buf = (unsigned char *)OPENSSL_malloc(len * 3 + 1)) != NULL;
+    if (ret == 1) {
+        unsigned char *x = buf + 1;
+        unsigned char *y = x + len;
+        word32 xLen = len;
+        word32 yLen = len;
+        word32 dLen = len;
+
+        d = y + len;
+        /* Export public and private key data. */
+        ret = wc_ecc_export_private_raw(ecc, x, &xLen, y, &yLen, d, &dLen) == 0;
+    }
+    if (ret == 1) {
+        /* Import public key. */
+        buf[0] = ECC_POINT_UNCOMP;
+        ret = EC_KEY_oct2key(key, buf, len * 2 + 1, NULL);
+    }
+    if (ret == 1) {
+        /* Import private key. */
+        ret = EC_KEY_oct2priv(key, d, len);
+    }
+
+    if (buf != NULL) {
+        OPENSSL_clear_free(buf, len * 3 + 1);
+    }
+
+    return ret;
+}
+
 #ifdef WE_HAVE_EVP_PKEY
 /**
  * Data required to complete an ECC operation.
@@ -150,6 +194,7 @@ typedef struct we_Ecc
     int            peerKeyLen;
 #endif
 #ifdef WE_HAVE_ECKEYGEN
+    /* OpenSSL group indicating EC parameters. */
     EC_GROUP      *group;
 #endif
     /* Indicates private key has been set into wolfSSL structure. */
@@ -168,24 +213,37 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
 {
     int ret;
     we_Ecc *ecc;
+    int keyInited = 0;
 
     WOLFENGINE_MSG("ECC - Init");
 
+    /* Allocate a new internal EC object. */
     ret = (ecc = (we_Ecc*)OPENSSL_zalloc(sizeof(we_Ecc))) != NULL;
     if (ret == 1) {
+        /* Initialize the wolfSSL key object. */
         ret = wc_ecc_init(&ecc->key) == 0;
+        if (ret == 1) {
+            keyInited = 1;
+        }
     }
 #if !defined(HAVE_FIPS) || \
     (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
     if (ret == 1) {
+        /* Set the random number generator for use in EC operations. */
         ret = wc_ecc_set_rng(&ecc->key, we_rng) == 0;
     }
 #endif /* !HAVE_FIPS || (HAVE_FIPS_VERSION && HAVE_FIPS_VERSION != 2) */
     if (ret == 1) {
+        /* Set this key object to be returned when performing operations. */
         EVP_PKEY_CTX_set_data(ctx, ecc);
     }
 
     if (ret == 0 && ecc != NULL) {
+        /* Make sure wolfSSL EC key is freed if initialized. */
+        if (keyInited) {
+            wc_ecc_free(&ecc->key);
+        }
+        /* Failed - free allocated data. */
         OPENSSL_free(ecc);
     }
 
@@ -205,23 +263,23 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
     int ret;
     we_Ecc *ecc;
 
-    WOLFENGINE_MSG("ECC - Init");
+    WOLFENGINE_MSG("ECC - Init P256");
 
-    ret = (ecc = (we_Ecc*)OPENSSL_zalloc(sizeof(we_Ecc))) != NULL;
+    /* Create the internal EC object in context. */
+    ret = we_ec_init(ctx);
     if (ret == 1) {
-        ret = wc_ecc_init(&ecc->key) == 0;
-    }
-    if (ret == 1) {
-        EVP_PKEY_CTX_set_data(ctx, ecc);
+        /* Get the internal EC object. */
+        ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+        /* Setup P-256 curve. */
         ecc->curveId = ECC_SECP256R1;
         ecc->curveName = NID_X9_62_prime256v1;
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
-        if (ecc->group == NULL)
+        if (ecc->group == NULL) {
+            /* Failed - free allocated data. */
+            wc_ecc_free(&ecc->key);
+            OPENSSL_free(ecc);
             ret = 0;
-    }
-
-    if (ret == 0 && ecc != NULL) {
-        OPENSSL_free(ecc);
+        }
     }
 
     return ret;
@@ -240,23 +298,23 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
     int ret;
     we_Ecc *ecc;
 
-    WOLFENGINE_MSG("ECC - Init");
+    WOLFENGINE_MSG("ECC - Init P384");
 
-    ret = (ecc = (we_Ecc*)OPENSSL_zalloc(sizeof(we_Ecc))) != NULL;
+    /* Create the internal EC object in context. */
+    ret = we_ec_init(ctx);
     if (ret == 1) {
-        ret = wc_ecc_init(&ecc->key) == 0;
-    }
-    if (ret == 1) {
-        EVP_PKEY_CTX_set_data(ctx, ecc);
+        /* Get the internal EC object. */
+        ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+        /* Setup P-384 curve. */
         ecc->curveId = ECC_SECP384R1;
         ecc->curveName = NID_secp384r1;
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
-        if (ecc->group == NULL)
+        if (ecc->group == NULL) {
+            /* Failed - free allocated data. */
+            wc_ecc_free(&ecc->key);
+            OPENSSL_free(ecc);
             ret = 0;
-    }
-
-    if (ret == 0 && ecc != NULL) {
-        OPENSSL_free(ecc);
+        }
     }
 
     return ret;
@@ -328,8 +386,10 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
     EVP_PKEY *pkey;
     const EC_GROUP *group;
 
+    /* Get the EVP_PKEY object performing operation with. */
     ret = (pkey = EVP_PKEY_CTX_get0_pkey(ctx)) != NULL;
     if (ret == 1) {
+        /* Get the EC_KEY object performing operation with. */
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
         ret = (*ecKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(pkey)) != NULL;
 #else
@@ -337,9 +397,11 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
 #endif
     }
     if (ret == 1) {
+        /* Retrieve group parameters to setup curve in wolfSSL object. */
         ret = (group = EC_KEY_get0_group(*ecKey)) != NULL;
     }
     if (ret == 1) {
+        /* Set the curve id into internal EC key object. */
         ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group),
                                   &ecc->curveId);
     }
@@ -370,13 +432,17 @@ static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
 
     WOLFENGINE_MSG("ECDSA - Sign");
 
+    /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
     if (ret == 1 && !ecc->privKeySet) {
+        /* Get the OpenSSL EC_KEY object and set curve id. */
         ret = we_ec_get_ec_key(ctx, &ecKey, ecc);
         if (ret == 1) {
+            /* Set private key in wolfSSL object. */
             ret = we_ec_set_private(&ecc->key, ecc->curveId, ecKey);
         }
         if (ret == 1) {
+            /* Only do this once as private will not change. */
             ecc->privKeySet = 1;
         }
     }
@@ -386,6 +452,7 @@ static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
         *sigLen = wc_ecc_sig_size(&ecc->key);
     }
     if (ret == 1 && sig != NULL) {
+        /* Sign the data with wolfSSL EC key object. */
         outLen = (word32)*sigLen;
         ret = wc_ecc_sign_hash(tbs, (word32)tbsLen, sig, &outLen, we_rng,
                                &ecc->key) == 0;
@@ -419,23 +486,28 @@ static int we_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
 
     WOLFENGINE_MSG("ECDSA - Verify");
 
+    /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
     if (ret == 1 && !ecc->pubKeySet) {
+        /* Get the OpenSSL EC_KEY object and set curve id. */
         ret = we_ec_get_ec_key(ctx, &ecKey, ecc);
         if (ret == 1) {
+            /* Set the public key into the wolfSSL object. */
             ret = we_ec_set_public(&ecc->key, ecc->curveId, ecKey);
         }
         if (ret == 1) {
+            /* Only do this once as public will not change. */
             ecc->pubKeySet = 1;
         }
     }
     if (ret == 1) {
+        /* Verify the signature with the data using wolfSSL. */
         ret = wc_ecc_verify_hash(sig, (word32)sigLen, tbs, (word32)tbsLen, &res,
                                  &ecc->key) == 0;
     }
     if (ret == 1) {
         /* Verification result is 1 on success and 0 on failure. */
-        ret = res; 
+        ret = res;
     }
 
     return ret;
@@ -457,11 +529,10 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     EC_KEY *ecKey = NULL;
     EVP_PKEY *ctxPkey;
     int len = 0;
-    unsigned char *buf = NULL;
-    unsigned char *d = NULL;
 
     WOLFENGINE_MSG("ECC - Key Gen");
 
+    /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
     if (ret == 1) {
         len = wc_ecc_get_curve_size_from_id(ecc->curveId);
@@ -469,10 +540,12 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         ctxPkey = EVP_PKEY_CTX_get0_pkey(ctx);
         /* May be NULL */
 
+        /* New OpenSSL EC_KEY object to hold new key. */
         ret = (ecKey = EC_KEY_new()) != NULL;
     }
 
     if (ret == 1) {
+        /* EVP_PKEY object needs an EC_KEY object. */
         ret = EVP_PKEY_assign_EC_KEY(pkey, ecKey);
         if (ret == 0) {
             EC_KEY_free(ecKey);
@@ -481,51 +554,26 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 
     if (ret == 1) {
         if (ctxPkey != NULL) {
+            /* Get group from context into object. */
             ret = EVP_PKEY_copy_parameters(pkey, ctxPkey);
         }
         else {
+            /* Set group from internal EC objects group. */
             ret = EC_KEY_set_group(ecKey, ecc->group);
         }
     }
 
     if (ret == 1) {
+        /* Generate a new EC key with wolfSSL. */
         ret = wc_ecc_make_key_ex(we_rng, len, &ecc->key, ecc->curveId) == 0;
     }
     if (ret == 1) {
+        /* Private key and public key in wolfSSL object. */
         ecc->privKeySet = 1;
         ecc->pubKeySet = 1;
 
-        /* Now set key into an OpenSSL EC key. */
-        ret = (buf = (unsigned char *)OPENSSL_malloc(len * 3 + 1)) != NULL;
-    }
-    if (ret == 1) {
-        unsigned char *x = buf + 1;
-        unsigned char *y = x + len;
-        word32 xLen = len;
-        word32 yLen = len;
-        word32 dLen = len;
-
-        d = y + len;
-        ret = wc_ecc_export_private_raw(&ecc->key, x, &xLen, y, &yLen, d,
-                                        &dLen) == 0;
-    }
-    if (ret == 1) {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-        ret = (ecKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(pkey)) != NULL;
-#else
-        ret = (ecKey = EVP_PKEY_get0_EC_KEY(pkey)) != NULL;
-#endif
-    }
-    if (ret == 1) {
-        buf[0] = ECC_POINT_UNCOMP;
-        ret = EC_KEY_oct2key(ecKey, buf, len * 2 + 1, NULL);
-    }
-    if (ret == 1) {
-        ret = EC_KEY_oct2priv(ecKey, d, len);
-    }
-
-    if (buf != NULL) {
-        OPENSSL_clear_free(buf, len * 3 + 1);
+        /* Export new key into EC_KEY object. */
+        ret = we_ec_export_key(&ecc->key, len, ecKey);
     }
 
     return ret;
@@ -552,39 +600,48 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
 
     WOLFENGINE_MSG("ECDH - Derive");
 
+    /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
     if (ret == 1 && !ecc->privKeySet) {
-        /* Set the private key. */
+        /* Get the OpenSSL EC_KEY object and set curve id. */
         ret = we_ec_get_ec_key(ctx, &ecKey, ecc);
         if (ret == 1) {
+            /* Set private key in wolfSSL object. */
             ret = we_ec_set_private(&ecc->key, ecc->curveId, ecKey);
         }
         if (ret == 1) {
+            /* Only do this once as private will not change. */
             ecc->privKeySet = 1;
         }
     }
 
     if (ret == 1 && key == NULL) {
+        /* Return secret size in bytes. */
         *keyLen = wc_ecc_get_curve_size_from_id(ecc->curveId);
     }
     if (ret == 1 && key != NULL) {
-        /* 0x04, x, y - x and y are equal length. */
-        unsigned char *x = ecc->peerKey + 1;
-        unsigned char *y = x + ((ecc->peerKeyLen - 1) / 2);
-
         /* Create a new wolfSSL ECC key and set peer's public key. */
         ret = wc_ecc_init(&peer) == 0;
         if (ret == 1) {
+            /* Format of peer's public key point:
+             *   0x04 | x | y - x and y ordinates are equal length.
+             */
+            unsigned char *x = ecc->peerKey + 1;
+            unsigned char *y = x + ((ecc->peerKeyLen - 1) / 2);
+
+            /* Import public key into wolfSSL object. */
             ret = wc_ecc_import_unsigned(&peer, x, y, NULL, ecc->curveId) == 0;
             if (ret == 1) {
+                /* Calculate shared secret using wolfSSL. */
                 ret = wc_ecc_shared_secret(&ecc->key, &peer, key, &len) == 0;
             }
             if (ret == 1) {
+                /* Return length of secret. */
                 *keyLen = len;
             }
 
             /* Free the temporary peer key. */
-            wc_ecc_free(&ecc->key);
+            wc_ecc_free(&peer);
         }
     }
 
@@ -623,39 +680,47 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 
     if (ret == 1) {
         switch (type) {
-    #ifdef WE_HAVE_ECDSA
+        #ifdef WE_HAVE_ECDSA
+            /* Keep a copy of the digest object. */
             case EVP_PKEY_CTRL_MD:
                 ecc->md = (EVP_MD*)ptr;
                 break;
 
+            /* Initialize digest. */
             case EVP_PKEY_CTRL_DIGESTINIT:
                 break;
-    #endif
+        #endif
 
-    #ifdef WE_HAVE_ECKEYGEN
+        #ifdef WE_HAVE_ECKEYGEN
+            /* Set the group to use. */
             case EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID:
                 ecc->curveName = num;
+                /* Get wolfSSL EC id from NID. */
                 ret = we_ec_get_curve_id(num, &ecc->curveId);
                 if (ret == 1) {
+                    /* Replace the EC_GROUP object. */
                     EC_GROUP_free(ecc->group);
                     ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
                     ret = ecc->group != NULL;
                 }
                 break;
-    #endif
+        #endif
 
-    #ifdef WE_HAVE_ECDH
+        #ifdef WE_HAVE_ECDH
+            /* Set the peer key (public key from peer). */
             case EVP_PKEY_CTRL_PEER_KEY:
                 peerKey = (EVP_PKEY *)ptr;
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+                /* Get the OpenSSL EC_KEY object. */
+            #if OPENSSL_VERSION_NUMBER >= 0x30000000L
                 ret = (ecPeerKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(peerKey)) !=
                                                                            NULL;
-#else
+            #else
                 ret = (ecPeerKey = EVP_PKEY_get0_EC_KEY(peerKey)) != NULL;
-#endif
+            #endif
                 if (ret == 1) {
+                    /* Replace the peerKey data. */
                     OPENSSL_free(ecc->peerKey);
-                    /* Get the EC key public key as and uncompressed point. */
+                    /* Get the EC key public key as an uncompressed point. */
                     ecc->peerKeyLen = (int)EC_KEY_key2buf(ecPeerKey,
                         POINT_CONVERSION_UNCOMPRESSED, &ecc->peerKey, NULL);
                     if (ecc->peerKeyLen <= 0) {
@@ -663,8 +728,9 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     }
                 }
                 break;
-    #endif
+        #endif
 
+            /* Unsupported type. */
             default:
                 ret = 0;
                 break;
@@ -751,62 +817,62 @@ int we_init_ecc_meths(void)
     return ret;
 }
 
-#endif /* WE_HAVE_ECC */
+#endif /* WE_HAVE_EVP_PKEY */
 
 #ifdef WE_HAVE_EC_KEY
+/* Method for using wolfSSL thorugh the EC_KEY API. */
 EC_KEY_METHOD *we_ec_key_method = NULL;
 
+/**
+ * Generate an EC key for the group specified in key object.
+ *
+ * @param  key  [in/out]  Elliptic curve key object.
+ * @erturns 1 on success and 0 on faulure.
+ */
 static int we_ec_key_keygen(EC_KEY *key)
 {
     int ret = 1;
     int curveId;
     ecc_key ecc;
+    ecc_key* pEcc = NULL;
     int len = 0;
-    unsigned char *buf = NULL;
-    unsigned char *d = NULL;
 
     WOLFENGINE_MSG("EC - Key Generation");
 
+    /* Get the wolfSSL EC curve id for the group. */
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(EC_KEY_get0_group(key)),
                              &curveId);
     if (ret == 1) {
         len = wc_ecc_get_curve_size_from_id(curveId);
 
+        /* Initialize a wolfSSL EC key object. */
         ret = wc_ecc_init(&ecc) == 0;
     }
     if (ret == 1) {
+        pEcc = &ecc;
+
+        /* Generate key. */
         ret = wc_ecc_make_key_ex(we_rng, len, &ecc, curveId) == 0;
     }
     if (ret == 1) {
-        /* Now set key into an OpenSSL EC key. */
-        ret = (buf = (unsigned char *)OPENSSL_malloc(len * 3 + 1)) != NULL;
-    }
-    if (ret == 1) {
-        unsigned char *x = buf + 1;
-        unsigned char *y = x + len;
-        word32 xLen = len;
-        word32 yLen = len;
-        word32 dLen = len;
-
-        d = y + len;
-        ret = wc_ecc_export_private_raw(&ecc, x, &xLen, y, &yLen, d,
-                                        &dLen) == 0;
-    }
-    if (ret == 1) {
-        buf[0] = ECC_POINT_UNCOMP;
-        ret = EC_KEY_oct2key(key, buf, len * 2 + 1, NULL);
-    }
-    if (ret == 1) {
-        ret = EC_KEY_oct2priv(key, d, len);
+        /* Export new key into EC_KEY object. */
+        ret = we_ec_export_key(&ecc, len, key);
     }
 
-    if (buf != NULL) {
-        OPENSSL_clear_free(buf, len * 3 + 1);
-    }
+    wc_ecc_free(pEcc);
 
     return ret;
 }
 
+/**
+ * Compute the EC secret for ECDH using wolfSSL.
+ *
+ * @param  psec     [out]  Pointer to buffer holding secret. Allocated with
+ *                         OPENSSL_malloc().
+ * @param  pseclen  [out]  Pointer to length of secret.
+ * @param  pub_key  [in]   Public EC point from peer.
+ * @param  ecdh     [in]   EC KEY with private key.
+ */
 static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
                                  const EC_POINT *pub_key, const EC_KEY *ecdh)
 {
@@ -824,6 +890,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
 
     WOLFENGINE_MSG("ECDH - Compute Key");
 
+    /* Get wolfSSL curve id for EC group. */
     group = EC_KEY_get0_group(ecdh);
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
     if (ret == 1) {
@@ -835,24 +902,28 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     if (ret == 1) {
         len = wc_ecc_get_curve_size_from_id(curveId);
 
+        /* Allocate the buffer to hold secret. Freed externally. */
         ret = (secret = (unsigned char *)OPENSSL_malloc(len)) != NULL;
     }
     if (ret == 1) {
+        /* Initialize the wolfSSL private key object. */
         ret = wc_ecc_init(&key) == 0;
     }
 #if !defined(HAVE_FIPS) || \
     (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
     if (ret == 1) {
+        /* Set RNG for side-channel resistant code. */
         ret = wc_ecc_set_rng(&key, we_rng) == 0;
     }
 #endif /* !HAVE_FIPS || (HAVE_FIPS_VERSION && HAVE_FIPS_VERSION != 2) */
     if (ret == 1) {
         pKey = &key;
 
+        /* Set private key into wolfSSL key object. */
         ret = we_ec_set_private(pKey, curveId, ecdh);
     }
     if (ret == 1) {
-        /* Create a new wolfSSL ECC key and set peer's public key. */
+        /* Initialize wolfSSL ECC key for peer's public key. */
         ret = wc_ecc_init(&peer) == 0;
     }
     if (ret == 1) {
@@ -861,9 +932,11 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
 
         pPeer = &peer;
 
+        /* Import the public point into wolfSSL key object. */
         ret = wc_ecc_import_unsigned(pPeer, x, y, NULL, curveId) == 0;
     }
     if (ret == 1) {
+        /* Calculate shared secret. */
         ret = wc_ecc_shared_secret(pKey, pPeer, secret, &len) == 0;
     }
     if (ret == 1) {
@@ -880,6 +953,20 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     return ret;
 }
 
+/**
+ * Sign data with a private EC key.
+ *
+ * @param  type    [in]      Type of EC key. Ignored.
+ * @param  dgst    [in]      Digest to be signed.
+ * @param  dLen    [in]      Length of digest.
+ * @param  sig     [in]      Buffer to hold signature data.
+ *                           NULL indicates length of signature requested.
+ * @param  sigLen  [in/out]  Length of signature buffer.
+ * @param  kInv    [in]      Big number holding inverse of k. Ignored.
+ * @param  r       [in]      Big number holding an r sig value. Ignored.
+ * @parma  ecKey   [in]      EC key object.
+ * @returns  1 on success and 0 on failure.
+ */
 static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
                           unsigned char *sig, unsigned int *sigLen,
                           const BIGNUM *kinv, const BIGNUM *r, EC_KEY *ecKey)
@@ -897,14 +984,17 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     (void)kinv;
     (void)r;
 
+    /* Get wolfSSL curve id for EC group. */
     group = EC_KEY_get0_group(ecKey);
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
     if (ret == 1) {
+        /* Initialize a wolfSSL key object. */
         ret = wc_ecc_init(&key) == 0;
     }
     if (ret == 1) {
         pKey = &key;
 
+        /* Set private key into wolfSSL key object. */
         ret = we_ec_set_private(&key, curveId, ecKey);
     }
 
@@ -913,6 +1003,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
         *sigLen = wc_ecc_sig_size(&key);
     }
     if (ret == 1 && sig != NULL) {
+        /* Sign hash with wolfSSL. */
         outLen = *sigLen;
         ret = wc_ecc_sign_hash(dgst, dLen, sig, &outLen, we_rng, &key) == 0;
         if (ret == 1) {
@@ -926,6 +1017,16 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     return ret;
 }
 
+/**
+ * Verify data with a public EC key.
+ *
+ * @param  type    [in]  Type of EC key. Ignored.
+ * @param  dgst    [in]  Digest to be verified.
+ * @param  dLen    [in]  Length of digest.
+ * @param  sig     [in]  Signature data.
+ * @param  sigLen  [in]  Length of signature data.
+ * @returns  1 on success and 0 on failure.
+ */
 static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
                             const unsigned char *sig, int sigLen, EC_KEY *ecKey)
 {
@@ -940,22 +1041,26 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
 
     (void)type;
 
+    /* Get wolfSSL curve id for EC group. */
     group = EC_KEY_get0_group(ecKey);
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
     if (ret == 1) {
+        /* Initialize a wolfSSL key object. */
         ret = wc_ecc_init(&key) == 0;
     }
     if (ret == 1) {
         pKey = &key;
 
+        /* Set public key into wolfSSL key object. */
         ret = we_ec_set_public(&key, curveId, ecKey);
     }
     if (ret == 1) {
+        /* Verify hash with wolfSSL. */
         ret = wc_ecc_verify_hash(sig, sigLen, dgst, dLen, &res, &key) == 0;
     }
     if (ret == 1) {
         /* Verification result is 1 on success and 0 on failure. */
-        ret = res; 
+        ret = res;
     }
 
     wc_ecc_free(pKey);

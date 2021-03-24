@@ -181,7 +181,7 @@ static int der_encode_digest(const EVP_MD *md, const unsigned char *digest,
         ret = hashOID > 0;
     }
     if (ret == 1) {
-        ret = wc_EncodeSignature(*encodedDigest, digest, digestLen,
+        ret = wc_EncodeSignature(*encodedDigest, digest, (word32)digestLen,
                                  hashOID);
     }
 
@@ -249,7 +249,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLe
     if (ret == 1 && !rsa->privKeySet) {
         ret = (pkey = EVP_PKEY_CTX_get0_pkey(ctx)) != NULL;
         if (ret == 1) {
-            ret = (rsaKey = EVP_PKEY_get0_RSA(pkey)) != NULL;
+            ret = (rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey)) != NULL;
         }
         if (ret == 1) {
             ret = we_set_private_key(rsaKey, rsa);
@@ -274,7 +274,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLe
 
         if (ret == 1) {
             actualSigLen = wc_RsaSSL_Sign(tbs, (word32)tbsLen, sig,
-                                          *sigLen, &rsa->key, we_rng);
+                                          (word32)*sigLen, &rsa->key, we_rng);
             ret = actualSigLen > 0;
             if (ret == 1) {
                 *sigLen = actualSigLen;
@@ -349,7 +349,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     if (ret == 1 && !rsa->pubKeySet) {
         ret = (pkey = EVP_PKEY_CTX_get0_pkey(ctx)) != NULL;
         if (ret == 1) {
-            ret = (rsaKey = EVP_PKEY_get0_RSA(pkey)) != NULL;
+            ret = (rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey)) != NULL;
         }
         if (ret == 1) {
             ret = we_set_public_key(rsaKey, rsa);
@@ -390,6 +390,11 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     return ret;
 }
 
+/**
+ * Initialize the RSA method for use with the EVP_PKEY API.
+ *
+ * @return  1 on success and 0 on failure.
+ */
 int we_init_rsa_pkey_meth(void)
 {
     int ret;

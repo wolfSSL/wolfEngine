@@ -120,7 +120,7 @@ do_config() {
     fi
 
     echo -n "  unit.test ... "
-    LD_LIBRARY_PATH=$OPENSSL_DIR ./unit.test >$TMP_FILE 2>&1
+    LD_LIBRARY_PATH=$OPENSSL_DIR ./test/unit.test >$TMP_FILE 2>&1
     if [ $? != 0 ]; then
         cat $TMP_FILE
         echo "Unit test failed for wolfSSL engine"

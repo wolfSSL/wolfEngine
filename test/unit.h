@@ -22,6 +22,9 @@
 #ifndef UNIT_H
 #define UNIT_H
 
+/* OpenSSL 3.0.0 has deprecated the ENGINE API. */
+#define OPENSSL_API_COMPAT      10101
+
 #include <string.h>
 
 #include <openssl/engine.h>

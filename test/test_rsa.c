@@ -154,7 +154,11 @@ int test_rsa_digest(ENGINE *e, void *data)
     int err;
     int res;
     EVP_PKEY *pkey = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    const RSA *rsaKey = NULL;
+#else
     RSA *rsaKey = NULL;
+#endif
     unsigned char *rsaSig = NULL;
     size_t rsaSigLen;
     unsigned char buf[20];
@@ -219,7 +223,11 @@ int test_rsa_pkey(ENGINE *e, void *data)
     int err;
     int res;
     EVP_PKEY *pkey = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    const RSA *rsaKey = NULL;
+#else
     RSA *rsaKey = NULL;
+#endif
     unsigned char *rsaSig = NULL;
     size_t rsaSigLen;
     unsigned char buf[20];
