@@ -9,4 +9,5 @@ libwolfengine_la_SOURCES += src/cipher.c
 libwolfengine_la_SOURCES += src/rsa.c
 libwolfengine_la_SOURCES += src/ecc.c
 libwolfengine_la_SOURCES += src/openssl_bc.c
+libwolfengine_la_SOURCES += src/we_logging.c
 

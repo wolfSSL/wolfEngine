@@ -523,6 +523,91 @@ static int wolfengine_destroy(ENGINE *e)
     return 1;
 }
 
+#define WOLFENGINE_CMD_ENABLE_DEBUG     ENGINE_CMD_BASE
+#define WOLFENGINE_CMD_SET_LOGGING_CB   (ENGINE_CMD_BASE + 1)
+
+/**
+ * wolfEngine control command list.
+ *
+ * Note that these control commands are specific to the engine itself, not
+ * necessarily underlying algorithm behavior (unless otherwise stated).
+ *
+ * COMMAND DESCRIPTIONS:
+ *
+ * enable_debug - Enable/disable wolfEngine debug logging, must also
+ *                have defined WOLFENGINE_DEBUG or used --enable-debug.
+ *                (1 = enable, 0 = disable)
+ *
+ * INTERNAL COMMANDS (not listed here, as not NUMERIC, STRING, or NO_INPUT):
+ * "set_logging_cb" - Sets the wolfEngine loggging callback, function pointer
+ *                    passed in must match wolfEngine_Logging_cb prototype
+ *                    from we_logging.h.
+ *
+ */
+static ENGINE_CMD_DEFN wolfengine_cmd_defns[] = {
+
+    { WOLFENGINE_CMD_ENABLE_DEBUG,
+      "enable_debug",
+      "Enable wolfEngine debug logging (1=enable, 0=disable)",
+      ENGINE_CMD_FLAG_NUMERIC },
+    { WOLFENGINE_CMD_SET_LOGGING_CB,
+      "set_logging_cb",
+      "Set wolfEngine logging callback",
+      ENGINE_CMD_FLAG_INTERNAL },
+    {0, NULL, NULL, 0}
+};
+
+/**
+ * wolfEngine control command handler.
+ *
+ * Depending on the control command being given to the engine,
+ * the command number (cmd) can be associated with either an integer (i),
+ * data pointer (p), or function pointer (f). Any or all of (i), (p), or (f)
+ * may be NULL depending on the control command.
+ *
+ * @param e   [IN]  Engine object.
+ * @param cmd [IN]  Engine command.
+ * @param i   [IN]  Integer input for ctrl command.
+ * @param p   [IN]  Pointer to data for ctrl command.
+ * @param f   [IN]  Function pointer for ctrl command.
+ * @returns 1 on success and 0 on failure.
+ */
+static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
+                           void (*f) (void))
+{
+    int ret = 1;
+
+    (void)e;
+    (void)p;
+
+    switch (cmd) {
+        case WOLFENGINE_CMD_ENABLE_DEBUG:
+            if (i > 0) {
+                if (wolfEngine_Debugging_ON() < 0) {
+                    ret = 0;
+                }
+            } else {
+                wolfEngine_Debugging_OFF();
+            }
+            break;
+        case WOLFENGINE_CMD_SET_LOGGING_CB:
+            /* if f is NULL, resets logging back to default */
+            if (wolfEngine_SetLoggingCb((wolfEngine_Logging_cb)f) != 0) {
+                WOLFENGINE_ERROR_MSG(
+                        "Error registering wolfEngine logging callback");
+                ret = 0;
+            } else {
+                WOLFENGINE_MSG("wolfEngine user logging callback registered");
+            }
+            break;
+        default:
+            WOLFENGINE_ERROR_MSG("Invalid wolfEngine control command");
+            ret = 0;
+    }
+
+    return ret;
+}
+
 /**
  * Bind the wolfengine into an engine object.
  *
@@ -565,6 +650,12 @@ static int wolfengine_bind(ENGINE *e, const char *id)
     }
 #endif
     if (ret == 1 && ENGINE_set_destroy_function(e, wolfengine_destroy) == 0) {
+        ret = 0;
+    }
+    if (ret == 1 && ENGINE_set_cmd_defns(e, wolfengine_cmd_defns) == 0) {
+        ret = 0;
+    }
+    if (ret == 1 && ENGINE_set_ctrl_function(e, wolfengine_ctrl) == 0) {
         ret = 0;
     }
 
