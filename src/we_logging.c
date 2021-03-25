@@ -29,7 +29,11 @@
     #include <stdio.h>  /* for default printf/fprintf */
 #endif
 
+/* Application callback function, set with wolfEngine_SetLoggingCb() */
 static wolfEngine_Logging_cb log_function = NULL;
+
+/* Flag indicating if logging is enabled, controlled via
+ * wolfEngine_Debugging_ON() and wolfEngine_Debugging_OFF() */
 static int loggingEnabled = 0;
 
 #endif /* DEBUG_WOLFSSL */
