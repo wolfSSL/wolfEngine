@@ -26,6 +26,19 @@
 #define WOLFENGINE_MAX_ERROR_SZ 80
 #endif
 
+/* Possible debug/logging options:
+ *
+ * WOLFENGINE_DEBUG       Define to enable debug logging (or --enable-debug)
+ * WOLFENGINE_USER_LOG    Defines name of function for log output. By default
+ *                        wolfEngine will log with fprintf to stderr. Users
+ *                        can define this to a custom log function to be used
+ *                        in place of fprintf. Alternatively, users can
+ *                        register a logging callback for custom logging.
+ * WOLFENGINE_LOG_PRINTF  Define to Use printf instead of fprintf (to stderr)
+ *                        for logs. Not applicable if using WOLFENGINE_USER_LOG
+ *                        or custom logging callback.
+ */
+
 enum wolfEngine_LogType {
     WE_LOG_ERROR = 0,
     WE_LOG_ENTER,

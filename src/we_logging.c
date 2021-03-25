@@ -21,13 +21,6 @@
 
 #include "wolfengine.h"
 
-/* Possible debug/logging options:
- *
- * WOLFENGINE_DEBUG       Define to enable debug logging (or --enable-debug)
- * WOLFENGINE_USER_LOG    Defines name of function for log output
- * WOLFENGINE_LOG_PRINTF  Use printf instead of fprintf to stderr for logs
- */
-
 #ifdef WOLFENGINE_DEBUG
 
 #ifdef WOLFENGINE_USER_LOG
@@ -42,7 +35,16 @@ static int loggingEnabled = 0;
 #endif /* DEBUG_WOLFSSL */
 
 
-/* Allow cb to be set to NULL, so logs can be redirected to default output */
+/**
+ * Registers wolfEngine logging callback.
+ * Callback will be used by wolfEngine for debug/log messages.
+ *
+ * @param f Callback function, prototyped by wolfEngine_Logging_cb. Callback
+ *          function may be NULL to reset logging redirection back to default
+ *          output.
+ * @return 0 on success, NOT_COMPILED_IN if debugging has
+ *         not been enabled.
+ */
 int wolfEngine_SetLoggingCb(wolfEngine_Logging_cb f)
 {
 #ifdef WOLFENGINE_DEBUG
@@ -54,6 +56,12 @@ int wolfEngine_SetLoggingCb(wolfEngine_Logging_cb f)
 #endif
 }
 
+/**
+ * Enable debug logging.
+ *
+ * @return 0 on success, NOT_COMPILED_IN if debugging has
+ *         not been enabled.
+ */
 int wolfEngine_Debugging_ON(void)
 {
 #ifdef WOLFENGINE_DEBUG
@@ -64,6 +72,9 @@ int wolfEngine_Debugging_ON(void)
 #endif
 }
 
+/**
+ * Disable debug logging.
+ */
 void wolfEngine_Debugging_OFF(void)
 {
 #ifdef WOLFENGINE_DEBUG
@@ -73,6 +84,14 @@ void wolfEngine_Debugging_OFF(void)
 
 #ifdef WOLFENGINE_DEBUG
 
+/**
+ * Logging function used by wolfEngine.
+ * Calls either default log mechanism or application-registered logging
+ * callback.
+ *
+ * @param logLevel   [IN] Log level.
+ * @param logMessage [IN] Log message.
+ */
 static void wolfengine_log(const int logLevel, const char *const logMessage)
 {
     if (log_function) {
@@ -88,6 +107,11 @@ static void wolfengine_log(const int logLevel, const char *const logMessage)
     }
 }
 
+/**
+ * Log function for general messages.
+ *
+ * @param msg  [IN] Log message.
+ */
 void WOLFENGINE_MSG(const char* msg)
 {
     if (loggingEnabled) {
@@ -95,6 +119,11 @@ void WOLFENGINE_MSG(const char* msg)
     }
 }
 
+/**
+ * Log function used to record function entry.
+ *
+ * @param msg  [IN] Log message.
+ */
 void WOLFENGINE_ENTER(const char* msg)
 {
     if (loggingEnabled) {
@@ -104,6 +133,12 @@ void WOLFENGINE_ENTER(const char* msg)
     }
 }
 
+/**
+ * Log function used to record function exit.
+ *
+ * @param msg  [IN] Log message.
+ * @param ret  [IN] Value that function will be returning.
+ */
 void WOLFENGINE_LEAVE(const char* msg, int ret)
 {
     if (loggingEnabled) {
@@ -114,6 +149,11 @@ void WOLFENGINE_LEAVE(const char* msg, int ret)
     }
 }
 
+/**
+ * Log function for error code, general error message.
+ *
+ * @param error  [IN] error code to be logged.
+ */
 void WOLFENGINE_ERROR(int error)
 {
     if (loggingEnabled) {
@@ -124,6 +164,11 @@ void WOLFENGINE_ERROR(int error)
     }
 }
 
+/**
+ * Log function for error message.
+ *
+ * @param msg  [IN] Error message.
+ */
 void WOLFENGINE_ERROR_MSG(const char* msg)
 {
     if (loggingEnabled) {
