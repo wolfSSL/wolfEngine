@@ -180,5 +180,80 @@ void WOLFENGINE_ERROR_MSG(const char* msg)
     }
 }
 
+/**
+ * Log function to convey function name and error.
+ *
+ * @param funcName  [IN]  Name of function called.
+ * @param ret       [IN]  Return of function.
+ */
+void WOLFENGINE_ERROR_FUNC(const char* funcName, int ret)
+{
+    if (loggingEnabled) {
+        char buffer[WOLFENGINE_MAX_ERROR_SZ];
+        XSNPRINTF(buffer, sizeof(buffer),
+                  "Error calling %s: ret = %d", funcName, ret);
+        wolfengine_log(WE_LOG_ERROR, buffer);
+    }
+}
+
+/* Macro to control line length of WOLFENGINE_BUFFER, for number of
+ * both bytes and chars to print on one line. */
+#ifndef WOLFENGINE_LINE_LEN
+#define WOLFENGINE_LINE_LEN 16
+#endif
+
+/**
+ * Log function to print buffer.
+ *
+ * @param buffer  [IN] Buffer to print.
+ * @param length  [IN] Length of buffer, octets.
+ */
+void WOLFENGINE_BUFFER(const unsigned char* buffer, unsigned int length)
+{
+    int i, buflen = (int)length, bufidx;
+    char line[(WOLFENGINE_LINE_LEN * 4) + 3]; /* \t00..0F | chars...chars\0 */
+
+    if (!loggingEnabled) {
+        return;
+    }
+
+    if (!buffer) {
+        wolfengine_log(WE_LOG_VERBOSE, "\tNULL");
+        return;
+    }
+
+    while (buflen > 0) {
+        bufidx = 0;
+        XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "\t");
+        bufidx++;
+
+        for (i = 0; i < WOLFENGINE_LINE_LEN; i++) {
+            if (i < buflen) {
+                XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "%02x ",
+                          buffer[i]);
+            }
+            else {
+                XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "   ");
+            }
+            bufidx += 3;
+        }
+
+        XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "| ");
+        bufidx++;
+
+        for (i = 0; i < WOLFENGINE_LINE_LEN; i++) {
+            if (i < buflen) {
+                XSNPRINTF(&line[bufidx], sizeof(line)-bufidx,
+                     "%c", 31 < buffer[i] && buffer[i] < 127 ? buffer[i] : '.');
+                bufidx++;
+            }
+        }
+
+        wolfengine_log(WE_LOG_VERBOSE, line);
+        buffer += WOLFENGINE_LINE_LEN;
+        buflen -= WOLFENGINE_LINE_LEN;
+    }
+}
+
 #endif /* WOLFENGINE_DEBUG */
 
