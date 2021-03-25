@@ -16,8 +16,5 @@ test_unit_test_SOURCES = \
 	test/test_logging.c \
 	test/test_pkey.c \
 	test/test_rsa.c \
-	test/unit.c \
-	src/openssl_bc.c
-test_unit_test_CFLAGS = $(AM_CFLAGS)
-test_unit_test_LDADD  = libwolfengine.la $(LIB_STATIC_ADD)
-test_unit_test_DEPENDENCIES = libwolfengine.la
+	test/unit.c
+test_unit_test_LDADD = libwolfengine.la

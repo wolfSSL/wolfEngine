@@ -14,8 +14,8 @@ include include/include.am
 include test/include.am
 
 noinst_PROGRAMS += bench
-bench_SOURCES    = bench.c src/openssl_bc.c
-bench_CFLAGS = $(AM_CFLAGS)
-DISTCLEANFILES+= .libs/bench
+bench_SOURCES    = bench.c
+bench_LDADD      = libwolfengine.la
+DISTCLEANFILES  += .libs/bench
 
 test: check
