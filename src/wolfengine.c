@@ -532,6 +532,10 @@ static int wolfengine_destroy(ENGINE *e)
  * Note that these control commands are specific to the engine itself, not
  * necessarily underlying algorithm behavior (unless otherwise stated).
  *
+ * This list must be ordered in an increasing order, by command number. The
+ * list must also be NULL terminated, ending with an array element that is
+ * set to NULL/0 entries.
+ *
  * COMMAND DESCRIPTIONS:
  *
  * enable_debug - Enable/disable wolfEngine debug logging, must also
@@ -554,6 +558,8 @@ static ENGINE_CMD_DEFN wolfengine_cmd_defns[] = {
       "set_logging_cb",
       "Set wolfEngine logging callback",
       ENGINE_CMD_FLAG_INTERNAL },
+
+    /* last element MUST be NULL/0 entry, do not remove */
     {0, NULL, NULL, 0}
 };
 

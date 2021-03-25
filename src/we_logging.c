@@ -36,7 +36,7 @@ static wolfEngine_Logging_cb log_function = NULL;
  * wolfEngine_Debugging_ON() and wolfEngine_Debugging_OFF() */
 static int loggingEnabled = 0;
 
-#endif /* DEBUG_WOLFSSL */
+#endif /* WOLFENGINE_DEBUG */
 
 
 /**
