@@ -149,10 +149,11 @@ static const unsigned char rsa_key_der_2048[] =
         0x56
 };
 
-int test_rsa_digest(ENGINE *e, void *data)
+int test_rsa_pkey(ENGINE *e, void *data)
 {
     int err;
     int res;
+    EVP_PKEY_CTX *ctx = NULL;
     EVP_PKEY *pkey = NULL;
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
     const RSA *rsaKey = NULL;
@@ -162,14 +163,21 @@ int test_rsa_digest(ENGINE *e, void *data)
     unsigned char *rsaSig = NULL;
     size_t rsaSigLen;
     unsigned char buf[20];
-    const unsigned char *p = rsa_key_der_2048;
 
     (void)data;
 
-    err = RAND_bytes(buf, sizeof(buf)) == 0;
+    PRINT_MSG("Create public key context");
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, e)) == NULL;
     if (err == 0) {
-        pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
-        err = pkey == NULL;
+        PRINT_MSG("Initialize RSA key generation");
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Generate RSA key w/ default parameters");
+        err = EVP_PKEY_keygen(ctx, &pkey) != 1;
+    }
+    if (err == 0) {
+        err = RAND_bytes(buf, sizeof(buf)) == 0;
     }
     if (err == 0) {
         rsaKey = EVP_PKEY_get0_RSA(pkey);
@@ -180,7 +188,35 @@ int test_rsa_digest(ENGINE *e, void *data)
         rsaSig = OPENSSL_malloc(rsaSigLen);
         err = rsaSig == NULL;
     }
+
     if (err == 0) {
+        PRINT_MSG("Test signing/verifying arbitrary data");
+        PRINT_MSG("Sign with OpenSSL");
+        err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), rsaSig, &rsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with wolfengine");
+        err = test_pkey_verify(pkey, e, buf, sizeof(buf), rsaSig, rsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify bad signature with wolfengine");
+        rsaSig[1] ^= 0x80;
+        res = test_pkey_verify(pkey, e, buf, sizeof(buf), rsaSig, rsaSigLen);
+        if (res != 1)
+            err = 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with wolfengine");
+        rsaSigLen = RSA_size(rsaKey);
+        err = test_pkey_sign(pkey, e, buf, sizeof(buf), rsaSig, &rsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with OpenSSL");
+        err = test_pkey_verify(pkey, NULL, buf, sizeof(buf), rsaSig, rsaSigLen);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Test creating/verifying a signature");
         PRINT_MSG("Sign with OpenSSL");
         err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha256(),
                                rsaSig, &rsaSigLen);
@@ -211,6 +247,7 @@ int test_rsa_digest(ENGINE *e, void *data)
     }
 
     EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
 
     if (rsaSig)
         OPENSSL_free(rsaSig);
@@ -218,66 +255,64 @@ int test_rsa_digest(ENGINE *e, void *data)
     return err;
 }
 
-int test_rsa_pkey(ENGINE *e, void *data)
+int test_rsa_pkey_ctrl(ENGINE *e, void *data)
 {
     int err;
-    int res;
+    EVP_PKEY_CTX *ctx = NULL;
     EVP_PKEY *pkey = NULL;
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
     const RSA *rsaKey = NULL;
 #else
     RSA *rsaKey = NULL;
 #endif
-    unsigned char *rsaSig = NULL;
-    size_t rsaSigLen;
-    unsigned char buf[20];
-    const unsigned char *p = rsa_key_der_2048;
+    BIGNUM *eCmd = NULL;
+    BIGNUM *n = NULL;
+    BIGNUM *eKey = NULL;
+    const int newKeySize = 1024;
 
     (void)data;
 
-    err = RAND_bytes(buf, sizeof(buf)) == 0;
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, e)) == NULL;
     if (err == 0) {
-        pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
-        err = pkey == NULL;
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Change the key size w/ ctrl command");
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_KEYGEN,
+                                EVP_PKEY_CTRL_RSA_KEYGEN_BITS, newKeySize,
+                                NULL) <= 0;
+    }
+    if (err == 0) {
+        err = (eCmd = BN_new()) == NULL;
+    }
+    if (err == 0) {
+        err = BN_set_word(eCmd, 3) != 1;
+    }
+    if (err == 0) {
+         PRINT_MSG("Change the public exponent w/ ctrl command");
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_KEYGEN,
+                                EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP, 0, eCmd) <= 0;
+    }
+    if (err == 0) {
+        PRINT_MSG("Generate RSA key w/ new parameters");
+        err = EVP_PKEY_keygen(ctx, &pkey) != 1;
     }
     if (err == 0) {
         rsaKey = EVP_PKEY_get0_RSA(pkey);
         err = rsaKey == NULL;
     }
     if (err == 0) {
-        rsaSigLen = RSA_size(rsaKey);
-        rsaSig = OPENSSL_malloc(rsaSigLen);
-        err = rsaSig == NULL;
+        PRINT_MSG("Verify new parameters were used");
+        RSA_get0_key(rsaKey, (const BIGNUM **)&n, (const BIGNUM **)&eKey, NULL);
+        err = BN_num_bits(n) != newKeySize;
     }
     if (err == 0) {
-        PRINT_MSG("Sign with OpenSSL");
-        err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), rsaSig, &rsaSigLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Verify with wolfengine");
-        err = test_pkey_verify(pkey, e, buf, sizeof(buf), rsaSig, rsaSigLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Verify bad signature with wolfengine");
-        rsaSig[1] ^= 0x80;
-        res = test_pkey_verify(pkey, e, buf, sizeof(buf), rsaSig, rsaSigLen);
-        if (res != 1)
-            err = 1;
-    }
-    if (err == 0) {
-        PRINT_MSG("Sign with wolfengine");
-        rsaSigLen = RSA_size(rsaKey);
-        err = test_pkey_sign(pkey, e, buf, sizeof(buf), rsaSig, &rsaSigLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Verify with OpenSSL");
-        err = test_pkey_verify(pkey, NULL, buf, sizeof(buf), rsaSig, rsaSigLen);
+        err = BN_cmp(eCmd, eKey) != 0;
     }
 
+    BN_free(eCmd);
     EVP_PKEY_free(pkey);
-
-    if (rsaSig)
-        OPENSSL_free(rsaSig);
+    EVP_PKEY_CTX_free(ctx);
 
     return err;
 }

@@ -86,7 +86,7 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA
     TEST_DECL(test_rsa_pkey, NULL),
-    TEST_DECL(test_rsa_digest, NULL),
+    TEST_DECL(test_rsa_pkey_ctrl, NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_EC_P256
     #ifdef WE_HAVE_ECKEYGEN

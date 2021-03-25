@@ -26,6 +26,10 @@
 /* Maximum DER digest size, taken from wolfSSL. Sum of the maximum size of the
    encoded digest, algorithm tag, and sequence tag. */
 #define MAX_DER_DIGEST_SZ 98
+/* The default RSA key/modulus size in bits. */
+#define DEFAULT_KEY_BITS 2048
+/* The default RSA public exponent, e. */
+#define DEFAULT_PUB_EXP WC_RSA_EXPONENT
 
 /**
  * Data required to complete an RSA operation.
@@ -36,6 +40,12 @@ typedef struct we_Rsa
     RsaKey key;
     /* Stored by control command EVP_PKEY_CTRL_MD. */
     EVP_MD *md;
+    /* Padding mode */
+    int padMode;
+    /* The public exponent ("e"). */
+    int pubExp;
+    /* The key/modulus size in bits. */
+    int bits;
     /* Indicates private key has been set into wolfSSL structure. */
     int privKeySet:1;
     /* Indicates public key has been set into wolfSSL structure. */
@@ -66,6 +76,10 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
     }
     if (ret == 1) {
         EVP_PKEY_CTX_set_data(ctx, rsa);
+    }
+    if (ret == 1) {
+        rsa->pubExp = DEFAULT_PUB_EXP;
+        rsa->bits = DEFAULT_KEY_BITS;
     }
 
     if (ret == 0 && rsa != NULL) {
@@ -117,6 +131,62 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 }
 
 /**
+ * Generate an RSA key.
+ *
+ * @param  ctx   [in]  Public key context of operation.
+ * @param  pkey  [in]  EVP public key to hold result.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
+{
+    int ret = 0;
+    we_Rsa *engineRsa = NULL;
+    RSA *rsa = NULL;
+    unsigned char *der = NULL;
+    const unsigned char *p = NULL;
+    int derLen = 0;
+
+    WOLFENGINE_MSG("RSA PKEY - Key Gen");
+
+    ret = (engineRsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
+    if (ret == 1) {
+        ret = wc_MakeRsaKey(&engineRsa->key, engineRsa->bits, engineRsa->pubExp,
+                            we_rng) == 0;
+    }
+    if (ret == 1) {
+        ret = (derLen = wc_RsaKeyToDer(&engineRsa->key, NULL, 0)) > 0;
+    }
+    if (ret == 1) {
+        ret = (der = OPENSSL_malloc(derLen)) != NULL;
+    }
+    if (ret == 1) {
+        ret = (derLen = wc_RsaKeyToDer(&engineRsa->key, der, derLen)) > 0;
+    }
+    if (ret == 1) {
+        /*
+         * The pointer passed to d2i_RSAPrivateKey will get advanced to the
+         * end of the buffer, so we save the original pointer in order to free
+         * the buffer later.
+         */
+        p = (const unsigned char *)der;
+        rsa = d2i_RSAPrivateKey(NULL, &p, derLen);
+        ret = rsa != NULL;
+    }
+    if (ret == 1) {
+        ret = EVP_PKEY_assign_RSA(pkey, rsa);
+    }
+
+    if (der != NULL) {
+        OPENSSL_free(der);
+    }
+    if (ret == 0 && rsa != NULL) {
+        RSA_free(rsa);
+    }
+
+    return ret;
+}
+
+/**
  * Extra operations for working with RSA.
  * Supported operations include:
  *  - EVP_PKEY_CTRL_MD: set the method used when digesting.
@@ -130,9 +200,10 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
     int ret = 1;
-    we_Rsa *rsa;
-
-    (void)num;
+    we_Rsa *rsa = NULL;
+    BIGNUM* bn = NULL;
+    char *bnDec = NULL;
+    long e;
 
     WOLFENGINE_MSG("RSA PKEY - Ctrl");
 
@@ -142,15 +213,59 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 
     if (ret == 1) {
         switch (type) {
+            case EVP_PKEY_CTRL_RSA_PADDING:
+                /* TODO: Make sign/verify use padding mode. */
+                rsa->padMode = num;
+                break;
+            case EVP_PKEY_CTRL_GET_RSA_PADDING:
+                *(int *)ptr = rsa->padMode;
+                break;
             case EVP_PKEY_CTRL_MD:
                 rsa->md = (EVP_MD*)ptr;
                 break;
+            case EVP_PKEY_CTRL_GET_MD:
+                *(EVP_MD **)ptr = rsa->md;
+                break;
             case EVP_PKEY_CTRL_DIGESTINIT:
+                break;
+#if OPENSSL_VERSION_NUMBER >= 0x1010100fL
+            case EVP_PKEY_CTRL_RSA_KEYGEN_PRIMES:
+                /* wolfCrypt can only do key generation with 2 primes. */
+                break;
+#endif
+            case EVP_PKEY_CTRL_RSA_KEYGEN_BITS:
+                if (num < RSA_MIN_SIZE || num > RSA_MAX_SIZE) {
+                    WOLFENGINE_ERROR_MSG("RSA key size not in range.");
+                    ret = 0;
+                }
+                else {
+                    rsa->bits = num;
+                    ret = 1;
+                }
+                break;
+            case EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP:
+                bn = (BIGNUM*)ptr;
+                e = (long)BN_get_word(bn);
+                if (e == (long)BN_MASK2) {
+                    WOLFENGINE_ERROR_MSG("RSA public exponent too large.");
+                    ret = 0;
+                }
+                if (ret == 1 && e == 0) {
+                    WOLFENGINE_ERROR_MSG("RSA public exponent is 0.");
+                    ret = 0;
+                }
+                if (ret == 1) {
+                    rsa->pubExp = e;
+                }
                 break;
             default:
                 ret = 0;
                 break;
         }
+    }
+    
+    if (bnDec != NULL) {
+        OPENSSL_free(bnDec);
     }
 
     return ret;
@@ -166,8 +281,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                                 memory will be allocated and caller must free.
  * @returns Length of encoded digest on success and 0 on failure.
  */
-static int der_encode_digest(const EVP_MD *md, const unsigned char *digest,
-                             size_t digestLen, unsigned char **encodedDigest)
+static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
+                                size_t digestLen, unsigned char **encodedDigest)
 {
     int ret = 0;
     int hashOID = 0;
@@ -230,8 +345,9 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
  * @param  tbsLen  [in]      Length of To Be Signed data.
  * @returns  1 on success and 0 on failure.
  */
-static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
-                       const unsigned char *tbs, size_t tbsLen)
+static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
+                            size_t *sigLen, const unsigned char *tbs,
+                            size_t tbsLen)
 {
     int ret = 0;
     we_Rsa *rsa = NULL;
@@ -263,8 +379,8 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLe
     if (ret == 1 && sig != NULL) {
         if (rsa->md != NULL) {
             /* In this case, OpenSSL expects a proper PKCS #1 v1.5 signature. */
-            encodedDigestLen = der_encode_digest(rsa->md, tbs, tbsLen,
-                                                 &encodedDigest);
+            encodedDigestLen = we_der_encode_digest(rsa->md, tbs, tbsLen,
+                                                    &encodedDigest);
             ret = encodedDigestLen > 0;
             if (ret == 1) {
                 tbs = encodedDigest;
@@ -367,8 +483,8 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                 /* In this case, we have a proper DER-encoded signature, not
                    just arbitrary signed data, so we must compare with the
                    encoded digest. */
-                encodedDigestLen = der_encode_digest(rsa->md, tbs, tbsLen,
-                                                     &encodedDigest);
+                encodedDigestLen = we_der_encode_digest(rsa->md, tbs, tbsLen,
+                                                        &encodedDigest);
                 ret = encodedDigestLen > 0;
                 if (ret == 1) {
                     tbs = encodedDigest;
@@ -407,8 +523,7 @@ int we_init_rsa_pkey_meth(void)
         EVP_PKEY_meth_set_cleanup(we_rsa_pkey_method, we_rsa_pkey_cleanup);
         EVP_PKEY_meth_set_ctrl(we_rsa_pkey_method, we_rsa_pkey_ctrl, NULL);
         EVP_PKEY_meth_set_copy(we_rsa_pkey_method, we_rsa_pkey_copy);
-        /* EVP_PKEY_meth_set_keygen(we_rsa_pkey_method, NULL, we_rsa_keygen);
-           EVP_PKEY_meth_set_derive(we_rsa_pkey_method, NULL, we_rsa_derive); */
+        EVP_PKEY_meth_set_keygen(we_rsa_pkey_method, NULL, we_rsa_pkey_keygen);
     }
 
     if (ret == 0 && we_rsa_pkey_method != NULL) {

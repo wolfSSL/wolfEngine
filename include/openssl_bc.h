@@ -91,6 +91,9 @@ int EC_KEY_oct2key(EC_KEY *key, const unsigned char *buf, size_t len,
                    BN_CTX *ctx);
 int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len);
 
+void RSA_get0_key(const RSA *r,
+                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
+
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
 #endif /* OPENSSL_BC_H*/

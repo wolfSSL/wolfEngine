@@ -116,8 +116,8 @@ int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
 #ifdef WE_HAVE_RSA
 
 #ifdef WE_HAVE_EVP_PKEY
-int test_rsa_digest(ENGINE *e, void *data);
 int test_rsa_pkey(ENGINE *e, void *data);
+int test_rsa_pkey_ctrl(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 
 #endif /* WE_HAVE_RSA */
