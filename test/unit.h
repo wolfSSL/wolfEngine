@@ -55,6 +55,8 @@ typedef struct TEST_CASE {
     int         done:1;
 } TEST_CASE;
 
+int test_logging(ENGINE *e, void *data);
+
 #ifdef WE_HAVE_DIGEST
 
 int test_digest_op(const EVP_MD *md, ENGINE *e, unsigned char *msg,

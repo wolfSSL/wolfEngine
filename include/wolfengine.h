@@ -40,12 +40,7 @@
 #include <wolfssl/wolfcrypt/ecc.h>
 
 #include "openssl_bc.h"
-
-#ifdef WOLFENGINE_DEBUG
-#define WOLFENGINE_MSG(msg)     (void)fprintf(stderr, "WOLFENG: %s\n", msg);
-#else
-#define WOLFENGINE_MSG(msg)     (void)msg
-#endif
+#include "we_logging.h"
 
 /*
  * Global random
