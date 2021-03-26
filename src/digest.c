@@ -35,16 +35,14 @@
  */
 static int we_sha256_init(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
 
     WOLFENGINE_ENTER("we_sha256_init");
 
-    ret = wc_InitSha256((wc_Sha256*)EVP_MD_CTX_md_data(ctx));
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_InitSha256", ret);
+    rc = wc_InitSha256((wc_Sha256*)EVP_MD_CTX_md_data(ctx));
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_InitSha256", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha256_init", ret);
@@ -62,17 +60,15 @@ static int we_sha256_init(EVP_MD_CTX *ctx)
  */
 static int we_sha256_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
-    int ret = 1;
+    int ret = 1, rc;
 
     WOLFENGINE_ENTER("we_sha256_update");
 
-    ret = wc_Sha256Update((wc_Sha256*)EVP_MD_CTX_md_data(ctx),
-                          (const byte*)data, (word32)len);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_Sha256Update", ret);
+    rc = wc_Sha256Update((wc_Sha256*)EVP_MD_CTX_md_data(ctx),
+                         (const byte*)data, (word32)len);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_Sha256Update", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha256_update", ret);
@@ -89,18 +85,17 @@ static int we_sha256_update(EVP_MD_CTX *ctx, const void *data, size_t len)
  */
 static int we_sha256_final(EVP_MD_CTX *ctx, unsigned char *md)
 {
-    int ret = 1;
+    int ret = 1, rc;
 
     WOLFENGINE_ENTER("we_sha256_final");
 
-    ret = wc_Sha256Final((wc_Sha256*)EVP_MD_CTX_md_data(ctx), (byte*)md);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_Sha256Final", ret);
+    rc = wc_Sha256Final((wc_Sha256*)EVP_MD_CTX_md_data(ctx), (byte*)md);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_Sha256Final", rc);
         ret = 0;
     } else {
         WOLFENGINE_MSG("SHA-256 Digest");
         WOLFENGINE_BUFFER(md, WC_SHA256_DIGEST_SIZE);
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha256_final", ret);
@@ -189,7 +184,7 @@ typedef struct we_Digest
  */
 static int we_sha256_init(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_sha256_init");
@@ -197,12 +192,10 @@ static int we_sha256_init(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA256;
 
-    ret = wc_HashInit(&digest->hash, digest->hashType);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", ret);
+    rc = wc_HashInit(&digest->hash, digest->hashType);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha256_init", ret);
@@ -220,7 +213,7 @@ static int we_sha256_init(EVP_MD_CTX *ctx)
  */
 static int we_sha384_init(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_sha384_init");
@@ -228,12 +221,10 @@ static int we_sha384_init(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA384;
 
-    ret = wc_HashInit(&digest->hash, digest->hashType);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", ret);
+    rc = wc_HashInit(&digest->hash, digest->hashType);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha384_init", ret);
@@ -251,7 +242,7 @@ static int we_sha384_init(EVP_MD_CTX *ctx)
  */
 static int we_sha512_init(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_sha512_init");
@@ -259,12 +250,10 @@ static int we_sha512_init(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA512;
 
-    ret = wc_HashInit(&digest->hash, digest->hashType);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", ret);
+    rc = wc_HashInit(&digest->hash, digest->hashType);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha512_init", ret);
@@ -282,7 +271,7 @@ static int we_sha512_init(EVP_MD_CTX *ctx)
  */
 static int we_sha3_224_init(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_sha3_224_init");
@@ -290,12 +279,10 @@ static int we_sha3_224_init(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_224;
 
-    ret = wc_HashInit(&digest->hash, digest->hashType);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", ret);
+    rc = wc_HashInit(&digest->hash, digest->hashType);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha3_224_init", ret);
@@ -313,7 +300,7 @@ static int we_sha3_224_init(EVP_MD_CTX *ctx)
  */
 static int we_sha3_256_init(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_sha3_256_init");
@@ -321,12 +308,10 @@ static int we_sha3_256_init(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_256;
 
-    ret = wc_HashInit(&digest->hash, digest->hashType);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", ret);
+    rc = wc_HashInit(&digest->hash, digest->hashType);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha3_256_init", ret);
@@ -344,7 +329,7 @@ static int we_sha3_256_init(EVP_MD_CTX *ctx)
  */
 static int we_sha3_384_init(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_sha3_384_init");
@@ -352,12 +337,10 @@ static int we_sha3_384_init(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_384;
 
-    ret = wc_HashInit(&digest->hash, digest->hashType);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", ret);
+    rc = wc_HashInit(&digest->hash, digest->hashType);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha3_384_init", ret);
@@ -375,7 +358,7 @@ static int we_sha3_384_init(EVP_MD_CTX *ctx)
  */
 static int we_sha3_512_init(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_sha3_512_init");
@@ -383,12 +366,10 @@ static int we_sha3_512_init(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_512;
 
-    ret = wc_HashInit(&digest->hash, digest->hashType);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", ret);
+    rc = wc_HashInit(&digest->hash, digest->hashType);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_sha3_512_init", ret);
@@ -407,20 +388,18 @@ static int we_sha3_512_init(EVP_MD_CTX *ctx)
  */
 static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_digest_update");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
-    ret = wc_HashUpdate(&digest->hash, digest->hashType, (const byte*)data,
-                         (word32)len);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashUpdate", ret);
+    rc = wc_HashUpdate(&digest->hash, digest->hashType, (const byte*)data,
+                       (word32)len);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashUpdate", rc);
         ret = 0;
-    } else {
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_digest_update", ret);
@@ -437,21 +416,20 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
  */
 static int we_digest_final(EVP_MD_CTX *ctx, unsigned char *md)
 {
-    int ret = 1;
+    int ret = 1, rc;
     we_Digest *digest;
 
     WOLFENGINE_ENTER("we_digest_final");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
-    ret = wc_HashFinal(&digest->hash, digest->hashType, (byte*)md);
-    if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashFinal", ret);
+    rc = wc_HashFinal(&digest->hash, digest->hashType, (byte*)md);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashFinal", rc);
         ret = 0;
     } else {
         WOLFENGINE_MSG("Message Digest");
         WOLFENGINE_BUFFER(md, wc_HashGetDigestSize(digest->hashType));
-        ret = 1;
     }
 
     WOLFENGINE_LEAVE("we_digest_final", ret);
@@ -467,7 +445,7 @@ static int we_digest_final(EVP_MD_CTX *ctx, unsigned char *md)
  */
 static int we_digest_cleanup(EVP_MD_CTX *ctx)
 {
-    int ret = 1;
+    int ret = 1, rc;
 #if !defined(HAVE_FIPS_VERSION) || HAVE_FIPS_VERSION >= 2
     we_Digest *digest;
 
@@ -476,12 +454,10 @@ static int we_digest_cleanup(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
     if (digest != NULL) {
-        ret = wc_HashFree(&digest->hash, digest->hashType);
-        if (ret != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HashFree", ret);
+        rc = wc_HashFree(&digest->hash, digest->hashType);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_HashFree", rc);
             ret = 0;
-        } else {
-            ret = 1;
         }
     }
 #else
