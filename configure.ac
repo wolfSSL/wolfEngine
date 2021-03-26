@@ -62,6 +62,13 @@ AX_COVERAGE
 AS_IF([test "$ax_enable_coverage" = "yes"],
       [AM_CFLAGS="$COVERAGE_CFLAGS $AM_CFLAGS"])
 
+# user_settings.h
+AC_ARG_ENABLE([usersettings],
+    [AS_HELP_STRING([--enable-usersettings],[Use your own user_settings.h and do not add Makefile CFLAGS (default: disabled)])],
+    [ ENABLED_USERSETTINGS=$enableval ],
+    [ ENABLED_USERSETTINGS=no ]
+    )
+
 # Dynamic engine support
 AC_ARG_ENABLE([dynamic-engine],
     [AS_HELP_STRING([--enable-dynamic-engine],[Enable loading wolfEngine as a dynamic engine (default: enabled).])],
@@ -377,6 +384,12 @@ then
     fi
 fi
 
+if test "x$ENABLED_USERSETTINGS" = "xyes"
+then
+    # Replace all options and just use DWOLENGINE_USER_SETTINGS
+    AM_CFLAGS="-DWOLENGINE_USER_SETTINGS"
+fi
+
 
 AX_HARDEN_CC_COMPILER_FLAGS
 
@@ -416,6 +429,7 @@ echo "   * C Flags:                    $CFLAGS"
 echo "   * Debug enabled:              $ax_enable_debug"
 echo
 echo "   Features "
+echo "   * User settings:              $ENABLED_USERSETTINGS"
 echo "   * Dynamic engine:             $ENABLED_DYNAMIC_ENGINE"
 echo "   * Digest:"
 echo "   *  - SHA-256:                 $ENABLED_SHA256"
