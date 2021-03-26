@@ -82,6 +82,8 @@ static int we_init_random()
         ret = wc_InitRng(&we_globalRng) == 0;
         if (ret == 1) {
             we_globalRngInited = 1;
+        } else {
+            WOLFENGINE_ERROR_FUNC("wc_InitRng", ret);
         }
     }
 
@@ -129,6 +131,8 @@ int we_nid_to_wc_hash_oid(int nid)
     int hashType = WC_HASH_TYPE_NONE;
     int ret;
 
+    WOLFENGINE_ENTER("we_nid_to_wc_hash_oid");
+
     switch (nid) {
 #ifdef WE_HAVE_SHA256
         case NID_sha256:
@@ -171,8 +175,10 @@ int we_nid_to_wc_hash_oid(int nid)
 
     ret = wc_HashGetOID(hashType);
     if (ret < 0) {
-        WOLFENGINE_ERROR_MSG("Unsupported OpenSSL hash NID");
+        WOLFENGINE_ERROR_FUNC("wc_HashGetOID", ret);
     }
+
+    WOLFENGINE_LEAVE("we_nid_to_wc_hash_oid", ret);
 
     return ret;
 }
