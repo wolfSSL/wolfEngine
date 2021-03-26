@@ -167,11 +167,13 @@ int we_init_sha256_meth()
 #ifdef WE_USE_HASH
 
 /**
- * Data required to complete an AES-GCM encrypt/decrypt operation.
+ * Data required to complete a digest operation.
  */
 typedef struct we_Digest
 {
+    /* Hash algorithm object. */
     wc_HashAlg       hash;
+    /* Hash algorithm ID. */
     enum wc_HashType hashType;
 } we_Digest;
 

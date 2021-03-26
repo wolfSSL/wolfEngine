@@ -23,6 +23,8 @@
 
 #ifdef WE_HAVE_RSA
 
+#ifdef WE_HAVE_EVP_PKEY
+
 static const unsigned char rsa_key_der_2048[] =
 {
         0x30, 0x82, 0x04, 0xA3, 0x02, 0x01, 0x00, 0x02, 0x82, 0x01,
@@ -146,8 +148,6 @@ static const unsigned char rsa_key_der_2048[] =
         0x83, 0x0B, 0xD4, 0x74, 0x80, 0xB6, 0x7D, 0x62, 0x45, 0xBF,
         0x56
 };
-
-#ifdef WE_HAVE_EVP_PKEY
 
 int test_rsa_digest(ENGINE *e, void *data)
 {

@@ -20,11 +20,11 @@
  */
 
 #include "wolfengine.h"
+#include "we_logging.h"
 #include "unit.h"
 
 #ifdef WOLFENGINE_DEBUG
-void print_buffer(const char *desc, const unsigned char *buffer,
-                         size_t len)
+void print_buffer(const char *desc, const unsigned char *buffer, size_t len)
 {
     size_t i;
 
@@ -39,102 +39,115 @@ void print_buffer(const char *desc, const unsigned char *buffer,
         printf("\n");
     }
 }
-#endif
+
+static int debug = 1;
+#else
+static int debug = 0;
+#endif /* WOLFENGINE_DEBUG */
 
 TEST_CASE test_case[] = {
-    TEST_DECL(test_logging),
+    TEST_DECL(test_logging, &debug),
 #ifdef WE_HAVE_SHA256
-    TEST_DECL(test_sha256),
+    TEST_DECL(test_sha256, NULL),
 #endif
 #ifdef WE_HAVE_SHA384
-    TEST_DECL(test_sha384),
+    TEST_DECL(test_sha384, NULL),
 #endif
 #ifdef WE_HAVE_SHA512
-    TEST_DECL(test_sha512),
+    TEST_DECL(test_sha512, NULL),
 #endif
 #ifdef WE_HAVE_SHA3_224
-    TEST_DECL(test_sha3_224),
+    TEST_DECL(test_sha3_224, NULL),
 #endif
 #ifdef WE_HAVE_SHA3_256
-    TEST_DECL(test_sha3_256),
+    TEST_DECL(test_sha3_256, NULL),
 #endif
 #ifdef WE_HAVE_SHA3_384
-    TEST_DECL(test_sha3_384),
+    TEST_DECL(test_sha3_384, NULL),
 #endif
 #ifdef WE_HAVE_SHA3_512
-    TEST_DECL(test_sha3_512),
+    TEST_DECL(test_sha3_512, NULL),
+#endif
+#ifdef WE_HAVE_AESCBC
+    TEST_DECL(test_aes128_cbc, NULL),
+    TEST_DECL(test_aes192_cbc, NULL),
+    TEST_DECL(test_aes256_cbc, NULL),
+    TEST_DECL(test_aes128_cbc_stream, NULL),
+    TEST_DECL(test_aes192_cbc_stream, NULL),
+    TEST_DECL(test_aes256_cbc_stream, NULL),
 #endif
 #ifdef WE_HAVE_AESGCM
-    TEST_DECL(test_aes128_gcm),
-    TEST_DECL(test_aes256_gcm),
-    TEST_DECL(test_aes128_gcm_fixed),
-    TEST_DECL(test_aes128_gcm_tls),
+    TEST_DECL(test_aes128_gcm, NULL),
+    TEST_DECL(test_aes192_gcm, NULL),
+    TEST_DECL(test_aes256_gcm, NULL),
+    TEST_DECL(test_aes128_gcm_fixed, NULL),
+    TEST_DECL(test_aes128_gcm_tls, NULL),
 #endif
 #ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA
-    TEST_DECL(test_rsa_pkey),
-    TEST_DECL(test_rsa_digest),
+    TEST_DECL(test_rsa_pkey, NULL),
+    TEST_DECL(test_rsa_digest, NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_EC_P256
     #ifdef WE_HAVE_ECKEYGEN
-        TEST_DECL(test_eckeygen_p256_by_nid),
-        TEST_DECL(test_eckeygen_p256),
+        TEST_DECL(test_eckeygen_p256_by_nid, NULL),
+        TEST_DECL(test_eckeygen_p256, NULL),
     #endif
     #ifdef WE_HAVE_ECDH
     #ifdef WE_HAVE_ECKEYGEN
-        TEST_DECL(test_ecdh_p256_keygen),
+        TEST_DECL(test_ecdh_p256_keygen, NULL),
     #endif
-        TEST_DECL(test_ecdh_p256),
+        TEST_DECL(test_ecdh_p256, NULL),
     #endif
     #ifdef WE_HAVE_ECDSA
-        TEST_DECL(test_ecdsa_p256_pkey),
-        TEST_DECL(test_ecdsa_p256),
+        TEST_DECL(test_ecdsa_p256_pkey, NULL),
+        TEST_DECL(test_ecdsa_p256, NULL),
     #endif
 #endif
 #ifdef WE_HAVE_EC_P384
     #ifdef WE_HAVE_ECKEYGEN
-        TEST_DECL(test_eckeygen_p384_by_nid),
-        TEST_DECL(test_eckeygen_p384),
+        TEST_DECL(test_eckeygen_p384_by_nid, NULL),
+        TEST_DECL(test_eckeygen_p384, NULL),
     #endif
     #ifdef WE_HAVE_ECDH
     #ifdef WE_HAVE_ECKEYGEN
-        TEST_DECL(test_ecdh_p384_keygen),
+        TEST_DECL(test_ecdh_p384_keygen, NULL),
     #endif
-        TEST_DECL(test_ecdh_p384),
+        TEST_DECL(test_ecdh_p384, NULL),
     #endif
     #ifdef WE_HAVE_ECDSA
-        TEST_DECL(test_ecdsa_p384_pkey),
-        TEST_DECL(test_ecdsa_p384),
+        TEST_DECL(test_ecdsa_p384_pkey, NULL),
+        TEST_DECL(test_ecdsa_p384, NULL),
     #endif
 #endif
 #endif /* WE_HAVE_EVP_PKEY */
 #ifdef WE_HAVE_EC_KEY
 #ifdef WE_HAVE_EC_P256
     #ifdef WE_HAVE_ECKEYGEN
-        TEST_DECL(test_ec_key_keygen_p256_by_nid),
+        TEST_DECL(test_ec_key_keygen_p256_by_nid, NULL),
     #endif
     #ifdef WE_HAVE_ECDH
     #ifdef WE_HAVE_ECKEYGEN
-        TEST_DECL(test_ec_key_ecdh_p256_keygen),
+        TEST_DECL(test_ec_key_ecdh_p256_keygen, NULL),
     #endif
-        TEST_DECL(test_ec_key_ecdh_p256),
+        TEST_DECL(test_ec_key_ecdh_p256, NULL),
     #endif
     #ifdef WE_HAVE_ECDSA
-        TEST_DECL(test_ec_key_ecdsa_p256),
+        TEST_DECL(test_ec_key_ecdsa_p256, NULL),
     #endif
 #endif
 #ifdef WE_HAVE_EC_P384
     #ifdef WE_HAVE_ECKEYGEN
-        TEST_DECL(test_ec_key_keygen_p384_by_nid),
+        TEST_DECL(test_ec_key_keygen_p384_by_nid, NULL),
     #endif
     #ifdef WE_HAVE_ECDH
     #ifdef WE_HAVE_ECKEYGEN
-        TEST_DECL(test_ec_key_ecdh_p384_keygen),
+        TEST_DECL(test_ec_key_ecdh_p384_keygen, NULL),
     #endif
-        TEST_DECL(test_ec_key_ecdh_p384),
+        TEST_DECL(test_ec_key_ecdh_p384, NULL),
     #endif
     #ifdef WE_HAVE_ECDSA
-        TEST_DECL(test_ec_key_ecdsa_p384),
+        TEST_DECL(test_ec_key_ecdsa_p384, NULL),
     #endif
 #endif
 #endif /* WE_HAVE_EC_KEY */
@@ -150,6 +163,7 @@ static void usage()
     printf("  --dir <path>    Location of wolfengine shared library.\n");
     printf("                  Default: .libs\n");
     printf("  --engine <str>  Name of wolfsslengine. Default: libwolfengine\n");
+    printf("  --no-debug      Disable debug logging\n");
     printf("  --list          Display all test cases\n");
     printf("  <num>           Run this test case, but not all\n");
 }
@@ -204,6 +218,9 @@ int main(int argc, char* argv[])
             }
             name = *argv;
             printf("Engine: %s\n", name);
+        }
+        else if (strncmp(*argv, "--no-debug", 11) == 0) {
+            debug = 0;
         }
         else if (strncmp(*argv, "--list", 7) == 0) {
             for (i = 0; i < TEST_CASE_CNT; i++) {
@@ -262,6 +279,13 @@ int main(int argc, char* argv[])
         }
     }
 
+    if ((err == 0) && debug) {
+        if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
+            PRINT_ERR_MSG("Failed to enable debug logging");
+            err = 1;
+        }
+    }
+
     if (err == 0 && runTests) {
         printf("###### TESTSUITE START\n");
         printf("\n");
@@ -274,7 +298,7 @@ int main(int argc, char* argv[])
 
                 printf("#### Start: %d - %s\n", i + 1, test_case[i].name);
 
-                test_case[i].err = test_case[i].func(e, NULL);
+                test_case[i].err = test_case[i].func(e, test_case[i].data);
                 test_case[i].done = 1;
 
                 if (!test_case[i].err)

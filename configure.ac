@@ -204,6 +204,19 @@ then
     fi
 fi
 
+# AES-CBC
+AC_ARG_ENABLE([aescbc],
+    [AS_HELP_STRING([--enable-aescbc],[Enable AES-CBC (default: enabled)])],
+    [ ENABLED_AESCBC=$enableval ],
+    [ ENABLED_AESCBC=yes ]
+    )
+
+if test "$ENABLED_AESCBC" = "yes"
+then
+    ENABLED_AESCBC="yes"
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESCBC"
+fi
+
 # AES-GCM
 AC_ARG_ENABLE([aesgcm],
     [AS_HELP_STRING([--enable-aesgcm],[Enable AES-GCM (default: disabled)])],
@@ -414,6 +427,7 @@ echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
 echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
 echo "   * RSA:                        $ENABLED_RSA"
 echo "   * AES-GCM:                    $ENABLED_AESGCM"
+echo "   * AES-CBC:                    $ENABLED_AESCBC"
 echo "   * ECC:                        $ENABLED_ECC"
 echo "   *  - EVP_PKEY:                $ENABLED_EVP_PKEY"
 echo "   *  - EC_KEY:                  $ENABLED_EC_KEY"

@@ -82,7 +82,13 @@ int we_nid_to_wc_hash_oid(int nid);
  * Cipher methods.
  */
 
+extern EVP_CIPHER* we_aes128_cbc_ciph;
+extern EVP_CIPHER* we_aes192_cbc_ciph;
+extern EVP_CIPHER* we_aes256_cbc_ciph;
+int we_init_aescbc_meths(void);
+
 extern EVP_CIPHER* we_aes128_gcm_ciph;
+extern EVP_CIPHER* we_aes192_gcm_ciph;
 extern EVP_CIPHER* we_aes256_gcm_ciph;
 int we_init_aesgcm_meths(void);
 
