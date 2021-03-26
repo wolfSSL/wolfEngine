@@ -37,11 +37,20 @@ int test_logging(ENGINE *e, void *data)
 {
     int err = 0, ret = 0;
     int i = 0;
+    int initialDebug = 0;
 #ifdef WOLFENGINE_DEBUG
     const char* msg = "Testing, testing";
 #endif
 
-    (void)data;
+    /* Save the debug value so we can restore debugging at the end of this
+       test. */
+    if (data != NULL) {
+        initialDebug = *(int*)data;
+    }
+    else {
+        PRINT_ERR_MSG("Expected debug ptr in parameter \"data\", was NULL.");
+        err = 1;
+    }
 
     /* test enabling debug logging */
     PRINT_MSG("Enable debug logging");
@@ -121,6 +130,15 @@ int test_logging(ENGINE *e, void *data)
         err = 1;
     }
 #endif
+
+    /* Restore debugging, if applicable. */
+    if (initialDebug) {
+        ret = ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0);
+        if (ret != 1) {
+            PRINT_ERR_MSG("Failed to restore debug logging");
+            err = 1;
+        }
+    }
 
     return err;
 }

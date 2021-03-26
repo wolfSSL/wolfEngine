@@ -93,7 +93,7 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         /* Get the internal AES-GCM object. */
         aes = (we_AesGcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
         if (aes == NULL) {
-            WOLFENGINE_ERROR_MSG("EVP_CIPHER_CTX_get_cipher_data");
+            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
             ret = 0;
         }
     }
@@ -157,7 +157,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     /* Get the AES-GCM data to work with. */
     aes = (we_AesGcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_MSG("EVP_CIPHER_CTX_get_cipher_data");
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
 
@@ -324,7 +324,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     /* Get the AES-GCM data to work with. */
     aes = (we_AesGcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_MSG("EVP_CIPHER_CTX_get_cipher_data");
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
     if (ret == 1) {

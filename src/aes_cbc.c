@@ -70,13 +70,14 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if (ret == 1) {
         aes = (we_AesCbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
         if (aes == NULL) {
-            WOLFENGINE_ERROR_FUNC("EVP_CIPHER_CTX_get_cipher_data", rc);
+            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
             ret = 0;
         }
     }
 
     if (ret == 1 && !aes->init) {
-        if (wc_AesInit(&aes->aes, NULL, INVALID_DEVID) != 0) {
+        rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
+        if (rc != 0) {
             WOLFENGINE_ERROR_FUNC("wc_AesInit", rc);
             ret = 0;
         }
@@ -394,7 +395,7 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     /* Get the AES-CBC object to work with. */
     aes = (we_AesCbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC("EVP_CIPHER_CTX_get_cipher_data", rc);
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
     else if (aes->enc) {
@@ -433,7 +434,7 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     /* Get the AES-CBC data to work with. */
     aes = (we_AesCbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes != NULL) {
-        WOLFENGINE_ERROR_FUNC("EVP_CIPHER_CTX_get_cipher_data", rc);
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
     if (ret == 1) {

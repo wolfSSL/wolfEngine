@@ -43,13 +43,13 @@ void print_buffer(const char *desc, const unsigned char *buffer, size_t len);
 #else
 #define PRINT_BUFFER(d, b, l)
 #endif
-
-#define TEST_DECL(func)        { #func, func, 0, 0, 0 }
+#define TEST_DECL(func, data)        { #func, func, data, 0, 0, 0 }
 
 typedef int (*TEST_FUNC)(ENGINE *e, void *data);
 typedef struct TEST_CASE {
     const char *name;
     TEST_FUNC   func;
+    void       *data;
     int         err;
     int         run:1;
     int         done:1;

@@ -64,6 +64,7 @@ void WOLFENGINE_MSG(const char* msg);
 void WOLFENGINE_ERROR(int err);
 void WOLFENGINE_ERROR_MSG(const char* msg);
 void WOLFENGINE_ERROR_FUNC(const char* funcName, int ret);
+void WOLFENGINE_ERROR_FUNC_NULL(const char* funcName, void *ret);
 void WOLFENGINE_BUFFER(const unsigned char* buffer, unsigned int length);
 
 #else
@@ -74,6 +75,7 @@ void WOLFENGINE_BUFFER(const unsigned char* buffer, unsigned int length);
 #define WOLFENGINE_ERROR(e)
 #define WOLFENGINE_ERROR_MSG(e)
 #define WOLFENGINE_ERROR_FUNC(f, r)
+#define WOLFENGINE_ERROR_FUNC_NULL(f, r)
 #define WOLFENGINE_BUFFER(b, l)
 
 #endif /* WOLFENGINE_DEBUG */
