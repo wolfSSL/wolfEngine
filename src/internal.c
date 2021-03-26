@@ -76,12 +76,18 @@ static int we_init_random()
 {
     int ret = 1;
 
+    WOLFENGINE_ENTER("we_init_random");
+
     if (!we_globalRngInited) {
         ret = wc_InitRng(&we_globalRng) == 0;
         if (ret == 1) {
             we_globalRngInited = 1;
+        } else {
+            WOLFENGINE_ERROR_FUNC("wc_InitRng", ret);
         }
     }
+
+    WOLFENGINE_LEAVE("we_init_random", ret);
 
     return ret;
 }
@@ -123,6 +129,9 @@ static const int we_digest_nids[] = {
 int we_nid_to_wc_hash_oid(int nid)
 {
     int hashType = WC_HASH_TYPE_NONE;
+    int ret;
+
+    WOLFENGINE_ENTER("we_nid_to_wc_hash_oid");
 
     switch (nid) {
 #ifdef WE_HAVE_SHA256
@@ -164,7 +173,14 @@ int we_nid_to_wc_hash_oid(int nid)
 #endif
     }
 
-    return wc_HashGetOID(hashType);
+    ret = wc_HashGetOID(hashType);
+    if (ret < 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashGetOID", ret);
+    }
+
+    WOLFENGINE_LEAVE("we_nid_to_wc_hash_oid", ret);
+
+    return ret;
 }
 
 /*
@@ -233,6 +249,7 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
             break;
 #endif
         default:
+            WOLFENGINE_ERROR_MSG("Unsupported digest NID");
             *digest = NULL;
             ret = 0;
             break;
@@ -311,6 +328,7 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
             break;
 #endif
         default:
+            WOLFENGINE_ERROR_MSG("Unsupported cipher NID");
             *cipher = NULL;
             ret = 0;
             break;
@@ -375,6 +393,7 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
 #endif 
 #endif /* WE_HAVE_ECKEYGEN */
         default:
+            WOLFENGINE_ERROR_MSG("Unsupported public key NID");
             *pkey = NULL;
             ret = 0;
             break;
@@ -404,6 +423,8 @@ static int wolfengine_init(ENGINE *e)
     int ret = 1;
 
     (void)e;
+
+    WOLFENGINE_ENTER("wolfengine_init");
 
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     ret = we_init_random();
@@ -473,6 +494,8 @@ static int wolfengine_init(ENGINE *e)
 #endif
 #endif
 
+    WOLFENGINE_LEAVE("wolfengine_init", ret);
+
     return ret;
 }
 
@@ -484,7 +507,7 @@ static int wolfengine_init(ENGINE *e)
  */
 static int wolfengine_destroy(ENGINE *e)
 {
-    WOLFENGINE_MSG("Destroy");
+    WOLFENGINE_ENTER("wolfengine_destroy");
 
     (void)e;
 
@@ -545,6 +568,8 @@ static int wolfengine_destroy(ENGINE *e)
         we_globalRngInited = 0;
     }
 #endif
+
+    WOLFENGINE_LEAVE("wolfengine_destroy", 1);
 
     return 1;
 }
@@ -612,6 +637,8 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
     (void)e;
     (void)p;
 
+    WOLFENGINE_ENTER("wolfengine_ctrl");
+
     switch (cmd) {
         case WOLFENGINE_CMD_ENABLE_DEBUG:
             if (i > 0) {
@@ -637,6 +664,8 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
             ret = 0;
     }
 
+    WOLFENGINE_LEAVE("wolfengine_ctrl", ret);
+
     return ret;
 }
 
@@ -651,7 +680,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
 {
     int ret = 1;
 
-    WOLFENGINE_MSG("Bind");
+    WOLFENGINE_ENTER("wolfengine_bind");
 
     if (XSTRNCMP(id, wolfengine_lib, XSTRLEN(wolfengine_lib)) != 0)
         ret = 0;
@@ -690,6 +719,8 @@ int wolfengine_bind(ENGINE *e, const char *id)
     if (ret == 1 && ENGINE_set_ctrl_function(e, wolfengine_ctrl) == 0) {
         ret = 0;
     }
+
+    WOLFENGINE_LEAVE("wolfengine_bind", ret);
 
     return ret;
 }

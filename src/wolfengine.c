@@ -40,13 +40,25 @@ const char *wolfengine_name = "An engine using wolfSSL";
  */
 static ENGINE *engine_wolfengine(void)
 {
-    ENGINE *ret = ENGINE_new();
-    if (ret == NULL)
+    int rc;
+    ENGINE *ret;
+
+    WOLFENGINE_ENTER("engine_wolfengine");
+
+    ret = ENGINE_new();
+    if (ret == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("ENGINE_new", ret);
         return NULL;
-    if (wolfengine_bind(ret, wolfengine_lib) == 0) {
+    }
+    rc = wolfengine_bind(ret, wolfengine_lib);
+    if (rc == 0) {
+        WOLFENGINE_ERROR_FUNC("wolfengine_bind", rc);
         ENGINE_free(ret);
         return NULL;
     }
+
+    WOLFENGINE_LEAVE("engine_wolfengine", 1);
+
     return ret;
 }
 
@@ -55,7 +67,7 @@ static ENGINE *engine_wolfengine(void)
  */
 void ENGINE_load_wolfengine(void)
 {
-    WOLFENGINE_MSG("Load");
+    WOLFENGINE_ENTER("ENGINE_load_wolfengine");
 
     ENGINE *toadd = engine_wolfengine();
     if (!toadd)
@@ -63,6 +75,8 @@ void ENGINE_load_wolfengine(void)
     ENGINE_add(toadd);
     ENGINE_free(toadd);
     ERR_clear_error();
+
+    WOLFENGINE_LEAVE("ENGINE_load_wolfengine", 1);
 }
 
 #ifndef WE_NO_DYNAMIC_ENGINE
