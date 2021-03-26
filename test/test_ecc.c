@@ -879,14 +879,14 @@ int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
     sigLen = (unsigned int)*ecdsaSigLen;
     err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
     if (err == 0) {
-        PRINT_BUFFER("Signture", ecdsaSig, sigLen);
+        PRINT_BUFFER("Signature", ecdsaSig, sigLen);
     }
     if (err == 0) {
         sigLen = (unsigned int)*ecdsaSigLen;
         err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
     }
     if (err == 0) {
-        PRINT_BUFFER("Signture", ecdsaSig, sigLen);
+        PRINT_BUFFER("Signature", ecdsaSig, sigLen);
         *ecdsaSigLen = sigLen;
     }
 

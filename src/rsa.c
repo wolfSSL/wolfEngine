@@ -26,6 +26,10 @@
 /* Maximum DER digest size, taken from wolfSSL. Sum of the maximum size of the
    encoded digest, algorithm tag, and sequence tag. */
 #define MAX_DER_DIGEST_SZ 98
+/* The default RSA key/modulus size in bits. */
+#define DEFAULT_KEY_BITS 2048
+/* The default RSA public exponent, e. */
+#define DEFAULT_PUB_EXP WC_RSA_EXPONENT
 
 /**
  * Data required to complete an RSA operation.
@@ -36,6 +40,12 @@ typedef struct we_Rsa
     RsaKey key;
     /* Stored by control command EVP_PKEY_CTRL_MD. */
     EVP_MD *md;
+    /* Padding mode */
+    int padMode;
+    /* The public exponent ("e"). */
+    int pubExp;
+    /* The key/modulus size in bits. */
+    int bits;
     /* Indicates private key has been set into wolfSSL structure. */
     int privKeySet:1;
     /* Indicates public key has been set into wolfSSL structure. */
@@ -55,22 +65,37 @@ EVP_PKEY_METHOD *we_rsa_pkey_method = NULL;
  */
 static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
 {
-    int ret;
+    int ret = 1;
+    int rc = 0;
     we_Rsa *rsa;
 
-    WOLFENGINE_MSG("RSA PKEY - Init");
+    WOLFENGINE_ENTER("we_rsa_pkey_init");
 
-    ret = (rsa = OPENSSL_zalloc(sizeof(we_Rsa))) != NULL;
-    if (ret == 1) {
-        ret = wc_InitRsaKey(&rsa->key, NULL) == 0;
+    rsa = (we_Rsa *)OPENSSL_zalloc(sizeof(we_Rsa));
+    if (rsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", rsa);
+        ret = 0;
     }
+
+    if (ret == 1) {
+        rc = wc_InitRsaKey(&rsa->key, NULL);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_InitRsaKey", rc);
+            ret = 0;
+        }
+    }
+
     if (ret == 1) {
         EVP_PKEY_CTX_set_data(ctx, rsa);
+        rsa->pubExp = DEFAULT_PUB_EXP;
+        rsa->bits = DEFAULT_KEY_BITS;
     }
 
     if (ret == 0 && rsa != NULL) {
         OPENSSL_free(rsa);
     }
+
+    WOLFENGINE_LEAVE("we_rsa_pkey_init", ret);
 
     return ret;
 }
@@ -84,7 +109,7 @@ static void we_rsa_pkey_cleanup(EVP_PKEY_CTX *ctx)
 {
     we_Rsa *rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
 
-    WOLFENGINE_MSG("RSA PKEY - Cleanup");
+    WOLFENGINE_ENTER("we_rsa_pkey_cleanup");
 
     if (rsa != NULL) {
         wc_FreeRsaKey(&rsa->key);
@@ -110,8 +135,101 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 
     (void)dst;
     (void)src;
+ 
+    WOLFENGINE_ENTER("we_rsa_pkey_copy");
+    WOLFENGINE_LEAVE("we_rsa_pkey_copy", ret);
 
-    WOLFENGINE_MSG("RSA PKEY - Copy");
+    return ret;
+}
+
+/**
+ * Generate an RSA key.
+ *
+ * @param  ctx   [in]  Public key context of operation.
+ * @param  pkey  [in]  EVP public key to hold result.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
+{
+    int ret = 1;
+    int rc = 0;
+    we_Rsa *engineRsa = NULL;
+    RSA *rsa = NULL;
+    unsigned char *der = NULL;
+    const unsigned char *p = NULL;
+    int derLen = 0;
+
+    WOLFENGINE_ENTER("we_rsa_pkey_keygen");
+
+    engineRsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
+    if (engineRsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", engineRsa);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        rc = wc_MakeRsaKey(&engineRsa->key, engineRsa->bits, engineRsa->pubExp,
+                           we_rng);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_MakeRsaKey", rc);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        /* Get required length for DER buffer. */
+        derLen = wc_RsaKeyToDer(&engineRsa->key, NULL, 0);
+        if (derLen <= 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaKeyToDer", derLen);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        der = (unsigned char *)OPENSSL_malloc(derLen);
+        if (der == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", der);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        derLen = wc_RsaKeyToDer(&engineRsa->key, der, derLen);
+        if (derLen <= 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaKeyToDer", derLen);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        /*
+         * The pointer passed to d2i_RSAPrivateKey will get advanced to the
+         * end of the buffer, so we save the original pointer in order to free
+         * the buffer later.
+         */
+        p = (const unsigned char *)der;
+        rsa = d2i_RSAPrivateKey(NULL, &p, derLen);
+        if (rsa == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL("d2i_RSAPrivateKey", rsa);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        ret = EVP_PKEY_assign_RSA(pkey, rsa);
+        if (ret == 0) {
+            WOLFENGINE_ERROR_FUNC("EVP_PKEY_assign_RSA", ret);
+        }
+    }
+
+    if (der != NULL) {
+        OPENSSL_clear_free(der, derLen);
+    }
+    if (ret == 0 && rsa != NULL) {
+        RSA_free(rsa);
+    }
+
+    WOLFENGINE_LEAVE("we_rsa_pkey_keygen", ret);
 
     return ret;
 }
@@ -130,28 +248,79 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
     int ret = 1;
-    we_Rsa *rsa;
+    we_Rsa *rsa = NULL;
+    BIGNUM* bn = NULL;
+    char *bnDec = NULL;
+    long e;
 
-    (void)num;
-
-    WOLFENGINE_MSG("RSA PKEY - Ctrl");
+    WOLFENGINE_ENTER("we_rsa_pkey_ctrl");
 
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
-    if (rsa == NULL)
+    if (rsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", rsa);
         ret = 0;
+    }
 
     if (ret == 1) {
         switch (type) {
+            case EVP_PKEY_CTRL_RSA_PADDING:
+                /* TODO: Make sign/verify use padding mode. */
+                rsa->padMode = num;
+                break;
+            case EVP_PKEY_CTRL_GET_RSA_PADDING:
+                *(int *)ptr = rsa->padMode;
+                break;
             case EVP_PKEY_CTRL_MD:
                 rsa->md = (EVP_MD*)ptr;
                 break;
+            case EVP_PKEY_CTRL_GET_MD:
+                *(EVP_MD **)ptr = rsa->md;
+                break;
             case EVP_PKEY_CTRL_DIGESTINIT:
+                break;
+#if OPENSSL_VERSION_NUMBER >= 0x1010100fL
+            case EVP_PKEY_CTRL_RSA_KEYGEN_PRIMES:
+                /* wolfCrypt can only do key generation with 2 primes. */
+                WOLFENGINE_ERROR_MSG("wolfCrypt does not support multi-prime RSA.");
+                ret = 0;
+                break;
+#endif
+            case EVP_PKEY_CTRL_RSA_KEYGEN_BITS:
+                if (num < RSA_MIN_SIZE || num > RSA_MAX_SIZE) {
+                    WOLFENGINE_ERROR_MSG("RSA key size not in range.");
+                    ret = 0;
+                }
+                else {
+                    rsa->bits = num;
+                    ret = 1;
+                }
+                break;
+            case EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP:
+                bn = (BIGNUM*)ptr;
+                e = (long)BN_get_word(bn);
+                if (e == -1) {
+                    WOLFENGINE_ERROR_MSG("RSA public exponent too large.");
+                    ret = 0;
+                }
+                if (ret == 1 && e == 0) {
+                    WOLFENGINE_ERROR_MSG("RSA public exponent is 0.");
+                    ret = 0;
+                }
+                if (ret == 1) {
+                    rsa->pubExp = e;
+                }
                 break;
             default:
                 ret = 0;
                 break;
         }
     }
+    
+    if (bnDec != NULL) {
+        OPENSSL_free(bnDec);
+    }
+
+    WOLFENGINE_LEAVE("we_rsa_pkey_ctrl", ret);
 
     return ret;
 }
@@ -166,24 +335,39 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                                 memory will be allocated and caller must free.
  * @returns Length of encoded digest on success and 0 on failure.
  */
-static int der_encode_digest(const EVP_MD *md, const unsigned char *digest,
-                             size_t digestLen, unsigned char **encodedDigest)
+static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
+                                size_t digestLen, unsigned char **encodedDigest)
 {
-    int ret = 0;
+    int ret = 1;
     int hashOID = 0;
 
+    WOLFENGINE_ENTER("we_der_encode_digest");
+
     if (*encodedDigest == NULL) {
-        *encodedDigest = OPENSSL_malloc(MAX_DER_DIGEST_SZ);
+        *encodedDigest = (unsigned char *)OPENSSL_malloc(MAX_DER_DIGEST_SZ);
+        if (*encodedDigest == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", *encodedDigest);
+            ret = 0;
+        }
     }
-    ret = *encodedDigest != NULL;
+
     if (ret == 1) {
         hashOID = we_nid_to_wc_hash_oid(EVP_MD_type(md));
-        ret = hashOID > 0;
+        if (hashOID <= 0) {
+            WOLFENGINE_ERROR_FUNC("we_nid_to_wc_hash_oid", hashOID);
+            ret = 0;
+        }
     }
+
     if (ret == 1) {
         ret = wc_EncodeSignature(*encodedDigest, digest, (word32)digestLen,
                                  hashOID);
+        if (ret == 0) {
+            WOLFENGINE_ERROR_FUNC("wc_EncodeSignature", ret);
+        }
     }
+
+    WOLFENGINE_LEAVE("we_der_encode_digest", ret);
 
     return ret;
 }
@@ -197,17 +381,29 @@ static int der_encode_digest(const EVP_MD *md, const unsigned char *digest,
  */
 static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
 {
-    int ret = 0;
+    int ret = 1;
+    int rc = 0;
     unsigned char *privDer = NULL;
     int privDerLen = 0;
     word32 idx = 0;
 
+    WOLFENGINE_ENTER("we_set_private_key");
+
     privDerLen = i2d_RSAPrivateKey(rsaKey, &privDer);
-    ret = privDerLen >= 0;
-    if (ret == 1) {
-        ret = wc_RsaPrivateKeyDecode(privDer, &idx, &engineRsa->key,
-                                     privDerLen) == 0;
+    if (privDerLen == 0) {
+        WOLFENGINE_ERROR_FUNC("i2d_RSAPrivateKey", privDerLen);
+        ret = 0;
     }
+
+    if (ret == 1) {
+        rc = wc_RsaPrivateKeyDecode(privDer, &idx, &engineRsa->key,
+                                    privDerLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaPrivateKeyDecode", rc);
+            ret = 0;
+        }
+    }
+
     if (ret == 1) {
         engineRsa->privKeySet = 1;
     }
@@ -215,6 +411,8 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
     if (privDer != NULL) {
         OPENSSL_clear_free(privDer, privDerLen);
     }
+
+    WOLFENGINE_LEAVE("we_set_private_key", ret);
 
     return ret;
 }
@@ -230,54 +428,89 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
  * @param  tbsLen  [in]      Length of To Be Signed data.
  * @returns  1 on success and 0 on failure.
  */
-static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
-                       const unsigned char *tbs, size_t tbsLen)
+static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
+                            size_t *sigLen, const unsigned char *tbs,
+                            size_t tbsLen)
 {
-    int ret = 0;
+    int ret = 1;
     we_Rsa *rsa = NULL;
     EVP_PKEY *pkey = NULL;
     RSA *rsaKey = NULL;
     unsigned char *encodedDigest = NULL;
     int encodedDigestLen = 0;
+    size_t len;
     int actualSigLen = 0;
 
-    WOLFENGINE_MSG("RSA PKEY - Sign");
+    WOLFENGINE_ENTER("we_rsa_pkey_sign");
 
-    ret = (rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
+    rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
+    if (rsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", rsa);
+        ret = 0;
+    }
 
     /* Set up private key */
     if (ret == 1 && !rsa->privKeySet) {
-        ret = (pkey = EVP_PKEY_CTX_get0_pkey(ctx)) != NULL;
+        pkey = EVP_PKEY_CTX_get0_pkey(ctx);
+        if (pkey == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get0_pkey", pkey);
+            ret = 0;
+        }
         if (ret == 1) {
-            ret = (rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey)) != NULL;
+            rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey);
+            if (rsaKey == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_get0_RSA", rsaKey);
+                ret = 0;
+            }
         }
         if (ret == 1) {
             ret = we_set_private_key(rsaKey, rsa);
-        }
-    }
-    if (ret == 1 && sig == NULL) {
-        /* Return signature size in bytes. */
-        *sigLen = wc_SignatureGetSize(WC_SIGNATURE_TYPE_RSA, &rsa->key,
-                                      sizeof(rsa->key));
-    }
-    if (ret == 1 && sig != NULL) {
-        if (rsa->md != NULL) {
-            /* In this case, OpenSSL expects a proper PKCS #1 v1.5 signature. */
-            encodedDigestLen = der_encode_digest(rsa->md, tbs, tbsLen,
-                                                 &encodedDigest);
-            ret = encodedDigestLen > 0;
-            if (ret == 1) {
-                tbs = encodedDigest;
-                tbsLen = encodedDigestLen;
+            if (ret == 0) {
+                WOLFENGINE_ERROR_FUNC("we_set_private_key", ret);
             }
         }
+    }
 
-        if (ret == 1) {
-            actualSigLen = wc_RsaSSL_Sign(tbs, (word32)tbsLen, sig,
-                                          (word32)*sigLen, &rsa->key, we_rng);
-            ret = actualSigLen > 0;
+    if (ret == 1) {
+        if (sig == NULL) {
+            len = wc_SignatureGetSize(WC_SIGNATURE_TYPE_RSA, &rsa->key,
+                                      sizeof(rsa->key));
+            if (len <= 0) {
+                WOLFENGINE_ERROR_FUNC("wc_SignatureGetSize", len);
+                ret = 0;
+            }
+            else {
+                /* Return signature size in bytes. */
+                *sigLen = len;
+            }
+        }
+        else {
+            if (rsa->md != NULL) {
+                /* In this case, OpenSSL expects a proper PKCS #1 v1.5
+                   signature. */
+                encodedDigestLen = we_der_encode_digest(rsa->md, tbs, tbsLen,
+                                                        &encodedDigest);
+                if (encodedDigestLen == 0) {
+                    WOLFENGINE_ERROR_FUNC("we_der_encode_digest",
+                                          encodedDigestLen);
+                    ret = 0;
+                }
+                else {
+                    tbs = encodedDigest;
+                    tbsLen = encodedDigestLen;
+                }
+            }
             if (ret == 1) {
-                *sigLen = actualSigLen;
+                actualSigLen = wc_RsaSSL_Sign(tbs, (word32)tbsLen, sig,
+                                              (word32)*sigLen, &rsa->key,
+                                              we_rng);
+                if (actualSigLen <= 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaSSL_Sign", actualSigLen);
+                    ret = 0;
+                }
+                else {
+                    *sigLen = actualSigLen;
+                }
             }
         }
     }
@@ -285,6 +518,8 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLe
     if (encodedDigest != NULL) {
         OPENSSL_free(encodedDigest);
     }
+
+    WOLFENGINE_LEAVE("we_rsa_pkey_sign", ret);
 
     return ret;
 }
@@ -298,17 +533,29 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLe
  */
 static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
 {
-    int ret = 0;
+    int ret = 1;
+    int rc = 0;
     unsigned char *pubDer = NULL;
     int pubDerLen = 0;
     word32 idx = 0;
 
+    WOLFENGINE_ENTER("we_set_public_key");
+
     pubDerLen = i2d_RSAPublicKey(rsaKey, &pubDer);
-    ret = pubDerLen >= 0;
-    if (ret == 1) {
-        ret = wc_RsaPublicKeyDecode(pubDer, &idx, &engineRsa->key,
-                                    pubDerLen) == 0;
+    if (pubDerLen == 0) {
+        WOLFENGINE_ERROR_FUNC("i2d_RSAPublicKey", pubDerLen);
+        ret = 0;
     }
+
+    if (ret == 1) {
+        rc = wc_RsaPublicKeyDecode(pubDer, &idx, &engineRsa->key,
+                                   pubDerLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaPublicKeyDecode", rc);
+            ret = 0;
+        }
+    }
+
     if (ret == 1) {
         engineRsa->pubKeySet = 1;
     }
@@ -316,6 +563,8 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
     if (pubDer != NULL) {
         OPENSSL_free(pubDer);
     }
+
+    WOLFENGINE_LEAVE("we_set_public_key", ret);
 
     return ret;
 }
@@ -334,7 +583,8 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                          size_t sigLen, const unsigned char *tbs,
                          size_t tbsLen)
 {
-    int ret = 0;
+    int ret = 1;
+    int rc = 0;
     we_Rsa *rsa = NULL;
     EVP_PKEY *pkey = NULL;
     RSA *rsaKey = NULL;
@@ -342,40 +592,74 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     unsigned char *encodedDigest = NULL;
     size_t encodedDigestLen = 0;
 
-    WOLFENGINE_MSG("RSA PKEY - Verify");
+    WOLFENGINE_ENTER("we_rsa_pkey_verify");
 
-    ret = (rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
+    rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
+    if (rsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", rsa);
+        ret = 0;
+    }
 
+    /* Set up public key */
     if (ret == 1 && !rsa->pubKeySet) {
-        ret = (pkey = EVP_PKEY_CTX_get0_pkey(ctx)) != NULL;
+        pkey = EVP_PKEY_CTX_get0_pkey(ctx);
+        if (pkey == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get0_pkey", pkey);
+            ret = 0;
+        }
         if (ret == 1) {
-            ret = (rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey)) != NULL;
+            rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey);
+            if (rsaKey == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_get0_RSA", rsaKey);
+                ret = 0;
+            }
         }
         if (ret == 1) {
             ret = we_set_public_key(rsaKey, rsa);
+            if (ret == 0) {
+                WOLFENGINE_ERROR_FUNC("we_set_public_key", ret);
+            }
         }
     }
+
     if (ret == 1) {
-        decryptedSig = OPENSSL_malloc(MAX_DER_DIGEST_SZ);
-        ret = decryptedSig != NULL;
+        decryptedSig = (unsigned char *)OPENSSL_malloc(MAX_DER_DIGEST_SZ);
+        if (decryptedSig == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", decryptedSig);
+            ret = 0;
+        }
     }
+
     if (ret == 1) {
-        ret = wc_RsaSSL_Verify(sig, (word32)sigLen, decryptedSig,
-                               (word32)sigLen, &rsa->key) > 0;
+        rc = wc_RsaSSL_Verify(sig, (word32)sigLen, decryptedSig,
+                               (word32)sigLen, &rsa->key);
+        if (rc <= 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaSSL_Verify", rc);
+            ret = 0;
+        }
         if (ret == 1) {
             if (rsa->md != NULL) {
                 /* In this case, we have a proper DER-encoded signature, not
                    just arbitrary signed data, so we must compare with the
                    encoded digest. */
-                encodedDigestLen = der_encode_digest(rsa->md, tbs, tbsLen,
-                                                     &encodedDigest);
-                ret = encodedDigestLen > 0;
-                if (ret == 1) {
+                encodedDigestLen = we_der_encode_digest(rsa->md, tbs, tbsLen,
+                                                        &encodedDigest);
+                if (encodedDigestLen == 0) {
+                    WOLFENGINE_ERROR_FUNC("we_der_encode_digest",
+                                          encodedDigestLen);
+                    ret = 0;
+                }
+                else {
                     tbs = encodedDigest;
                     tbsLen = encodedDigestLen;
                 }
             }
-            ret = XMEMCMP(tbs, decryptedSig, tbsLen) == 0;
+
+            rc = XMEMCMP(tbs, decryptedSig, tbsLen);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC("XMEMCMP", rc);
+                ret = 0;
+            }
         }
     }
 
@@ -397,9 +681,14 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
  */
 int we_init_rsa_pkey_meth(void)
 {
-    int ret;
+    int ret = 1;
 
-    ret = (we_rsa_pkey_method = EVP_PKEY_meth_new(EVP_PKEY_RSA, 0)) != NULL;
+    we_rsa_pkey_method = EVP_PKEY_meth_new(EVP_PKEY_RSA, 0);
+    if (we_rsa_pkey_method == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_rsa_pkey_method);
+        ret = 0;
+    }
+
     if (ret == 1) {
         EVP_PKEY_meth_set_init(we_rsa_pkey_method, we_rsa_pkey_init);
         EVP_PKEY_meth_set_sign(we_rsa_pkey_method, NULL, we_rsa_pkey_sign);
@@ -407,8 +696,7 @@ int we_init_rsa_pkey_meth(void)
         EVP_PKEY_meth_set_cleanup(we_rsa_pkey_method, we_rsa_pkey_cleanup);
         EVP_PKEY_meth_set_ctrl(we_rsa_pkey_method, we_rsa_pkey_ctrl, NULL);
         EVP_PKEY_meth_set_copy(we_rsa_pkey_method, we_rsa_pkey_copy);
-        /* EVP_PKEY_meth_set_keygen(we_rsa_pkey_method, NULL, we_rsa_keygen);
-           EVP_PKEY_meth_set_derive(we_rsa_pkey_method, NULL, we_rsa_derive); */
+        EVP_PKEY_meth_set_keygen(we_rsa_pkey_method, NULL, we_rsa_pkey_keygen);
     }
 
     if (ret == 0 && we_rsa_pkey_method != NULL) {

@@ -55,7 +55,7 @@ int test_digest_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,
     }
 #endif
     if (err == 0) {
-        PRINT_BUFFER("Signture", sig, *sigLen);
+        PRINT_BUFFER("Signature", sig, *sigLen);
     }
 
     EVP_MD_CTX_free(mdCtx);
@@ -129,7 +129,7 @@ int test_pkey_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *hash,
         err = EVP_PKEY_sign(ctx, sig, sigLen, hash, hashLen) != 1;
     }
     if (err == 0) {
-        PRINT_BUFFER("Signture", sig, *sigLen);
+        PRINT_BUFFER("Signature", sig, *sigLen);
     }
     if (err == 0) {
         err = EVP_PKEY_sign_init(ctx) != 1;
@@ -139,7 +139,7 @@ int test_pkey_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *hash,
         err = EVP_PKEY_sign(ctx, sig, sigLen, hash, hashLen) != 1;
     }
     if (err == 0) {
-        PRINT_BUFFER("Signture", sig, *sigLen);
+        PRINT_BUFFER("Signature", sig, *sigLen);
     }
 
     EVP_PKEY_CTX_free(ctx);
