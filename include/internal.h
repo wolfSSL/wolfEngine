@@ -25,6 +25,10 @@
 /* OpenSSL 3.0.0 has deprecated the ENGINE API. */
 #define OPENSSL_API_COMPAT      10101
 
+#ifdef WOLFENGINE_USER_SETTINGS
+    #include "user_settings.h"
+#endif
+
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
