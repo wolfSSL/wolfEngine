@@ -56,6 +56,12 @@ AS_IF([test "$ax_enable_debug" = "yes"],
       [AM_CFLAGS="$DEBUG_CFLAGS $AM_CFLAGS"],
       [])
 
+# COVERAGE
+COVERAGE_CFLAGS="--coverage"
+AX_COVERAGE
+AS_IF([test "$ax_enable_coverage" = "yes"],
+      [AM_CFLAGS="$COVERAGE_CFLAGS $AM_CFLAGS"])
+
 # Dynamic engine support
 AC_ARG_ENABLE([dynamic-engine],
     [AS_HELP_STRING([--enable-dynamic-engine],[Enable loading wolfEngine as a dynamic engine (default: enabled).])],

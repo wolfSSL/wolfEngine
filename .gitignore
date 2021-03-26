@@ -31,11 +31,11 @@
 /*.trs
 /m4/libtool.m4
 /m4/lt*.m4
-/bench-bench.o
-/bench-openssl_bc.o
+/bench.o
 /bench
 /build-aux
 /src/*.o
+/src/*.lo
 /src/*.lo
 /src/.deps
 /src/.libs
@@ -45,3 +45,7 @@
 /test/.libs
 /test/.dirstamp
 /test/unit.test
+/test/unit.log
+/test/unit.trs
+*.gcno
+*.gcda
