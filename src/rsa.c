@@ -238,7 +238,6 @@ static int we_rsa_pub_enc(int flen, const unsigned char *from,
     int ret = 1;
     int rc = 0;
     we_Rsa *engineRsa = NULL;
-    word32 toLen;
 
     WOLFENGINE_ENTER("we_rsa_pub_enc");
 
@@ -285,13 +284,12 @@ static int we_rsa_pub_enc(int flen, const unsigned char *from,
                 }
                 break;
             case RSA_NO_PADDING:
-                toLen = RSA_size(rsa);
-                rc = wc_RsaDirect((byte*)from, flen, to, &toLen,
-                                  &engineRsa->key,
-                                  RSA_PUBLIC_ENCRYPT,
-                                  we_rng);
+                rc = wc_RsaPublicEncrypt_ex(from, flen, to, RSA_size(rsa),
+                                            &engineRsa->key, we_rng,
+                                            WC_RSA_NO_PAD, WC_HASH_TYPE_NONE, 0,
+                                            NULL, 0);
                 if (rc < 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_RsaDirect", rc);
+                    WOLFENGINE_ERROR_FUNC("wc_RsaPublicEncrypt_ex", rc);
                     ret = -1;
                 }
                 else {
@@ -325,7 +323,6 @@ static int we_rsa_priv_dec(int flen, const unsigned char *from,
     int ret = 1;
     int rc = 0;
     we_Rsa *engineRsa = NULL;
-    word32 toLen;
 
     WOLFENGINE_ENTER("we_rsa_priv_dec");
 
@@ -372,12 +369,11 @@ static int we_rsa_priv_dec(int flen, const unsigned char *from,
                 }
                 break;
             case RSA_NO_PADDING:
-                toLen = RSA_size(rsa);
-                rc = wc_RsaDirect((byte*)from, flen, to, &toLen, &engineRsa->key,
-                                  RSA_PRIVATE_DECRYPT,
-                                  we_rng);
+                rc = wc_RsaPrivateDecrypt_ex(from, flen, to, RSA_size(rsa),
+                                             &engineRsa->key, WC_RSA_NO_PAD,
+                                             WC_HASH_TYPE_NONE, 0, NULL, 0);
                 if (rc < 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_RsaDirect", rc);
+                    WOLFENGINE_ERROR_FUNC("wc_RsaPrivateDecrypt_ex", rc);
                     ret = -1;
                 }
                 else {
@@ -517,9 +513,8 @@ static int we_rsa_pub_dec(int flen, const unsigned char *from,
                 break;
             case RSA_NO_PADDING:
                 toLen = RSA_size(rsa);
-                rc = wc_RsaDirect((byte*)from, flen, to, &toLen, &engineRsa->key,
-                                  RSA_PUBLIC_DECRYPT,
-                                  we_rng);
+                rc = wc_RsaDirect((byte*)from, flen, to, &toLen,
+                                  &engineRsa->key, RSA_PUBLIC_DECRYPT, we_rng);
                 if (rc < 0) {
                     WOLFENGINE_ERROR_FUNC("wc_RsaDirect", rc);
                     ret = -1;

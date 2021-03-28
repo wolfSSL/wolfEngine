@@ -382,10 +382,10 @@ RSA_METHOD *RSA_meth_new(const char *name, int flags)
 
     if (meth != NULL) {
         meth->flags = flags;
-
-        meth->name = name;
-        if (meth->name != NULL)
+        if (name != NULL) {
+            meth->name = name;
             return meth;
+        }
     }
 
     return NULL;

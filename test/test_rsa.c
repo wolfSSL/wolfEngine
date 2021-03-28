@@ -223,6 +223,11 @@ int test_rsa_direct(ENGINE *e, void *data)
     if (err == 0) {
         err = RAND_bytes(noPaddingBuf, rsaSize) == 0;
     }
+    if (err == 0) {
+        /* Set the MSB to 0 so there's no chance the number is too large for the
+           RSA modulus. */
+        noPaddingBuf[0] = 0;
+    }
 
     if (err == 0) {
         testVectors[0] = (TestVector){RSA_PKCS1_PADDING, "RSA_PKCS1_PADDING",
@@ -230,8 +235,8 @@ int test_rsa_direct(ENGINE *e, void *data)
         testVectors[1] = (TestVector){RSA_PKCS1_OAEP_PADDING,
                                       "RSA_PKCS1_OAEP_PADDING", buf,
                                       sizeof(buf)};
-        /* OpenSSL requires the to/from buffers to be the same size when doing RSA
-           encrypt/decrypt with no padding. */
+        /* OpenSSL requires the to/from buffers to be the same size when doing
+           RSA encrypt/decrypt with no padding. */
         testVectors[2] = (TestVector){RSA_NO_PADDING, "RSA_NO_PADDING",
                                       noPaddingBuf, rsaSize};
     }
@@ -241,8 +246,8 @@ int test_rsa_direct(ENGINE *e, void *data)
             PRINT_MSG("Public encrypt with OpenSSL");
             PRINT_MSG(testVectors[i].padName);
             encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
-                                              testVectors[i].inBuf, encryptedBuf,
-                                              rsaOpenSSL,
+                                              testVectors[i].inBuf,
+                                              encryptedBuf, rsaOpenSSL,
                                               testVectors[i].padding);
             err = encryptedLen <= 0;
         }
@@ -264,8 +269,8 @@ int test_rsa_direct(ENGINE *e, void *data)
             PRINT_MSG("Public encrypt with wolfengine");
             PRINT_MSG(testVectors[i].padName);
             encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
-                                              testVectors[i].inBuf, encryptedBuf,
-                                              rsaWolfEngine,
+                                              testVectors[i].inBuf,
+                                              encryptedBuf, rsaWolfEngine,
                                               testVectors[i].padding);
             err = encryptedLen <= 0;
         }
@@ -274,6 +279,57 @@ int test_rsa_direct(ENGINE *e, void *data)
             decryptedLen = RSA_private_decrypt(encryptedLen, encryptedBuf,
                                                decryptedBuf, rsaOpenSSL,
                                                testVectors[i].padding);
+            err = decryptedLen <= 0;
+        }
+        if (err == 0) {
+            err = decryptedLen != testVectors[i].inBufLen;
+        }
+        if (err == 0) {
+            err = memcmp(decryptedBuf, testVectors[i].inBuf, decryptedLen) != 0;
+        }
+
+        if (testVectors[i].padding == RSA_PKCS1_OAEP_PADDING) {
+            /* OpenSSL doesn't support OAEP padding for private encrypt. */
+            continue;
+        }
+
+        if (err == 0) {
+            PRINT_MSG("Private encrypt with OpenSSL");
+            PRINT_MSG(testVectors[i].padName);
+            encryptedLen = RSA_private_encrypt(testVectors[i].inBufLen,
+                                               testVectors[i].inBuf,
+                                               encryptedBuf, rsaOpenSSL,
+                                               testVectors[i].padding);
+            err = encryptedLen <= 0;
+        }
+        if (err == 0) {
+            PRINT_MSG("Public decrypt with wolfengine");
+            decryptedLen = RSA_public_decrypt(encryptedLen, encryptedBuf,
+                                              decryptedBuf, rsaWolfEngine,
+                                              testVectors[i].padding);
+            err = decryptedLen <= 0;
+        }
+        if (err == 0) {
+            err = decryptedLen != testVectors[i].inBufLen;
+        }
+        if (err == 0) {
+            err = memcmp(decryptedBuf, testVectors[i].inBuf, decryptedLen) != 0;
+        }
+
+        if (err == 0) {
+            PRINT_MSG("Private encrypt with wolfengine");
+            PRINT_MSG(testVectors[i].padName);
+            encryptedLen = RSA_private_encrypt(testVectors[i].inBufLen,
+                                               testVectors[i].inBuf,
+                                               encryptedBuf, rsaWolfEngine,
+                                               testVectors[i].padding);
+            err = encryptedLen <= 0;
+        }
+        if (err == 0) {
+            PRINT_MSG("Public decrypt with OpenSSL");
+            decryptedLen = RSA_public_decrypt(encryptedLen, encryptedBuf,
+                                              decryptedBuf, rsaOpenSSL,
+                                              testVectors[i].padding);
             err = decryptedLen <= 0;
         }
         if (err == 0) {
