@@ -327,6 +327,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_RSA"
 fi
 
+# DH
+AC_ARG_ENABLE([dh],
+    [AS_HELP_STRING([--enable-dh],[Enable Diffie-Hellman (DH) (default: enabled)])],
+    [ ENABLED_DH=$enableval ],
+    [ ENABLED_DH=yes ]
+    )
+
+if test "$ENABLED_DH" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_DH"
+fi
+
 # ECC
 AC_ARG_ENABLE([ecc],
     [AS_HELP_STRING([--enable-ecc],[Enable ECC (default: enabled)])],
@@ -520,6 +532,7 @@ echo "   *  - SHA3-256:                $ENABLED_SHA3_256"
 echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
 echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
 echo "   * RSA:                        $ENABLED_RSA"
+echo "   * DH:                         $ENABLED_DH"
 echo "   * AES-GCM:                    $ENABLED_AESGCM"
 echo "   * AES-CBC:                    $ENABLED_AESCBC"
 echo "   * AES-CCM:                    $ENABLED_AESCCM"

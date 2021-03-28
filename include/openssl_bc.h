@@ -40,6 +40,7 @@
 #include <openssl/evp.h>
 #include <openssl/crypto.h>
 #include <openssl/ec.h>
+#include <openssl/dh.h>
 #include <openssl/rsa.h>
 
 #define EVP_CTRL_AEAD_GET_TAG   EVP_CTRL_GCM_GET_TAG
@@ -123,6 +124,14 @@ int RSA_meth_set_priv_dec(RSA_METHOD *meth,
                                            unsigned char *to, RSA *rsa,
                                            int padding));
 int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa));
+
+DH_METHOD *DH_meth_new(const char *name, int flags);
+void DH_meth_free(DH_METHOD *dhm);
+int DH_meth_set_generate_key(DH_METHOD *dhm, int (*generate_key) (DH *));
+int DH_meth_set_compute_key(DH_METHOD *dhm,
+        int (*compute_key) (unsigned char *key, const BIGNUM *pub_key, DH *dh));
+int DH_meth_set_init(DH_METHOD *dhm, int (*init)(DH *));
+int DH_meth_set_finish(DH_METHOD *dhm, int (*finish) (DH *));
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
