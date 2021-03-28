@@ -93,6 +93,26 @@ int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len);
 
 void RSA_get0_key(const RSA *r,
                   const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
+RSA_METHOD *RSA_meth_new(const char *name, int flags);
+void RSA_meth_free(RSA_METHOD *meth);
+int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa));
+int RSA_meth_set_pub_enc(RSA_METHOD *meth,
+                         int (*pub_enc) (int flen, const unsigned char *from,
+                                         unsigned char *to, RSA *rsa,
+                                         int padding));
+int RSA_meth_set_pub_dec(RSA_METHOD *meth,
+                         int (*pub_dec) (int flen, const unsigned char *from,
+                                         unsigned char *to, RSA *rsa,
+                                         int padding));
+int RSA_meth_set_priv_enc(RSA_METHOD *meth,
+                          int (*priv_enc) (int flen, const unsigned char *from,
+                                           unsigned char *to, RSA *rsa,
+                                           int padding));
+int RSA_meth_set_priv_dec(RSA_METHOD *meth,
+                          int (*priv_dec) (int flen, const unsigned char *from,
+                                           unsigned char *to, RSA *rsa,
+                                           int padding));
+int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa));
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 

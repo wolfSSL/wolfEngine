@@ -304,7 +304,7 @@ int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len)
 {
     BIGNUM *priv_key = NULL;
 
-    priv_key = BN_bin2bn(buf, len, priv_key);
+    priv_key = BN_bin2bn(buf, (int)len, priv_key);
     if (priv_key == NULL)
         return 0;
 
@@ -326,6 +326,76 @@ void RSA_get0_key(const RSA *r,
         *e = r->e;
     if (d != NULL)
         *d = r->d;
+}
+
+int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa))
+{
+    meth->init = init;
+    return 1;
+}
+
+int RSA_meth_set_pub_enc(RSA_METHOD *meth,
+                         int (*pub_enc) (int flen, const unsigned char *from,
+                                         unsigned char *to, RSA *rsa,
+                                         int padding))
+{
+    meth->rsa_pub_enc = pub_enc;
+    return 1;
+}
+
+int RSA_meth_set_pub_dec(RSA_METHOD *meth,
+                         int (*pub_dec) (int flen, const unsigned char *from,
+                                         unsigned char *to, RSA *rsa,
+                                         int padding))
+{
+    meth->rsa_pub_dec = pub_dec;
+    return 1;
+}
+
+int RSA_meth_set_priv_enc(RSA_METHOD *meth,
+                          int (*priv_enc) (int flen, const unsigned char *from,
+                                           unsigned char *to, RSA *rsa,
+                                           int padding))
+{
+    meth->rsa_priv_enc = priv_enc;
+    return 1;
+}
+
+int RSA_meth_set_priv_dec(RSA_METHOD *meth,
+                          int (*priv_dec) (int flen, const unsigned char *from,
+                                           unsigned char *to, RSA *rsa,
+                                           int padding))
+{
+    meth->rsa_priv_dec = priv_dec;
+    return 1;
+}
+
+int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa))
+{
+    meth->finish = finish;
+    return 1;
+}
+
+RSA_METHOD *RSA_meth_new(const char *name, int flags)
+{
+    RSA_METHOD *meth = OPENSSL_zalloc(sizeof(*meth));
+
+    if (meth != NULL) {
+        meth->flags = flags;
+
+        meth->name = name;
+        if (meth->name != NULL)
+            return meth;
+    }
+
+    return NULL;
+}
+
+void RSA_meth_free(RSA_METHOD *meth)
+{
+    if (meth != NULL) {
+        OPENSSL_free(meth);
+    }
 }
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */

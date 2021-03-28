@@ -23,8 +23,6 @@
 
 #ifdef WE_HAVE_RSA
 
-#ifdef WE_HAVE_EVP_PKEY
-
 static const unsigned char rsa_key_der_2048[] =
 {
     0x30, 0x82, 0x04, 0xA3, 0x02, 0x01, 0x00, 0x02, 0x82, 0x01,
@@ -148,6 +146,158 @@ static const unsigned char rsa_key_der_2048[] =
     0x83, 0x0B, 0xD4, 0x74, 0x80, 0xB6, 0x7D, 0x62, 0x45, 0xBF,
     0x56
 };
+
+int test_rsa_direct(ENGINE *e, void *data)
+{
+    int err = 0;
+    RSA *rsaWolfEngine = NULL;
+    RSA *rsaOpenSSL = NULL;
+    unsigned char buf[20];
+    unsigned char *noPaddingBuf;
+    unsigned char *encryptedBuf = NULL;
+    int encryptedLen = 0;
+    unsigned char *decryptedBuf = NULL;
+    int decryptedLen = 0;
+    const unsigned char *p = rsa_key_der_2048;
+    const RSA_METHOD *rsaMeth = NULL;
+    typedef struct {
+        int padding;
+        const char *padName;
+        unsigned char *inBuf;
+        int inBufLen;
+    } TestVector;
+    const int numTestVectors = 3;
+    TestVector testVectors[numTestVectors];
+    int i = 0;
+    int rsaSize = 0;
+
+    (void)data;
+
+    /* Set up wolfEngine and OpenSSL RSA methods. */
+    rsaWolfEngine = RSA_new();
+    rsaOpenSSL = RSA_new();
+    err = rsaWolfEngine == NULL || rsaOpenSSL == NULL;
+    if (err == 0) {
+        rsaWolfEngine = d2i_RSAPrivateKey(&rsaWolfEngine, &p,
+                                          sizeof(rsa_key_der_2048));
+        err = rsaWolfEngine == NULL;
+    }
+    if (err == 0) {
+        p = rsa_key_der_2048;
+        rsaOpenSSL = d2i_RSAPrivateKey(&rsaOpenSSL, &p,
+                                       sizeof(rsa_key_der_2048));
+        err = rsaOpenSSL == NULL;
+    }
+    if (err == 0) {
+        rsaMeth = ENGINE_get_RSA(e);
+        err = rsaMeth == NULL;
+    }
+    if (err == 0) {
+        err = RSA_set_method(rsaWolfEngine, rsaMeth) != 1;
+    }
+    if (err == 0) {
+        rsaMeth = RSA_get_default_method();
+        err = rsaMeth == NULL;
+    }
+    if (err == 0) {
+        err = RSA_set_method(rsaOpenSSL, rsaMeth) != 1;
+    }
+
+    /* Set up buffers. */
+    rsaSize = RSA_size(rsaWolfEngine);
+    if (err == 0) {
+        err = RAND_bytes(buf, sizeof(buf)) == 0;
+    }
+    if (err == 0) {
+        encryptedBuf = OPENSSL_malloc(rsaSize);
+        err = encryptedBuf == NULL;
+    }
+    if (err == 0) {
+        decryptedBuf = OPENSSL_malloc(rsaSize);
+        err = decryptedBuf == NULL;
+    }
+    if (err == 0) {
+        noPaddingBuf = OPENSSL_malloc(rsaSize);
+        err = noPaddingBuf == NULL;
+    }
+    if (err == 0) {
+        err = RAND_bytes(noPaddingBuf, rsaSize) == 0;
+    }
+
+    if (err == 0) {
+        testVectors[0] = (TestVector){RSA_PKCS1_PADDING, "RSA_PKCS1_PADDING",
+                                      buf, sizeof(buf)};
+        testVectors[1] = (TestVector){RSA_PKCS1_OAEP_PADDING,
+                                      "RSA_PKCS1_OAEP_PADDING", buf,
+                                      sizeof(buf)};
+        /* OpenSSL requires the to/from buffers to be the same size when doing RSA
+           encrypt/decrypt with no padding. */
+        testVectors[2] = (TestVector){RSA_NO_PADDING, "RSA_NO_PADDING",
+                                      noPaddingBuf, rsaSize};
+    }
+
+    for (; err == 0 && i < numTestVectors; ++i) {
+        if (err == 0) {
+            PRINT_MSG("Public encrypt with OpenSSL");
+            PRINT_MSG(testVectors[i].padName);
+            encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
+                                              testVectors[i].inBuf, encryptedBuf,
+                                              rsaOpenSSL,
+                                              testVectors[i].padding);
+            err = encryptedLen <= 0;
+        }
+        if (err == 0) {
+            PRINT_MSG("Private decrypt with wolfengine");
+            decryptedLen = RSA_private_decrypt(encryptedLen, encryptedBuf,
+                                               decryptedBuf, rsaWolfEngine,
+                                               testVectors[i].padding);
+            err = decryptedLen <= 0;
+        }
+        if (err == 0) {
+            err = decryptedLen != testVectors[i].inBufLen;
+        }
+        if (err == 0) {
+            err = memcmp(decryptedBuf, testVectors[i].inBuf, decryptedLen) != 0;
+        }
+
+        if (err == 0) {
+            PRINT_MSG("Public encrypt with wolfengine");
+            PRINT_MSG(testVectors[i].padName);
+            encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
+                                              testVectors[i].inBuf, encryptedBuf,
+                                              rsaWolfEngine,
+                                              testVectors[i].padding);
+            err = encryptedLen <= 0;
+        }
+        if (err == 0) {
+            PRINT_MSG("Private decrypt with OpenSSL");
+            decryptedLen = RSA_private_decrypt(encryptedLen, encryptedBuf,
+                                               decryptedBuf, rsaOpenSSL,
+                                               testVectors[i].padding);
+            err = decryptedLen <= 0;
+        }
+        if (err == 0) {
+            err = decryptedLen != testVectors[i].inBufLen;
+        }
+        if (err == 0) {
+            err = memcmp(decryptedBuf, testVectors[i].inBuf, decryptedLen) != 0;
+        }
+    }
+
+    RSA_free(rsaWolfEngine);
+    RSA_free(rsaOpenSSL);
+
+    if (encryptedBuf)
+        OPENSSL_free(encryptedBuf);
+    if (decryptedBuf)
+        OPENSSL_free(decryptedBuf);
+    if (noPaddingBuf)
+        OPENSSL_free(noPaddingBuf);
+
+    return err;
+}
+
+#ifdef WE_HAVE_EVP_PKEY
 
 int test_rsa_sign_verify(ENGINE *e, void *data)
 {

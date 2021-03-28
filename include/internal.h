@@ -99,8 +99,9 @@ int we_init_aesgcm_meths(void);
 #ifdef WE_HAVE_RSA
 
 extern EVP_PKEY_METHOD *we_rsa_pkey_method;
-
 int we_init_rsa_pkey_meth(void);
+extern RSA_METHOD *we_rsa_method;
+int we_init_rsa_meth(void);
 
 #endif /* WE_HAVE_RSA */
 
