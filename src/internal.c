@@ -475,6 +475,9 @@ static int wolfengine_init(ENGINE *e)
     }
 #endif
 #ifdef WE_HAVE_RSA
+    if (ret == 1) {
+        ret = we_init_rsa_meth();
+    }
 #ifdef WE_HAVE_EVP_PKEY
     if (ret == 1) {
         ret = we_init_rsa_pkey_meth();
@@ -511,6 +514,10 @@ static int wolfengine_destroy(ENGINE *e)
 
     (void)e;
 
+#ifdef WE_HAVE_RSA
+    RSA_meth_free(we_rsa_method);
+    we_rsa_method = NULL;
+#endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_ECC
     /* we_ec_method is freed by OpenSSL_cleanup(). */
 #ifdef WE_HAVE_EC_KEY
@@ -669,6 +676,18 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
     return ret;
 }
 
+#ifdef WE_HAVE_RSA
+/**
+ * Return the RSA method.
+ *
+ * @return  Pointer to the RSA method.
+ */
+static const RSA_METHOD *we_rsa(void)
+{
+    return we_rsa_method;
+}
+#endif /* WE_HAVE_RSA */
+
 /**
  * Bind the wolfengine into an engine object.
  *
@@ -700,6 +719,11 @@ int wolfengine_bind(ENGINE *e, const char *id)
     if (ret == 1 && ENGINE_set_ciphers(e, we_ciphers) == 0) {
         ret = 0;
     }
+#ifdef WE_HAVE_RSA
+    if (ret == 1 && ENGINE_set_RSA(e, we_rsa()) == 0) {
+        ret = 0;
+    }
+#endif
 #ifdef WE_HAVE_EVP_PKEY
     if (ret == 1 && ENGINE_set_pkey_meths(e, we_pkey) == 0) {
         ret = 0;

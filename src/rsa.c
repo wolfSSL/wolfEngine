@@ -43,7 +43,7 @@ typedef struct we_Rsa
     /* Padding mode */
     int padMode;
     /* The public exponent ("e"). */
-    int pubExp;
+    long pubExp;
     /* The key/modulus size in bits. */
     int bits;
     /* Indicates private key has been set into wolfSSL structure. */
@@ -51,6 +51,524 @@ typedef struct we_Rsa
     /* Indicates public key has been set into wolfSSL structure. */
     int pubKeySet:1;
 } we_Rsa;
+
+/** RSA direct method - RSA using wolfSSL for the implementation. */
+RSA_METHOD *we_rsa_method = NULL;
+
+/**
+ * Set the public key in a we_Rsa structure.
+ *
+ * @param  ctx     [in]  Public key context of operation.
+ * @param  rsa     [in]  RSA structure to hold public key.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
+{
+    int ret = 1;
+    int rc = 0;
+    unsigned char *pubDer = NULL;
+    int pubDerLen = 0;
+    word32 idx = 0;
+
+    WOLFENGINE_ENTER("we_set_public_key");
+
+    pubDerLen = i2d_RSAPublicKey(rsaKey, &pubDer);
+    if (pubDerLen == 0) {
+        WOLFENGINE_ERROR_FUNC("i2d_RSAPublicKey", pubDerLen);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        rc = wc_RsaPublicKeyDecode(pubDer, &idx, &engineRsa->key,
+                                   pubDerLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaPublicKeyDecode", rc);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        engineRsa->pubKeySet = 1;
+    }
+
+    if (pubDer != NULL) {
+        OPENSSL_free(pubDer);
+    }
+
+    WOLFENGINE_LEAVE("we_set_public_key", ret);
+
+    return ret;
+}
+
+/**
+ * Set the private key in a we_Rsa structure.
+ *
+ * @param  ctx     [in]  Public key context of operation.
+ * @param  rsa     [in]  RSA structure to hold private key.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
+{
+    int ret = 1;
+    int rc = 0;
+    unsigned char *privDer = NULL;
+    int privDerLen = 0;
+    word32 idx = 0;
+
+    WOLFENGINE_ENTER("we_set_private_key");
+
+    privDerLen = i2d_RSAPrivateKey(rsaKey, &privDer);
+    if (privDerLen == 0) {
+        WOLFENGINE_ERROR_FUNC("i2d_RSAPrivateKey", privDerLen);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        rc = wc_RsaPrivateKeyDecode(privDer, &idx, &engineRsa->key,
+                                    privDerLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaPrivateKeyDecode", rc);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        engineRsa->privKeySet = 1;
+    }
+
+    if (privDer != NULL) {
+        OPENSSL_clear_free(privDer, privDerLen);
+    }
+
+    WOLFENGINE_LEAVE("we_set_private_key", ret);
+
+    return ret;
+}
+
+/**
+ * Initialize and set the data required to complete an RSA operation.
+ *
+ * @param  rsa  [in]  RSA context of operation.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_rsa_init(RSA *rsa)
+{
+    int ret = 1;
+    int rc = 0;
+    we_Rsa *engineRsa;
+
+    WOLFENGINE_ENTER("we_rsa_init");
+
+    engineRsa = (we_Rsa *)OPENSSL_zalloc(sizeof(we_Rsa));
+    if (engineRsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", engineRsa);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        rc = wc_InitRsaKey(&engineRsa->key, NULL);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_InitRsaKey", rc);
+            ret = 0;
+        }
+    }
+
+#ifdef WC_RSA_BLINDING
+    if (ret == 1) {
+        rc = wc_RsaSetRNG(&engineRsa->key, we_rng);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaSetRNG", rc);
+            ret = 0;
+        }
+    }
+#endif /* WC_RSA_BLINDING */
+
+    if (ret == 1) {
+        rc = RSA_set_app_data(rsa, engineRsa);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC("RSA_set_app_data", rc);
+            ret = 0;
+        }
+    }
+
+    if (ret == 0 && engineRsa != NULL) {
+        OPENSSL_free(engineRsa);
+    }
+
+    return ret;
+}
+
+/**
+ * Clean up the RSA operation data.
+ *
+ * @param  rsa  [in]  RSA context of operation.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_rsa_finish(RSA *rsa)
+{
+    we_Rsa *engineRsa;
+
+    WOLFENGINE_ENTER("we_rsa_finish");
+
+    engineRsa = RSA_get_app_data(rsa);
+    if (engineRsa != NULL) {
+        wc_FreeRsaKey(&engineRsa->key);
+        OPENSSL_free(engineRsa);
+        RSA_set_app_data(rsa, NULL);
+    }
+
+    WOLFENGINE_LEAVE("we_rsa_finish", 1);
+
+    return 1;
+}
+
+/**
+ * Perform an RSA public encryption operation.
+ *
+ * @param  flen     [in]   Length of buffer to encrypt.
+ * @param  from     [in]   Buffer to encrypt.
+ * @param  to       [out]  Buffer to place ciphertext in.
+ * @param  rsa      [in]   RSA context of operation.
+ * @param  padding  [in]   Type of padding to use.
+ * @returns  Length of ciphertext on success and -1 on failure.
+ */
+static int we_rsa_pub_enc(int flen, const unsigned char *from,
+                          unsigned char *to, RSA *rsa, int padding)
+{
+    int ret = 1;
+    int rc = 0;
+    we_Rsa *engineRsa = NULL;
+
+    WOLFENGINE_ENTER("we_rsa_pub_enc");
+
+    engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
+    if (engineRsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        ret = -1;
+    }
+
+    if (ret == 1 && !engineRsa->pubKeySet) {
+        rc = we_set_public_key(rsa, engineRsa);
+        if (rc == 0) {
+            WOLFENGINE_ERROR_FUNC("we_set_public_key", rc);
+            ret = -1;
+        }
+    }
+
+    if (ret == 1) {
+        switch (padding) {
+            case RSA_PKCS1_PADDING:
+                /* PKCS 1 v1.5 padding using block type 2. */
+                rc = wc_RsaPublicEncrypt(from, flen, to, RSA_size(rsa),
+                                         &engineRsa->key, we_rng);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaPublicEncrypt", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            case RSA_PKCS1_OAEP_PADDING:
+                /* OAEP padding using SHA-1, MGF1. */
+                rc = wc_RsaPublicEncrypt_ex(from, flen, to, RSA_size(rsa),
+                                            &engineRsa->key, we_rng,
+                                            WC_RSA_OAEP_PAD, WC_HASH_TYPE_SHA,
+                                            WC_MGF1SHA1, NULL, 0);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaPublicEncrypt_ex", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            case RSA_NO_PADDING:
+                rc = wc_RsaPublicEncrypt_ex(from, flen, to, RSA_size(rsa),
+                                            &engineRsa->key, we_rng,
+                                            WC_RSA_NO_PAD, WC_HASH_TYPE_NONE, 0,
+                                            NULL, 0);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaPublicEncrypt_ex", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            default:
+                WOLFENGINE_ERROR_MSG("we_rsa_pub_enc: unknown padding");
+                ret = -1;
+        }
+    }
+
+    WOLFENGINE_LEAVE("we_rsa_pub_enc", ret);
+
+    return ret;
+}
+
+/**
+ * Perform an RSA private decryption operation.
+ *
+ * @param  flen     [in]   Length of buffer to decrypt.
+ * @param  from     [in]   Buffer to decrypt.
+ * @param  to       [out]  Buffer to place plaintext in.
+ * @param  rsa      [in]   RSA context of operation.
+ * @param  padding  [in]   Type of padding to use.
+ * @returns  Length of plaintext on success and -1 on failure.
+ */
+static int we_rsa_priv_dec(int flen, const unsigned char *from,
+                           unsigned char *to, RSA *rsa, int padding)
+{
+    int ret = 1;
+    int rc = 0;
+    we_Rsa *engineRsa = NULL;
+
+    WOLFENGINE_ENTER("we_rsa_priv_dec");
+
+    engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
+    if (engineRsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        ret = -1;
+    }
+
+    if (ret == 1 && !engineRsa->privKeySet) {
+        rc = we_set_private_key(rsa, engineRsa);
+        if (rc == 0) {
+            WOLFENGINE_ERROR_FUNC("we_set_private_key", rc);
+            ret = -1;
+        }
+    }
+
+    if (ret == 1) {
+        switch (padding) {
+            case RSA_PKCS1_PADDING:
+                /* PKCS 1 v1.5 padding using block type 2. */
+                rc = wc_RsaPrivateDecrypt(from, flen, to, RSA_size(rsa),
+                                           &engineRsa->key);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaPrivateDecrypt", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            case RSA_PKCS1_OAEP_PADDING:
+                /* OAEP padding using SHA-1, MGF1. */
+                rc = wc_RsaPrivateDecrypt_ex(from, flen, to, RSA_size(rsa),
+                                              &engineRsa->key,  WC_RSA_OAEP_PAD,
+                                              WC_HASH_TYPE_SHA, WC_MGF1SHA1,
+                                              NULL, 0);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaPrivateDecrypt_ex", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            case RSA_NO_PADDING:
+                rc = wc_RsaPrivateDecrypt_ex(from, flen, to, RSA_size(rsa),
+                                             &engineRsa->key, WC_RSA_NO_PAD,
+                                             WC_HASH_TYPE_NONE, 0, NULL, 0);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaPrivateDecrypt_ex", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            default:
+                WOLFENGINE_ERROR_MSG("we_rsa_priv_dec: unknown padding");
+                ret = -1;
+        }
+    }
+
+    WOLFENGINE_LEAVE("we_rsa_priv_dec", ret);
+
+    return ret;
+}
+
+/**
+ * Perform an RSA private encryption operation.
+ *
+ * @param  flen     [in]   Length of buffer to encrypt.
+ * @param  from     [in]   Buffer to encrypt.
+ * @param  to       [out]  Buffer to place ciphertext in.
+ * @param  rsa      [in]   RSA context of operation.
+ * @param  padding  [in]   Type of padding to use.
+ * @returns  Length of ciphertext on success and -1 on failure.
+ */
+static int we_rsa_priv_enc(int flen, const unsigned char *from,
+                           unsigned char *to, RSA *rsa, int padding)
+{
+    int ret = 1;
+    int rc = 0;
+    we_Rsa *engineRsa = NULL;
+    word32 toLen;
+
+    WOLFENGINE_ENTER("we_rsa_priv_enc");
+
+    engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
+    if (engineRsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        ret = -1;
+    }
+
+    if (ret == 1 && !engineRsa->pubKeySet) {
+        rc = we_set_public_key(rsa, engineRsa);
+        if (rc == 0) {
+            WOLFENGINE_ERROR_FUNC("we_set_public_key", rc);
+            ret = -1;
+        }
+    }
+
+    if (ret == 1) {
+        switch (padding) {
+            case RSA_PKCS1_PADDING:
+                /* PKCS 1 v1.5 padding using block type 1. */
+                rc = wc_RsaSSL_Sign(from, flen, to, RSA_size(rsa),
+                                    &engineRsa->key, we_rng);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaSSL_Sign", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            case RSA_NO_PADDING:
+                toLen = RSA_size(rsa);
+                rc = wc_RsaDirect((byte*)from, flen, to, &toLen, &engineRsa->key,
+                                  RSA_PRIVATE_ENCRYPT,
+                                  we_rng);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaDirect", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            default:
+                WOLFENGINE_ERROR_MSG("we_rsa_priv_enc: unknown padding");
+                ret = -1;
+        }
+    }
+
+    WOLFENGINE_LEAVE("we_rsa_priv_enc", ret);
+
+    return ret;
+}
+
+/**
+ * Perform an RSA public decryption operation.
+ *
+ * @param  flen     [in]   Length of buffer to decrypt.
+ * @param  from     [in]   Buffer to decrypt.
+ * @param  to       [out]  Buffer to place plaintext in.
+ * @param  rsa      [in]   RSA context of operation.
+ * @param  padding  [in]   Type of padding to use.
+ * @returns  Length of plaintext on success and -1 on failure.
+ */
+static int we_rsa_pub_dec(int flen, const unsigned char *from,
+                           unsigned char *to, RSA *rsa, int padding)
+{
+    int ret = 1;
+    int rc = 0;
+    we_Rsa *engineRsa = NULL;
+    word32 toLen;
+
+    WOLFENGINE_ENTER("we_rsa_pub_dec");
+
+    engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
+    if (engineRsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        ret = -1;
+    }
+
+    if (ret == 1 && !engineRsa->pubKeySet) {
+        rc = we_set_public_key(rsa, engineRsa);
+        if (rc == 0) {
+            WOLFENGINE_ERROR_FUNC("we_set_public_key", rc);
+            ret = -1;
+        }
+    }
+
+    if (ret == 1) {
+        switch (padding) {
+            case RSA_PKCS1_PADDING:
+                /* PKCS 1 v1.5 padding using block type 1. */
+                rc = wc_RsaSSL_Verify(from, flen, to, RSA_size(rsa),
+                                      &engineRsa->key);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaSSL_Verify", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            case RSA_NO_PADDING:
+                toLen = RSA_size(rsa);
+                rc = wc_RsaDirect((byte*)from, flen, to, &toLen,
+                                  &engineRsa->key, RSA_PUBLIC_DECRYPT, we_rng);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC("wc_RsaDirect", rc);
+                    ret = -1;
+                }
+                else {
+                    ret = rc;
+                }
+                break;
+            default:
+                WOLFENGINE_ERROR_MSG("we_rsa_pub_dec: unknown padding");
+                ret = -1;
+        }
+    }
+
+    WOLFENGINE_LEAVE("we_rsa_pub_dec", ret);
+
+    return ret;
+}
+
+/**
+ * Initialize the RSA method.
+ *
+ * @return  1 on success and 0 on failure.
+ */
+int we_init_rsa_meth(void)
+{
+    int ret = 1;
+
+    WOLFENGINE_ENTER("we_init_rsa_meth");
+
+    we_rsa_method = RSA_meth_new("wolfengine_rsa", 0);
+    if (we_rsa_method == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("RSA_meth_new", we_rsa_method);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        RSA_meth_set_init(we_rsa_method, we_rsa_init);
+        RSA_meth_set_pub_enc(we_rsa_method, we_rsa_pub_enc);
+        RSA_meth_set_pub_dec(we_rsa_method, we_rsa_pub_dec);
+        RSA_meth_set_priv_enc(we_rsa_method, we_rsa_priv_enc);
+        RSA_meth_set_priv_dec(we_rsa_method, we_rsa_priv_dec);
+        RSA_meth_set_finish(we_rsa_method, we_rsa_finish);
+    }
+
+    if (ret == 0 && we_rsa_method != NULL) {
+        RSA_meth_free(we_rsa_method);
+        we_rsa_method = NULL;
+    }
+
+    WOLFENGINE_LEAVE("we_init_rsa_meth", ret);
+
+    return ret;
+}
 
 #ifdef WE_HAVE_EVP_PKEY
 
@@ -250,7 +768,6 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     int ret = 1;
     we_Rsa *rsa = NULL;
     BIGNUM* bn = NULL;
-    char *bnDec = NULL;
     long e;
 
     WOLFENGINE_ENTER("we_rsa_pkey_ctrl");
@@ -316,10 +833,6 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         }
     }
     
-    if (bnDec != NULL) {
-        OPENSSL_free(bnDec);
-    }
-
     WOLFENGINE_LEAVE("we_rsa_pkey_ctrl", ret);
 
     return ret;
@@ -373,51 +886,6 @@ static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
 }
 
 /**
- * Set the private key in a we_Rsa structure.
- *
- * @param  ctx     [in]  Public key context of operation.
- * @param  rsa     [in]  RSA structure to hold private key.
- * @returns  1 on success and 0 on failure.
- */
-static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
-{
-    int ret = 1;
-    int rc = 0;
-    unsigned char *privDer = NULL;
-    int privDerLen = 0;
-    word32 idx = 0;
-
-    WOLFENGINE_ENTER("we_set_private_key");
-
-    privDerLen = i2d_RSAPrivateKey(rsaKey, &privDer);
-    if (privDerLen == 0) {
-        WOLFENGINE_ERROR_FUNC("i2d_RSAPrivateKey", privDerLen);
-        ret = 0;
-    }
-
-    if (ret == 1) {
-        rc = wc_RsaPrivateKeyDecode(privDer, &idx, &engineRsa->key,
-                                    privDerLen);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RsaPrivateKeyDecode", rc);
-            ret = 0;
-        }
-    }
-
-    if (ret == 1) {
-        engineRsa->privKeySet = 1;
-    }
-
-    if (privDer != NULL) {
-        OPENSSL_clear_free(privDer, privDerLen);
-    }
-
-    WOLFENGINE_LEAVE("we_set_private_key", ret);
-
-    return ret;
-}
-
-/**
  * Sign data with a private RSA key.
  *
  * @param  ctx     [in]      Public key context of operation.
@@ -438,7 +906,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     RSA *rsaKey = NULL;
     unsigned char *encodedDigest = NULL;
     int encodedDigestLen = 0;
-    size_t len;
+    int len;
     int actualSigLen = 0;
 
     WOLFENGINE_ENTER("we_rsa_pkey_sign");
@@ -525,51 +993,6 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
 }
 
 /**
- * Set the public key in a we_Rsa structure.
- *
- * @param  ctx     [in]  Public key context of operation.
- * @param  rsa     [in]  RSA structure to hold public key.
- * @returns  1 on success and 0 on failure.
- */
-static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
-{
-    int ret = 1;
-    int rc = 0;
-    unsigned char *pubDer = NULL;
-    int pubDerLen = 0;
-    word32 idx = 0;
-
-    WOLFENGINE_ENTER("we_set_public_key");
-
-    pubDerLen = i2d_RSAPublicKey(rsaKey, &pubDer);
-    if (pubDerLen == 0) {
-        WOLFENGINE_ERROR_FUNC("i2d_RSAPublicKey", pubDerLen);
-        ret = 0;
-    }
-
-    if (ret == 1) {
-        rc = wc_RsaPublicKeyDecode(pubDer, &idx, &engineRsa->key,
-                                   pubDerLen);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RsaPublicKeyDecode", rc);
-            ret = 0;
-        }
-    }
-
-    if (ret == 1) {
-        engineRsa->pubKeySet = 1;
-    }
-
-    if (pubDer != NULL) {
-        OPENSSL_free(pubDer);
-    }
-
-    WOLFENGINE_LEAVE("we_set_public_key", ret);
-
-    return ret;
-}
-
-/**
  * Verify data with a public RSA key.
  *
  * @param  ctx     [in]  Public key context of operation.
@@ -590,7 +1013,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     RSA *rsaKey = NULL;
     unsigned char *decryptedSig = NULL;
     unsigned char *encodedDigest = NULL;
-    size_t encodedDigestLen = 0;
+    int encodedDigestLen = 0;
 
     WOLFENGINE_ENTER("we_rsa_pkey_verify");
 
