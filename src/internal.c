@@ -136,11 +136,9 @@ int we_nid_to_wc_hash_oid(int nid)
 
     WOLFENGINE_ENTER("we_nid_to_wc_hash_oid");
 
-    printf("looking for nid %d\n", nid);
     switch (nid) {
 #ifdef WE_HAVE_SHA1
         case NID_sha1:
-            printf("use sha2 hash type\n");
             hashType = WC_HASH_TYPE_SHA;
             break;
 #endif

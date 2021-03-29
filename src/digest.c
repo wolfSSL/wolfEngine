@@ -54,7 +54,7 @@ static int we_sha_init(EVP_MD_CTX *ctx)
  * Digest some more data with SHA-1 using wolfSSL.
  *
  * @param  ctx   [in]  EVP digest context of operation.
- * @param  data  [in]  More data to digest with SHA-256.
+ * @param  data  [in]  More data to digest with SHA-1.
  * @param  len   [in]  Length of data to digest.
  * @return  1 on success and 0 on failure.
  */
@@ -115,7 +115,7 @@ static int we_sha_cleanup(EVP_MD_CTX *ctx)
 
     wc_ShaFree((wc_Sha*)EVP_MD_CTX_md_data(ctx));
 
-    WOLFENGINE_LEAVE("we_sha_cleanup");
+    WOLFENGINE_LEAVE("we_sha_cleanup", 1);
     return 1;
 }
 
@@ -258,7 +258,7 @@ static int we_sha256_cleanup(EVP_MD_CTX *ctx)
 
     wc_Sha256Free((wc_Sha256*)EVP_MD_CTX_md_data(ctx));
 
-    WOLFENGINE_LEAVE("we_sha256_cleanup");
+    WOLFENGINE_LEAVE("we_sha256_cleanup", 1);
     return 1;
 }
 
