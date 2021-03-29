@@ -304,7 +304,7 @@ int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len)
 {
     BIGNUM *priv_key = NULL;
 
-    priv_key = BN_bin2bn(buf, len, priv_key);
+    priv_key = BN_bin2bn(buf, (int)len, priv_key);
     if (priv_key == NULL)
         return 0;
 
@@ -312,7 +312,7 @@ int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len)
         BN_free(priv_key);
         return 0;
     }
-    
+
     BN_free(priv_key);
     return 1;
 }

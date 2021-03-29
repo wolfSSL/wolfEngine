@@ -40,10 +40,10 @@ typedef struct we_Rsa
     RsaKey key;
     /* Stored by control command EVP_PKEY_CTRL_MD. */
     EVP_MD *md;
+    /* The public exponent ("e"). */
+    long pubExp;
     /* Padding mode */
     int padMode;
-    /* The public exponent ("e"). */
-    int pubExp;
     /* The key/modulus size in bits. */
     int bits;
     /* Indicates private key has been set into wolfSSL structure. */
