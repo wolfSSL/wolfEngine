@@ -117,6 +117,22 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_SHA512"
 fi
 
+AC_ARG_ENABLE([sha],
+    [AS_HELP_STRING([--enable-sha],[Enable SHA1 (default: enabled)])],
+    [ ENABLED_SHA1=$enableval ],
+    [ ENABLED_SHA1=yes ]
+    )
+
+if test "$ENABLED_SHA1" = "yes"
+then
+    ENABLED_DIGEST="yes"
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_SHA1"
+    if test "$ENABLED_HASH" = "no"
+    then
+        AM_CFLAGS="$AM_CFLAGS -DWE_SHA1_DIRECT"
+    fi
+fi
+
 AC_ARG_ENABLE([sha256],
     [AS_HELP_STRING([--enable-sha256],[Enable SHA256 (default: enabled)])],
     [ ENABLED_SHA256=$enableval ],
@@ -432,6 +448,7 @@ echo "   Features "
 echo "   * User settings:              $ENABLED_USERSETTINGS"
 echo "   * Dynamic engine:             $ENABLED_DYNAMIC_ENGINE"
 echo "   * Digest:"
+echo "   *  - SHA-1:                   $ENABLED_SHA1"
 echo "   *  - SHA-256:                 $ENABLED_SHA256"
 echo "   *  - SHA-384:                 $ENABLED_SHA384"
 echo "   *  - SHA-512:                 $ENABLED_SHA512"

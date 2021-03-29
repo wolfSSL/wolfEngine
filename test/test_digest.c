@@ -70,6 +70,43 @@ int test_digest_op(const EVP_MD *md, ENGINE *e, unsigned char *msg,
 
 /******************************************************************************/
 
+#ifdef WE_HAVE_SHA1
+
+int test_sha(ENGINE *e, void *data)
+{
+    int err = 0;
+    const EVP_MD *md = EVP_sha1();
+    unsigned char *msg = (unsigned char *)"Test pattern";
+    unsigned char longMsg[1300];
+    unsigned char digest[32];
+    unsigned int dLen;
+
+    (void)data;
+
+    RAND_bytes(longMsg, sizeof(longMsg));
+
+    dLen = 0;
+    PRINT_MSG("Digest with OpenSSL");
+    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
+    if (err == 0) {
+        PRINT_MSG("Digest With wolfengine");
+        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
+    }
+    if (err == 0) {
+        dLen = 0;
+        PRINT_MSG("Digest with OpenSSL");
+        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Digest With wolfengine");
+        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+
+    return err;
+}
+
+#endif /* WE_HAVE_SHA1 */
+
 #ifdef WE_HAVE_SHA256
 
 int test_sha256(ENGINE *e, void *data)

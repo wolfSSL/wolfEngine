@@ -35,6 +35,7 @@
 
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/hash.h>
+#include <wolfssl/wolfcrypt/sha.h>
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/aes.h>
 #include <wolfssl/wolfcrypt/rsa.h>
@@ -58,6 +59,9 @@ int we_pkey_get_nids(const int** nids);
 /*
  * Digest methods.
  */
+
+extern EVP_MD *we_sha1_md;
+int we_init_sha_meth(void);
 
 extern EVP_MD *we_sha256_md;
 int we_init_sha256_meth(void);

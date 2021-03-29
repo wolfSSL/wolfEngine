@@ -96,6 +96,9 @@ static int we_init_random()
 
 /** List of supported digest algorithms. */
 static const int we_digest_nids[] = {
+#ifdef WE_HAVE_SHA1
+    NID_sha1,
+#endif
 #ifdef WE_HAVE_SHA256
     NID_sha256,
 #endif
@@ -134,6 +137,11 @@ int we_nid_to_wc_hash_oid(int nid)
     WOLFENGINE_ENTER("we_nid_to_wc_hash_oid");
 
     switch (nid) {
+#ifdef WE_HAVE_SHA1
+        case NID_sha1:
+            hashType = WC_HASH_TYPE_SHA;
+            break;
+#endif
 #ifdef WE_HAVE_SHA256
         case NID_sha256:
             hashType = WC_HASH_TYPE_SHA256;
@@ -213,6 +221,11 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
     }
     else {
         switch (nid) {
+#ifdef WE_HAVE_SHA1
+        case NID_sha1:
+            *digest = we_sha1_md;
+            break;
+#endif
 #ifdef WE_HAVE_SHA256
         case NID_sha256:
             *digest = we_sha256_md;
@@ -429,6 +442,11 @@ static int wolfengine_init(ENGINE *e)
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     ret = we_init_random();
 #endif
+#ifdef WE_HAVE_SHA1
+    if (ret == 1) {
+        ret = we_init_sha_meth();
+    }
+#endif
 #ifdef WE_HAVE_SHA256
     if (ret == 1) {
         ret = we_init_sha256_meth();
@@ -540,6 +558,10 @@ static int wolfengine_destroy(ENGINE *e)
     we_aes192_gcm_ciph = NULL;
     EVP_CIPHER_meth_free(we_aes256_gcm_ciph);
     we_aes256_gcm_ciph = NULL;
+#endif
+#ifdef WE_HAVE_SHA1
+    EVP_MD_meth_free(we_sha1_md);
+    we_sha1_md = NULL;
 #endif
 #ifdef WE_HAVE_SHA256
     EVP_MD_meth_free(we_sha256_md);

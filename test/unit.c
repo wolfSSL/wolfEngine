@@ -47,6 +47,9 @@ static int debug = 0;
 
 TEST_CASE test_case[] = {
     TEST_DECL(test_logging, &debug),
+#ifdef WE_HAVE_SHA1
+    TEST_DECL(test_sha, NULL),
+#endif
 #ifdef WE_HAVE_SHA256
     TEST_DECL(test_sha256, NULL),
 #endif
