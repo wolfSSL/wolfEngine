@@ -21,14 +21,15 @@ Supports the following algorithms:
 Versions 1.1.1 and below of OpenSSL did not handle AES-GCM through the Engine 
 interface.
 
-The only change necessary is to add GCM mode to a switch statement.
+The only change necessary is to add GCM/CCM mode to a switch statement.
 For example, for OpenSSL 1.1.1, add the following to `crypto/evp/evp_enc.c` at
-line 169:
+line 188:
 
 ```
-          case EVP_CIPH_STREAM_CIPHER:
+
 +         case EVP_CIPH_GCM_MODE:
-          case EVP_CIPH_ECB_MODE:
++         case EVP_CIPH_CCM_MODE:
+          case EVP_CIPH_CTR_MODE:
 ```
 
 ## Building
@@ -49,7 +50,7 @@ sudo make install
 git clone https://github.com/wolfssl/wolfssl.git
 cd wolfssl
 ./autogen.sh
-./configure --enable-keygen --enable-sha CPPFLAGS="-DWC_RSA_DIRECT -DWC_RSA_NO_PADDING"
+./configure --enable-keygen --enable-sha -enable-des3 --enable-aesctr --enable-aesccm CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_DIRECT -DWC_RSA_NO_PADDING"
 make
 sudo make install
 ```

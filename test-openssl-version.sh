@@ -10,6 +10,8 @@ TMP_FILE=/tmp/test_config.$$
 CONFIG_STATUS=config.status
 CONFIG_STATUS_TMP=/tmp/config.status.$$
 
+WE_TEST="./test/unit.test"
+
 # See README.md for change to make to OpenSSL to enable this to work.
 EXTRA_OPTS=""
 VERBOSE="no"
@@ -120,14 +122,15 @@ do_config() {
     fi
 
     echo -n "  unit.test ... "
-    LD_LIBRARY_PATH=$OPENSSL_DIR ./test/unit.test >$TMP_FILE 2>&1
+    LD_LIBRARY_PATH=$OPENSSL_DIR $WE_TEST >$TMP_FILE 2>&1
     if [ $? != 0 ]; then
         cat $TMP_FILE
         echo "Unit test failed for wolfSSL engine"
         do_cleanup
         exit 1
     fi
-    echo "PASS"
+    echo -n "PASS "
+    LD_LIBRARY_PATH=$OPENSSL_DIR $WE_TEST --list | wc -l
     if [ "$VERBOSE" = "yes" ]; then
         cat $TMP_FILE
     fi
@@ -167,6 +170,15 @@ do
         --no-hash)
             echo "Disabling hash in wolfengine"
             EXTRA_OPTS="$EXTRA_OPTS --disable-hash"
+            ;;
+        --gcm)
+            EXTRA_OPTS="$EXTRA_OPTS --enable-aesgcm"
+            ;;
+        --ccm)
+            EXTRA_OPTS="$EXTRA_OPTS --enable-aesccm"
+            ;;
+        --clang)
+            EXTRA_OPTS="$EXTRA_OPTS CC=clang"
             ;;
         -v)
             VERBOSE="yes"

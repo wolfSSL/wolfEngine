@@ -212,7 +212,7 @@ static int aesgcm_enc_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
             outLen = sizeof(data);
             err |= EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv) != 1;
             err |= EVP_EncryptUpdate(ctx, NULL, &outLen, aad, sizeof(aad)) != 1;
-            err |= EVP_EncryptUpdate(ctx, data, &outLen, data, len) != 1;
+            err |= EVP_EncryptUpdate(ctx, data, &outLen, data, (int)len) != 1;
             err |= EVP_EncryptFinal_ex(ctx, data + outLen, &outLen) != 1;
             err |= EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, sizeof(tag),
                                        tag) != 1;
@@ -253,7 +253,7 @@ static int aesgcm_dec_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
             err |= EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, sizeof(tag),
                                        tag) != 1;
             err |= EVP_DecryptUpdate(ctx, NULL, &outLen, aad, sizeof(aad)) != 1;
-            err |= EVP_DecryptUpdate(ctx, data, &outLen, data, len) != 1;
+            err |= EVP_DecryptUpdate(ctx, data, &outLen, data, (int)len) != 1;
             EVP_DecryptFinal_ex(ctx, data + outLen, &outLen);
             /* Ignore error as the tag doesn't match the data. */
         }

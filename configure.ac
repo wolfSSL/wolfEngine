@@ -243,6 +243,30 @@ then
     fi
 fi
 
+# DES3-CBC
+AC_ARG_ENABLE([des3cbc],
+    [AS_HELP_STRING([--enable-des3cbc],[Enable DES3-CBC (default: enabled)])],
+    [ ENABLED_DES3CBC=$enableval ],
+    [ ENABLED_DES3CBC=yes ]
+    )
+
+if test "$ENABLED_DES3CBC" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_DES3CBC"
+fi
+
+# AES-ECB
+AC_ARG_ENABLE([aesecb],
+    [AS_HELP_STRING([--enable-aesecb],[Enable AES-ECB (default: enabled)])],
+    [ ENABLED_AESECB=$enableval ],
+    [ ENABLED_AESECB=yes ]
+    )
+
+if test "$ENABLED_AESECB" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESECB"
+fi
+
 # AES-CBC
 AC_ARG_ENABLE([aescbc],
     [AS_HELP_STRING([--enable-aescbc],[Enable AES-CBC (default: enabled)])],
@@ -252,8 +276,19 @@ AC_ARG_ENABLE([aescbc],
 
 if test "$ENABLED_AESCBC" = "yes"
 then
-    ENABLED_AESCBC="yes"
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESCBC"
+fi
+
+# AES-CTR
+AC_ARG_ENABLE([aesctr],
+    [AS_HELP_STRING([--enable-aesctr],[Enable AES-CTR (default: enabled)])],
+    [ ENABLED_AESCTR=$enableval ],
+    [ ENABLED_AESCTR=yes ]
+    )
+
+if test "$ENABLED_AESCTR" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESCTR"
 fi
 
 # AES-GCM
@@ -265,8 +300,19 @@ AC_ARG_ENABLE([aesgcm],
 
 if test "$ENABLED_AESGCM" = "yes"
 then
-    ENABLED_AESGCM="yes"
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESGCM"
+fi
+
+# AES-CCM
+AC_ARG_ENABLE([aesccm],
+    [AS_HELP_STRING([--enable-aesccm],[Enable AES-CCM (default: disabled)])],
+    [ ENABLED_AESCCM=$enableval ],
+    [ ENABLED_AESCCM=no ]
+    )
+
+if test "$ENABLED_AESCCM" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESCCM"
 fi
 
 # RSA
@@ -476,6 +522,10 @@ echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
 echo "   * RSA:                        $ENABLED_RSA"
 echo "   * AES-GCM:                    $ENABLED_AESGCM"
 echo "   * AES-CBC:                    $ENABLED_AESCBC"
+echo "   * AES-CCM:                    $ENABLED_AESCCM"
+echo "   * AES-CTR:                    $ENABLED_AESCTR"
+echo "   * AES-ECB:                    $ENABLED_AESECB"
+echo "   * 3DES-CBC:                   $ENABLED_DES3CBC"
 echo "   * ECC:                        $ENABLED_ECC"
 echo "   *  - EVP_PKEY:                $ENABLED_EVP_PKEY"
 echo "   *  - EC_KEY:                  $ENABLED_EC_KEY"

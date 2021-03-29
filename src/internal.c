@@ -288,15 +288,33 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
 
 /** List of supported cipher algorithms as numeric ids. */
 static const int we_cipher_nids[] = {
+#ifdef WE_HAVE_DES3CBC
+    NID_des_ede3_cbc,
+#endif
+#ifdef WE_HAVE_AESECB
+    NID_aes_128_ecb,
+    NID_aes_192_ecb,
+    NID_aes_256_ecb,
+#endif
 #ifdef WE_HAVE_AESCBC
     NID_aes_128_cbc,
     NID_aes_192_cbc,
     NID_aes_256_cbc,
 #endif
+#ifdef WE_HAVE_AESCTR
+    NID_aes_128_ctr,
+    NID_aes_192_ctr,
+    NID_aes_256_ctr,
+#endif
 #ifdef WE_HAVE_AESGCM
     NID_aes_128_gcm,
     NID_aes_192_gcm,
     NID_aes_256_gcm,
+#endif
+#ifdef WE_HAVE_AESCCM
+    NID_aes_128_ccm,
+    NID_aes_192_ccm,
+    NID_aes_256_ccm,
 #endif
 };
 
@@ -331,6 +349,22 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
     }
     else {
         switch (nid) {
+#ifdef WE_HAVE_DES3CBC
+        case NID_des_ede3_cbc:
+            *cipher = we_des3_cbc_ciph;
+            break;
+#endif
+#ifdef WE_HAVE_AESECB
+        case NID_aes_128_ecb:
+            *cipher = we_aes128_ecb_ciph;
+            break;
+        case NID_aes_192_ecb:
+            *cipher = we_aes192_ecb_ciph;
+            break;
+        case NID_aes_256_ecb:
+            *cipher = we_aes256_ecb_ciph;
+            break;
+#endif
 #ifdef WE_HAVE_AESCBC
         case NID_aes_128_cbc:
             *cipher = we_aes128_cbc_ciph;
@@ -342,6 +376,17 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
             *cipher = we_aes256_cbc_ciph;
             break;
 #endif
+#ifdef WE_HAVE_AESCTR
+        case NID_aes_128_ctr:
+            *cipher = we_aes128_ctr_ciph;
+            break;
+        case NID_aes_192_ctr:
+            *cipher = we_aes192_ctr_ciph;
+            break;
+        case NID_aes_256_ctr:
+            *cipher = we_aes256_ctr_ciph;
+            break;
+#endif
 #ifdef WE_HAVE_AESGCM
         case NID_aes_128_gcm:
             *cipher = we_aes128_gcm_ciph;
@@ -351,6 +396,17 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
             break;
         case NID_aes_256_gcm:
             *cipher = we_aes256_gcm_ciph;
+            break;
+#endif
+#ifdef WE_HAVE_AESCCM
+        case NID_aes_128_ccm:
+            *cipher = we_aes128_ccm_ciph;
+            break;
+        case NID_aes_192_ccm:
+            *cipher = we_aes192_ccm_ciph;
+            break;
+        case NID_aes_256_ccm:
+            *cipher = we_aes256_ccm_ciph;
             break;
 #endif
         default:
@@ -436,8 +492,12 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
  *  - Global random
  *  - SHA-2 methods
  *  - SHA-3 methods
+ *  - DES3-CBC methods
+ *  - AES-EBC methods
  *  - AES-CBC methods
+ *  - AES-CTR methods
  *  - AES-GCM methods
+ *  - AES-CCM methods
  *  - RSA method
  *  - EC methods
  *
@@ -500,14 +560,34 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_sha3_512_meth();
     }
 #endif
+#ifdef WE_HAVE_DES3CBC
+    if (ret == 1) {
+        ret = we_init_des3cbc_meths();
+    }
+#endif
+#ifdef WE_HAVE_AESECB
+    if (ret == 1) {
+        ret = we_init_aesecb_meths();
+    }
+#endif
 #ifdef WE_HAVE_AESCBC
     if (ret == 1) {
         ret = we_init_aescbc_meths();
     }
 #endif
+#ifdef WE_HAVE_AESCTR
+    if (ret == 1) {
+        ret = we_init_aesctr_meths();
+    }
+#endif
 #ifdef WE_HAVE_AESGCM
     if (ret == 1) {
         ret = we_init_aesgcm_meths();
+    }
+#endif
+#ifdef WE_HAVE_AESCCM
+    if (ret == 1) {
+        ret = we_init_aesccm_meths();
     }
 #endif
 #ifdef WE_HAVE_RSA
@@ -561,6 +641,18 @@ static int wolfengine_destroy(ENGINE *e)
     we_ec_key_method = NULL;
 #endif
 #endif
+#ifdef WE_HAVE_DES3CBC
+    EVP_CIPHER_meth_free(we_des3_cbc_ciph);
+    we_des3_cbc_ciph = NULL;
+#endif
+#ifdef WE_HAVE_AESECB
+    EVP_CIPHER_meth_free(we_aes128_ecb_ciph);
+    we_aes128_ecb_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes192_ecb_ciph);
+    we_aes192_ecb_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes256_ecb_ciph);
+    we_aes256_ecb_ciph = NULL;
+#endif
 #ifdef WE_HAVE_AESCBC
     EVP_CIPHER_meth_free(we_aes128_cbc_ciph);
     we_aes128_cbc_ciph = NULL;
@@ -569,6 +661,14 @@ static int wolfengine_destroy(ENGINE *e)
     EVP_CIPHER_meth_free(we_aes256_cbc_ciph);
     we_aes256_cbc_ciph = NULL;
 #endif
+#ifdef WE_HAVE_AESCTR
+    EVP_CIPHER_meth_free(we_aes128_ctr_ciph);
+    we_aes128_ctr_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes192_ctr_ciph);
+    we_aes192_ctr_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes256_ctr_ciph);
+    we_aes256_ctr_ciph = NULL;
+#endif
 #ifdef WE_HAVE_AESGCM
     EVP_CIPHER_meth_free(we_aes128_gcm_ciph);
     we_aes128_gcm_ciph = NULL;
@@ -576,6 +676,14 @@ static int wolfengine_destroy(ENGINE *e)
     we_aes192_gcm_ciph = NULL;
     EVP_CIPHER_meth_free(we_aes256_gcm_ciph);
     we_aes256_gcm_ciph = NULL;
+#endif
+#ifdef WE_HAVE_AESCCM
+    EVP_CIPHER_meth_free(we_aes128_ccm_ciph);
+    we_aes128_ccm_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes192_ccm_ciph);
+    we_aes192_ccm_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes256_ccm_ciph);
+    we_aes256_ccm_ciph = NULL;
 #endif
 #ifdef WE_HAVE_SHA1
     EVP_MD_meth_free(we_sha1_md);
@@ -691,6 +799,11 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
     WOLFENGINE_ENTER("wolfengine_ctrl");
 
     switch (cmd) {
+        case ENGINE_CTRL_SET_LOGSTREAM:
+            if (wolfEngine_Debugging_ON() < 0) {
+                ret = 0;
+            }
+            break;
         case WOLFENGINE_CMD_ENABLE_DEBUG:
             if (i > 0) {
                 if (wolfEngine_Debugging_ON() < 0) {
@@ -745,8 +858,10 @@ int wolfengine_bind(ENGINE *e, const char *id)
 
     WOLFENGINE_ENTER("wolfengine_bind");
 
-    if (XSTRNCMP(id, wolfengine_lib, XSTRLEN(wolfengine_lib)) != 0)
+    if ((id != NULL) &&
+                 (XSTRNCMP(id, wolfengine_lib, XSTRLEN(wolfengine_lib)) != 0)) {
         ret = 0;
+    }
 
     if (ret == 1) {
         ret = ENGINE_set_id(e, wolfengine_id);

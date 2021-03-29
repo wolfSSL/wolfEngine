@@ -824,7 +824,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     ret = 0;
                 }
                 if (ret == 1) {
-                    rsa->pubExp = e;
+                    rsa->pubExp = (int)e;
                 }
                 break;
             default:
@@ -944,7 +944,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
             len = wc_SignatureGetSize(WC_SIGNATURE_TYPE_RSA, &rsa->key,
                                       sizeof(rsa->key));
             if (len <= 0) {
-                WOLFENGINE_ERROR_FUNC("wc_SignatureGetSize", len);
+                WOLFENGINE_ERROR_FUNC("wc_SignatureGetSize", (int)len);
                 ret = 0;
             }
             else {
@@ -1069,7 +1069,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                                                         &encodedDigest);
                 if (encodedDigestLen == 0) {
                     WOLFENGINE_ERROR_FUNC("we_der_encode_digest",
-                                          encodedDigestLen);
+                                          (int)encodedDigestLen);
                     ret = 0;
                 }
                 else {

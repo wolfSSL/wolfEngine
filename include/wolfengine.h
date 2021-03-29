@@ -22,6 +22,9 @@
 #ifndef WOLFENGINE_H
 #define WOLFENGINE_H
 
+/* OpenSSL 3.0.0 has deprecated the ENGINE API. */
+#define OPENSSL_API_COMPAT      10101
+
 /* This is the ID expected by OpenSSL when loading wolfEngine dynamically. */
 extern const char *wolfengine_lib;
 /* Engine id - implementation uses wolfSSL */
