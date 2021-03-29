@@ -62,6 +62,7 @@ int test_logging(ENGINE *e, void *data);
 int test_digest_op(const EVP_MD *md, ENGINE *e, unsigned char *msg,
                    size_t len, unsigned char *prev,
                    unsigned int *prevLen);
+int test_sha(ENGINE *e, void *data);
 int test_sha256(ENGINE *e, void *data);
 int test_sha384(ENGINE *e, void *data);
 int test_sha512(ENGINE *e, void *data);
