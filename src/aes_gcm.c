@@ -91,21 +91,6 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
-    if ((ret == 1) && (((key == NULL) && (iv == NULL)) || (!aes->init))) {
-        /* No IV yet. */
-        aes->ivLen = 0;
-        aes->ivSet = 0;
-        /* No tag set. */
-        aes->tagLen = 0;
-        /* Start with no AAD. */
-        aes->aad = NULL;
-        aes->aadLen = 0;
-        aes->enc = enc;
-        /* Internal AES-CCM object initialized. */
-        aes->init = 1;
-        /* Not doing CCM for TLS unless ctrl function called. */
-        aes->tls = 0;
-    }
     if ((ret == 1) && (key != NULL)) {
         /* Set the AES-GCM key. */
         rc = wc_AesGcmSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx));
@@ -118,6 +103,10 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         /* Cache IV - see ctrl func for other ways to set IV. */
         aes->ivLen = GCM_NONCE_MID_SZ;
         XMEMCPY(aes->iv, iv, GCM_NONCE_MID_SZ);
+    }
+
+    if (ret == 1) {
+        aes->enc = enc;
     }
 
     WOLFENGINE_LEAVE("we_aes_gcm_init", ret);
@@ -144,13 +133,11 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
             /* Encrypt the data except explicit IV.
              * Tag goes at end of output buffer.
              */
-            rc = wc_AesGcmEncrypt_ex(&aes->aes,
-                                     out + EVP_GCM_TLS_EXPLICIT_IV_LEN,
-                                     in + EVP_GCM_TLS_EXPLICIT_IV_LEN,
-                                     encLen, aes->iv, aes->ivLen,
-                                     out + len - EVP_GCM_TLS_TAG_LEN,
-                                     EVP_GCM_TLS_TAG_LEN, aes->aad,
-                                     aes->aadLen);
+            rc = wc_AesGcmEncrypt(&aes->aes, out + EVP_GCM_TLS_EXPLICIT_IV_LEN,
+                                  in + EVP_GCM_TLS_EXPLICIT_IV_LEN, encLen,
+                                  aes->iv, aes->ivLen,
+                                  out + len - EVP_GCM_TLS_TAG_LEN,
+                                  EVP_GCM_TLS_TAG_LEN, aes->aad, aes->aadLen);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC("wc_AesGcmEncrypt_ex", rc);
                 ret = 0;
@@ -250,6 +237,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         }
     }
     else if ((ret == 1) && (len == 0)) {
+        /* Final called and nothing to do - no data output. */
         ret = 0;
     }
     else if ((ret == 1) && (len > 0)) {
@@ -298,7 +286,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         OPENSSL_free(aes->aad);
         aes->aad = NULL;
         aes->aadLen = 0;
-        ret = len;
+        ret = (int)len;
     }
 
     WOLFENGINE_LEAVE("we_aes_gcm_cipher", ret);
@@ -340,6 +328,21 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_INIT:
+                /* No IV yet. */
+                aes->ivLen = 0;
+                aes->ivSet = 0;
+                /* No tag set. */
+                aes->tagLen = 0;
+                /* Start with no AAD. */
+                aes->aad = NULL;
+                aes->aadLen = 0;
+                /* Internal AES-CCM object initialized. */
+                aes->init = 1;
+                /* Not doing CCM for TLS unless ctrl function called. */
+                aes->tls = 0;
+                break;
+
             case EVP_CTRL_AEAD_SET_IVLEN:
                 WOLFENGINE_MSG("EVP_CTRL_AEAD_SET_IVLEN");
                 /* Set the IV/nonce length to use
@@ -522,6 +525,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
      EVP_CIPH_CUSTOM_IV          | \
      EVP_CIPH_CUSTOM_IV_LENGTH   | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_CTRL_INIT          | \
      EVP_CIPH_FLAG_AEAD_CIPHER   | \
      EVP_CIPH_GCM_MODE)
 

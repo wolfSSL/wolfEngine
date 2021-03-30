@@ -300,6 +300,8 @@ static const int we_cipher_nids[] = {
     NID_aes_128_cbc,
     NID_aes_192_cbc,
     NID_aes_256_cbc,
+    NID_aes_128_cbc_hmac_sha256,
+    NID_aes_256_cbc_hmac_sha256,
 #endif
 #ifdef WE_HAVE_AESCTR
     NID_aes_128_ctr,
@@ -374,6 +376,12 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
             break;
         case NID_aes_256_cbc:
             *cipher = we_aes256_cbc_ciph;
+            break;
+        case NID_aes_128_cbc_hmac_sha256:
+            *cipher = we_aes128_cbc_hmac_ciph;
+            break;
+        case NID_aes_256_cbc_hmac_sha256:
+            *cipher = we_aes256_cbc_hmac_ciph;
             break;
 #endif
 #ifdef WE_HAVE_AESCTR
@@ -574,6 +582,9 @@ static int wolfengine_init(ENGINE *e)
     if (ret == 1) {
         ret = we_init_aescbc_meths();
     }
+    if (ret == 1) {
+        ret = we_init_aescbc_hmac_meths();
+    }
 #endif
 #ifdef WE_HAVE_AESCTR
     if (ret == 1) {
@@ -660,6 +671,11 @@ static int wolfengine_destroy(ENGINE *e)
     we_aes192_cbc_ciph = NULL;
     EVP_CIPHER_meth_free(we_aes256_cbc_ciph);
     we_aes256_cbc_ciph = NULL;
+
+    EVP_CIPHER_meth_free(we_aes128_cbc_hmac_ciph);
+    we_aes128_cbc_hmac_ciph = NULL;
+    EVP_CIPHER_meth_free(we_aes256_cbc_hmac_ciph);
+    we_aes256_cbc_hmac_ciph = NULL;
 #endif
 #ifdef WE_HAVE_AESCTR
     EVP_CIPHER_meth_free(we_aes128_ctr_ciph);

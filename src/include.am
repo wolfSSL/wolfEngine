@@ -4,6 +4,7 @@
 
 libwolfengine_la_SOURCES =
 libwolfengine_la_SOURCES += src/aes_block.c
+libwolfengine_la_SOURCES += src/aes_cbc_hmac.c
 libwolfengine_la_SOURCES += src/aes_ccm.c
 libwolfengine_la_SOURCES += src/aes_ctr.c
 libwolfengine_la_SOURCES += src/aes_gcm.c

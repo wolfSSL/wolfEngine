@@ -32,9 +32,11 @@
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
+#include <openssl/tls1.h>
 
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/hash.h>
+#include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/sha.h>
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/aes.h>
@@ -106,6 +108,10 @@ extern EVP_CIPHER* we_aes128_cbc_ciph;
 extern EVP_CIPHER* we_aes192_cbc_ciph;
 extern EVP_CIPHER* we_aes256_cbc_ciph;
 int we_init_aescbc_meths(void);
+
+extern EVP_CIPHER* we_aes128_cbc_hmac_ciph;
+extern EVP_CIPHER* we_aes256_cbc_hmac_ciph;
+int we_init_aescbc_hmac_meths(void);
 
 extern EVP_CIPHER* we_aes128_ctr_ciph;
 extern EVP_CIPHER* we_aes192_ctr_ciph;
