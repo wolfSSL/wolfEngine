@@ -58,13 +58,24 @@ void wolfEngine_Debugging_OFF(void);
 
 #ifdef WOLFENGINE_DEBUG
 
+#define WOLFENGINE_ERROR(err)                                           \
+    WOLFENGINE_ERROR_LINE(err, __FILE__, __LINE__)
+#define WOLFENGINE_ERROR_MSG(msg)                                       \
+    WOLFENGINE_ERROR_MSG_LINE(msg, __FILE__, __LINE__)
+#define WOLFENGINE_ERROR_FUNC(funcName, ret)                            \
+    WOLFENGINE_ERROR_FUNC_LINE(funcName, ret, __FILE__, __LINE__)
+#define WOLFENGINE_ERROR_FUNC_NULL(funcName, ret)                       \
+    WOLFENGINE_ERROR_FUNC_NULL_LINE(funcName, ret, __FILE__, __LINE__)
+
 void WOLFENGINE_ENTER(const char* msg);
 void WOLFENGINE_LEAVE(const char* msg, int ret);
 void WOLFENGINE_MSG(const char* msg);
-void WOLFENGINE_ERROR(int err);
-void WOLFENGINE_ERROR_MSG(const char* msg);
-void WOLFENGINE_ERROR_FUNC(const char* funcName, int ret);
-void WOLFENGINE_ERROR_FUNC_NULL(const char* funcName, void *ret);
+void WOLFENGINE_ERROR_LINE(int err, const char* file, int line);
+void WOLFENGINE_ERROR_MSG_LINE(const char* msg, const char* file, int line);
+void WOLFENGINE_ERROR_FUNC_LINE(const char* funcName, int ret, const char* file,
+                                int line);
+void WOLFENGINE_ERROR_FUNC_NULL_LINE(const char* funcName, void *ret,
+                                     const char* file, int line);
 void WOLFENGINE_BUFFER(const unsigned char* buffer, unsigned int length);
 
 #else
