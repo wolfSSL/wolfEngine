@@ -102,8 +102,6 @@ int EC_KEY_oct2key(EC_KEY *key, const unsigned char *buf, size_t len,
                    BN_CTX *ctx);
 int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len);
 
-void RSA_get0_key(const RSA *r,
-                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
 RSA_METHOD *RSA_meth_new(const char *name, int flags);
 void RSA_meth_free(RSA_METHOD *meth);
 int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa));
@@ -124,6 +122,18 @@ int RSA_meth_set_priv_dec(RSA_METHOD *meth,
                                            unsigned char *to, RSA *rsa,
                                            int padding));
 int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa));
+int RSA_meth_set_keygen(RSA_METHOD *meth,
+                        int (*keygen) (RSA *rsa, int bits, BIGNUM *e,
+                                       BN_GENCB *cb));
+void RSA_get0_key(const RSA *r,
+                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
+void RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q);
+void RSA_get0_crt_params(const RSA *r,
+                         const BIGNUM **dmp1, const BIGNUM **dmq1,
+                         const BIGNUM **iqmp);
+int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d);
+int RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q);
+int RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp);
 
 DH_METHOD *DH_meth_new(const char *name, int flags);
 void DH_meth_free(DH_METHOD *dhm);
