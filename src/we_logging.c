@@ -157,13 +157,16 @@ void WOLFENGINE_LEAVE(const char* msg, int ret)
  * Log function for error code, general error message.
  *
  * @param error  [IN] error code to be logged.
+ * @param file   [IN] Source file where error is called. 
+ * @param line   [IN] Line in source file where error is called. 
  */
-void WOLFENGINE_ERROR(int error)
+void WOLFENGINE_ERROR_LINE(int error, const char* file, int line)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer),
-                  "wolfEngine error occurred, error = %d", error);
+                  "%s:%d - wolfEngine error occurred, error = %d", file, line,
+                  error);
         wolfengine_log(WE_LOG_ERROR, buffer);
     }
 }
@@ -172,11 +175,16 @@ void WOLFENGINE_ERROR(int error)
  * Log function for error message.
  *
  * @param msg  [IN] Error message.
+ * @param file [IN] Source file where error is called. 
+ * @param line [IN] Line in source file where error is called. 
  */
-void WOLFENGINE_ERROR_MSG(const char* msg)
+void WOLFENGINE_ERROR_MSG_LINE(const char* msg, const char* file, int line)
 {
     if (loggingEnabled) {
-        wolfengine_log(WE_LOG_ERROR, msg);
+        char buffer[WOLFENGINE_MAX_ERROR_SZ];
+        XSNPRINTF(buffer, sizeof(buffer), "%s:%d - wolfEngine Error %s",
+                  file, line, msg);
+        wolfengine_log(WE_LOG_ERROR, buffer);
     }
 }
 
@@ -184,15 +192,19 @@ void WOLFENGINE_ERROR_MSG(const char* msg)
  * Log function to convey function name and error for functions returning an
  * integer return code.
  *
- * @param funcName  [IN]  Name of function called.
- * @param ret       [IN]  Return of function.
+ * @param funcName  [IN] Name of function called.
+ * @param ret       [IN] Return of function.
+ * @param file      [IN] Source file where error is called. 
+ * @param line      [IN] Line in source file where error is called. 
  */
-void WOLFENGINE_ERROR_FUNC(const char* funcName, int ret)
+void WOLFENGINE_ERROR_FUNC_LINE(const char* funcName, int ret, const char* file,
+                                int line)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer),
-                  "Error calling %s: ret = %d", funcName, ret);
+                  "%s:%d - Error calling %s: ret = %d", file, line, funcName,
+                  ret);
         wolfengine_log(WE_LOG_ERROR, buffer);
     }
 }
@@ -201,15 +213,19 @@ void WOLFENGINE_ERROR_FUNC(const char* funcName, int ret)
  * Log function to convey function name and error for functions returning a
  * pointer.
  *
- * @param funcName  [IN]  Name of function called.
- * @param ret       [IN]  Return of function.
+ * @param funcName  [IN] Name of function called.
+ * @param ret       [IN] Return of function.
+ * @param file      [IN] Source file where error is called. 
+ * @param line      [IN] Line in source file where error is called. 
  */
-void WOLFENGINE_ERROR_FUNC_NULL(const char* funcName, void *ret)
+void WOLFENGINE_ERROR_FUNC_NULL_LINE(const char* funcName, void *ret,
+                                     const char* file, int line)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer),
-                  "Error calling %s: ret = %p", funcName, ret);
+                  "%s:%d - Error calling %s: ret = %p", file, line, funcName,
+                  ret);
         wolfengine_log(WE_LOG_ERROR, buffer);
     }
 }
