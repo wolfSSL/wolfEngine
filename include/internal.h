@@ -38,6 +38,7 @@
 #include <wolfssl/wolfcrypt/sha.h>
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/aes.h>
+#include <wolfssl/wolfcrypt/des3.h>
 #include <wolfssl/wolfcrypt/rsa.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/signature.h>
@@ -93,15 +94,33 @@ int we_nid_to_wc_hash_oid(int nid);
  * Cipher methods.
  */
 
+extern EVP_CIPHER* we_des3_cbc_ciph;
+int we_init_des3cbc_meths(void);
+
+extern EVP_CIPHER* we_aes128_ecb_ciph;
+extern EVP_CIPHER* we_aes192_ecb_ciph;
+extern EVP_CIPHER* we_aes256_ecb_ciph;
+int we_init_aesecb_meths(void);
+
 extern EVP_CIPHER* we_aes128_cbc_ciph;
 extern EVP_CIPHER* we_aes192_cbc_ciph;
 extern EVP_CIPHER* we_aes256_cbc_ciph;
 int we_init_aescbc_meths(void);
 
+extern EVP_CIPHER* we_aes128_ctr_ciph;
+extern EVP_CIPHER* we_aes192_ctr_ciph;
+extern EVP_CIPHER* we_aes256_ctr_ciph;
+int we_init_aesctr_meths(void);
+
 extern EVP_CIPHER* we_aes128_gcm_ciph;
 extern EVP_CIPHER* we_aes192_gcm_ciph;
 extern EVP_CIPHER* we_aes256_gcm_ciph;
 int we_init_aesgcm_meths(void);
+
+extern EVP_CIPHER* we_aes128_ccm_ciph;
+extern EVP_CIPHER* we_aes192_ccm_ciph;
+extern EVP_CIPHER* we_aes256_ccm_ciph;
+int we_init_aesccm_meths(void);
 
 /*
  * RSA methods.

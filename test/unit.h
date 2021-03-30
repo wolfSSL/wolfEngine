@@ -74,6 +74,22 @@ int test_sha3_512(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_DIGEST */
 
+#ifdef WE_HAVE_DES3CBC
+int test_des3_cbc(ENGINE *e, void *data);
+int test_des3_cbc_stream(ENGINE *e, void *data);
+#endif
+
+#ifdef WE_HAVE_AESECB
+
+int test_aes128_ecb(ENGINE *e, void *data);
+int test_aes192_ecb(ENGINE *e, void *data);
+int test_aes256_ecb(ENGINE *e, void *data);
+int test_aes128_ecb_stream(ENGINE *e, void *data);
+int test_aes192_ecb_stream(ENGINE *e, void *data);
+int test_aes256_ecb_stream(ENGINE *e, void *data);
+
+#endif
+
 #ifdef WE_HAVE_AESCBC
 
 int test_aes128_cbc(ENGINE *e, void *data);
@@ -85,6 +101,14 @@ int test_aes256_cbc_stream(ENGINE *e, void *data);
 
 #endif
 
+#ifdef WE_HAVE_AESCTR
+
+int test_aes128_ctr_stream(ENGINE *e, void *data);
+int test_aes192_ctr_stream(ENGINE *e, void *data);
+int test_aes256_ctr_stream(ENGINE *e, void *data);
+
+#endif
+
 #ifdef WE_HAVE_AESGCM
 
 int test_aes128_gcm(ENGINE *e, void *data);
@@ -93,8 +117,16 @@ int test_aes256_gcm(ENGINE *e, void *data);
 int test_aes128_gcm_fixed(ENGINE *e, void *data);
 int test_aes128_gcm_tls(ENGINE *e, void *data);
 
-
 #endif /* WE_HAVE_AESGCM */
+
+#ifdef WE_HAVE_AESCCM
+
+int test_aes128_ccm(ENGINE *e, void *data);
+int test_aes192_ccm(ENGINE *e, void *data);
+int test_aes256_ccm(ENGINE *e, void *data);
+int test_aes128_ccm_tls(ENGINE *e, void *data);
+
+#endif /* WE_HAVE_AESCCM */
 
 #ifdef WE_HAVE_EVP_PKEY
 

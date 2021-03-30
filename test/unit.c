@@ -74,6 +74,18 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_SHA3_512
     TEST_DECL(test_sha3_512, NULL),
 #endif
+#ifdef WE_HAVE_DES3CBC
+    TEST_DECL(test_des3_cbc, NULL),
+    TEST_DECL(test_des3_cbc_stream, NULL),
+#endif
+#ifdef WE_HAVE_AESECB
+    TEST_DECL(test_aes128_ecb, NULL),
+    TEST_DECL(test_aes192_ecb, NULL),
+    TEST_DECL(test_aes256_ecb, NULL),
+    TEST_DECL(test_aes128_ecb_stream, NULL),
+    TEST_DECL(test_aes192_ecb_stream, NULL),
+    TEST_DECL(test_aes256_ecb_stream, NULL),
+#endif
 #ifdef WE_HAVE_AESCBC
     TEST_DECL(test_aes128_cbc, NULL),
     TEST_DECL(test_aes192_cbc, NULL),
@@ -82,12 +94,25 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes192_cbc_stream, NULL),
     TEST_DECL(test_aes256_cbc_stream, NULL),
 #endif
+#ifdef WE_HAVE_AESCTR
+    TEST_DECL(test_aes128_ctr_stream, NULL),
+    TEST_DECL(test_aes192_ctr_stream, NULL),
+    TEST_DECL(test_aes256_ctr_stream, NULL),
+#endif
 #ifdef WE_HAVE_AESGCM
     TEST_DECL(test_aes128_gcm, NULL),
     TEST_DECL(test_aes192_gcm, NULL),
     TEST_DECL(test_aes256_gcm, NULL),
     TEST_DECL(test_aes128_gcm_fixed, NULL),
     TEST_DECL(test_aes128_gcm_tls, NULL),
+#endif
+#ifdef WE_HAVE_AESCCM
+    TEST_DECL(test_aes128_ccm, NULL),
+    TEST_DECL(test_aes192_ccm, NULL),
+    TEST_DECL(test_aes256_ccm, NULL),
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    TEST_DECL(test_aes128_ccm_tls, NULL),
+#endif
 #endif
 #ifdef WE_HAVE_RSA
     TEST_DECL(test_rsa_direct, NULL),

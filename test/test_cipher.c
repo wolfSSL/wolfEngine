@@ -21,7 +21,7 @@
 
 #include "unit.h"
 
-#ifdef WE_HAVE_AESCBC
+#if defined(WE_HAVE_DES3CBC) || defined(WE_HAVE_AESCBC)
 
 static int test_cipher_enc(ENGINE *e, const EVP_CIPHER *cipher,
                            unsigned char *key, unsigned char *iv,
@@ -163,27 +163,6 @@ static int test_cipher_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     return err;
 }
 
-/******************************************************************************/
-
-int test_aes128_cbc(ENGINE *e, void *data)
-{
-    return test_cipher_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16);
-}
-
-/******************************************************************************/
-
-int test_aes192_cbc(ENGINE *e, void *data)
-{
-    return test_cipher_enc_dec(e, data, EVP_aes_192_cbc(), 24, 16);
-}
-
-/******************************************************************************/
-
-int test_aes256_cbc(ENGINE *e, void *data)
-{
-    return test_cipher_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16);
-}
-
 
 /******************************************************************************/
 
@@ -267,6 +246,7 @@ static int test_stream_dec(ENGINE *e, const EVP_CIPHER *cipher,
             }
         }
         if ((err == 0) && ((dLen != len) || (memcmp(dec, msg, len) != 0))) {
+            PRINT_BUFFER("Decrypted", dec, dLen);
             err = 1;
         }
     }
@@ -280,7 +260,7 @@ static int test_stream_dec(ENGINE *e, const EVP_CIPHER *cipher,
 }
 
 static int test_stream_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
-                               int keyLen, int ivLen, int msgLen)
+                               int keyLen, int ivLen, int msgLen, int pad)
 {
     int err = 0;
     unsigned char msg[16] = "Test pattern";
@@ -289,7 +269,14 @@ static int test_stream_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     unsigned char enc[sizeof(msg) + 16];
     unsigned char encExp[sizeof(msg) + 16];
     unsigned char dec[sizeof(msg) + 16];
-    int encLen = (msgLen + ivLen) & (~(ivLen-1));
+    int encLen;
+
+    if (pad) {
+        encLen = (msgLen + ivLen) & (~(ivLen-1));
+    }
+    else {
+        encLen = msgLen;
+    }
 
     (void)data;
 
@@ -327,15 +314,131 @@ static int test_stream_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     return err;
 }
 
+#endif /* WE_HAVE_DES3CBC || WE_HAVE_AESCBC */
+
+/******************************************************************************/
+
+#ifdef WE_HAVE_DES3CBC
+
+
+int test_des3_cbc(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8);
+}
+
+/******************************************************************************/
+
+int test_des3_cbc_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8, 16, 1);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8, 1, 1);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8, 7, 1);
+
+    return err;
+}
+
+#endif /* WE_HAVE_DES3CBC */
+
+/******************************************************************************/
+
+#ifdef WE_HAVE_AESECB
+
+int test_aes128_ecb(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_128_ecb(), 16, 16);
+}
+
+/******************************************************************************/
+
+int test_aes192_ecb(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_192_ecb(), 24, 16);
+}
+
+/******************************************************************************/
+
+int test_aes256_ecb(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_256_ecb(), 32, 16);
+}
+
+/******************************************************************************/
+
+int test_aes128_ecb_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_128_ecb(), 16, 16, 16, 1);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_128_ecb(), 16, 16, 1, 1);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes192_ecb_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_192_ecb(), 24, 16, 15, 1);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_128_ecb(), 16, 16, 2, 1);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes256_ecb_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_256_ecb(), 32, 16, 14, 1);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_256_ecb(), 32, 16, 3, 1);
+
+    return err;
+}
+
+#endif /* WE_HAVE_AESECB */
+
+/******************************************************************************/
+
+#ifdef WE_HAVE_AESCBC
+
+int test_aes128_cbc(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16);
+}
+
+/******************************************************************************/
+
+int test_aes192_cbc(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_192_cbc(), 24, 16);
+}
+
+/******************************************************************************/
+
+int test_aes256_cbc(ENGINE *e, void *data)
+{
+    return test_cipher_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16);
+}
+
 /******************************************************************************/
 
 int test_aes128_cbc_stream(ENGINE *e, void *data)
 {
     int err;
 
-    err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 16);
+    err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 16, 1);
     if (err == 0)
-        err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 1);
+        err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 1, 1);
 
     return err;
 }
@@ -346,9 +449,9 @@ int test_aes192_cbc_stream(ENGINE *e, void *data)
 {
     int err;
 
-    err = test_stream_enc_dec(e, data, EVP_aes_192_cbc(), 24, 16, 15);
+    err = test_stream_enc_dec(e, data, EVP_aes_192_cbc(), 24, 16, 15, 1);
     if (err == 0)
-        err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 2);
+        err = test_stream_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16, 2, 1);
 
     return err;
 }
@@ -359,14 +462,55 @@ int test_aes256_cbc_stream(ENGINE *e, void *data)
 {
     int err;
 
-    err = test_stream_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16, 14);
+    err = test_stream_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16, 14, 1);
     if (err == 0)
-        err = test_stream_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16, 3);
+        err = test_stream_enc_dec(e, data, EVP_aes_256_cbc(), 32, 16, 3, 1);
+
+    return err;
+}
+
+#endif /* WE_HAVE_AESCBC */
+
+/******************************************************************************/
+
+#ifdef WE_HAVE_AESCTR
+
+int test_aes128_ctr_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 16, 0);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 1, 0);
 
     return err;
 }
 
 /******************************************************************************/
 
-#endif /* WE_HAVE_AESCBC */
+int test_aes192_ctr_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_192_ctr(), 24, 16, 15, 0);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 2, 0);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes256_ctr_stream(ENGINE *e, void *data)
+{
+    int err;
+
+    err = test_stream_enc_dec(e, data, EVP_aes_256_ctr(), 32, 16, 14, 0);
+    if (err == 0)
+        err = test_stream_enc_dec(e, data, EVP_aes_256_ctr(), 32, 16, 3, 0);
+
+    return err;
+}
+
+#endif /* WE_HAVE_AESCTR */
 
