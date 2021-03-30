@@ -69,313 +69,105 @@ int test_digest_op(const EVP_MD *md, ENGINE *e, unsigned char *msg,
 }
 
 /******************************************************************************/
+static int test_create_digest(const EVP_MD *md, ENGINE *e, void *data)
+{
+    int err = 0;
+    unsigned char *msg = (unsigned char *)"Test pattern";
+    unsigned char longMsg[1300];
+    unsigned char digest[64];
+    unsigned int dLen;
+
+    (void)data;
+
+    RAND_bytes(longMsg, sizeof(longMsg));
+
+    dLen = 0;
+    PRINT_MSG("Digest with OpenSSL");
+    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
+    if (err == 0) {
+        PRINT_MSG("Digest With wolfengine");
+        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
+    }
+    if (err == 0) {
+        dLen = 0;
+        PRINT_MSG("Digest with OpenSSL");
+        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Digest With wolfengine");
+        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
+    }
+
+    return err;
+}
 
 #ifdef WE_HAVE_SHA1
 
 int test_sha(ENGINE *e, void *data)
 {
-    int err = 0;
-    const EVP_MD *md = EVP_sha1();
-    unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
-    unsigned char digest[32];
-    unsigned int dLen;
-
-    (void)data;
-
-    RAND_bytes(longMsg, sizeof(longMsg));
-
-    dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
-    if (err == 0) {
-        PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
-    }
-    if (err == 0) {
-        dLen = 0;
-        PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-
-    return err;
+    return test_create_digest(EVP_sha1(), e, data);
 }
-
 #endif /* WE_HAVE_SHA1 */
 
 #ifdef WE_HAVE_SHA256
-
 int test_sha256(ENGINE *e, void *data)
 {
-    int err = 0;
-    const EVP_MD *md = EVP_sha256();
-    unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
-    unsigned char digest[32];
-    unsigned int dLen;
-
-    (void)data;
-
-    RAND_bytes(longMsg, sizeof(longMsg));
-
-    dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
-    if (err == 0) {
-        PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
-    }
-    if (err == 0) {
-        dLen = 0;
-        PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-
-    return err;
+    return test_create_digest(EVP_sha256(), e, data);
 }
-
 #endif
 
 /******************************************************************************/
 
 #ifdef WE_HAVE_SHA384
-
 int test_sha384(ENGINE *e, void *data)
 {
-    int err = 0;
-    const EVP_MD *md = EVP_sha384();
-    unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
-    unsigned char digest[48];
-    unsigned int dLen;
-
-    (void)data;
-
-    RAND_bytes(longMsg, sizeof(longMsg));
-
-    dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
-    if (err == 0) {
-        PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
-    }
-    if (err == 0) {
-        dLen = 0;
-        PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-
-    return err;
+    return test_create_digest(EVP_sha384(), e, data);
 }
-
 #endif
 
 /******************************************************************************/
 
 #ifdef WE_HAVE_SHA512
-
 int test_sha512(ENGINE *e, void *data)
 {
-    int err = 0;
-    const EVP_MD *md = EVP_sha512();
-    unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
-    unsigned char digest[64];
-    unsigned int dLen;
-
-    (void)data;
-
-    RAND_bytes(longMsg, sizeof(longMsg));
-
-    dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
-    if (err == 0) {
-        PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
-    }
-    if (err == 0) {
-        dLen = 0;
-        PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-
-    return err;
+    return test_create_digest(EVP_sha512(), e, data);
 }
-
 #endif
 
 /******************************************************************************/
 
 #ifdef WE_HAVE_SHA3_224
-
 int test_sha3_224(ENGINE *e, void *data)
 {
-    int err = 0;
-    const EVP_MD *md = EVP_sha3_224();
-    unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
-    unsigned char digest[28];
-    unsigned int dLen;
-
-    (void)data;
-
-    RAND_bytes(longMsg, sizeof(longMsg));
-
-    dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
-    if (err == 0) {
-        PRINT_MSG("Digest with wolfengine");
-        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
-    }
-    if (err == 0) {
-        dLen = 0;
-        PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Digest with wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-
-    return err;
+    return test_create_digest(EVP_sha3_224(), e, data);
 }
-
 #endif
 
 /******************************************************************************/
 
 #ifdef WE_HAVE_SHA3_256
-
 int test_sha3_256(ENGINE *e, void *data)
 {
-    int err = 0;
-    const EVP_MD *md = EVP_sha3_256();
-    unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
-    unsigned char digest[32];
-    unsigned int dLen;
-
-    (void)data;
-
-    RAND_bytes(longMsg, sizeof(longMsg));
-
-    dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
-    if (err == 0) {
-        PRINT_MSG("Digest with wolfengine");
-        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
-    }
-    if (err == 0) {
-        dLen = 0;
-        PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Digest with wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-
-    return err;
+    return test_create_digest(EVP_sha3_256(), e, data);
 }
-
 #endif
 
 /******************************************************************************/
 
 #ifdef WE_HAVE_SHA3_384
-
 int test_sha3_384(ENGINE *e, void *data)
 {
-    int err = 0;
-    const EVP_MD *md = EVP_sha3_384();
-    unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
-    unsigned char digest[48];
-    unsigned int dLen;
-
-    (void)data;
-
-    RAND_bytes(longMsg, sizeof(longMsg));
-
-    dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
-    if (err == 0) {
-        PRINT_MSG("Digest with wolfengine");
-        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
-    }
-    if (err == 0) {
-        dLen = 0;
-        PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Digest with wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-
-    return err;
+    return test_create_digest(EVP_sha3_384(), e, data);
 }
-
 #endif
 
 /******************************************************************************/
 
 #ifdef WE_HAVE_SHA3_512
-
 int test_sha3_512(ENGINE *e, void *data)
 {
-    int err = 0;
-    const EVP_MD *md = EVP_sha3_512();
-    unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
-    unsigned char digest[64];
-    unsigned int dLen;
-
-    (void)data;
-
-    RAND_bytes(longMsg, sizeof(longMsg));
-
-    dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
-    if (err == 0) {
-        PRINT_MSG("Digest with wolfengine");
-        err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
-    }
-    if (err == 0) {
-        dLen = 0;
-        PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-    if (err == 0) {
-        PRINT_MSG("Digest with wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
-    }
-
-    return err;
+    return test_create_digest(EVP_sha3_512(), e, data);
 }
-
 #endif
 
 /******************************************************************************/
