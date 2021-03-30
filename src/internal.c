@@ -99,6 +99,9 @@ static const int we_digest_nids[] = {
 #ifdef WE_HAVE_SHA1
     NID_sha1,
 #endif
+#ifdef WE_HAVE_SHA224
+    NID_sha224,
+#endif
 #ifdef WE_HAVE_SHA256
     NID_sha256,
 #endif
@@ -140,6 +143,11 @@ int we_nid_to_wc_hash_oid(int nid)
 #ifdef WE_HAVE_SHA1
         case NID_sha1:
             hashType = WC_HASH_TYPE_SHA;
+            break;
+#endif
+#ifdef WE_HAVE_SHA224
+        case NID_sha224:
+            hashType = WC_HASH_TYPE_SHA224;
             break;
 #endif
 #ifdef WE_HAVE_SHA256
@@ -224,6 +232,11 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
 #ifdef WE_HAVE_SHA1
         case NID_sha1:
             *digest = we_sha1_md;
+            break;
+#endif
+#ifdef WE_HAVE_SHA224
+        case NID_sha224:
+            *digest = we_sha224_md;
             break;
 #endif
 #ifdef WE_HAVE_SHA256
@@ -447,6 +460,11 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_sha_meth();
     }
 #endif
+#ifdef WE_HAVE_SHA224
+    if (ret == 1) {
+        ret = we_init_sha224_meth();
+    }
+#endif
 #ifdef WE_HAVE_SHA256
     if (ret == 1) {
         ret = we_init_sha256_meth();
@@ -562,6 +580,10 @@ static int wolfengine_destroy(ENGINE *e)
 #ifdef WE_HAVE_SHA1
     EVP_MD_meth_free(we_sha1_md);
     we_sha1_md = NULL;
+#endif
+#ifdef WE_HAVE_SHA224
+    EVP_MD_meth_free(we_sha224_md);
+    we_sha224_md = NULL;
 #endif
 #ifdef WE_HAVE_SHA256
     EVP_MD_meth_free(we_sha256_md);

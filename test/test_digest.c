@@ -109,6 +109,13 @@ int test_sha(ENGINE *e, void *data)
 }
 #endif /* WE_HAVE_SHA1 */
 
+#ifdef WE_HAVE_SHA224
+int test_sha224(ENGINE *e, void *data)
+{
+    return test_create_digest(EVP_sha224(), e, data);
+}
+#endif
+
 #ifdef WE_HAVE_SHA256
 int test_sha256(ENGINE *e, void *data)
 {

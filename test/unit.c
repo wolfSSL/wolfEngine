@@ -50,6 +50,9 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_SHA1
     TEST_DECL(test_sha, NULL),
 #endif
+#ifdef WE_HAVE_SHA224
+    TEST_DECL(test_sha224, NULL),
+#endif
 #ifdef WE_HAVE_SHA256
     TEST_DECL(test_sha256, NULL),
 #endif
