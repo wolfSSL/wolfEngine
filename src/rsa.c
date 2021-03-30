@@ -192,6 +192,7 @@ static int we_rsa_init(RSA *rsa)
     }
 
     if (ret == 0 && engineRsa != NULL) {
+        wc_FreeRsaKey(&engineRsa->key);
         OPENSSL_free(engineRsa);
     }
 

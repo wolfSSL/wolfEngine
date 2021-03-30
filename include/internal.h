@@ -40,6 +40,7 @@
 #include <wolfssl/wolfcrypt/aes.h>
 #include <wolfssl/wolfcrypt/des3.h>
 #include <wolfssl/wolfcrypt/rsa.h>
+#include <wolfssl/wolfcrypt/dh.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
 #include <wolfssl/wolfcrypt/signature.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
@@ -121,6 +122,19 @@ extern EVP_CIPHER* we_aes128_ccm_ciph;
 extern EVP_CIPHER* we_aes192_ccm_ciph;
 extern EVP_CIPHER* we_aes256_ccm_ciph;
 int we_init_aesccm_meths(void);
+
+/*
+ * DH method.
+ */
+
+#ifdef WE_HAVE_DH
+
+extern DH_METHOD *we_dh_method;
+
+int we_init_dh_meth(void);
+
+#endif /* WE_HAVE_DH */
+
 
 /*
  * RSA methods.

@@ -156,6 +156,10 @@ int test_rsa_keygen(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_RSA */
 
+#ifdef WE_HAVE_DH
+int test_dh(ENGINE *e, void *data);
+#endif /* WE_HAVE_DH */
+
 #ifdef WE_HAVE_ECC
 
 #ifdef WE_HAVE_EVP_PKEY

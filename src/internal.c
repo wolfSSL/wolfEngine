@@ -590,6 +590,11 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_aesccm_meths();
     }
 #endif
+#ifdef WE_HAVE_DH
+    if (ret == 1) {
+        ret = we_init_dh_meth();
+    }
+#endif /* WE_HAVE_DH */
 #ifdef WE_HAVE_RSA
     if (ret == 1) {
         ret = we_init_rsa_meth();
@@ -883,6 +888,11 @@ int wolfengine_bind(ENGINE *e, const char *id)
         ret = 0;
     }
 #endif
+#ifdef WE_HAVE_DH
+    if (ret == 1 && ENGINE_set_DH(e, we_dh_method) == 0) {
+        ret = 0;
+    }
+#endif /* WE_HAVE_DH */
 #ifdef WE_HAVE_EVP_PKEY
     if (ret == 1 && ENGINE_set_pkey_meths(e, we_pkey) == 0) {
         ret = 0;

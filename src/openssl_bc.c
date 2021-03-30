@@ -398,4 +398,53 @@ void RSA_meth_free(RSA_METHOD *meth)
     }
 }
 
+DH_METHOD *DH_meth_new(const char *name, int flags)
+{
+    DH_METHOD *dhm = OPENSSL_zalloc(sizeof(*dhm));
+
+    if (dhm != NULL) {
+        dhm->flags = flags;
+        if (name != NULL) {
+            dhm->name = name;
+            return dhm;
+        }
+    }
+
+    return NULL;
+}
+
+void DH_meth_free(DH_METHOD *dhm)
+{
+    if (dhm != NULL) {
+        OPENSSL_free(dhm);
+    }
+}
+
+int DH_meth_set_init(DH_METHOD *dhm, int (*init)(DH *))
+{
+    dhm->init = init;
+    return 1;
+
+}
+
+int DH_meth_set_finish(DH_METHOD *dhm, int (*finish) (DH *))
+{
+    dhm->finish = finish;
+    return 1;
+}
+
+int DH_meth_set_generate_key(DH_METHOD *dhm, int (*generate_key) (DH *))
+{
+    dhm->generate_key = generate_key;
+    return 1;
+
+}
+
+int DH_meth_set_compute_key(DH_METHOD *dhm,
+        int (*compute_key) (unsigned char *key, const BIGNUM *pub_key, DH *dh))
+{
+    dhm->compute_key = compute_key;
+    return 1;
+}
+
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
