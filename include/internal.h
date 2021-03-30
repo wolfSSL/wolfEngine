@@ -29,18 +29,21 @@
     #include "user_settings.h"
 #endif
 
+#include <openssl/dsa.h>
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
 #include <openssl/tls1.h>
 
 #include <wolfssl/options.h>
+#include <wolfssl/wolfcrypt/asn.h>
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/sha.h>
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/aes.h>
 #include <wolfssl/wolfcrypt/des3.h>
+#include <wolfssl/wolfcrypt/dsa.h>
 #include <wolfssl/wolfcrypt/rsa.h>
 #include <wolfssl/wolfcrypt/dh.h>
 #include <wolfssl/wolfcrypt/error-crypt.h>
@@ -165,6 +168,19 @@ extern RSA_METHOD *we_rsa_method;
 int we_init_rsa_meth(void);
 
 #endif /* WE_HAVE_RSA */
+
+/*
+ * DSA methods.
+ */
+
+#ifdef WE_HAVE_DSA
+
+extern EVP_PKEY_METHOD *we_dsa_pkey_method;
+int we_init_dsa_pkey_meth(void);
+extern DSA_METHOD *we_dsa_method;
+int we_init_dsa_meth(void);
+
+#endif /* WE_HAVE_DSA */
 
 /*
  * ECC methods.

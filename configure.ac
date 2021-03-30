@@ -351,6 +351,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_RSA"
 fi
 
+# DSA
+AC_ARG_ENABLE([dsa],
+    [AS_HELP_STRING([--enable-dsa],[Enable DSA (default: enabled)])],
+    [ ENABLED_DSA=$enableval ],
+    [ ENABLED_DSA=yes ]
+    )
+
+if test "$ENABLED_DSA" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_DSA"
+fi
+
 # DH
 AC_ARG_ENABLE([dh],
     [AS_HELP_STRING([--enable-dh],[Enable Diffie-Hellman (DH) (default: enabled)])],
@@ -540,6 +552,9 @@ echo "   * System type:                $host_vendor-$host_os"
 echo "   * Host CPU:                   $host_cpu"
 echo "   * C Compiler:                 $CC"
 echo "   * C Flags:                    $CFLAGS"
+echo "   * OpenSSL Lib Flags:          $OPENSSL_LIBS"
+echo "   * OpenSSL Include Flags:      $OPENSSL_INCLUDES"
+echo "   * OpenSSL LD Flags:           $OPENSSL_LDFLAGS "
 echo "   * Debug enabled:              $ax_enable_debug"
 echo
 echo "   Features "
@@ -557,6 +572,7 @@ echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
 echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
 echo "   * Random:                     $ENABLED_RAND"
 echo "   * RSA:                        $ENABLED_RSA"
+echo "   * DSA:                        $ENABLED_DSA"
 echo "   * DH:                         $ENABLED_DH"
 echo "   * AES-GCM:                    $ENABLED_AESGCM"
 echo "   * AES-CBC:                    $ENABLED_AESCBC"

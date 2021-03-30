@@ -28,6 +28,9 @@ static const int we_pkey_nids[] = {
 #ifdef WE_HAVE_RSA
     NID_rsaEncryption,
 #endif
+#ifdef WE_HAVE_DSA
+    NID_dsa,
+#endif
 #ifdef WE_HAVE_ECC
     NID_X9_62_id_ecPublicKey,
 #ifdef WE_HAVE_ECKEYGEN
@@ -55,7 +58,7 @@ int we_pkey_get_nids(const int **nids)
 #endif /* WE_HAVE_EVP_PKEY || WE_USE_HASH */
 
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
-    defined(WE_HAVE_RANDOM)
+    defined(WE_HAVE_RANDOM) || defined(WE_HAVE_DSA)
 
 /*
  * Random number generator
@@ -126,7 +129,7 @@ static void we_final_random()
     }
 }
 
-#endif /* WE_HAVE_ECC || WE_HAVE_AESGCM || WE_HAVE_RSA */
+#endif /* WE_HAVE_ECC || WE_HAVE_AESGCM || WE_HAVE_RSA || WE_HAVE_DSA */
 
 /** List of supported digest algorithms. */
 static const int we_digest_nids[] = {
@@ -501,6 +504,11 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             *pkey = we_rsa_pkey_method;
             break;
 #endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_DSA
+        case NID_dsa:
+            *pkey = we_dsa_pkey_method;
+            break;
+#endif /* WE_HAVE_DSA */
         case NID_X9_62_id_ecPublicKey:
             *pkey = we_ec_method;
             break;
@@ -541,6 +549,7 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
  *  - AES-GCM methods
  *  - AES-CCM methods
  *  - RSA method
+ *  - DSA method
  *  - EC methods
  *
  * @param  e  [in]  Engine object.
@@ -554,7 +563,8 @@ static int wolfengine_init(ENGINE *e)
 
     WOLFENGINE_ENTER("wolfengine_init");
 
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
+    defined(WE_HAVE_DSA)
     ret = we_init_random();
 #endif
 #ifdef WE_HAVE_SHA1
@@ -650,6 +660,16 @@ static int wolfengine_init(ENGINE *e)
     }
 #endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_DSA
+    if (ret == 1) {
+        ret = we_init_dsa_meth();
+    }
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_dsa_pkey_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
+#endif /* WE_HAVE_DSA */
 #ifdef WE_HAVE_ECC
 #ifdef WE_HAVE_EVP_PKEY
     if (ret == 1) {
@@ -684,6 +704,10 @@ static int wolfengine_destroy(ENGINE *e)
     RSA_meth_free(we_rsa_method);
     we_rsa_method = NULL;
 #endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_DSA
+    DSA_meth_free(we_dsa_method);
+    we_dsa_method = NULL;
+#endif /* WE_HAVE_DSA */
 #ifdef WE_HAVE_ECC
     /* we_ec_method is freed by OpenSSL_cleanup(). */
 #ifdef WE_HAVE_EC_KEY
@@ -776,7 +800,8 @@ static int wolfengine_destroy(ENGINE *e)
     EVP_MD_meth_free(we_sha3_512_md);
     we_sha3_512_md = NULL;
 #endif
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
+    defined(WE_HAVE_DSA)
     we_final_random();
 #endif
 
@@ -900,6 +925,18 @@ static const RSA_METHOD *we_rsa(void)
 }
 #endif /* WE_HAVE_RSA */
 
+#ifdef WE_HAVE_DSA
+/**
+ * Return the DSA method.
+ *
+ * @return  Pointer to the DSA method.
+ */
+static const DSA_METHOD *we_dsa(void)
+{
+    return we_dsa_method;
+}
+#endif /* WE_HAVE_DSA */
+
 /**
  * Bind the wolfengine into an engine object.
  *
@@ -940,6 +977,11 @@ int wolfengine_bind(ENGINE *e, const char *id)
 #endif
 #ifdef WE_HAVE_RSA
     if (ret == 1 && ENGINE_set_RSA(e, we_rsa()) == 0) {
+        ret = 0;
+    }
+#endif
+#ifdef WE_HAVE_DSA
+    if (ret == 1 && ENGINE_set_DSA(e, we_dsa()) == 0) {
         ret = 0;
     }
 #endif

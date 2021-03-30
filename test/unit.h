@@ -27,6 +27,7 @@
 
 #include <string.h>
 
+#include <openssl/dsa.h>
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
@@ -160,6 +161,13 @@ int test_rsa_sign_verify(ENGINE *e, void *data);
 int test_rsa_keygen(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 
+#endif /* WE_HAVE_RSA */
+
+#ifdef WE_HAVE_DSA
+int test_dsa_keygen(ENGINE *e, void *data);
+#ifdef WE_HAVE_EVP_PKEY
+int test_dsa_pkey_keygen(ENGINE *e, void *data);
+#endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_RSA */
 
 #ifdef WE_HAVE_DH

@@ -120,6 +120,9 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_RSA
     TEST_DECL(test_rsa_direct, NULL),
 #endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_DSA
+    TEST_DECL(test_dsa_keygen, NULL),
+#endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_DH
     TEST_DECL(test_dh, NULL),
 #endif /* WE_HAVE_DH */
@@ -127,6 +130,9 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_RSA
     TEST_DECL(test_rsa_sign_verify, NULL),
     TEST_DECL(test_rsa_keygen, NULL),
+#endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_DSA
+    TEST_DECL(test_dsa_pkey_keygen, NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_EC_P256
     #ifdef WE_HAVE_ECKEYGEN
