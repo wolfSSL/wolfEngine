@@ -49,7 +49,7 @@ sudo make install
 git clone https://github.com/wolfssl/wolfssl.git
 cd wolfssl
 ./autogen.sh
-./configure
+./configure --enable-keygen --enable-sha CPPFLAGS="-DWC_RSA_DIRECT -DWC_RSA_NO_PADDING"
 make
 sudo make install
 ```

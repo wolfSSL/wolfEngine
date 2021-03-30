@@ -153,7 +153,7 @@ int test_rsa_direct(ENGINE *e, void *data)
     RSA *rsaWolfEngine = NULL;
     RSA *rsaOpenSSL = NULL;
     unsigned char buf[20];
-    unsigned char *noPaddingBuf;
+    unsigned char *noPaddingBuf = NULL;
     unsigned char *encryptedBuf = NULL;
     int encryptedLen = 0;
     unsigned char *decryptedBuf = NULL;
