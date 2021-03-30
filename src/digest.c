@@ -164,6 +164,149 @@ int we_init_sha_meth()
 
 #endif /* WE_HAVE_SHA1 && WE_SHA1_DIRECT */
 
+#if defined(WE_HAVE_SHA224) && defined(WE_SHA224_DIRECT)
+
+/*
+ * SHA-224
+ */
+
+/**
+ * Initialize the SHA-224 digest operation using wolfSSL.
+ *
+ * @param  ctx  [in]  EVP digest context of operation.
+ * @return  1 on success and 0 on failure.
+ */
+static int we_sha224_init(EVP_MD_CTX *ctx)
+{
+    int ret = 1, rc;
+
+    WOLFENGINE_ENTER("we_sha224_init");
+
+    rc = wc_InitSha224((wc_Sha224*)EVP_MD_CTX_md_data(ctx));
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_InitSha224", rc);
+        ret = 0;
+    }
+
+    WOLFENGINE_LEAVE("we_sha224_init", ret);
+
+    return ret;
+}
+
+/**
+ * Digest some more data with SHA-224 using wolfSSL.
+ *
+ * @param  ctx   [in]  EVP digest context of operation.
+ * @param  data  [in]  More data to digest with SHA-224.
+ * @param  len   [in]  Length of data to digest.
+ * @return  1 on success and 0 on failure.
+ */
+static int we_sha224_update(EVP_MD_CTX *ctx, const void *data, size_t len)
+{
+    int ret = 1, rc;
+
+    WOLFENGINE_ENTER("we_sha224_update");
+
+    rc = wc_Sha224Update((wc_Sha224*)EVP_MD_CTX_md_data(ctx),
+                         (const byte*)data, (word32)len);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_Sha224Update", rc);
+        ret = 0;
+    }
+
+    WOLFENGINE_LEAVE("we_sha224_update", ret);
+
+    return ret;
+}
+
+/**
+ * Finalize the SHA-224 digest operation.
+ *
+ * @param  ctx  [in]  EVP digest context of operation.
+ * @param  md   [in]  SHA-224 digest of data.
+ * @return  1 on success and 0 on failure.
+ */
+static int we_sha224_final(EVP_MD_CTX *ctx, unsigned char *md)
+{
+    int ret = 1, rc;
+
+    WOLFENGINE_ENTER("we_sha224_final");
+
+    rc = wc_Sha224Final((wc_Sha224*)EVP_MD_CTX_md_data(ctx), (byte*)md);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_Sha224Final", rc);
+        ret = 0;
+    } else {
+        WOLFENGINE_MSG("SHA-224 Digest");
+        WOLFENGINE_BUFFER(md, WC_SHA224_DIGEST_SIZE);
+    }
+
+    WOLFENGINE_LEAVE("we_sha224_final", ret);
+
+    return ret;
+}
+
+/**
+ * Cleanup the SHA-224 digest object.
+ *
+ * @param  ctx  [in]  EVP digest context of operation.
+ * @return  1 for success.
+ */
+static int we_sha224_cleanup(EVP_MD_CTX *ctx)
+{
+    WOLFENGINE_ENTER("we_sha224_cleanup");
+
+    wc_Sha224Free((wc_Sha224*)EVP_MD_CTX_md_data(ctx));
+
+    WOLFENGINE_LEAVE("we_sha224_cleanup", 1);
+    return 1;
+}
+
+/** EVP digest method - SHA-224 using wolfSSL for the implementation. */
+EVP_MD *we_sha224_md = NULL;
+
+/**
+ * Initialize the global SHA-224 EVP digest method.
+ *
+ * @return  1 on success else failure.
+ */
+int we_init_sha224_meth()
+{
+    int ret;
+
+    WOLFENGINE_ENTER("we_init_sha224_meth");
+
+    ret = (we_sha224_md = EVP_MD_meth_new(NID_sha224, EVP_PKEY_NONE)) != NULL;
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_init(we_sha224_md, we_sha224_init);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_update(we_sha224_md, we_sha224_update);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_final(we_sha224_md, we_sha224_final);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_cleanup(we_sha224_md, we_sha224_cleanup);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_result_size(we_sha224_md, WC_SHA224_DIGEST_SIZE);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_app_datasize(we_sha224_md, sizeof(wc_Sha224));
+    }
+
+    if ((ret != 1) && (we_sha224_md != NULL)) {
+        EVP_MD_meth_free(we_sha224_md);
+    }
+
+    WOLFENGINE_LEAVE("we_init_sha224_meth", ret);
+
+    return ret;
+};
+
+#endif /* WE_HAVE_SHA224 && WE_SHA224_DIRECT */
+
 #if defined(WE_HAVE_SHA256) && defined(WE_SHA256_DIRECT)
 
 /*
@@ -344,6 +487,35 @@ static int we_sha_init(EVP_MD_CTX *ctx)
     }
 
     WOLFENGINE_LEAVE("we_sha_init", ret);
+
+    return ret;
+}
+#endif
+
+#ifdef WE_HAVE_SHA224
+/**
+ * Initialize the SHA-224 digest operation using wolfSSL.
+ *
+ * @param  ctx  [in]  EVP digest context of operation.
+ * @return  1 on success and 0 on failure.
+ */
+static int we_sha224_init(EVP_MD_CTX *ctx)
+{
+    int ret = 1, rc;
+    we_Digest *digest;
+
+    WOLFENGINE_ENTER("we_sha224_init");
+
+    digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
+    digest->hashType = WC_HASH_TYPE_SHA224;
+
+    rc = wc_HashInit(&digest->hash, digest->hashType);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        ret = 0;
+    }
+
+    WOLFENGINE_LEAVE("we_sha224_init", ret);
 
     return ret;
 }
@@ -717,6 +889,42 @@ int we_init_sha_meth()
     }
 
     WOLFENGINE_LEAVE("we_init_sha_meth", ret);
+
+    return ret;
+};
+#endif
+
+#ifdef WE_HAVE_SHA224
+/** EVP digest method - SHA-224 using wolfSSL for the implementation. */
+EVP_MD *we_sha224_md = NULL;
+
+/**
+ * Initialize the global SHA-224 EVP digest method.
+ *
+ * @return  1 on success else failure.
+ */
+int we_init_sha224_meth()
+{
+    int ret;
+
+    WOLFENGINE_ENTER("we_init_sha224_meth");
+
+    ret = (we_sha224_md = EVP_MD_meth_new(NID_sha256, EVP_PKEY_NONE)) != NULL;
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_init(we_sha224_md, we_sha224_init);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_result_size(we_sha224_md, WC_SHA224_DIGEST_SIZE);
+    }
+    if (ret == 1) {
+        ret = we_init_digest_meth(we_sha224_md);
+    }
+
+    if ((ret != 1) && (we_sha224_md != NULL)) {
+        EVP_MD_meth_free(we_sha224_md);
+    }
+
+    WOLFENGINE_LEAVE("we_init_sha224_meth", ret);
 
     return ret;
 };
