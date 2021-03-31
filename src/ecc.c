@@ -776,6 +776,7 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     EVP_PKEY *peerKey;
     EC_KEY *ecPeerKey = NULL;
 #endif
+    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
     (void)num;
     (void)ptr;
@@ -847,7 +848,9 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 
             /* Unsupported type. */
             default:
-                WOLFENGINE_ERROR_MSG("Unsupported control command type");
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
+                          type);
+                WOLFENGINE_ERROR_MSG(errBuff);
                 ret = 0;
                 break;
         }

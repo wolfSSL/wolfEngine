@@ -813,6 +813,7 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
                            void (*f) (void))
 {
     int ret = 1;
+    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
     (void)e;
     (void)p;
@@ -845,7 +846,9 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
             }
             break;
         default:
-            WOLFENGINE_ERROR_MSG("Invalid wolfEngine control command");
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
+                      cmd);
+            WOLFENGINE_ERROR_MSG(errBuff);
             ret = 0;
     }
 
