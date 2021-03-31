@@ -129,14 +129,14 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
 
     WOLFENGINE_ENTER("we_set_dh_parameters");
 
-    pBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(dh->p));
+    pBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(DH_get0_p(dh)));
     if (pBuf == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", pBuf);
         ret = 0;
     }
 
     if (ret == 1) {
-        gBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(dh->g));
+        gBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(DH_get0_g(dh)));
         if (gBuf == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", gBuf);
             ret = 0;
@@ -144,7 +144,7 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     }
 
     if (ret == 1) {
-        pBufLen = BN_bn2bin(dh->p, pBuf);
+        pBufLen = BN_bn2bin(DH_get0_p(dh), pBuf);
         if (pBufLen == 0) {
             WOLFENGINE_ERROR_FUNC("BN_bn2bin", pBufLen);
             ret = 0;
@@ -152,7 +152,7 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     }
 
     if (ret == 1) {
-        gBufLen = BN_bn2bin(dh->g, gBuf);
+        gBufLen = BN_bn2bin(DH_get0_g(dh), gBuf);
         if (gBufLen == 0) {
             WOLFENGINE_ERROR_FUNC("BN_bn2bin", gBufLen);
             ret = 0;
@@ -215,7 +215,7 @@ static int we_dh_generate_key(DH *dh)
     }
 
     if (ret == 1) {
-        pubLen = BN_num_bytes(dh->p);
+        pubLen = BN_num_bytes(DH_get0_p(dh));
         pub = (unsigned char*)OPENSSL_malloc(pubLen);
         if (pub == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", pub);
@@ -223,8 +223,9 @@ static int we_dh_generate_key(DH *dh)
         }
     }
     if (ret == 1) {
-        if (dh->length != 0) {
-            privLen = dh->length / 8; /* Convert bits to bytes. */
+        if (DH_get_length(dh) != 0) {
+            /* Convert bits to bytes. */
+            privLen = (unsigned int)(DH_get_length(dh) / 8);
         }
         else {
             privLen = pubLen;
@@ -238,6 +239,8 @@ static int we_dh_generate_key(DH *dh)
     }
 
     if (ret == 1) {
+        actualPrivLen = privLen;
+        actualPubLen = pubLen;
         rc = wc_DhGenerateKeyPair(&engineDh->key, we_rng, priv, &actualPrivLen,
                                   pub, &actualPubLen);
         if (rc != 0) {
@@ -253,7 +256,12 @@ static int we_dh_generate_key(DH *dh)
             ret = 0;
         }
         else {
-            dh->priv_key = privBn;
+            rc = DH_set0_key(dh, NULL, privBn);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC("DH_set0_key", rc);
+                BN_free(privBn);
+                ret = 0;
+            }
         }
     }
 
@@ -264,7 +272,12 @@ static int we_dh_generate_key(DH *dh)
             ret = 0;
         }
         else {
-            dh->pub_key = pubBn;
+            rc = DH_set0_key(dh, pubBn, NULL);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC("DH_set0_key", rc);
+                BN_free(pubBn);
+                ret = 0;
+            }
         }
     }
     
@@ -315,7 +328,8 @@ static int we_dh_compute_key(unsigned char *key, const BIGNUM *pubKey, DH *dh)
     }
 
     if (ret == 1) {
-        privBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(dh->priv_key));
+        privBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(
+                                                  DH_get0_priv_key(dh)));
         if (privBuf == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", privBuf);
             ret = -1;
@@ -331,7 +345,7 @@ static int we_dh_compute_key(unsigned char *key, const BIGNUM *pubKey, DH *dh)
     }
 
     if (ret == 1) {
-        privLen = BN_bn2bin(dh->priv_key, privBuf);
+        privLen = BN_bn2bin(DH_get0_priv_key(dh), privBuf);
         if (privLen == 0) {
             WOLFENGINE_ERROR_FUNC("BN_bn2bin", privLen);
             ret = -1;
