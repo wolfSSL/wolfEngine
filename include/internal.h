@@ -175,8 +175,10 @@ int we_init_cmac_pkey_asn1_meth(void);
 #ifdef WE_HAVE_DH
 
 extern DH_METHOD *we_dh_method;
-
 int we_init_dh_meth(void);
+
+extern EVP_PKEY_METHOD *we_dh_pkey_method;
+int we_init_dh_pkey_meth(void);
 
 #endif /* WE_HAVE_DH */
 

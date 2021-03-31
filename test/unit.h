@@ -174,6 +174,9 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data);
 
 #ifdef WE_HAVE_DH
 int test_dh(ENGINE *e, void *data);
+#ifdef WE_HAVE_EVP_PKEY
+int test_dh_pkey(ENGINE *e, void *data);
+#endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_DH */
 
 #ifdef WE_HAVE_ECC

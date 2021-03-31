@@ -34,6 +34,9 @@ static const int we_pkey_nids[] = {
 #ifdef WE_HAVE_RSA
     NID_rsaEncryption,
 #endif
+#ifdef WE_HAVE_DH
+    NID_dhKeyAgreement,
+#endif
 #ifdef WE_HAVE_ECC
     NID_X9_62_id_ecPublicKey,
 #ifdef WE_HAVE_ECKEYGEN
@@ -71,7 +74,7 @@ int we_pkey_get_nids(const int **nids)
 #endif /* WE_HAVE_EVP_PKEY || WE_USE_HASH */
 
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
-    defined(WE_HAVE_RANDOM)
+    defined(WE_HAVE_RANDOM) || defined(WE_HAVE_DH)
 
 /*
  * Random number generator
@@ -540,6 +543,11 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             *pkey = we_rsa_pkey_method;
             break;
 #endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_DH
+        case NID_dhKeyAgreement:
+            *pkey = we_dh_pkey_method;
+            break;
+#endif /* WE_HAVE_DH */
         case NID_X9_62_id_ecPublicKey:
             *pkey = we_ec_method;
             break;
@@ -608,7 +616,8 @@ static int wolfengine_init(ENGINE *e)
 
     WOLFENGINE_ENTER("wolfengine_init");
 
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
+    defined(WE_HAVE_DH)
     ret = we_init_random();
 #endif
 #ifdef WE_HAVE_SHA1
@@ -707,6 +716,11 @@ static int wolfengine_init(ENGINE *e)
 #endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_DH
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_dh_pkey_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
     if (ret == 1) {
         ret = we_init_dh_meth();
     }

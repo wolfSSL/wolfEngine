@@ -128,6 +128,9 @@ TEST_CASE test_case[] = {
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_DH
     TEST_DECL(test_dh, NULL),
+#ifdef WE_HAVE_EVP_PKEY
+    TEST_DECL(test_dh_pkey, NULL),
+#endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_DH */
 #ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA

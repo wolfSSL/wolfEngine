@@ -1021,8 +1021,8 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 /**
  * Generate an RSA key.
  *
- * @param  ctx   [in]  Public key context of operation.
- * @param  pkey  [in]  EVP public key to hold result.
+ * @param  ctx   [in]   Public key context of operation.
+ * @param  pkey  [out]  EVP public key to hold result.
  * @returns  1 on success and 0 on failure.
  */
 static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
@@ -1064,7 +1064,12 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 /**
  * Extra operations for working with RSA.
  * Supported operations include:
- *  - EVP_PKEY_CTRL_MD: set the method used when digesting.
+ *  - EVP_PKEY_CTRL_RSA_PADDING: set the padding mode.
+ *  - EVP_PKEY_CTRL_GET_RSA_PADDING: get the padding mode.
+ *  - EVP_PKEY_CTRL_MD: set the digest method for sign/verify.
+ *  - EVP_PKEY_CTRL_GET_MD: get the digets method for sign/verify.
+ *  - EVP_PKEY_CTRL_RSA_KEYGEN_BITS: set the key size in bits.
+ *  - EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP: set the public exponent, "e."
  *
  * @param  ctx   [in]  Public key context of operation.
  * @param  type  [in]  Type of operation to perform.
@@ -1117,7 +1122,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 #if OPENSSL_VERSION_NUMBER >= 0x1010100fL
             case EVP_PKEY_CTRL_RSA_KEYGEN_PRIMES:
                 /* wolfCrypt can only do key generation with 2 primes. */
-                WOLFENGINE_ERROR_MSG("wolfCrypt does not support multi-prime RSA.");
+                WOLFENGINE_ERROR_MSG("wolfCrypt does not support multi-prime"
+                                     "RSA.");
                 ret = 0;
                 break;
 #endif
