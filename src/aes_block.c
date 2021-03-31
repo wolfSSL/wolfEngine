@@ -514,7 +514,7 @@ int we_init_aescbc_meths()
     WOLFENGINE_ENTER("we_init_aescbc_meths");
 
     /* AES128-CBC */
-    we_aes128_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc, 1,
+    we_aes128_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc, AES_BLOCK_SIZE,
                                              AES_128_KEY_SIZE);
     if (we_aes128_cbc_ciph == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-128-CBC",
@@ -527,7 +527,8 @@ int we_init_aescbc_meths()
 
     /* AES192-CBC */
     if (ret == 1) {
-        we_aes192_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_192_cbc, 1,
+        we_aes192_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_192_cbc,
+                                                 AES_BLOCK_SIZE,
                                                  AES_192_KEY_SIZE);
         if (we_aes192_cbc_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-192-CBC",
@@ -541,7 +542,8 @@ int we_init_aescbc_meths()
 
     /* AES256-CBC */
     if (ret == 1) {
-        we_aes256_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_256_cbc, 1,
+        we_aes256_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_256_cbc,
+                                                 AES_BLOCK_SIZE,
                                                  AES_256_KEY_SIZE);
         if (we_aes256_cbc_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-256-CBC",
@@ -1034,7 +1036,7 @@ int we_init_aesecb_meths()
     WOLFENGINE_ENTER("we_init_aesecb_meths");
 
     /* AES128-ECB */
-    we_aes128_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_128_ecb, 1,
+    we_aes128_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_128_ecb, AES_BLOCK_SIZE,
                                              AES_128_KEY_SIZE);
     if (we_aes128_ecb_ciph == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-128-ECB",
@@ -1047,8 +1049,8 @@ int we_init_aesecb_meths()
 
     /* AES192-ECB */
     if (ret == 1) {
-        we_aes192_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_192_ecb, 1,
-                                                 AES_192_KEY_SIZE);
+        we_aes192_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_192_ecb,
+            AES_BLOCK_SIZE, AES_192_KEY_SIZE);
         if (we_aes192_ecb_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-192-ECB",
                                        we_aes192_ecb_ciph);
@@ -1061,8 +1063,8 @@ int we_init_aesecb_meths()
 
     /* AES256-ECB */
     if (ret == 1) {
-        we_aes256_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_256_ecb, 1,
-                                                 AES_256_KEY_SIZE);
+        we_aes256_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_256_ecb,
+            AES_BLOCK_SIZE, AES_256_KEY_SIZE);
         if (we_aes256_ecb_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-256-ECB",
                                        we_aes256_ecb_ciph);
