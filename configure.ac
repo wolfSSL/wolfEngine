@@ -81,6 +81,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_NO_DYNAMIC_ENGINE"
 fi
 
+# Single threaded
+AC_ARG_ENABLE([singlethreaded],
+    [AS_HELP_STRING([--enable-singlethreaded],[Enable wolfEngine single threaded (default: disabled).])],
+    [ ENABLED_SINGLETHREADED=$enableval ],
+    [ ENABLED_SINGLETHREADED=no ]
+    )
+
+if test "$ENABLED_SINGLETHREADED" != "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_SINGLE_THREADED"
+fi
+
 # Digest options
 AC_ARG_ENABLE([hash],
     [AS_HELP_STRING([--enable-digest],[Enable use of wc_Hash API for digesting (default: enabled)])],
@@ -315,6 +327,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_AESCCM"
 fi
 
+# RANDOM
+AC_ARG_ENABLE([rand],
+    [AS_HELP_STRING([--enable-rand],[Enable RAND (default: enabled)])],
+    [ ENABLED_RAND=$enableval ],
+    [ ENABLED_RAND=yes ]
+    )
+
+if test "$ENABLED_RAND" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_RANDOM"
+fi
+
 # RSA
 AC_ARG_ENABLE([rsa],
     [AS_HELP_STRING([--enable-rsa],[Enable RSA (default: enabled)])],
@@ -531,6 +555,7 @@ echo "   *  - SHA3-224:                $ENABLED_SHA3_224"
 echo "   *  - SHA3-256:                $ENABLED_SHA3_256"
 echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
 echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
+echo "   * Random:                     $ENABLED_RAND"
 echo "   * RSA:                        $ENABLED_RSA"
 echo "   * DH:                         $ENABLED_DH"
 echo "   * AES-GCM:                    $ENABLED_AESGCM"

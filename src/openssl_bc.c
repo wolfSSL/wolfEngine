@@ -447,16 +447,6 @@ int DH_meth_set_compute_key(DH_METHOD *dhm,
     return 1;
 }
 
-const BIGNUM *DH_get0_p(const DH *dh)
-{
-    return dh->p;
-}
-
-const BIGNUM *DH_get0_g(const DH *dh)
-{
-    return dh->g;
-}
-
 long DH_get_length(const DH *dh)
 {
     return dh->length;
@@ -505,14 +495,52 @@ int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key)
     return 1;
 }
 
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+
+#if OPENSSL_VERSION_NUMBER < 0x10101000L
+
+const BIGNUM *DH_get0_p(const DH *dh)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    return dh->p;
+#else
+    const BIGNUM *p;
+    DH_get0_pqg(dh, &p, NULL, NULL);
+    return p;
+#endif
+}
+
+const BIGNUM *DH_get0_g(const DH *dh)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    return dh->g;
+#else
+    const BIGNUM *g;
+    DH_get0_pqg(dh, NULL, NULL, &g);
+    return g;
+#endif
+}
+
 const BIGNUM *DH_get0_priv_key(const DH *dh)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     return dh->priv_key;
+#else
+    const BIGNUM *priv_key;
+    DH_get0_key(dh, NULL, &priv_key);
+    return priv_key;
+#endif
 }
 
 const BIGNUM *DH_get0_pub_key(const DH *dh)
 {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     return dh->pub_key;
+#else
+    const BIGNUM *pub_key;
+    DH_get0_key(dh, &pub_key, NULL);
+    return pub_key;
+#endif
 }
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */

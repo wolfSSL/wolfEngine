@@ -128,6 +128,12 @@ int test_aes128_ccm_tls(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_AESCCM */
 
+#ifdef WE_HAVE_RANDOM
+
+int test_random(ENGINE *e, void *data);
+
+#endif
+
 #ifdef WE_HAVE_EVP_PKEY
 
 int test_digest_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,

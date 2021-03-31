@@ -47,6 +47,7 @@
 #include <wolfssl/wolfcrypt/signature.h>
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/ecc.h>
+#include <wolfssl/wolfcrypt/random.h>
 
 #include "openssl_bc.h"
 #include "we_logging.h"
@@ -56,6 +57,9 @@
  */
 
 extern WC_RNG* we_rng;
+#ifndef WE_SINGLE_THREADED
+extern wolfSSL_Mutex* we_rng_mutex;
+#endif
 
 /* For digest method in OpenSSL 1.0.2 */
 int we_pkey_get_nids(const int** nids);
@@ -128,6 +132,13 @@ extern EVP_CIPHER* we_aes128_ccm_ciph;
 extern EVP_CIPHER* we_aes192_ccm_ciph;
 extern EVP_CIPHER* we_aes256_ccm_ciph;
 int we_init_aesccm_meths(void);
+
+
+/*
+ * Random method.
+ */
+
+extern RAND_METHOD* we_random_method;
 
 /*
  * DH method.
