@@ -54,7 +54,8 @@ int we_pkey_get_nids(const int **nids)
 }
 #endif /* WE_HAVE_EVP_PKEY || WE_USE_HASH */
 
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
+    defined(WE_HAVE_RANDOM)
 
 /*
  * Random number generator
@@ -66,6 +67,12 @@ static WC_RNG we_globalRng;
 WC_RNG* we_rng = &we_globalRng;
 /* Global RNG has been initialized. */
 static int we_globalRngInited = 0;
+#ifndef WE_SINGLE_THREADED
+/* Mutex for protecting use of global random number generator. */
+wolfSSL_Mutex we_global_rng_mutex;
+/* Pointer to mutex for protecting use of global random number generator.*/
+wolfSSL_Mutex* we_rng_mutex = &we_global_rng_mutex;
+#endif
 
 /**
  * Initialize the global random number generator object.
@@ -75,21 +82,48 @@ static int we_globalRngInited = 0;
 static int we_init_random()
 {
     int ret = 1;
+    int rc;
 
     WOLFENGINE_ENTER("we_init_random");
 
     if (!we_globalRngInited) {
-        ret = wc_InitRng(&we_globalRng) == 0;
+        rc = wc_InitRng(&we_globalRng);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_InitRng", rc);
+            ret = 0;
+        }
+    #ifndef WE_SINGLE_THREADED
+        if (ret == 1) {
+            rc = wc_InitMutex(&we_global_rng_mutex);
+            if (rc != 0) {
+                wc_FreeRng(&we_globalRng);
+                WOLFENGINE_ERROR_FUNC("wc_InitRng", rc);
+                ret = 0;
+            }
+        }
+    #endif
         if (ret == 1) {
             we_globalRngInited = 1;
-        } else {
-            WOLFENGINE_ERROR_FUNC("wc_InitRng", ret);
         }
     }
 
     WOLFENGINE_LEAVE("we_init_random", ret);
 
     return ret;
+}
+
+/**
+ * Free the global random number generator object.
+ */
+static void we_final_random()
+{
+    if (we_globalRngInited) {
+    #ifndef WE_SINGLE_THREADED
+        wc_FreeMutex(&we_global_rng_mutex);
+    #endif
+        wc_FreeRng(&we_globalRng);
+        we_globalRngInited = 0;
+    }
 }
 
 #endif /* WE_HAVE_ECC || WE_HAVE_AESGCM || WE_HAVE_RSA */
@@ -743,10 +777,7 @@ static int wolfengine_destroy(ENGINE *e)
     we_sha3_512_md = NULL;
 #endif
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
-    if (we_globalRngInited) {
-        wc_FreeRng(&we_globalRng);
-        we_globalRngInited = 0;
-    }
+    we_final_random();
 #endif
 
     WOLFENGINE_LEAVE("wolfengine_destroy", 1);
@@ -902,6 +933,11 @@ int wolfengine_bind(ENGINE *e, const char *id)
     if (ret == 1 && ENGINE_set_ciphers(e, we_ciphers) == 0) {
         ret = 0;
     }
+#ifdef WE_HAVE_RANDOM
+    if (ret == 1 && ENGINE_set_RAND(e, we_random_method) == 0) {
+        ret = 0;
+    }
+#endif
 #ifdef WE_HAVE_RSA
     if (ret == 1 && ENGINE_set_RSA(e, we_rsa()) == 0) {
         ret = 0;

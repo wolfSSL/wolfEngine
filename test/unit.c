@@ -114,6 +114,9 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_ccm_tls, NULL),
 #endif
 #endif
+#ifdef WE_HAVE_RANDOM
+    TEST_DECL(test_random, NULL),
+#endif
 #ifdef WE_HAVE_RSA
     TEST_DECL(test_rsa_direct, NULL),
 #endif /* WE_HAVE_RSA */
@@ -316,7 +319,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    if ((err == 0) && debug) {
+    if ((err == 0) && runTests && debug) {
         if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
             PRINT_ERR_MSG("Failed to enable debug logging");
             err = 1;

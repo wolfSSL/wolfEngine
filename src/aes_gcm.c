@@ -338,9 +338,9 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 /* Start with no AAD. */
                 aes->aad = NULL;
                 aes->aadLen = 0;
-                /* Internal AES-CCM object initialized. */
+                /* Internal AES-GCM object initialized. */
                 aes->init = 1;
-                /* Not doing CCM for TLS unless ctrl function called. */
+                /* Not doing GCM for TLS unless ctrl function called. */
                 aes->tls = 0;
                 break;
 
@@ -376,13 +376,26 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     /* Set ta fixed IV and have the rest generated. */
                     if (aes->ivLen == 0)
                         aes->ivLen = GCM_NONCE_MID_SZ;
-                    rc = wc_AesGcmSetIV(&aes->aes, aes->ivLen, ptr, arg,
-                                         we_rng);
+                #ifndef WE_SINGLE_THREADED
+                    rc = wc_LockMutex(we_rng_mutex);
                     if (rc != 0) {
-                        WOLFENGINE_ERROR_FUNC("wc_AesGcmSetIV", rc);
+                        WOLFENGINE_ERROR_FUNC("wc_LockMutex", rc);
                         ret = 0;
                     }
-                    else {
+                    if (ret == 1)
+                #endif
+                    {
+                        rc = wc_AesGcmSetIV(&aes->aes, aes->ivLen, ptr, arg,
+                                            we_rng);
+                #ifndef WE_SINGLE_THREADED
+                        wc_UnLockMutex(we_rng_mutex);
+                #endif
+                        if (rc != 0) {
+                            WOLFENGINE_ERROR_FUNC("wc_AesGcmSetIV", rc);
+                            ret = 0;
+                        }
+                    }
+                    if (ret == 1) {
                        aes->ivSet = 1;
                        XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
                        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->iv,
