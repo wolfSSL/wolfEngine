@@ -770,6 +770,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     we_Rsa *rsa = NULL;
     BIGNUM* bn = NULL;
     long e;
+    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
     WOLFENGINE_ENTER("we_rsa_pkey_ctrl");
 
@@ -829,6 +830,9 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
             default:
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
+                          type);
+                WOLFENGINE_ERROR_MSG(errBuff);
                 ret = 0;
                 break;
         }

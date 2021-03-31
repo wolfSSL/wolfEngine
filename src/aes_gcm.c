@@ -317,6 +317,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     int ret = 1;
     int rc;
     we_AesGcm *aes;
+    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
     WOLFENGINE_ENTER("we_aes_gcm_ctrl");
 
@@ -508,7 +509,9 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 break;
 
             default:
-                WOLFENGINE_ERROR_MSG("Unsopported ctrl type");
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
+                          type);
+                WOLFENGINE_ERROR_MSG(errBuff);
                 ret = 0;
                 break;
         }

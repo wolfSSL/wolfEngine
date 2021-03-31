@@ -425,6 +425,7 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 {
     int ret = 1;
     we_Des3Cbc *des3;
+    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
     WOLFENGINE_ENTER("we_des3_cbc_ctrl");
 
@@ -440,7 +441,9 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     if (ret == 1) {
         switch (type) {
             default:
-                WOLFENGINE_ERROR_MSG("Unsupported ctrl type");
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
+                          type);
+                WOLFENGINE_ERROR_MSG(errBuff);
                 ret = 0;
                 break;
         }

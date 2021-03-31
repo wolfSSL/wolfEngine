@@ -372,6 +372,7 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     unsigned char *tls;
     int tlsVer;
     int len;
+    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
     WOLFENGINE_ENTER("we_aes_cbc_hmac_ctrl");
 
@@ -446,7 +447,9 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                 }
                 break;
             default:
-                WOLFENGINE_ERROR_MSG("Unsupported ctrl type");
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
+                          type);
+                WOLFENGINE_ERROR_MSG(errBuff);
                 ret = 0;
                 break;
         }
