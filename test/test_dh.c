@@ -68,12 +68,13 @@ int test_dh(ENGINE *e, void *data)
         err = p == NULL;
     }
     if (err == 0) {
-        dhOpenSSL->p = p;
         g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
         err = g == NULL;
     }
     if (err == 0) {
-        dhOpenSSL->g = g;
+        err = DH_set0_pqg(dhOpenSSL, p, NULL, g) == 0;
+    }
+    if (err == 0) {
         err = DH_generate_key(dhOpenSSL) == 0;
     }
 
@@ -94,35 +95,40 @@ int test_dh(ENGINE *e, void *data)
         err = p == NULL;
     }
     if (err == 0) {
-        dhWolfEngine->p = p;
         g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
         err = g == NULL;
     }
     if (err == 0) {
-        dhWolfEngine->g = g;
+        err = DH_set0_pqg(dhWolfEngine, p, NULL, g) == 0;
+    }
+    if (err == 0) {
         err = DH_generate_key(dhWolfEngine) == 0;
     }
 
     if (err == 0) {
-        PRINT_MSG("Compute shared secret with OpenSSL private key and wolfEngine public key.");
+        PRINT_MSG("Compute shared secret with OpenSSL private key and "
+                  "wolfEngine public key.");
         secretOpenSSL = (unsigned char*)OPENSSL_malloc(DH_size(dhOpenSSL));
         err = secretOpenSSL == NULL;
     }
     if (err == 0) {
-        secretLenOpenSSL = DH_compute_key(secretOpenSSL, dhWolfEngine->pub_key,
+        secretLenOpenSSL = DH_compute_key(secretOpenSSL,
+                                          DH_get0_pub_key(dhWolfEngine),
                                           dhOpenSSL);
         err = secretLenOpenSSL == -1;
     }
 
     if (err == 0) {
-        PRINT_MSG("Compute shared secret with wolfEngine private key and OpenSSL "
-                  "public key.");
-        secretWolfEngine = (unsigned char*)OPENSSL_malloc(DH_size(dhWolfEngine));
+        PRINT_MSG("Compute shared secret with wolfEngine private key and "
+                  "OpenSSL public key.");
+        secretWolfEngine = (unsigned char*)OPENSSL_malloc(DH_size(
+                                                          dhWolfEngine));
         err = secretWolfEngine == NULL;
     }
     if (err == 0) {
         secretLenWolfEngine = DH_compute_key(secretWolfEngine,
-                                             dhOpenSSL->pub_key, dhWolfEngine);
+                                             DH_get0_pub_key(dhOpenSSL),
+                                             dhWolfEngine);
         err = secretLenWolfEngine == -1;
     }
 

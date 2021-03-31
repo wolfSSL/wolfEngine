@@ -447,4 +447,72 @@ int DH_meth_set_compute_key(DH_METHOD *dhm,
     return 1;
 }
 
+const BIGNUM *DH_get0_p(const DH *dh)
+{
+    return dh->p;
+}
+
+const BIGNUM *DH_get0_g(const DH *dh)
+{
+    return dh->g;
+}
+
+long DH_get_length(const DH *dh)
+{
+    return dh->length;
+}
+
+int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g)
+{
+    /* If the fields p and g in d are NULL, the corresponding input
+     * parameters MUST be non-NULL.  q may remain NULL.
+     */
+    if ((dh->p == NULL && p == NULL)
+        || (dh->g == NULL && g == NULL))
+        return 0;
+
+    if (p != NULL) {
+        BN_free(dh->p);
+        dh->p = p;
+    }
+    if (q != NULL) {
+        BN_free(dh->q);
+        dh->q = q;
+    }
+    if (g != NULL) {
+        BN_free(dh->g);
+        dh->g = g;
+    }
+
+    if (q != NULL) {
+        dh->length = BN_num_bits(q);
+    }
+
+    return 1;
+}
+
+int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key)
+{
+    if (pub_key != NULL) {
+        BN_free(dh->pub_key);
+        dh->pub_key = pub_key;
+    }
+    if (priv_key != NULL) {
+        BN_free(dh->priv_key);
+        dh->priv_key = priv_key;
+    }
+
+    return 1;
+}
+
+const BIGNUM *DH_get0_priv_key(const DH *dh)
+{
+    return dh->priv_key;
+}
+
+const BIGNUM *DH_get0_pub_key(const DH *dh)
+{
+    return dh->pub_key;
+}
+
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
