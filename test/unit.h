@@ -74,6 +74,10 @@ int test_sha3_512(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_DIGEST */
 
+#ifdef WE_HAVE_HMAC
+int test_hmac_create(ENGINE *e, void *data);
+#endif /* WE_HAVE_HMAC */
+
 #ifdef WE_HAVE_DES3CBC
 int test_des3_cbc(ENGINE *e, void *data);
 int test_des3_cbc_stream(ENGINE *e, void *data);

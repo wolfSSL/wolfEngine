@@ -141,6 +141,18 @@ int we_init_aesccm_meths(void);
 extern RAND_METHOD* we_random_method;
 
 /*
+ * HMAC methods.
+ */
+
+#ifdef WE_HAVE_HMAC
+
+extern EVP_PKEY_METHOD *we_hmac_pkey_method;
+
+int we_init_hmac_pkey_meth(void);
+
+#endif /* WE_HAVE_HMAC */
+
+/*
  * DH method.
  */
 
@@ -151,7 +163,6 @@ extern DH_METHOD *we_dh_method;
 int we_init_dh_meth(void);
 
 #endif /* WE_HAVE_DH */
-
 
 /*
  * RSA methods.

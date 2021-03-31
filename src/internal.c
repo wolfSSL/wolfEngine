@@ -25,6 +25,9 @@
 #if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
 /** List of public key types supported as ids. */
 static const int we_pkey_nids[] = {
+#ifdef WE_HAVE_HMAC
+    NID_hmac,
+#endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_RSA
     NID_rsaEncryption,
 #endif
@@ -496,6 +499,11 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
     }
     else {
         switch (nid) {
+#ifdef WE_HAVE_HMAC
+        case NID_hmac:
+            *pkey = we_hmac_pkey_method;
+            break;
+#endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_RSA
         case NID_rsaEncryption:
             *pkey = we_rsa_pkey_method;
@@ -635,6 +643,13 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_aesccm_meths();
     }
 #endif
+#ifdef WE_HAVE_HMAC
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_hmac_pkey_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
+#endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_DH
     if (ret == 1) {
         ret = we_init_dh_meth();
