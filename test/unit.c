@@ -157,6 +157,22 @@ TEST_CASE test_case[] = {
         TEST_DECL(test_ecdsa_p384, NULL),
     #endif
 #endif
+#ifdef WE_HAVE_EC_P521
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_eckeygen_p521_by_nid, NULL),
+        TEST_DECL(test_eckeygen_p521, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ecdh_p521_keygen, NULL),
+    #endif
+        TEST_DECL(test_ecdh_p521, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ecdsa_p521_pkey, NULL),
+        TEST_DECL(test_ecdsa_p521, NULL),
+    #endif
+#endif
 #endif /* WE_HAVE_EVP_PKEY */
 #ifdef WE_HAVE_EC_KEY
 #ifdef WE_HAVE_EC_P256
@@ -185,6 +201,20 @@ TEST_CASE test_case[] = {
     #endif
     #ifdef WE_HAVE_ECDSA
         TEST_DECL(test_ec_key_ecdsa_p384, NULL),
+    #endif
+#endif
+#ifdef WE_HAVE_EC_P521
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_keygen_p521_by_nid, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_ecdh_p521_keygen, NULL),
+    #endif
+        TEST_DECL(test_ec_key_ecdh_p521, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ec_key_ecdsa_p521, NULL),
     #endif
 #endif
 #endif /* WE_HAVE_EC_KEY */

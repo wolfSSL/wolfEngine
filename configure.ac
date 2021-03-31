@@ -449,6 +449,17 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_P384"
 fi
 
+AC_ARG_ENABLE([p521],
+    [AS_HELP_STRING([--enable-p521],[Enable EC Curve P-521 (default: enabled)])],
+    [ ENABLED_EC_P521=$enableval ],
+    [ ENABLED_EC_P521=$ENABLED_ECC ]
+    )
+
+if test "$ENABLED_EC_P521" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_P521"
+fi
+
 
 # Check enable options
 if test "$ENABLED_DIGEST" = "yes"
@@ -547,6 +558,7 @@ echo "   *  - EC Key Gen:              $ENABLED_ECKG"
 echo "   *  - ECDH:                    $ENABLED_ECDH"
 echo "   *  - P-256:                   $ENABLED_EC_P256"
 echo "   *  - P-384:                   $ENABLED_EC_P384"
+echo "   *  - P-521:                   $ENABLED_EC_P521"
 echo ""
 echo "---"
 

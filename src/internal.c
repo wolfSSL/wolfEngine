@@ -37,6 +37,9 @@ static const int we_pkey_nids[] = {
 #ifdef WE_HAVE_EC_P384
     NID_secp384r1,
 #endif
+#ifdef WE_HAVE_EC_P521
+    NID_secp521r1,
+#endif
 #endif
 #endif
 };
@@ -480,7 +483,12 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
         case NID_secp384r1:
             *pkey = we_ec_p384_method;
             break;
-#endif 
+#endif
+#ifdef WE_HAVE_EC_P521
+        case NID_secp521r1:
+            *pkey = we_ec_p521_method;
+            break;
+#endif
 #endif /* WE_HAVE_ECKEYGEN */
         default:
             WOLFENGINE_ERROR_MSG("Unsupported public key NID");
