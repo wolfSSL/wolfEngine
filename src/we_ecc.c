@@ -627,7 +627,7 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
  * @param  tbsLen  [in]      Length of To Be Signed data.
  * @returns  1 on success and 0 on failure.
  */
-static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
+static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
                          const unsigned char *tbs, size_t tbsLen)
 {
     int ret, rc;
@@ -635,7 +635,7 @@ static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
     we_Ecc *ecc;
     EC_KEY *ecKey = NULL;
 
-    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_sign");
+    WOLFENGINE_ENTER("we_pkey_ecdsa_sign");
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -671,7 +671,7 @@ static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
         }
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_sign", ret);
+    WOLFENGINE_LEAVE("we_pkey_ecdsa_sign", ret);
 
     return ret;
 }
@@ -686,7 +686,7 @@ static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
  * @param  tbsLen  [in]  Length of To Be Signed data.
  * @returns  1 on success and 0 on failure.
  */
-static int we_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
+static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                            size_t sigLen, const unsigned char *tbs,
                            size_t tbsLen)
 {
@@ -695,7 +695,7 @@ static int we_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     EC_KEY *ecKey = NULL;
     int res;
 
-    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_verify");
+    WOLFENGINE_ENTER("we_pkey_ecdsa_verify");
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -725,7 +725,7 @@ static int we_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         ret = res;
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_verify", ret);
+    WOLFENGINE_LEAVE("we_pkey_ecdsa_verify", ret);
 
     return ret;
 }
@@ -1051,8 +1051,8 @@ int we_init_ecc_meths(void)
         EVP_PKEY_meth_set_cleanup(we_ec_method, we_ec_cleanup);
 
 #ifdef WE_HAVE_ECDSA
-        EVP_PKEY_meth_set_sign(we_ec_method, NULL, we_ecdsa_sign);
-        EVP_PKEY_meth_set_verify(we_ec_method, NULL, we_ecdsa_verify);
+        EVP_PKEY_meth_set_sign(we_ec_method, NULL, we_pkey_ecdsa_sign);
+        EVP_PKEY_meth_set_verify(we_ec_method, NULL, we_pkey_ecdsa_verify);
 #endif
 #ifdef WE_HAVE_ECKEYGEN
         EVP_PKEY_meth_set_keygen(we_ec_method, NULL, we_ec_keygen);
