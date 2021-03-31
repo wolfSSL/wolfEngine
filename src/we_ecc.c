@@ -1666,5 +1666,90 @@ int we_init_ecdh_meth(void)
 }
 #endif /* WE_HAVE_ECDH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
-#endif /* WE_HAVE_ECC */
 
+#ifdef WE_HAVE_ECDSA
+
+/**  Set the ECDSA_do_sign function in the ECDSA_METHOD
+ *   \param  ecdsa_method  pointer to existing ECDSA_METHOD
+ *   \param  ecdsa_do_sign a funtion of type ECDSA_do_sign
+ */
+
+static ECDSA_SIG* we_ecdsa_sign(const unsigned char *dgst, int dgst_len,
+                                                        const BIGNUM *inv,
+                                                        const BIGNUM *rp,
+                                                        EC_KEY *eckey)
+{
+    (void)dgst; (void)dgst_len; (void)inv; (void)rp; (void)eckey;
+    return NULL;
+}
+
+/**  Set the  ECDSA_sign_setup function in the ECDSA_METHOD
+ *   \param  ecdsa_method  pointer to existing ECDSA_METHOD
+ *   \param  ecdsa_sign_setup a funtion of type ECDSA_sign_setup
+ */
+
+static int we_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx,
+                                                          BIGNUM **kinv,
+                                                          BIGNUM **r)
+{
+    (void)eckey; (void)ctx; (void)kinv; (void)r;
+    return 0;
+}
+
+/**  Set the ECDSA_do_verify function in the ECDSA_METHOD
+ *   \param  ecdsa_method  pointer to existing ECDSA_METHOD
+ *   \param  ecdsa_do_verify a funtion of type ECDSA_do_verify
+ */
+
+static int we_ecdsa_verify(const unsigned char *dgst, int dgst_len,
+                                                     const ECDSA_SIG *sig,
+                                                     EC_KEY *eckey)
+{
+    (void)dgst; (void)dgst_len; (void)sig; (void)eckey;
+    return 0;
+}
+
+/**
+ * Initialize the ECDSA method for use with the EVP_PKEY API.
+ *
+ * @return  1 on success and 0 on failure.
+ */
+
+/** ECDSA method - ECDSA using wolfSSL for the implementation. */
+ECDSA_METHOD *we_ecdsa_method = NULL;
+
+int we_init_ecdsa_meth(void)
+{
+    int ret = 1;
+
+    we_ecdsa_method = ECDSA_METHOD_new(NULL);
+    if (we_ecdsa_method == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("ECDSA_METHOD_new", we_ecdsa_method);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        /* Assume they are by default
+        ECDSA_METHOD_new(we_ecdsa_method, we_ecdsa_new);
+        ECDSA_METHOD_free(we_ecdsa_method, we_ecdsa_free);
+        */
+
+        ECDSA_METHOD_set_sign(we_ecdsa_method, we_ecdsa_sign);
+        ECDSA_METHOD_set_sign_setup(we_ecdsa_method, we_ecdsa_sign_setup);
+        ECDSA_METHOD_set_verify(we_ecdsa_method, we_ecdsa_verify);
+        /*
+        ECDSA_METHOD_set_flags(we_ecdsa_method, we_ecdsa_flags);
+        ECDSA_METHOD_set_name(we_ecdsa_method, we_ecdsa_set_name);
+        */
+    }
+
+    if (ret == 0 && we_ecdsa_method != NULL) {
+        ECDSA_METHOD_free(we_ecdsa_method);
+        we_ecdsa_method = NULL;
+    }
+
+    return ret;
+}
+#endif /* WE_HAVE_ECDSA */
+
+#endif /* WE_HAVE_ECC */

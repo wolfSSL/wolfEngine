@@ -207,6 +207,18 @@ int we_init_ecdh_meth(void);
 
 #endif /* WE_HAVE_ECDH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+
+/*
+ * ECDSA methods.
+ */
+
+#ifdef WE_HAVE_ECDSA
+
+extern ECDSA_METHOD *we_ecdsa_method;
+int we_init_ecdsa_meth(void);
+
+#endif /* WE_HAVE_ECDSA */
+
 /*
  * ECC methods.
  */
