@@ -582,12 +582,14 @@ static int we_dsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                             engineDsa->qbits = 160;
                         break;
                     case 2048:
+#ifndef WE_HAVE_FIPS
                     case 3072:
                         if (engineDsa->qbits && engineDsa->qbits != 256)
                             ret = -2;
                         else
                             engineDsa->qbits = 256;
                         break;
+#endif
                     default:
                         ret = -2;
                 }
@@ -604,8 +606,11 @@ static int we_dsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                         break;
                     case 256:
                         if (engineDsa->pbits) {
-                            if (engineDsa->pbits != 2048 &&
-                                engineDsa->pbits != 3072)
+                            if (engineDsa->pbits != 2048
+#ifndef WE_HAVE_FIPS
+                                    && engineDsa->pbits != 3072
+#endif
+                                    )
                                 ret = -2;
                         }
                         else
