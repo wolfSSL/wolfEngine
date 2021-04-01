@@ -52,6 +52,12 @@ static int we_ec_get_curve_id(int curveName, int *curveId)
             *curveId = ECC_SECP384R1;
             break;
 #endif
+#ifdef WE_HAVE_EC_P521
+        case NID_secp521r1:
+            WOLFENGINE_MSG("Set P-521");
+            *curveId = ECC_SECP521R1;
+            break;
+#endif
         default:
             WOLFENGINE_ERROR_MSG("Unsupported ECC curve name");
             ret = 0;
@@ -370,6 +376,46 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
     }
 
     WOLFENGINE_LEAVE("we_ec_p384_init", ret);
+
+    return ret;
+}
+
+#endif
+
+#ifdef WE_HAVE_EC_P521
+/**
+ * Initialize and set the data required to complete an EC P-521 operations.
+ *
+ * @param  ctx  [in]  Public key context of operation.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_ec_p521_init(EVP_PKEY_CTX *ctx)
+{
+    int ret;
+    we_Ecc *ecc;
+
+    WOLFENGINE_ENTER("we_ec_p521_init");
+
+    /* Create the internal EC object in context. */
+    ret = we_ec_init(ctx);
+    if (ret == 1) {
+        /* Get the internal EC object. */
+        ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+        /* Setup P-521 curve. */
+        ecc->curveId = ECC_SECP521R1;
+        ecc->curveName = NID_secp521r1;
+        ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
+        if (ecc->group == NULL) {
+            /* Failed - free allocated data. */
+            WOLFENGINE_ERROR_FUNC_NULL("EC_GROUP_new_by_curve_name",
+                                       ecc->group);
+            wc_ecc_free(&ecc->key);
+            OPENSSL_free(ecc);
+            ret = 0;
+        }
+    }
+
+    WOLFENGINE_LEAVE("we_ec_p521_init", ret);
 
     return ret;
 }
@@ -872,6 +918,10 @@ EVP_PKEY_METHOD *we_ec_p256_method = NULL;
 /** EVP public key method - EC P-384 using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_ec_p384_method = NULL;
 #endif
+#ifdef WE_HAVE_EC_P521
+/** EVP public key method - EC P-521 using wolfSSL for the implementation. */
+EVP_PKEY_METHOD *we_ec_p521_method = NULL;
+#endif
 #endif
 
 /**
@@ -943,6 +993,23 @@ int we_init_ecc_meths(void)
         }
     }
 #endif
+#ifdef WE_HAVE_EC_P521
+    if (ret == 1) {
+        we_ec_p521_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
+        if (we_ec_p521_method == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_ec_p521_method);
+            ret = 0;
+        } else {
+            EVP_PKEY_meth_set_init(we_ec_p521_method, we_ec_p521_init);
+            EVP_PKEY_meth_set_copy(we_ec_p521_method, we_ec_copy);
+            EVP_PKEY_meth_set_cleanup(we_ec_p521_method, we_ec_cleanup);
+
+            EVP_PKEY_meth_set_keygen(we_ec_p521_method, NULL, we_ec_keygen);
+
+            EVP_PKEY_meth_set_ctrl(we_ec_p521_method, we_ec_ctrl, NULL);
+        }
+    }
+#endif
 #endif
 
     if (ret == 0) {
@@ -962,9 +1029,15 @@ int we_init_ecc_meths(void)
             EVP_PKEY_meth_free(we_ec_p384_method);
             we_ec_p384_method = NULL;
         }
+#endif
+#ifdef WE_HAVE_EC_P521
+        if (we_ec_p521_method != NULL) {
+            EVP_PKEY_meth_free(we_ec_p521_method);
+            we_ec_p521_method = NULL;
+        }
+#endif
+#endif
     }
-#endif
-#endif
 
     WOLFENGINE_LEAVE("we_init_ecc_meths", ret);
 

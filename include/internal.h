@@ -176,6 +176,7 @@ extern EC_KEY_METHOD *we_ec_key_method;
 extern EVP_PKEY_METHOD *we_ec_method;
 extern EVP_PKEY_METHOD *we_ec_p256_method;
 extern EVP_PKEY_METHOD *we_ec_p384_method;
+extern EVP_PKEY_METHOD *we_ec_p521_method;
 int we_init_ecc_meths(void);
 int we_init_ec_key_meths(void);
 
