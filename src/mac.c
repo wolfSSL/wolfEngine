@@ -42,8 +42,14 @@ typedef struct we_Hmac
 
 /** EVP PKEY digest method - HMAC using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_hmac_pkey_method = NULL;
+
+/* value used for identifying if the ctrl is a key set command */
 #define WE_CTRL_KEY 6
+
+/* value used for identifying if the ctrl is a EVP_MD set command */
 #define WE_CTRL_MD_TYPE 1
+
+/* value used for identifying if the ctrl is a digest init command */
 #define WE_CTRL_DIGEST_INIT 7
 
 /**
@@ -70,11 +76,10 @@ static int we_hmac_pkey_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", hmac);
             ret = 0;
         }
-        memset(hmac, 0, sizeof(we_Hmac));
     }
 
     if (ret == 1) {
-        rc = wc_HmacInit(&hmac->hmac, NULL, 0);
+        rc = wc_HmacInit(&hmac->hmac, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC("wc_HmacInit", rc);
             ret = 0;
@@ -151,11 +156,7 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     if (ret == 1) {
         EVP_PKEY_CTX *pkeyCtx;
 
-    #if OPENSSL_VERSION_NUMBER < 0x10101000L
-        pkeyCtx = ctx->pctx;
-    #else
         pkeyCtx = EVP_MD_CTX_pkey_ctx(ctx);
-    #endif
         if (pkeyCtx == NULL) {
             ret = 0;
         }
@@ -203,11 +204,7 @@ static int we_hmac_pkey_signctx_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mdCtx)
          * overriding mdCtx->update with initialization calls.
          */
         EVP_MD_CTX_set_flags(mdCtx, EVP_MD_CTX_FLAG_NO_INIT);
-    #if OPENSSL_VERSION_NUMBER < 0x10101000L
-        mdCtx->update = we_hmac_pkey_update;
-    #else
         EVP_MD_CTX_set_update_fn(mdCtx, we_hmac_pkey_update);
-    #endif
     }
 
     WOLFENGINE_LEAVE("wc_hmac_pkey_signctx_init", ret);
@@ -247,13 +244,9 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
         }
     }
 
-    if (ret == 1) {
-        *siglen = (size_t)hmac->size;
-    }
-
     if (ret == 1 && sig != NULL) {
         if (*siglen < (size_t)hmac->size) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", hmac);
+            WOLFENGINE_ERROR_MSG("MAC output buffer was too small");
             ret = 0;
         }
     }
@@ -264,6 +257,10 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
             WOLFENGINE_ERROR_FUNC("wc_HmacFinal", rc);
             ret = 0;
         }
+    }
+
+    if (ret == 1) {
+        *siglen = (size_t)hmac->size;
     }
 
     return ret;
@@ -288,12 +285,12 @@ static int we_hmac_md_to_hash_type(EVP_MD *md)
         case NID_sha512: return WC_SHA512;
         case NID_sha384: return WC_SHA384;
         case NID_sha224: return WC_SHA224;
-        #if 0
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
         case NID_sha3_224: return WC_SHA3_224;
         case NID_sha3_256: return WC_SHA3_256;
         case NID_sha3_384: return WC_SHA3_384;
         case NID_sha3_512: return WC_SHA3_512;
-        #endif
+    #endif
         default:
             return -1;
     }
@@ -328,86 +325,102 @@ static int we_hmac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         }
     }
 
-    /* handle MD passed in */
-    if (type == WE_CTRL_MD_TYPE && ptr != NULL) {
-        hmac->type = we_hmac_md_to_hash_type((EVP_MD *)ptr);
-        if (hmac->type < 0) {
-            WOLFENGINE_ERROR_FUNC("we_hmac_md_to_hash_type", hmac->type);
-            ret = 0;
-        }
-        else {
-            hmac->size = wc_HmacSizeByType(hmac->type);
-            if (hmac->size <= 0) {
-                WOLFENGINE_ERROR_FUNC("wc_HmacSizeByType", hmac->size);
-                ret = 0;
-            }
-        }
-    }
-
-    /* handle password passed in */
-    if (type == WE_CTRL_KEY && ptr != NULL) {
-        if (hmac->key != NULL) {
-            OPENSSL_free(hmac->key);
-        }
-        hmac->key = (unsigned char *)OPENSSL_zalloc(num);
-        if (hmac->key == NULL) {
-            ret = 0;
-        }
-        else {
-            hmac->keySz = num;
-            memcpy(hmac->key, ptr, num);
-        }
-    }
-
-    /* handle digest init */
-    if (type == WE_CTRL_DIGEST_INIT) {
-        int rc;
-        ASN1_OCTET_STRING *key;
-        EVP_PKEY *pkey;
-
-        /* pkey associated with ctx should have a password set to use */
-        pkey = EVP_PKEY_CTX_get0_pkey(ctx);
-        if (pkey == NULL) {
-            ret = 0;
-        }
-
-        if (ret == 1) {
-            key = (ASN1_OCTET_STRING*)EVP_PKEY_get0(pkey);
-            if (key == NULL) {
-                ret = 0;
-            }
-        }
-
-        if (ret == 1) {
-            unsigned char *pt;
-
-            hmac->keySz = ASN1_STRING_length(key);
-            pt          = ASN1_STRING_data(key);
-            if (pt == NULL) {
-                ret = 0;
+    switch (type) {
+        case WE_CTRL_MD_TYPE: /* handle MD passed in */
+            if (ptr != NULL) {
+                hmac->type = we_hmac_md_to_hash_type((EVP_MD *)ptr);
+                if (hmac->type < 0) {
+                    WOLFENGINE_ERROR_FUNC("we_hmac_md_to_hash_type",
+                            hmac->type);
+                    ret = 0;
+                }
+                else {
+                    hmac->size = wc_HmacSizeByType(hmac->type);
+                    if (hmac->size <= 0) {
+                        WOLFENGINE_ERROR_FUNC("wc_HmacSizeByType", hmac->size);
+                        ret = 0;
+                    }
+                }
             }
             else {
+                ret = 0;
+            }
+            break;
+
+        case WE_CTRL_KEY: /* handle password passed in */
+            if (ptr != NULL) {
                 if (hmac->key != NULL) {
                     OPENSSL_free(hmac->key);
                 }
-                hmac->key = (unsigned char *)OPENSSL_zalloc(hmac->keySz);
+                hmac->key = (unsigned char *)OPENSSL_zalloc(num);
                 if (hmac->key == NULL) {
                     ret = 0;
                 }
                 else {
-                    memcpy(hmac->key, pt, hmac->keySz);
+                    hmac->keySz = num;
+                    memcpy(hmac->key, ptr, num);
                 }
             }
-        }
-
-        if (ret == 1) {
-            rc = wc_HmacSetKey(&hmac->hmac, hmac->type, (const byte*)hmac->key,
-                (word32)hmac->keySz);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_HmacSetKey", rc);
+            else {
                 ret = 0;
             }
-        }
+            break;
+
+        case WE_CTRL_DIGEST_INIT: /* handle digest init */
+            {
+                int rc;
+                ASN1_OCTET_STRING *key;
+                EVP_PKEY *pkey;
+
+                /* pkey associated with ctx should have a password set to use */
+                pkey = EVP_PKEY_CTX_get0_pkey(ctx);
+                if (pkey == NULL) {
+                    ret = 0;
+                }
+
+                if (ret == 1) {
+                    key = (ASN1_OCTET_STRING*)EVP_PKEY_get0(pkey);
+                    if (key == NULL) {
+                        ret = 0;
+                    }
+                }
+
+                if (ret == 1) {
+                    unsigned char *pt;
+
+                    hmac->keySz = ASN1_STRING_length(key);
+                    pt          = ASN1_STRING_data(key);
+                    if (pt == NULL) {
+                        ret = 0;
+                    }
+                    else {
+                        if (hmac->key != NULL) {
+                            OPENSSL_free(hmac->key);
+                        }
+                        hmac->key = (unsigned char *)OPENSSL_zalloc(hmac->keySz);
+                        if (hmac->key == NULL) {
+                            ret = 0;
+                        }
+                        else {
+                            memcpy(hmac->key, pt, hmac->keySz);
+                        }
+                    }
+                }
+
+                if (ret == 1) {
+                    rc = wc_HmacSetKey(&hmac->hmac, hmac->type,
+                            (const byte*)hmac->key, (word32)hmac->keySz);
+                    if (rc != 0) {
+                        WOLFENGINE_ERROR_FUNC("wc_HmacSetKey", rc);
+                        ret = 0;
+                    }
+                }
+            }
+            break;
+
+        default:
+            WOLFENGINE_MSG("Unsupported HMAC ctrl encountered");
+            ret = 0;
     }
     return ret;
 }
@@ -416,7 +429,7 @@ static int we_hmac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 /**
  * Function to handle control string values. Currently a stub function.
  *
- * @param  ctx   [in]  EVP_PKEY context being used. 
+ * @param  ctx   [in]  EVP_PKEY context being used.
  * @param  type  [in]  string with the type of ctrl to do.
  * @param  value [in]  action or data to use
  * @returns  1 on success and 0 on failure.
@@ -635,10 +648,10 @@ static int we_hmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 
 
 /**
- * Function to do a deep copy of the HMAC information
+ * Function to assign the pkey value
  *
- * @param  dst  [out] EVP_PKEY to copy to
- * @param  src  [in]  EVP_PKEY to copy from
+ * @param  ctx   [in]  EVP_PKEY context being used
+ * @param  pkey  [out] EVP_PKEY to assign value to
  * @returns  1 on success and 0 on failure.
  */
 static int we_hmac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)

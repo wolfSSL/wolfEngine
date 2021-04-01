@@ -52,6 +52,12 @@
 #define EVP_MD_CTX_new          EVP_MD_CTX_create
 #define EVP_MD_CTX_free         EVP_MD_CTX_destroy
 
+/* getter function was added for PKEY ctx */
+#define EVP_MD_CTX_pkey_ctx(ctx) (ctx)->pctx
+
+/* setter function was added for MD CTX digest update */
+#define EVP_MD_CTX_set_update_fn(ctx, fn) (ctx)->update = (fn)
+
 void *OPENSSL_zalloc(size_t num);
 void OPENSSL_clear_free(void *str, size_t num);
 

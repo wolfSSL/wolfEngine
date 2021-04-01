@@ -142,6 +142,28 @@ int test_hmac_create(ENGINE *e, void *data)
         PRINT_MSG("Testing with SHA512");
         ret = test_hmac_create_helper(e, data, EVP_sha512());
     }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    if (ret == 0) {
+        PRINT_MSG("Testing with SHA3-224");
+        ret = test_hmac_create_helper(e, data, EVP_sha3_224());
+    }
+
+    if (ret == 0) {
+        PRINT_MSG("Testing with SHA3-256");
+        ret = test_hmac_create_helper(e, data, EVP_sha3_256());
+    }
+
+    if (ret == 0) {
+        PRINT_MSG("Testing with SHA3-384");
+        ret = test_hmac_create_helper(e, data, EVP_sha3_384());
+    }
+
+    if (ret == 0) {
+        PRINT_MSG("Testing with SHA3-512");
+        ret = test_hmac_create_helper(e, data, EVP_sha3_512());
+    }
+#endif
     return ret;
 }
 #endif
