@@ -31,6 +31,12 @@ static const int we_pkey_nids[] = {
 #ifdef WE_HAVE_ECC
     NID_X9_62_id_ecPublicKey,
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+    NID_X9_62_prime192v1,
+#endif
+#ifdef WE_HAVE_EC_P224
+    NID_secp224r1,
+#endif
 #ifdef WE_HAVE_EC_P256
     NID_X9_62_prime256v1,
 #endif
@@ -508,6 +514,16 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             *pkey = we_ec_method;
             break;
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+        case NID_X9_62_prime192v1:
+            *pkey = we_ec_p192_method;
+            break;
+#endif
+#ifdef WE_HAVE_EC_P224
+        case NID_secp224r1:
+            *pkey = we_ec_p224_method;
+            break;
+#endif
 #ifdef WE_HAVE_EC_P256
         case NID_X9_62_prime256v1:
             *pkey = we_ec_p256_method;
