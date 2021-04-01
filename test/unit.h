@@ -414,6 +414,10 @@ int test_ec_key_ecdsa_p521(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_EC_KEY */
 
+#ifdef WE_HAVE_ECDSA
+int test_ecdsa(ENGINE *e, void *data);
+#endif /* WE_HAVE_ECDSA */
+
 #endif /* WE_HAVE_ECC */
 
 #endif /* UNIT_H */

@@ -753,6 +753,11 @@ static int wolfengine_init(ENGINE *e)
     }
 #endif /* WE_HAVE_ECDH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+#ifdef WE_HAVE_ECDSA
+    if (ret == 1) {
+        we_init_ecdsa_meth();
+    }
+#endif
 
 #endif
 

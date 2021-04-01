@@ -313,6 +313,10 @@ TEST_CASE test_case[] = {
     #endif
 #endif
 #endif /* WE_HAVE_EC_KEY */
+
+#ifdef WE_HAVE_ECDSA
+    TEST_DECL(test_ecdsa, NULL)
+#endif /* WE_HAVE_ECDSA */
 };
 #define TEST_CASE_CNT   (int)(sizeof(test_case) / sizeof(*test_case))
 

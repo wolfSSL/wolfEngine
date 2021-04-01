@@ -1657,7 +1657,7 @@ int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
 {
     int err;
     unsigned int sigLen;
-
+    WOLFENGINE_ENTER("test_ec_key_ecdsa_sign");
     sigLen = (unsigned int)*ecdsaSigLen;
     err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
     if (err == 0) {
@@ -1671,6 +1671,7 @@ int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
         PRINT_BUFFER("Signature", ecdsaSig, sigLen);
         *ecdsaSigLen = sigLen;
     }
+    WOLFENGINE_LEAVE("test_ec_key_ecdsa_sign", err);
 
     return err;
 }
@@ -1976,5 +1977,130 @@ int test_ecdh_direct_p521(ENGINE* e, void* data)
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
 
+
+#if defined(WE_HAVE_ECDSA) && !defined(WE_HAVE_EC_KEY)
+
+static int test_ecdsa_sign(EC_KEY *key, unsigned char *hash,
+                           size_t hashLen, unsigned char *ecdsaSig,
+                           size_t *ecdsaSigLen)
+{
+    int err;
+    unsigned int sigLen;
+
+    PRINT_MSG("ENTER: test_ecdsa_sign");
+    sigLen = (unsigned int)*ecdsaSigLen;
+    err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
+    if (err == 0) {
+        PRINT_BUFFER("Signature", ecdsaSig, sigLen);
+    }
+    if (err == 0) {
+        sigLen = (unsigned int)*ecdsaSigLen;
+        err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
+    }
+    if (err == 0) {
+        PRINT_BUFFER("Signature", ecdsaSig, sigLen);
+        *ecdsaSigLen = sigLen;
+    }
+    PRINT_MSG("LEAVE: test_ecdsa_sign");
+
+    return err;
+}
+
+static int test_ecdsa_verify(EC_KEY *key, unsigned char *hash,
+                             size_t hashLen, unsigned char *ecdsaSig,
+                             size_t ecdsaSigLen)
+{
+    int err;
+
+    err = ECDSA_verify(0, hash, (int)hashLen, ecdsaSig, (int)ecdsaSigLen,
+                       key) != 1;
+    if (err == 0) {
+        PRINT_MSG("Signature verified");
+    }
+    else {
+        PRINT_MSG("Signature not verified");
+    }
+
+    return err;
+}
+static int test_ecdsa_key(const unsigned char *privKey, size_t privKeyLen);
+
+int test_ecdsa(ENGINE *e, void *data)
+{
+    (void)data;
+    (void)e;
+    int err1, err2;
+
+    PRINT_MSG("ECDSA: Verify with wolfengine (DER 256)");
+    err1 = test_ecdsa_key(ecc_key_der_256, sizeof(ecc_key_der_256));
+    if (err1 != 0)
+        PRINT_MSG("ERROR: Verify with wolfengine");
+    
+    PRINT_MSG("ECDSA: Verify with wolfengine (DER 384)");
+    err2 = test_ecdsa_key(ecc_key_der_384, sizeof(ecc_key_der_384));
+    if (err2 != 0)
+        PRINT_MSG("ERROR: Verify with wolfengine");
+    return err1 | err2 ;
+}
+
+static int test_ecdsa_key(const unsigned char *privKey,
+                      size_t privKeyLen)
+{
+    int err;
+    int res;
+    EC_KEY *key = NULL;
+    EC_KEY *keyOSSL = NULL;
+    unsigned char ecdsaSig[140];
+    size_t ecdsaSigLen;
+    unsigned char buf[20];
+    const unsigned char *p;
+
+    PRINT_MSG("ENTER: test_ecdsa");
+    err = RAND_bytes(buf, sizeof(buf)) == 0;
+    if (err == 0) {
+        p = privKey;
+        key = d2i_ECPrivateKey(&key, &p, privKeyLen);
+        err = (key == NULL);
+    }
+    if (err == 0) {
+        p = privKey;
+        keyOSSL = d2i_ECPrivateKey(NULL, &p, privKeyLen);
+        err = (key == NULL);
+    }
+    if (err == 0) {
+        PRINT_MSG("ECDSA: Sign with OpenSSL");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_ecdsa_sign(keyOSSL, buf, sizeof(buf), ecdsaSig,
+                                     &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("ECDSA: Verify with wolfengine");
+        err = test_ecdsa_verify(key, buf, sizeof(buf), ecdsaSig,
+                                       ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("ECDSA: Verify bad signature with wolfengine");
+        ecdsaSig[1] ^= 0x80;
+        res = test_ecdsa_verify(key, buf, sizeof(buf), ecdsaSig,
+                                       ecdsaSigLen);
+        if (res != 1)
+            err = 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("ECDSA:Sign with wolfengine");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_ecdsa_sign(key, buf, sizeof(buf), ecdsaSig,
+                                     &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("ECDSA:Verify with OpenSSL");
+        err = test_ecdsa_verify(keyOSSL, buf, sizeof(buf),
+                                       ecdsaSig, ecdsaSigLen);
+    }
+    PRINT_MSG("LEAVE: test_ecdsa");
+
+    return err;
+}
+#endif /* WE_HAVE_ECDSA */
 
 #endif /* WE_HAVE_ECC */
