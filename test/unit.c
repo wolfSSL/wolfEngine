@@ -128,6 +128,22 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_sign_verify, NULL),
     TEST_DECL(test_rsa_keygen, NULL),
 #endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_EC_P192
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_eckeygen_p192_by_nid, NULL),
+        TEST_DECL(test_eckeygen_p192, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ecdh_p192_keygen, NULL),
+    #endif
+        TEST_DECL(test_ecdh_p192, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ecdsa_p192_pkey, NULL),
+        TEST_DECL(test_ecdsa_p192, NULL),
+    #endif
+#endif
 #ifdef WE_HAVE_EC_P224
     #ifdef WE_HAVE_ECKEYGEN
         TEST_DECL(test_eckeygen_p224_by_nid, NULL),
@@ -194,6 +210,20 @@ TEST_CASE test_case[] = {
 #endif
 #endif /* WE_HAVE_EVP_PKEY */
 #ifdef WE_HAVE_EC_KEY
+#ifdef WE_HAVE_EC_P192
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_keygen_p192_by_nid, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_ecdh_p192_keygen, NULL),
+    #endif
+        TEST_DECL(test_ec_key_ecdh_p192, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ec_key_ecdsa_p192, NULL),
+    #endif
+#endif
 #ifdef WE_HAVE_EC_P224
     #ifdef WE_HAVE_ECKEYGEN
         TEST_DECL(test_ec_key_keygen_p224_by_nid, NULL),

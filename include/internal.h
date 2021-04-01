@@ -174,6 +174,7 @@ int we_init_rsa_meth(void);
 extern EC_KEY_METHOD *we_ec_key_method;
 #endif
 extern EVP_PKEY_METHOD *we_ec_method;
+extern EVP_PKEY_METHOD *we_ec_p192_method;
 extern EVP_PKEY_METHOD *we_ec_p224_method;
 extern EVP_PKEY_METHOD *we_ec_p256_method;
 extern EVP_PKEY_METHOD *we_ec_p384_method;

@@ -40,6 +40,12 @@ static int we_ec_get_curve_id(int curveName, int *curveId)
     WOLFENGINE_ENTER("we_ec_get_curve_id");
 
     switch (curveName) {
+#ifdef WE_HAVE_EC_P192
+        case NID_X9_62_prime192v1:
+            WOLFENGINE_MSG("Set P-192");
+            *curveId = ECC_SECP192R1;
+            break;
+#endif
 #ifdef WE_HAVE_EC_P224
         case NID_secp224r1:
             WOLFENGINE_MSG("Set P-224");
@@ -309,6 +315,45 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
 }
 
 #ifdef WE_HAVE_ECKEYGEN
+
+#ifdef WE_HAVE_EC_P192
+/**
+ * Initialize and set the data required to complete an EC P-192 operation.
+ *
+ * @param  ctx  [in]  Public key context of operation.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_ec_p192_init(EVP_PKEY_CTX *ctx)
+{
+    int ret;
+    we_Ecc *ecc;
+
+    WOLFENGINE_ENTER("we_ec_p192_init");
+
+    /* Create the internal EC object in context. */
+    ret = we_ec_init(ctx);
+    if (ret == 1) {
+        /* Get the internal EC object. */
+        ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+        /* Setup P-192 curve. */
+        ecc->curveId = ECC_SECP192R1;
+        ecc->curveName = NID_X9_62_prime192v1;
+        ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
+        if (ecc->group == NULL) {
+            /* Failed - free allocated data. */
+            WOLFENGINE_ERROR_FUNC_NULL("EC_GROUP_new_by_curve_name",
+                                       ecc->group);
+            wc_ecc_free(&ecc->key);
+            OPENSSL_free(ecc);
+            ret = 0;
+        }
+    }
+
+    WOLFENGINE_LEAVE("we_ec_p192_init", ret);
+
+    return ret;
+}
+#endif
 #ifdef WE_HAVE_EC_P224
 /**
  * Initialize and set the data required to complete an EC P-224 operation.
@@ -328,7 +373,7 @@ static int we_ec_p224_init(EVP_PKEY_CTX *ctx)
     if (ret == 1) {
         /* Get the internal EC object. */
         ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
-        /* Setup P-256 curve. */
+        /* Setup P-224 curve. */
         ecc->curveId = ECC_SECP224R1;
         ecc->curveName = NID_secp224r1;
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
@@ -955,6 +1000,10 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 /** EVP public key method - EC using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_ec_method = NULL;
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+/** EVP public key method - EC P-192 using wolfSSL for the implementation. */
+EVP_PKEY_METHOD *we_ec_p192_method = NULL;
+#endif
 #ifdef WE_HAVE_EC_P224
 /** EVP public key method - EC P-224 using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_ec_p224_method = NULL;
@@ -1008,6 +1057,23 @@ int we_init_ecc_meths(void)
     }
 
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+    if (ret == 1) {
+        we_ec_p192_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
+        if (we_ec_p192_method == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_ec_p192_method);
+            ret = 0;
+        } else {
+            EVP_PKEY_meth_set_init(we_ec_p192_method, we_ec_p192_init);
+            EVP_PKEY_meth_set_copy(we_ec_p192_method, we_ec_copy);
+            EVP_PKEY_meth_set_cleanup(we_ec_p192_method, we_ec_cleanup);
+
+            EVP_PKEY_meth_set_keygen(we_ec_p192_method, NULL, we_ec_keygen);
+
+            EVP_PKEY_meth_set_ctrl(we_ec_p192_method, we_ec_ctrl, NULL);
+        }
+    }
+#endif
 #ifdef WE_HAVE_EC_P224
     if (ret == 1) {
         we_ec_p224_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
@@ -1084,6 +1150,12 @@ int we_init_ecc_meths(void)
             we_ec_method = NULL;
         }
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+        if (we_ec_p192_method != NULL) {
+            EVP_PKEY_meth_free(we_ec_p192_method);
+            we_ec_p192_method = NULL;
+        }
+#endif
 #ifdef WE_HAVE_EC_P224
         if (we_ec_p224_method != NULL) {
             EVP_PKEY_meth_free(we_ec_p224_method);

@@ -24,6 +24,22 @@
 #ifdef WE_HAVE_ECC
 
 #if defined(WE_HAVE_ECDSA) || defined(WE_HAVE_ECDH)
+
+#ifdef WE_HAVE_EC_P192
+static const unsigned char ecc_key_der_192[] = {
+    0x30, 0x5F, 0x02, 0x01, 0x01, 0x04, 0x18, 0xA8, 0x57, 0x41,
+    0x64, 0xE3, 0xD3, 0xD4, 0xFB, 0xB4, 0x5F, 0x78, 0xF4, 0x81,
+    0x04, 0xDE, 0x03, 0x64, 0x56, 0xDA, 0x0D, 0x9C, 0x14, 0xB2,
+    0x35, 0xA0, 0x0A, 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D,
+    0x03, 0x01, 0x01, 0xA1, 0x34, 0x03, 0x32, 0x00, 0x04, 0x99,
+    0x33, 0x7F, 0x79, 0xAC, 0x23, 0xC6, 0x75, 0x27, 0x67, 0x50,
+    0xAE, 0xCC, 0xC2, 0x79, 0x06, 0x1D, 0x9C, 0xB2, 0x4E, 0x81,
+    0xF4, 0xA4, 0xB7, 0xB7, 0xF9, 0xF6, 0xB8, 0xC8, 0x36, 0xF9,
+    0x37, 0xB2, 0x1C, 0x79, 0x55, 0xE5, 0x60, 0x3C, 0x28, 0xE7,
+    0x39, 0x39, 0x31, 0xD3, 0x16, 0xB8, 0x91
+};
+#endif /* WE_HAVE_EC_P192 */
+
 #ifdef WE_HAVE_EC_P224
 static const unsigned char ecc_key_der_224[] = {
     0x30, 0x68, 0x02, 0x01, 0x01, 0x04, 0x1C, 0x98, 0x0A, 0x89,
@@ -109,6 +125,28 @@ static const unsigned char ecc_key_der_521[] = {
 #endif /* WE_HAVE_EC_P521 */
 #endif /* WE_HAVE_ECDSA || WE_HAVE_ECDH */
 #ifdef WE_HAVE_ECDH
+
+#ifdef WE_HAVE_EC_P192
+static const unsigned char ecc_peerkey_der_192[] = {
+    0x30, 0x5F, 0x02, 0x01, 0x01, 0x04, 0x18, 0x7D, 0x26, 0xEB,
+    0x62, 0x0A, 0xE8, 0x75, 0x13, 0xE0, 0xBC, 0x3F, 0x35, 0xEB,
+    0x07, 0x59, 0x1E, 0x48, 0xF1, 0x09, 0xAE, 0xEC, 0x1B, 0x1C,
+    0x1F, 0xA0, 0x0A, 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D,
+    0x03, 0x01, 0x01, 0xA1, 0x34, 0x03, 0x32, 0x00, 0x04, 0x4B,
+    0x14, 0xE6, 0x8B, 0x18, 0xEC, 0x44, 0x63, 0xB6, 0x79, 0xB8,
+    0x67, 0x32, 0xD3, 0x21, 0x96, 0x06, 0x27, 0x78, 0x5B, 0x24,
+    0xC0, 0xCA, 0x52, 0xAF, 0xE5, 0x55, 0x59, 0x5E, 0xC1, 0x22,
+    0xD2, 0x0B, 0xBB, 0xBE, 0xA7, 0x1C, 0x99, 0x92, 0x95, 0xA2,
+    0x56, 0x5B, 0x34, 0x7B, 0xD9, 0x6D, 0xC3
+};
+
+static const unsigned char ecc_derived_192[] = {
+    0xE2, 0x5D, 0x04, 0x8E, 0x6D, 0x0C, 0xBD, 0x4E, 0x38, 0xBB,
+    0x23, 0x1C, 0x0B, 0xF3, 0x22, 0x8D, 0x5E, 0x7C, 0x21, 0x71,
+    0x39, 0xEB, 0x8E, 0x37
+};
+#endif /* WE_HAVE_EC_P192 */
+
 #ifdef WE_HAVE_EC_P224
 static const unsigned char ecc_peerkey_der_224[] = {
     0x30, 0x68, 0x02, 0x01, 0x01, 0x04, 0x1C, 0xC4, 0xAB, 0x52,
@@ -228,6 +266,63 @@ static const unsigned char ecc_derived_521[] = {
 #ifdef WE_HAVE_EVP_PKEY
 
 #ifdef WE_HAVE_ECKEYGEN
+
+#ifdef WE_HAVE_EC_P192
+int test_eckeygen_p192_by_nid(ENGINE *e, void *data)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *key = NULL;
+
+    (void)data;
+
+    PRINT_MSG("Create P-192 public key context");
+    err = (ctx = EVP_PKEY_CTX_new_id(NID_X9_62_prime192v1, e)) == NULL;
+    if (err == 0) {
+        PRINT_MSG("Initialize key generation");
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Generate key");
+        err = EVP_PKEY_keygen(ctx, &key) != 1;
+    }
+
+    EVP_PKEY_free(key);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
+int test_eckeygen_p192(ENGINE *e, void *data)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *key = NULL;
+
+    (void)data;
+
+    PRINT_MSG("Create public key context");
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, e)) == NULL;
+    if (err == 0) {
+        PRINT_MSG("Initialize key generation");
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Set named curve NID");
+        err = EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx,
+                                                     NID_X9_62_prime192v1) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Generate key");
+        err = EVP_PKEY_keygen(ctx, &key) != 1;
+    }
+
+    EVP_PKEY_free(key);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+#endif /* WE_HAVE_EC_P192 */
 
 #ifdef WE_HAVE_EC_P224
 int test_eckeygen_p224_by_nid(ENGINE *e, void *data)
@@ -553,6 +648,15 @@ int test_ecdh_keygen(ENGINE *e, int nid, int len)
     return err;
 }
 
+#ifdef WE_HAVE_EC_P192
+int test_ecdh_p192_keygen(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_ecdh_keygen(e, NID_X9_62_prime192v1, 24);
+}
+#endif /* WE_HAVE_EC_P192 */
+
 #ifdef WE_HAVE_EC_P224
 int test_ecdh_p224_keygen(ENGINE *e, void *data)
 {
@@ -641,6 +745,16 @@ int test_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
     return err;
 }
 
+#ifdef WE_HAVE_EC_P192
+int test_ecdh_p192(ENGINE *e, void *data)
+{
+    (void)data;
+    return test_ecdh(e, ecc_key_der_192, sizeof(ecc_key_der_192),
+                     ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
+                     ecc_derived_192, sizeof(ecc_derived_192));
+}
+#endif /* WE_HAVE_EC_P192 */
+
 #ifdef WE_HAVE_EC_P224
 int test_ecdh_p224(ENGINE *e, void *data)
 {
@@ -684,6 +798,61 @@ int test_ecdh_p521(ENGINE *e, void *data)
 #endif /* WE_HAVE_ECDH */
 
 #ifdef WE_HAVE_ECDSA
+
+#ifdef WE_HAVE_EC_P192
+int test_ecdsa_p192_pkey(ENGINE *e, void *data)
+{
+    int err;
+    int res;
+    EVP_PKEY *pkey = NULL;
+    unsigned char ecdsaSig[64]; /* CHRIS */
+    size_t ecdsaSigLen;
+    unsigned char buf[20];
+    const unsigned char *p = ecc_key_der_192;
+
+    (void)data;
+
+    err = RAND_bytes(buf, sizeof(buf)) == 0;
+    if (err == 0) {
+        pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_192));
+        err = pkey == NULL;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with OpenSSL");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), ecdsaSig,
+                                   &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with wolfengine");
+        err = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
+                                     ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify bad signature with wolfengine");
+        ecdsaSig[1] ^= 0x80;
+        res = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
+                                     ecdsaSigLen);
+        if (res != 1)
+            err = 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with wolfengine");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_pkey_sign(pkey, e, buf, sizeof(buf), ecdsaSig,
+                                   &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with OpenSSL");
+        err = test_pkey_verify(pkey, NULL, buf, sizeof(buf),
+                                     ecdsaSig, ecdsaSigLen);
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+#endif /* WE_HAVE_EC_P192 */
 
 #ifdef WE_HAVE_EC_P224
 int test_ecdsa_p224_pkey(ENGINE *e, void *data)
@@ -904,6 +1073,61 @@ int test_ecdsa_p521_pkey(ENGINE *e, void *data)
     return err;
 }
 #endif /* WE_HAVE_EC_P521 */
+
+#ifdef WE_HAVE_EC_P192
+int test_ecdsa_p192(ENGINE *e, void *data)
+{
+    int err;
+    int res;
+    EVP_PKEY *pkey = NULL;
+    unsigned char ecdsaSig[64];
+    size_t ecdsaSigLen;
+    unsigned char buf[128];
+    const unsigned char *p = ecc_key_der_192;
+
+    (void)data;
+
+    err = RAND_bytes(buf, sizeof(buf)) == 0;
+    if (err == 0) {
+        pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_192));
+        err = pkey == NULL;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with OpenSSL");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
+                              ecdsaSig, &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with wolfengine");
+        err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha224(),
+                                ecdsaSig, ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify bad signature with wolfengine");
+        ecdsaSig[1] ^= 0x80;
+        res = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha224(),
+                                ecdsaSig, ecdsaSigLen);
+        if (res != 1)
+            err = 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with wolfengine");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha224(),
+                              ecdsaSig, &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with OpenSSL");
+        err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
+                                ecdsaSig, ecdsaSigLen);
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+#endif /* WE_HAVE_EC_P192 */
 
 #ifdef WE_HAVE_EC_P224
 int test_ecdsa_p224(ENGINE *e, void *data)
@@ -1160,6 +1384,14 @@ int test_ec_key_keygen_by_nid(ENGINE *e, int nid)
     return err;
 }
 
+#ifdef WE_HAVE_EC_P192
+int test_ec_key_keygen_p192_by_nid(ENGINE *e, void *data)
+{
+    (void)data;
+    return test_ec_key_keygen_by_nid(e, NID_X9_62_prime192v1);
+}
+#endif /* WE_HAVE_EC_P192 */
+
 #ifdef WE_HAVE_EC_P224
 int test_ec_key_keygen_p224_by_nid(ENGINE *e, void *data)
 {
@@ -1257,6 +1489,15 @@ int test_ec_key_ecdh_keygen(ENGINE *e, int nid, int len)
     return err;
 }
 
+#ifdef WE_HAVE_EC_P192
+int test_ec_key_ecdh_p192_keygen(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_ec_key_ecdh_keygen(e, NID_X9_62_prime192v1, 24);
+}
+#endif /* WE_HAVE_EC_P192 */
+
 #ifdef WE_HAVE_EC_P224
 int test_ec_key_ecdh_p224_keygen(ENGINE *e, void *data)
 {
@@ -1353,6 +1594,16 @@ int test_ec_key_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
 
     return err;
 }
+
+#ifdef WE_HAVE_EC_P192
+int test_ec_key_ecdh_p192(ENGINE *e, void *data)
+{
+    (void)data;
+    return test_ec_key_ecdh(e, ecc_key_der_192, sizeof(ecc_key_der_192),
+                            ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
+                            ecc_derived_192, sizeof(ecc_derived_192));
+}
+#endif /* WE_HAVE_EC_P192 */
 
 #ifdef WE_HAVE_EC_P224
 int test_ec_key_ecdh_p224(ENGINE *e, void *data)
@@ -1512,6 +1763,14 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
 
     return err;
 }
+
+#ifdef WE_HAVE_EC_P192
+int test_ec_key_ecdsa_p192(ENGINE *e, void *data)
+{
+    (void)data;
+    return test_ec_key_ecdsa(e, ecc_key_der_192, sizeof(ecc_key_der_192));
+}
+#endif /* WE_HAVE_EC_P192 */
 
 #ifdef WE_HAVE_EC_P224
 int test_ec_key_ecdsa_p224(ENGINE *e, void *data)
