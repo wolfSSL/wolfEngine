@@ -451,6 +451,17 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_ECKEYGEN"
 fi
 
+AC_ARG_ENABLE([p224],
+    [AS_HELP_STRING([--enable-p224],[Enable EC Curve P-224 (default: enabled)])],
+    [ ENABLED_EC_P224=$enableval ],
+    [ ENABLED_EC_P224=$ENABLED_ECC ]
+    )
+
+if test "$ENABLED_EC_P224" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_P224"
+fi
+
 AC_ARG_ENABLE([p256],
     [AS_HELP_STRING([--enable-p256],[Enable EC Curve P-256 (default: enabled)])],
     [ ENABLED_EC_P256=$enableval ],
@@ -581,6 +592,7 @@ echo "   *  - EC_KEY:                  $ENABLED_EC_KEY"
 echo "   *  - ECDSA:                   $ENABLED_ECDSA"
 echo "   *  - EC Key Gen:              $ENABLED_ECKG"
 echo "   *  - ECDH:                    $ENABLED_ECDH"
+echo "   *  - P-224:                   $ENABLED_EC_P224"
 echo "   *  - P-256:                   $ENABLED_EC_P256"
 echo "   *  - P-384:                   $ENABLED_EC_P384"
 echo "   *  - P-521:                   $ENABLED_EC_P521"

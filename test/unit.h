@@ -172,6 +172,11 @@ int test_dh(ENGINE *e, void *data);
 
 #ifdef WE_HAVE_ECKEYGEN
 
+#ifdef WE_HAVE_EC_P224
+int test_eckeygen_p224_by_nid(ENGINE *e, void *data);
+int test_eckeygen_p224(ENGINE *e, void *data);
+#endif /* WE_HAVE_EC_P224 */
+
 #ifdef WE_HAVE_EC_P256
 int test_eckeygen_p256_by_nid(ENGINE *e, void *data);
 int test_eckeygen_p256(ENGINE *e, void *data);
@@ -197,6 +202,9 @@ int test_ecdh_derive(ENGINE *e, EVP_PKEY *key, EVP_PKEY *peerKey,
 #ifdef WE_HAVE_ECKEYGEN
 
 int test_ecdh_keygen(ENGINE *e, int nid, int len);
+#ifdef WE_HAVE_EC_P224
+int test_ecdh_p224_keygen(ENGINE *e, void *data);
+#endif /* WE_HAVE_EC_P224 */
 #ifdef WE_HAVE_EC_P256
 int test_ecdh_p256_keygen(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P256 */
@@ -212,6 +220,9 @@ int test_ecdh_p521_keygen(ENGINE *e, void *data);
 int test_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
               const unsigned char *peerPrivKey, size_t peerLen,
               const unsigned char *derived, size_t dLen);
+#ifdef WE_HAVE_EC_P224
+int test_ecdh_p224(ENGINE *e, void *data);
+#endif /* WE_HAVE_EC_P224 */
 #ifdef WE_HAVE_EC_P256
 int test_ecdh_p256(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P256 */
@@ -226,23 +237,22 @@ int test_ecdh_p521(ENGINE *e, void *data);
 
 #ifdef WE_HAVE_ECDSA
 
-#ifdef WE_HAVE_EC_P256
-int test_ecdsa_p256_pkey(ENGINE *e, void *data);
-#endif /* WE_HAVE_EC_P256 */
-
-#ifdef WE_HAVE_EC_P384
-int test_ecdsa_p384_pkey(ENGINE *e, void *data);
-#endif /* WE_HAVE_EC_P384 */
+#ifdef WE_HAVE_EC_P224
+int test_ecdsa_p224_pkey(ENGINE *e, void *data);
+int test_ecdsa_p224(ENGINE *e, void *data);
+#endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P521
 int test_ecdsa_p521_pkey(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P521 */
 
 #ifdef WE_HAVE_EC_P256
+int test_ecdsa_p256_pkey(ENGINE *e, void *data);
 int test_ecdsa_p256(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P256 */
 
 #ifdef WE_HAVE_EC_P384
+int test_ecdsa_p384_pkey(ENGINE *e, void *data);
 int test_ecdsa_p384(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P384 */
 
@@ -259,6 +269,10 @@ int test_ecdsa_p521(ENGINE *e, void *data);
 #ifdef WE_HAVE_ECKEYGEN
 
 int test_ec_key_keygen_by_nid(ENGINE *e, int nid);
+
+#ifdef WE_HAVE_EC_P224
+int test_ec_key_keygen_p224_by_nid(ENGINE *e, void *data);
+#endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
 int test_ec_key_keygen_p256_by_nid(ENGINE *e, void *data);
@@ -279,6 +293,9 @@ int test_ec_key_keygen_p521_by_nid(ENGINE *e, void *data);
 #ifdef WE_HAVE_ECKEYGEN
 
 int test_ec_key_ecdh_keygen(ENGINE *e, int nid, int len);
+#ifdef WE_HAVE_EC_P224
+int test_ec_key_ecdh_p224_keygen(ENGINE *e, void *data);
+#endif /* WE_HAVE_EC_P224 */
 #ifdef WE_HAVE_EC_P256
 int test_ec_key_ecdh_p256_keygen(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P256 */
@@ -294,6 +311,9 @@ int test_ec_key_ecdh_p521_keygen(ENGINE *e, void *data);
 int test_ec_key_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
                      const unsigned char *peerPrivKey, size_t peerLen,
                      const unsigned char *derived, size_t dLen);
+#ifdef WE_HAVE_EC_P224
+int test_ec_key_ecdh_p224(ENGINE *e, void *data);
+#endif /* WE_HAVE_EC_P224 */
 #ifdef WE_HAVE_EC_P256
 int test_ec_key_ecdh_p256(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P256 */
@@ -316,6 +336,9 @@ int test_ec_key_ecdsa_verify(EC_KEY *key, unsigned char *hash,
                              size_t ecdsaSigLen);
 int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
                       size_t privKeyLen);
+#ifdef WE_HAVE_EC_P224
+int test_ec_key_ecdsa_p224(ENGINE *e, void *data);
+#endif /* WE_HAVE_EC_P224 */
 #ifdef WE_HAVE_EC_P256
 int test_ec_key_ecdsa_p256(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P256 */

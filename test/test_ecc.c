@@ -24,6 +24,22 @@
 #ifdef WE_HAVE_ECC
 
 #if defined(WE_HAVE_ECDSA) || defined(WE_HAVE_ECDH)
+#ifdef WE_HAVE_EC_P224
+static const unsigned char ecc_key_der_224[] = {
+    0x30, 0x68, 0x02, 0x01, 0x01, 0x04, 0x1C, 0x98, 0x0A, 0x89,
+    0x49, 0x7C, 0x53, 0xED, 0x13, 0xFB, 0x29, 0x58, 0x17, 0xAE,
+    0x7D, 0xFB, 0xCC, 0x60, 0x96, 0xC2, 0x22, 0x1B, 0xD4, 0x0A,
+    0xE6, 0x9D, 0x88, 0x1F, 0x15, 0xA0, 0x07, 0x06, 0x05, 0x2B,
+    0x81, 0x04, 0x00, 0x21, 0xA1, 0x3C, 0x03, 0x3A, 0x00, 0x04,
+    0x77, 0x9A, 0xAF, 0x71, 0xA6, 0x5F, 0xC1, 0x26, 0x85, 0x9B,
+    0x87, 0x6C, 0x5B, 0x89, 0x67, 0x35, 0xB4, 0x61, 0xBD, 0xA2,
+    0x4E, 0xA2, 0x58, 0x8E, 0x9D, 0xE2, 0x7A, 0xFE, 0xFE, 0xF1,
+    0x2F, 0x6A, 0xFB, 0x8C, 0x85, 0x4F, 0x99, 0xAE, 0x07, 0x67,
+    0x97, 0x24, 0x12, 0xAF, 0x7E, 0x9D, 0x3F, 0x5C, 0x84, 0x54,
+    0x78, 0x82, 0x7A, 0xD4, 0x83, 0x8C
+};
+#endif /* WE_HAVE_EC_P224 */
+
 #ifdef WE_HAVE_EC_P256
 static const unsigned char ecc_key_der_256[] = {
     0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20, 0x45, 0xB6, 0x69,
@@ -93,6 +109,28 @@ static const unsigned char ecc_key_der_521[] = {
 #endif /* WE_HAVE_EC_P521 */
 #endif /* WE_HAVE_ECDSA || WE_HAVE_ECDH */
 #ifdef WE_HAVE_ECDH
+#ifdef WE_HAVE_EC_P224
+static const unsigned char ecc_peerkey_der_224[] = {
+    0x30, 0x68, 0x02, 0x01, 0x01, 0x04, 0x1C, 0xC4, 0xAB, 0x52,
+    0x75, 0xAA, 0x54, 0xA8, 0x7D, 0x1C, 0x0C, 0x25, 0xE9, 0xE9,
+    0x4B, 0x3D, 0x75, 0xEB, 0xB2, 0xEF, 0x65, 0x17, 0x11, 0x05,
+    0x17, 0x74, 0xDF, 0xCF, 0xDA, 0xA0, 0x07, 0x06, 0x05, 0x2B,
+    0x81, 0x04, 0x00, 0x21, 0xA1, 0x3C, 0x03, 0x3A, 0x00, 0x04,
+    0xBA, 0x62, 0x06, 0x6E, 0xC3, 0x8F, 0x30, 0x48, 0xBF, 0x13,
+    0x14, 0xE9, 0x3E, 0xD7, 0x68, 0x67, 0xBB, 0x22, 0x97, 0x97,
+    0x8E, 0xB1, 0x7B, 0xF5, 0x12, 0xE7, 0x9A, 0x27, 0x61, 0x92,
+    0x9B, 0x1C, 0x70, 0xF2, 0x9D, 0x7E, 0x20, 0x5B, 0x3F, 0xCB,
+    0x69, 0xE3, 0xF5, 0x3B, 0xBB, 0x97, 0xA3, 0x25, 0x31, 0xA7,
+    0xBB, 0xB0, 0x8A, 0xBE, 0xF2, 0x35
+};
+
+static const unsigned char ecc_derived_224[] = {
+    0xF5, 0x68, 0x43, 0x92, 0xC6, 0x0E, 0x16, 0x5A, 0x5D, 0xDF,
+    0x89, 0xDA, 0xB1, 0x7E, 0x01, 0x50, 0xCD, 0x83, 0x59, 0xFD,
+    0x3A, 0x7B, 0xA7, 0x82, 0xA4, 0xF5, 0xB0, 0x5F
+};
+#endif /* WE_HAVE_EC_P224 */
+
 #ifdef WE_HAVE_EC_P256
 static const unsigned char ecc_peerkey_der_256[] = {
     0x30, 0x77, 0x02, 0x01, 0x01, 0x04, 0x20, 0xF8, 0xCF, 0x92,
@@ -190,6 +228,63 @@ static const unsigned char ecc_derived_521[] = {
 #ifdef WE_HAVE_EVP_PKEY
 
 #ifdef WE_HAVE_ECKEYGEN
+
+#ifdef WE_HAVE_EC_P224
+int test_eckeygen_p224_by_nid(ENGINE *e, void *data)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *key = NULL;
+
+    (void)data;
+
+    PRINT_MSG("Create P-224 public key context");
+    err = (ctx = EVP_PKEY_CTX_new_id(NID_secp224r1, e)) == NULL;
+    if (err == 0) {
+        PRINT_MSG("Initialize key generation");
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Generate key");
+        err = EVP_PKEY_keygen(ctx, &key) != 1;
+    }
+
+    EVP_PKEY_free(key);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
+int test_eckeygen_p224(ENGINE *e, void *data)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *key = NULL;
+
+    (void)data;
+
+    PRINT_MSG("Create public key context");
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, e)) == NULL;
+    if (err == 0) {
+        PRINT_MSG("Initialize key generation");
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Set named curve NID");
+        err = EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx,
+                                                     NID_secp224r1) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Generate key");
+        err = EVP_PKEY_keygen(ctx, &key) != 1;
+    }
+
+    EVP_PKEY_free(key);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+#endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
 int test_eckeygen_p256_by_nid(ENGINE *e, void *data)
@@ -458,6 +553,15 @@ int test_ecdh_keygen(ENGINE *e, int nid, int len)
     return err;
 }
 
+#ifdef WE_HAVE_EC_P224
+int test_ecdh_p224_keygen(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_ecdh_keygen(e, NID_secp224r1, 28);
+}
+#endif /* WE_HAVE_EC_P224 */
+
 #ifdef WE_HAVE_EC_P256
 int test_ecdh_p256_keygen(ENGINE *e, void *data)
 {
@@ -537,6 +641,16 @@ int test_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
     return err;
 }
 
+#ifdef WE_HAVE_EC_P224
+int test_ecdh_p224(ENGINE *e, void *data)
+{
+    (void)data;
+    return test_ecdh(e, ecc_key_der_224, sizeof(ecc_key_der_224),
+                     ecc_peerkey_der_224, sizeof(ecc_peerkey_der_224),
+                     ecc_derived_224, sizeof(ecc_derived_224));
+}
+#endif /* WE_HAVE_EC_P224 */
+
 #ifdef WE_HAVE_EC_P256
 int test_ecdh_p256(ENGINE *e, void *data)
 {
@@ -570,6 +684,61 @@ int test_ecdh_p521(ENGINE *e, void *data)
 #endif /* WE_HAVE_ECDH */
 
 #ifdef WE_HAVE_ECDSA
+
+#ifdef WE_HAVE_EC_P224
+int test_ecdsa_p224_pkey(ENGINE *e, void *data)
+{
+    int err;
+    int res;
+    EVP_PKEY *pkey = NULL;
+    unsigned char ecdsaSig[64];
+    size_t ecdsaSigLen;
+    unsigned char buf[20];
+    const unsigned char *p = ecc_key_der_224;
+
+    (void)data;
+
+    err = RAND_bytes(buf, sizeof(buf)) == 0;
+    if (err == 0) {
+        pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_224));
+        err = pkey == NULL;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with OpenSSL");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), ecdsaSig,
+                                   &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with wolfengine");
+        err = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
+                                     ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify bad signature with wolfengine");
+        ecdsaSig[1] ^= 0x80;
+        res = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
+                                     ecdsaSigLen);
+        if (res != 1)
+            err = 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with wolfengine");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_pkey_sign(pkey, e, buf, sizeof(buf), ecdsaSig,
+                                   &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with OpenSSL");
+        err = test_pkey_verify(pkey, NULL, buf, sizeof(buf),
+                                     ecdsaSig, ecdsaSigLen);
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+#endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
 int test_ecdsa_p256_pkey(ENGINE *e, void *data)
@@ -734,7 +903,62 @@ int test_ecdsa_p521_pkey(ENGINE *e, void *data)
 
     return err;
 }
-#endif /* WE_HAVE_EC_P384 */
+#endif /* WE_HAVE_EC_P521 */
+
+#ifdef WE_HAVE_EC_P224
+int test_ecdsa_p224(ENGINE *e, void *data)
+{
+    int err;
+    int res;
+    EVP_PKEY *pkey = NULL;
+    unsigned char ecdsaSig[64];
+    size_t ecdsaSigLen;
+    unsigned char buf[128];
+    const unsigned char *p = ecc_key_der_224;
+
+    (void)data;
+
+    err = RAND_bytes(buf, sizeof(buf)) == 0;
+    if (err == 0) {
+        pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_224));
+        err = pkey == NULL;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with OpenSSL");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
+                              ecdsaSig, &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with wolfengine");
+        err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha224(),
+                                ecdsaSig, ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify bad signature with wolfengine");
+        ecdsaSig[1] ^= 0x80;
+        res = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha224(),
+                                ecdsaSig, ecdsaSigLen);
+        if (res != 1)
+            err = 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with wolfengine");
+        ecdsaSigLen = sizeof(ecdsaSig);
+        err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha224(),
+                              ecdsaSig, &ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with OpenSSL");
+        err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
+                                ecdsaSig, ecdsaSigLen);
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+#endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
 int test_ecdsa_p256(ENGINE *e, void *data)
@@ -936,6 +1160,14 @@ int test_ec_key_keygen_by_nid(ENGINE *e, int nid)
     return err;
 }
 
+#ifdef WE_HAVE_EC_P224
+int test_ec_key_keygen_p224_by_nid(ENGINE *e, void *data)
+{
+    (void)data;
+    return test_ec_key_keygen_by_nid(e, NID_secp224r1);
+}
+#endif /* WE_HAVE_EC_P224 */
+
 #ifdef WE_HAVE_EC_P256
 int test_ec_key_keygen_p256_by_nid(ENGINE *e, void *data)
 {
@@ -1025,6 +1257,15 @@ int test_ec_key_ecdh_keygen(ENGINE *e, int nid, int len)
     return err;
 }
 
+#ifdef WE_HAVE_EC_P224
+int test_ec_key_ecdh_p224_keygen(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_ec_key_ecdh_keygen(e, NID_secp224r1, 28);
+}
+#endif /* WE_HAVE_EC_P224 */
+
 #ifdef WE_HAVE_EC_P256
 int test_ec_key_ecdh_p256_keygen(ENGINE *e, void *data)
 {
@@ -1112,6 +1353,16 @@ int test_ec_key_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
 
     return err;
 }
+
+#ifdef WE_HAVE_EC_P224
+int test_ec_key_ecdh_p224(ENGINE *e, void *data)
+{
+    (void)data;
+    return test_ec_key_ecdh(e, ecc_key_der_224, sizeof(ecc_key_der_224),
+                            ecc_peerkey_der_224, sizeof(ecc_peerkey_der_224),
+                            ecc_derived_224, sizeof(ecc_derived_224));
+}
+#endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
 int test_ec_key_ecdh_p256(ENGINE *e, void *data)
@@ -1262,6 +1513,13 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
     return err;
 }
 
+#ifdef WE_HAVE_EC_P224
+int test_ec_key_ecdsa_p224(ENGINE *e, void *data)
+{
+    (void)data;
+    return test_ec_key_ecdsa(e, ecc_key_der_224, sizeof(ecc_key_der_224));
+}
+#endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
 int test_ec_key_ecdsa_p256(ENGINE *e, void *data)
