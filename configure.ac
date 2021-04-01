@@ -69,6 +69,18 @@ AC_ARG_ENABLE([usersettings],
     [ ENABLED_USERSETTINGS=no ]
     )
 
+# FIPS compliant calls
+AC_ARG_ENABLE([fips],
+    [AS_HELP_STRING([--enable-fips],[Enable FIPS compliant wolfSSL API calls (default: disabled)])],
+    [ ENABLED_FIPS=$enableval ],
+    [ ENABLED_FIPS=no ]
+    )
+
+if test "$ENABLED_FIPS" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_FIPS"
+fi
+
 # Dynamic engine support
 AC_ARG_ENABLE([dynamic-engine],
     [AS_HELP_STRING([--enable-dynamic-engine],[Enable loading wolfEngine as a dynamic engine (default: enabled).])],

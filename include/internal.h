@@ -51,6 +51,7 @@
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/random.h>
+#include <wolfssl/wolfcrypt/integer.h>
 
 #include "openssl_bc.h"
 #include "we_logging.h"

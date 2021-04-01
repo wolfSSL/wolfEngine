@@ -33,7 +33,12 @@ int test_dsa_keygen(ENGINE *e, void *data)
     err = (dsa = DSA_new_method(e)) == NULL;
     if (err == 0) {
         PRINT_MSG("Generating parameters");
+#ifndef WE_HAVE_FIPS
         err = DSA_generate_parameters_ex(dsa, 3072, NULL, 0, NULL, NULL, NULL) != 1;
+#else
+        /* Maximum size as specified in SP 800-56A, Section 5.5.1.1 */
+        err = DSA_generate_parameters_ex(dsa, 2048, NULL, 0, NULL, NULL, NULL) != 1;
+#endif
     }
     if (err == 0) {
         PRINT_MSG("Generating key");
@@ -59,7 +64,12 @@ int test_dsa_pkey_keygen(ENGINE *e, void *data)
     DSA *dsaKey = NULL;
     BIGNUM *pub = NULL;
     BIGNUM *priv = NULL;
+#ifndef WE_HAVE_FIPS
     const int newKeySize = 3072;
+#else
+    /* Maximum size as specified in SP 800-56A, Section 5.5.1.1 */
+    const int newKeySize = 2048;
+#endif
     const int newQSize = 256;
 
     (void)data;

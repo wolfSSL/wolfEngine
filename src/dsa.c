@@ -133,11 +133,49 @@ static int DsaParamgen(we_Dsa *engineDsa, int pbits)
         pbits = engineDsa->pbits;
     }
     if (ret == 1) {
+#ifndef WE_HAVE_FIPS
         rc = wc_MakeDsaParameters(we_rng, pbits, &engineDsa->key);
         if (rc != MP_OKAY) {
             WOLFENGINE_ERROR_FUNC("wc_MakeDsaParameters", rc);
             ret = 0;
         }
+#else
+        /* For cert #3389 we have wc_DhGenerateParams included but not
+         * the DSA equivalent. Its the same algorithm. */
+        DhKey dh;
+        char initDone = 1;
+        rc = wc_InitDhKey(&dh); /* Init DH struct */
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_InitDhKey", rc);
+            ret = 0;
+            initDone = 0;
+        }
+        if (ret == 1) { /* Generate parameters */
+            rc = wc_DhGenerateParams(we_rng, pbits, &dh);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC("wc_DhGenerateParams", rc);
+                ret = 0;
+            }
+        }
+        if (ret == 1) { /* Copy parameters into DsaKey struct */
+            rc = mp_copy(&dh.p, &engineDsa->key.p);
+            if (rc == MP_OKAY)
+                rc = mp_copy(&dh.q, &engineDsa->key.q);
+            if (rc == MP_OKAY)
+                rc = mp_copy(&dh.g, &engineDsa->key.g);
+            if (rc != MP_OKAY) {
+                WOLFENGINE_ERROR_FUNC("mp_copy", rc);
+                ret = 0;
+            }
+        }
+        if (initDone) {
+            rc = wc_FreeDhKey(&dh);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC("wc_FreeDhKey", rc);
+                ret = 0;
+            }
+        }
+#endif
     }
 
     return ret;
@@ -174,11 +212,65 @@ static int DsaKeygen(we_Dsa *engineDsa)
         ret = 0;
     }
     if (ret == 1) {
+#ifndef WE_HAVE_FIPS
         rc = wc_MakeDsaKey(we_rng, &engineDsa->key);
         if (rc != MP_OKAY) {
             WOLFENGINE_ERROR_FUNC("wc_MakeDsaKey", rc);
             ret = 0;
         }
+#else
+        /* For cert #3389 we have wc_DhGenerateKeyPair included but not
+         * the DSA equivalent. Its the same algorithm. */
+        DhKey dh;
+        byte priv[MAX_DSA_INT_SZ];
+        word32 privSz = sizeof(priv);
+        byte pub[MAX_DSA_INT_SZ];
+        word32 pubSz = sizeof(pub);
+        char initDone = 1;
+        rc = wc_InitDhKey(&dh); /* Init DH struct */
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_InitDhKey", rc);
+            ret = 0;
+            initDone = 0;
+        }
+        if (ret == 1) { /* Copy parameters into dh */
+            rc = mp_copy(&engineDsa->key.p, &dh.p);
+            if (rc == MP_OKAY)
+                rc = mp_copy(&engineDsa->key.q, &dh.q);
+            if (rc == MP_OKAY)
+                rc = mp_copy(&engineDsa->key.g, &dh.g);
+            if (rc != MP_OKAY) {
+                WOLFENGINE_ERROR_FUNC("mp_copy", rc);
+                ret = 0;
+            }
+        }
+        if (ret == 1) { /* Generate key */
+            rc = wc_DhGenerateKeyPair(&dh, we_rng, priv, &privSz, pub, &pubSz);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC("wc_DhGenerateKeyPair", rc);
+                ret = 0;
+            }
+        }
+        if (ret == 1) { /* Decode parameters */
+            rc = mp_read_unsigned_bin(&engineDsa->key.x, priv, (int)privSz);
+            if (rc == MP_OKAY)
+                rc = mp_read_unsigned_bin(&engineDsa->key.y, pub, (int)pubSz);
+            if (rc != MP_OKAY) {
+                WOLFENGINE_ERROR_FUNC("mp_read_unsigned_bin", rc);
+                ret = 0;
+            }
+        }
+        if (initDone) {
+            rc = wc_FreeDhKey(&dh);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC("wc_FreeDhKey", rc);
+                ret = 0;
+            }
+        }
+        if (ret == 1) {
+            engineDsa->key.type = DSA_PRIVATE;
+        }
+#endif
     }
     if (ret == 1) {
         engineDsa->privKeySet = 1;
