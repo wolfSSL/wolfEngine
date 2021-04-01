@@ -1312,6 +1312,130 @@ int we_init_ec_key_meths(void)
 
     return ret;
 }
+#ifdef WE_HAVE_ECDH
+
+/** ECDH method - ECDH using wolfSSL for the implementation. */
+ECDH_METHOD *we_ecdh_method = NULL;
+
+
+static ECDH_METHOD* ECDH_METHOD_new(const ECDH_METHOD* m)
+{
+    ECDH_METHOD* em = NULL;
+
+    em = (ECDH_METHOD*)OPENSSL_malloc(sizeof(ECDH_METHOD));
+    if (em) {
+        if (m) {
+            XMEMCPY(em, m, sizeof(ECDH_METHOD));
+        }
+        else {
+            XMEMSET(em, 0, sizeof(ECDH_METHOD));
+        }
+    }
+    return em;
+}
+static void ECDH_METHOD_free( ECDH_METHOD* em) {
+    if (em) {
+        OPENSSL_free(em);
+    }
+}
+
+static void ECDH_METHOD_set_compute_key(ECDH_METHOD* em, compute_key_fp fn) {
+    if (em != NULL && fn != NULL) {
+        em->compute_key = fn;
+    }
+}
+/**
+ * Compute shared secret with a private-key and a peer's public-key.
+ * If key-derivation function is given, calls it with shared secret.
+ *
+ * @param  out     [in]  buffer to hold computed key.
+ * @param  outlen  [in]  size of out buffer.
+ * @param  pub_key [in]  private key of this side.
+ * @param  ecdh    [in]  EC_KEY holding peer's public key.
+ * @param  KDF     [in]  Key-derivation function pointer
+ * @returns the number of key in buffer out on success and -1 on failure.
+ */
+static int we_ecdh_compute_key(void* out, size_t outlen,
+                                const EC_POINT* pub_key, EC_KEY* ecdh,
+                                void*(*KDF)(const void*in, size_t inlen,
+                                    void*out, size_t* outlen)) {
+    int  ret = 1;
+
+    unsigned char* secret = NULL;
+    size_t secretLen = 0;
+    size_t inLen, outBufLen;
+    void*  outBuf = NULL;
+
+    WOLFENGINE_ENTER("we_ecdh_compute_key");
+
+    if (out == NULL || outlen == 0 || pub_key == NULL || ecdh == NULL )
+        return -1;
+
+    ret = we_ec_key_compute_key(&secret, &secretLen, pub_key, (const EC_KEY*)ecdh);
+
+    if (ret != 1)
+        return -1;
+
+    if (KDF) {
+        inLen = secretLen;
+        outBufLen= 0;
+        /* get necessary size of buffer */
+        if (KDF(secret, inLen, NULL, &outBufLen)) {
+
+            if ((outBuf = OPENSSL_malloc(outBufLen)) != NULL) {
+
+                if (KDF(secret, inLen, outBuf, &outBufLen)) {
+
+                    XMEMCPY(out, secret, MIN(outlen, outBufLen));
+                    ret = MIN(outlen, outBufLen);
+
+                    OPENSSL_free(outBuf);
+                }
+            }
+            else {
+                ret = -1;
+            }
+        }
+        else {
+            ret = -1;
+        }
+    }
+    else {
+        XMEMCPY(out, secret, MIN(outlen, secretLen));
+    }
+    OPENSSL_free(secret);
+
+    return ret;
+}
+/**
+ * Initialize the ECDH method.
+ *
+ * @return  1 on success and 0 on failure.
+ */
+int we_init_ecdh_meth(void)
+{
+    int ret = 1;
+
+    WOLFENGINE_ENTER("we_init_ecdh_meth");
+    we_ecdh_method = ECDH_METHOD_new(NULL);
+    if (we_ecdh_method == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("ECDH_METHOD_new", we_ecdh_method);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        ECDH_METHOD_set_compute_key(we_ecdh_method, we_ecdh_compute_key);
+    }
+
+    if (ret == 0 && we_ecdh_method != NULL) {
+        ECDH_METHOD_free(we_ecdh_method);
+        we_ecdh_method = NULL;
+    }
+
+    WOLFENGINE_LEAVE("we_init_ecdh_meth", ret);
+    return ret;
+}
+#endif /* WE_HAVE_ECDH */
 
 #endif /* WE_HAVE_EC_KEY */
 #endif /* WE_HAVE_ECC */
