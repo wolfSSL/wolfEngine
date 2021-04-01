@@ -251,7 +251,7 @@ int test_ecdh_p521(ENGINE *e, void *data);
 #ifdef WE_HAVE_EC_P192
 int test_ecdsa_p192_pkey(ENGINE *e, void *data);
 int test_ecdsa_p192(ENGINE *e, void *data);
-#endif /* WE_HAVE_EC_P224 */
+#endif /* WE_HAVE_EC_P192 */
 
 #ifdef WE_HAVE_EC_P224
 int test_ecdsa_p224_pkey(ENGINE *e, void *data);

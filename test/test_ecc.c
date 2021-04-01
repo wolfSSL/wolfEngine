@@ -805,7 +805,7 @@ int test_ecdsa_p192_pkey(ENGINE *e, void *data)
     int err;
     int res;
     EVP_PKEY *pkey = NULL;
-    unsigned char ecdsaSig[64]; /* CHRIS */
+    unsigned char ecdsaSig[64];
     size_t ecdsaSigLen;
     unsigned char buf[20];
     const unsigned char *p = ecc_key_der_192;
