@@ -172,13 +172,12 @@ static const int we_digest_nids[] = {
  * Convert an OpenSSL hash NID to a wolfCrypt hash OID.
  *
  * @param  nid  [in]  OpenSSL NID to convert.
- * @return  Returns the OID if a NID -> OID mapping exists and a negative value
- *          if it doesn't.
+ * @returns  Hash type corresponding to the NID or WC_HASH_TYPE_NONE
+ *           when not supported.
  */
-int we_nid_to_wc_hash_oid(int nid)
+int we_nid_to_wc_hash_type(int nid)
 {
     int hashType = WC_HASH_TYPE_NONE;
-    int ret;
 
     WOLFENGINE_ENTER("we_nid_to_wc_hash_oid");
 
@@ -231,6 +230,20 @@ int we_nid_to_wc_hash_oid(int nid)
             break;
 #endif
     }
+
+    return hashType;
+}
+
+/**
+ * Convert an OpenSSL hash NID to a wolfCrypt hash OID.
+ *
+ * @param  nid  [in]  OpenSSL NID to convert.
+ * @return  Returns the OID if a NID -> OID mapping exists and a negative value
+ *          if it doesn't.
+ */
+int we_nid_to_wc_hash_oid(int nid) {
+    int hashType = we_nid_to_wc_hash_type(nid);
+    int ret;
 
     ret = wc_HashGetOID(hashType);
     if (ret < 0) {

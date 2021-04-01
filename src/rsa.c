@@ -39,13 +39,17 @@ typedef struct we_Rsa
     /* wolfSSL structure for holding RSA key data. */
     RsaKey key;
     /* Stored by control command EVP_PKEY_CTRL_MD. */
-    EVP_MD *md;
+    const EVP_MD *md;
+    /* Stored by string control command "rsa_mgf1_md". */
+    const EVP_MD *mdMGF1;
     /* Padding mode */
     int padMode;
     /* The public exponent ("e"). */
     long pubExp;
     /* The key/modulus size in bits. */
     int bits;
+    /* Length of salt to use with PSS. */
+    int saltLen;
     /* Indicates private key has been set into wolfSSL structure. */
     int privKeySet:1;
     /* Indicates public key has been set into wolfSSL structure. */
@@ -393,6 +397,40 @@ static int we_rsa_priv_dec(int flen, const unsigned char *from,
 }
 
 /**
+ * Convert an OpenSSL hash NID to a wolfSSL MGF1 algorithm.
+ *
+ * @param  nid  [in]  OpenSSL hash NID to convert.
+ * @returns  wolfSSL MGF1 algorithm or WC_MGF1NONE on failure.
+ */
+static int we_mgf_from_hash(int nid)
+{
+    int mgf;
+
+    switch (nid) {
+        case NID_sha1:
+            mgf = WC_MGF1SHA1;
+            break;
+        case NID_sha224:
+            mgf = WC_MGF1SHA224;
+            break;
+        case NID_sha256:
+            mgf = WC_MGF1SHA256;
+            break;
+        case NID_sha384:
+            mgf = WC_MGF1SHA384;
+            break;
+        case NID_sha512:
+            mgf = WC_MGF1SHA512;
+            break;
+        default:
+            mgf = WC_MGF1NONE;
+            break;
+    }
+
+    return mgf;
+}
+
+/**
  * Perform an RSA private encryption operation.
  *
  * @param  flen     [in]   Length of buffer to encrypt.
@@ -501,7 +539,7 @@ static int we_rsa_pub_dec(int flen, const unsigned char *from,
     if (ret == 1) {
         switch (padding) {
             case RSA_PKCS1_PADDING:
-                /* PKCS 1 v1.5 padding using block type 1. */
+                /* PKCS #1 v1.5 padding using block type 1. */
                 rc = wc_RsaSSL_Verify(from, flen, to, RSA_size(rsa),
                                       &engineRsa->key);
                 if (rc < 0) {
@@ -793,7 +831,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 rsa->md = (EVP_MD*)ptr;
                 break;
             case EVP_PKEY_CTRL_GET_MD:
-                *(EVP_MD **)ptr = rsa->md;
+                *(const EVP_MD **)ptr = rsa->md;
                 break;
             case EVP_PKEY_CTRL_DIGESTINIT:
                 break;
@@ -829,6 +867,22 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     rsa->pubExp = (int)e;
                 }
                 break;
+            case EVP_PKEY_CTRL_RSA_PSS_SALTLEN:
+                /* Store salt length to use with RSA-PSS. */
+                if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
+                    ret = 0;
+                }
+                rsa->saltLen = num;
+                break;
+            case EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN:
+                /* Get the salt length to use with RSA-PSS. */
+                if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
+                    ret = 0;
+                }
+                if (ret == 1) {
+                    *(int *)ptr = rsa->saltLen;
+                }
+                break;
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
@@ -839,6 +893,90 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     }
     
     WOLFENGINE_LEAVE("we_rsa_pkey_ctrl", ret);
+
+    return ret;
+}
+
+/**
+ * Extra operations for working with RSA.
+ * Supported operations include:
+ *  - "rsa_padding_mode": set the padding mode
+ *  - "rsa_pss_saltlen": set RSA-PSS salt length to use
+ *  - "rsa_keygen_bits": set size of RSA keys to generate in bits
+ *  - "rsa_mgf1_md": set the RSA-PSS MGF1 hash to use
+ *
+ * @param  ctx   [in]  Public key context of operation.
+ * @param  type  [in]  Type of operation to perform.
+ * @param  num   [in]  Integer parameter.
+ * @param  ptr   [in]  Pointer parameter.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                                const char *value)
+{
+    int ret = 1;
+    we_Rsa *rsa = NULL;
+
+    WOLFENGINE_ENTER("we_rsa_pkey_ctrl_str");
+
+    rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
+    if (rsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", rsa);
+        ret = 0;
+    }
+
+    if ((ret == 1) && (XSTRNCMP(type, "rsa_padding_mode", 17) == 0)) {
+        /* Padding mode. */
+        ret = 2;
+        if (XSTRNCMP(value, "none", 5) == 0) {
+            rsa->padMode = RSA_NO_PADDING;
+        }
+        else if (XSTRNCMP(value, "pkcs1", 6) == 0) {
+            rsa->padMode = RSA_PKCS1_PADDING;
+        }
+        else if (XSTRNCMP(value, "oaep", 5) == 0) {
+            rsa->padMode = RSA_PKCS1_OAEP_PADDING;
+        }
+        else if (XSTRNCMP(value, "pss", 4) == 0) {
+            rsa->padMode = RSA_PKCS1_PSS_PADDING;
+        }
+        else {
+            ret = 0;
+        }
+    }
+
+    if ((ret == 1) && (XSTRNCMP(type, "rsa_pss_saltlen", 16) == 0)) {
+        /* RSA-PSS salt length. */
+        ret = 2;
+        if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
+            ret = 0;
+        }
+        else {
+            rsa->saltLen = XATOI(value);
+        }
+    }
+
+    if ((ret == 1) && (XSTRNCMP(type, "rsa_keygen_bits", 16) == 0)) {
+        /* Size, in bits, of RSA key to generate. */
+        ret = 2;
+        rsa->bits = XATOI(value);
+    }
+
+    if ((ret == 1) && (XSTRNCMP(type, "rsa_mgf1_md", 12) == 0)) {
+        /* Digest to use with MGF in RSA-PSS. */
+        ret = 2;
+        rsa->mdMGF1 = EVP_get_digestbyname(value);
+        if (rsa->mdMGF1 == NULL) {
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        ret = 0;
+    }
+    else if (ret == 2) {
+        ret = 1;
+    }
 
     return ret;
 }
@@ -957,6 +1095,21 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
                 *sigLen = len;
             }
         }
+        else if (rsa->padMode == RSA_PKCS1_PSS_PADDING) {
+            const EVP_MD *mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+            actualSigLen = wc_RsaPSS_Sign_ex(tbs, (word32)tbsLen, sig,
+                (word32)*sigLen,
+                we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
+                &rsa->key, we_rng);
+            if (actualSigLen <= 0) {
+                WOLFENGINE_ERROR_FUNC("wc_RsaPSS_Sign_ex", actualSigLen);
+                ret = 0;
+            }
+            else {
+                *sigLen = actualSigLen;
+            }
+        }
         else {
             if (rsa->md != NULL) {
                 /* In this case, OpenSSL expects a proper PKCS #1 v1.5
@@ -1058,7 +1211,33 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         }
     }
 
-    if (ret == 1) {
+    if ((ret == 1) && (rsa->padMode == RSA_PKCS1_PSS_PADDING)) {
+        const EVP_MD *mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+        /* PKCS #1 PSS padding. */
+        rc = wc_RsaPSS_Verify_ex((byte*)sig, (word32)sigLen, decryptedSig,
+            (word32)sigLen, we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+            we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
+            &rsa->key);
+        if (rc < 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaPSS_Verify_ex", rc);
+            ret = 0;
+        }
+        else {
+            ret = rc;
+        }
+        /* Verify call above only decrypts - this actually checks padding. */
+        rc = wc_RsaPSS_CheckPadding_ex(tbs, tbsLen, decryptedSig, rc,
+            we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)), rsa->saltLen, 0);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_RsaPSS_CheckPadding_ex", rc);
+            ret = 0;
+        }
+        else {
+            ret = 1;
+        }
+    }
+    else if (ret == 1) {
+        /* PKCS #1 v1.5 padding. */
         rc = wc_RsaSSL_Verify(sig, (word32)sigLen, decryptedSig,
                                (word32)sigLen, &rsa->key);
         if (rc <= 0) {
@@ -1122,7 +1301,8 @@ int we_init_rsa_pkey_meth(void)
         EVP_PKEY_meth_set_sign(we_rsa_pkey_method, NULL, we_rsa_pkey_sign);
         EVP_PKEY_meth_set_verify(we_rsa_pkey_method, NULL, we_rsa_pkey_verify);
         EVP_PKEY_meth_set_cleanup(we_rsa_pkey_method, we_rsa_pkey_cleanup);
-        EVP_PKEY_meth_set_ctrl(we_rsa_pkey_method, we_rsa_pkey_ctrl, NULL);
+        EVP_PKEY_meth_set_ctrl(we_rsa_pkey_method, we_rsa_pkey_ctrl,
+                               we_rsa_pkey_ctrl_str);
         EVP_PKEY_meth_set_copy(we_rsa_pkey_method, we_rsa_pkey_copy);
         EVP_PKEY_meth_set_keygen(we_rsa_pkey_method, NULL, we_rsa_pkey_keygen);
     }

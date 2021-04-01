@@ -32,6 +32,17 @@ line 188:
           case EVP_CIPH_CTR_MODE:
 ```
 
+To get CBC cipher suites working in OpensSL 1.1.1, modify `ssl/record/ssl3_record.c` at 1125:
+
+```
+
++        if ((EVP_CIPHER_mode(enc) != EVP_CIPH_GCM_MODE) &&
++            (EVP_CIPHER_mode(enc) != EVP_CIPH_CCM_MODE)) {
++            EVP_CIPHER_CTX_set_padding(ds, 0);
++        }
+         /* TODO(size_t): Convert this call */
+```
+
 ## Building
 
 ### Openssl

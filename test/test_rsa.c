@@ -355,7 +355,7 @@ int test_rsa_direct(ENGINE *e, void *data)
 
 #ifdef WE_HAVE_EVP_PKEY
 
-int test_rsa_sign_verify(ENGINE *e, void *data)
+static int test_rsa_sign_verify_pad(ENGINE *e, int pss)
 {
     int err;
     int res;
@@ -369,8 +369,6 @@ int test_rsa_sign_verify(ENGINE *e, void *data)
     size_t rsaSigLen;
     unsigned char buf[20];
     const unsigned char *p = rsa_key_der_2048;
-
-    (void)data;
 
     PRINT_MSG("Load RSA key");    
     pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
@@ -388,48 +386,53 @@ int test_rsa_sign_verify(ENGINE *e, void *data)
         err = rsaSig == NULL;
     }
 
-    if (err == 0) {
+    if ((err == 0) && (!pss)) {
         PRINT_MSG("Test signing/verifying arbitrary data");
         PRINT_MSG("Sign with OpenSSL");
-        err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), rsaSig, &rsaSigLen);
+        err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), rsaSig, &rsaSigLen,
+                             pss);
     }
-    if (err == 0) {
+    if ((err == 0) && (!pss)) {
         PRINT_MSG("Verify with wolfengine");
-        err = test_pkey_verify(pkey, e, buf, sizeof(buf), rsaSig, rsaSigLen);
+        err = test_pkey_verify(pkey, e, buf, sizeof(buf), rsaSig, rsaSigLen,
+                               pss);
     }
-    if (err == 0) {
+    if ((err == 0) && (!pss)) {
         PRINT_MSG("Verify bad signature with wolfengine");
         rsaSig[1] ^= 0x80;
-        res = test_pkey_verify(pkey, e, buf, sizeof(buf), rsaSig, rsaSigLen);
+        res = test_pkey_verify(pkey, e, buf, sizeof(buf), rsaSig, rsaSigLen,
+                               pss);
         if (res != 1)
             err = 1;
     }
-    if (err == 0) {
+    if ((err == 0) && (!pss)) {
         PRINT_MSG("Sign with wolfengine");
         rsaSigLen = RSA_size(rsaKey);
-        err = test_pkey_sign(pkey, e, buf, sizeof(buf), rsaSig, &rsaSigLen);
+        err = test_pkey_sign(pkey, e, buf, sizeof(buf), rsaSig, &rsaSigLen,
+                             pss);
     }
-    if (err == 0) {
+    if ((err == 0) && (!pss)) {
         PRINT_MSG("Verify with OpenSSL");
-        err = test_pkey_verify(pkey, NULL, buf, sizeof(buf), rsaSig, rsaSigLen);
+        err = test_pkey_verify(pkey, NULL, buf, sizeof(buf), rsaSig, rsaSigLen,
+                               pss);
     }
 
     if (err == 0) {
         PRINT_MSG("Test creating/verifying a signature");
         PRINT_MSG("Sign with OpenSSL");
         err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha256(),
-                               rsaSig, &rsaSigLen);
+                               rsaSig, &rsaSigLen, pss);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha256(),
-                                 rsaSig, rsaSigLen);
+                                 rsaSig, rsaSigLen, pss);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         rsaSig[1] ^= 0x80;
         res = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha256(),
-                                 rsaSig, rsaSigLen);
+                                 rsaSig, rsaSigLen, pss);
         if (res != 1)
             err = 1;
     }
@@ -437,12 +440,12 @@ int test_rsa_sign_verify(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         rsaSigLen = RSA_size(rsaKey);
         err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha256(),
-                              rsaSig, &rsaSigLen);
+                              rsaSig, &rsaSigLen, pss);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha256(),
-                                 rsaSig, rsaSigLen);
+                                 rsaSig, rsaSigLen, pss);
     }
 
     EVP_PKEY_free(pkey);
@@ -451,6 +454,20 @@ int test_rsa_sign_verify(ENGINE *e, void *data)
         OPENSSL_free(rsaSig);
 
     return err;
+}
+
+int test_rsa_sign_verify(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_sign_verify_pad(e, 0);
+}
+
+int test_rsa_sign_verify_pss(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_sign_verify_pad(e, 1);
 }
 
 int test_rsa_keygen(ENGINE *e, void *data)
