@@ -126,7 +126,7 @@ static void we_hmac_pkey_cleanup(EVP_PKEY_CTX *ctx)
         wc_HmacFree(&hmac->hmac);
         EVP_PKEY_CTX_set_data(ctx, NULL);
         if (hmac->key != NULL) {
-            OPENSSL_free(hmac->key);
+            OPENSSL_clear_free(hmac->key, hmac->keySz);
         }
         OPENSSL_free(hmac);
     }
@@ -350,7 +350,7 @@ static int we_hmac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         case WE_CTRL_KEY: /* handle password passed in */
             if (ptr != NULL) {
                 if (hmac->key != NULL) {
-                    OPENSSL_free(hmac->key);
+                    OPENSSL_clear_free(hmac->key, hmac->keySz);
                 }
                 hmac->key = (unsigned char *)OPENSSL_zalloc(num);
                 if (hmac->key == NULL) {
