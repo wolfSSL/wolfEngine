@@ -138,18 +138,18 @@ int test_random(ENGINE *e, void *data);
 
 int test_digest_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,
                      size_t len, const EVP_MD *md,
-                     unsigned char *sig, size_t *sigLen);
+                     unsigned char *sig, size_t *sigLen, int pss);
 
 int test_digest_verify(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,
                        size_t len, const EVP_MD *md,
-                       unsigned char *sig, size_t sigLen);
+                       unsigned char *sig, size_t sigLen, int pss);
 
 int test_pkey_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *hash,
                    size_t hashLen, unsigned char *sig,
-                   size_t *sigLen);
+                   size_t *sigLen, int pss);
 int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
                      unsigned char *hash, size_t hashLen,
-                     unsigned char *sig, size_t sigLen);
+                     unsigned char *sig, size_t sigLen, int pss);
 
 #endif /* WE_HAVE_EVP_PKEY */
 
@@ -157,6 +157,7 @@ int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
 int test_rsa_direct(ENGINE *e, void *data);
 #ifdef WE_HAVE_EVP_PKEY
 int test_rsa_sign_verify(ENGINE *e, void *data);
+int test_rsa_sign_verify_pss(ENGINE *e, void *data);
 int test_rsa_keygen(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 

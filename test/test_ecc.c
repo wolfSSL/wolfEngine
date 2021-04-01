@@ -821,18 +821,18 @@ int test_ecdsa_p192_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -840,12 +840,12 @@ int test_ecdsa_p192_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_pkey_verify(pkey, NULL, buf, sizeof(buf),
-                                     ecdsaSig, ecdsaSigLen);
+                                     ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -876,18 +876,18 @@ int test_ecdsa_p224_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -895,12 +895,12 @@ int test_ecdsa_p224_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_pkey_verify(pkey, NULL, buf, sizeof(buf),
-                                     ecdsaSig, ecdsaSigLen);
+                                     ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -931,18 +931,18 @@ int test_ecdsa_p256_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -950,12 +950,12 @@ int test_ecdsa_p256_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_pkey_verify(pkey, NULL, buf, sizeof(buf),
-                                     ecdsaSig, ecdsaSigLen);
+                                     ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -986,18 +986,18 @@ int test_ecdsa_p384_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -1005,12 +1005,12 @@ int test_ecdsa_p384_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_pkey_verify(pkey, NULL, buf, sizeof(buf),
-                                     ecdsaSig, ecdsaSigLen);
+                                     ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -1041,18 +1041,18 @@ int test_ecdsa_p521_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, NULL, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_pkey_verify(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                     ecdsaSigLen);
+                                     ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -1060,12 +1060,12 @@ int test_ecdsa_p521_pkey(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign(pkey, e, buf, sizeof(buf), ecdsaSig,
-                                   &ecdsaSigLen);
+                                   &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_pkey_verify(pkey, NULL, buf, sizeof(buf),
-                                     ecdsaSig, ecdsaSigLen);
+                                     ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -1096,18 +1096,18 @@ int test_ecdsa_p192(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha224(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha224(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -1115,12 +1115,12 @@ int test_ecdsa_p192(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha224(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -1151,18 +1151,18 @@ int test_ecdsa_p224(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha224(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha224(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -1170,12 +1170,12 @@ int test_ecdsa_p224(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha224(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -1206,18 +1206,18 @@ int test_ecdsa_p256(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha256(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha256(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha256(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -1225,12 +1225,12 @@ int test_ecdsa_p256(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha256(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha256(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -1261,18 +1261,18 @@ int test_ecdsa_p384(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha384(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha384(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha384(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -1280,12 +1280,12 @@ int test_ecdsa_p384(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha384(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha384(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);
@@ -1316,18 +1316,18 @@ int test_ecdsa_p521(ENGINE *e, void *data)
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha512(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with wolfengine");
         err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha512(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
         ecdsaSig[1] ^= 0x80;
         res = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha512(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
         if (res != 1)
             err = 1;
     }
@@ -1335,12 +1335,12 @@ int test_ecdsa_p521(ENGINE *e, void *data)
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha512(),
-                              ecdsaSig, &ecdsaSigLen);
+                              ecdsaSig, &ecdsaSigLen, 0);
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha512(),
-                                ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen, 0);
     }
 
     EVP_PKEY_free(pkey);

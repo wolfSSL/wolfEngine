@@ -126,6 +126,7 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA
     TEST_DECL(test_rsa_sign_verify, NULL),
+    TEST_DECL(test_rsa_sign_verify_pss, NULL),
     TEST_DECL(test_rsa_keygen, NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_EC_P192
