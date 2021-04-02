@@ -463,6 +463,11 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode)
     if (err == 0) {
         err = RAND_bytes(buf, (int)bufLen) == 0;
     }
+     if (err == 0 && padMode == RSA_NO_PADDING) {
+        /* Set the MSB to 0 so there's no chance the number is too large for the
+           RSA modulus. */
+        buf[0] = 0;
+    }
 
     /* Don't run these first tests in the case of PSS, which is strictly for
        signatures and not arbitrary data. */
