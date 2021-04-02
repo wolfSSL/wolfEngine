@@ -1,4 +1,4 @@
-/* openssl_bc.h
+/* we_openssl_bc.h
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *

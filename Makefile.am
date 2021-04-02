@@ -7,7 +7,7 @@ DISTCLEANFILES =
 
 ACLOCAL_AMFLAGS = -I m4
 
-pkglib_LTLIBRARIES = libwolfengine.la
+lib_LTLIBRARIES = libwolfengine.la
 
 include src/include.am
 include include/include.am

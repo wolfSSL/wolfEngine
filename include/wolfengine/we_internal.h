@@ -1,4 +1,4 @@
-/* internal.h
+/* we_internal.h
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
@@ -50,8 +50,9 @@
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/random.h>
 
-#include "openssl_bc.h"
-#include "we_logging.h"
+#include <wolfengine/we_openssl_bc.h>
+
+#include <wolfengine/we_logging.h>
 
 /*
  * Global random

@@ -20,7 +20,7 @@
  */
 
 #include "unit.h"
-#include "we_logging.h"
+#include <wolfengine/we_logging.h>
 
 static int log_cnt = 0;
 
