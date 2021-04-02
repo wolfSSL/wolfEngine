@@ -1,4 +1,4 @@
-/* ecc.c
+/* we_ecc.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *

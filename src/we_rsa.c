@@ -1,4 +1,4 @@
-/* rsa.c
+/* we_rsa.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *

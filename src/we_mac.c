@@ -1,4 +1,4 @@
-/* mac.c
+/* we_mac.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
