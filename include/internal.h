@@ -170,32 +170,12 @@ int we_init_rsa_meth(void);
  * ECDH methods.
  */
 
-#if defined(WE_HAVE_EC_KEY) && defined(WE_HAVE_ECDH)
-/* 
- * struct ecdh_method definition could not be seen in the public headers
- * of OpenSSL 1.0.2.
- */
-struct ecdh_method {
-    const char *name;
-    int (*compute_key) (void *key, size_t outlen, const EC_POINT *pub_key,
-                        EC_KEY *ecdh, void *(*KDF) (const void *in,
-                                                    size_t inlen, void *out,
-                                                    size_t *outlen));
-
-    int flags;
-    char *app_data;
-};
-typedef struct ecdh_method ECDH_METHOD;
-
-typedef int (*compute_key_fp) (void *key, size_t outlen, const EC_POINT *pub_key,
-                        EC_KEY *ecdh, void *(*KDF) (const void *in,
-                                                    size_t inlen, void *out,
-                                                    size_t *outlen));
+#if WE_HAVE_ECDH
 
 extern ECDH_METHOD *we_ecdh_method;
 int we_init_ecdh_meth(void);
 
-#endif /* WE_HAVE_EC_KEY && WE_HAVE_ECDH */
+#endif /* WE_HAVE_ECDH */
 
 /*
  * ECC methods.

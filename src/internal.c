@@ -906,7 +906,7 @@ static const RSA_METHOD *we_rsa(void)
 }
 #endif /* WE_HAVE_RSA */
 
-#if defined(WE_HAVE_EC_KEY) && defined(WE_HAVE_ECDH)
+#if defined(WE_HAVE_ECC) && defined(WE_HAVE_ECDH)
 /**
  * Return the ECDH method.
  *
@@ -916,7 +916,7 @@ static const ECDH_METHOD *we_ecdh(void)
 {
     return we_ecdh_method;
 }
-#endif /* WE_HAVE_EC_KEY && WE_HAVE_ECDH */
+#endif /* WE_HAVE_ECC && WE_HAVE_ECDH */
 
 /**
  * Bind the wolfengine into an engine object.
@@ -975,12 +975,12 @@ int wolfengine_bind(ENGINE *e, const char *id)
     if (ret == 1 && ENGINE_set_EC(e, we_ec()) == 0) {
         ret = 0;
     }
-#ifdef WE_HAVE_ECDH
+#endif /* WE_HAVE_EC_KEY */
+#if defined(WE_HAVE_ECC) && defined(WE_HAVE_ECDH)
     if (ret == 1 && ENGINE_set_ECDH(e, we_ecdh()) == 0) {
         ret = 0;
     }
-#endif /* WE_HAVE_ECDH */
-#endif /* WE_HAVE_EC_KEY */
+#endif /* WE_HAVE_ECC && WE_HAVE_ECDH */
     if (ret == 1 && ENGINE_set_destroy_function(e, wolfengine_destroy) == 0) {
         ret = 0;
     }

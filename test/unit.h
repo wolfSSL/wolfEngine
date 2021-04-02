@@ -189,6 +189,7 @@ int test_eckeygen_p384(ENGINE *e, void *data);
 int test_ecdh_derive(ENGINE *e, EVP_PKEY *key, EVP_PKEY *peerKey,
                      unsigned char **pSecret, size_t expLen);
 
+int test_ecdh_direct(ENGINE *e,void *data);
 #ifdef WE_HAVE_ECKEYGEN
 
 int test_ecdh_keygen(ENGINE *e, int nid, int len);

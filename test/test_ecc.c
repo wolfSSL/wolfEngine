@@ -1005,4 +1005,160 @@ int test_ec_key_ecdsa_p384(ENGINE *e, void *data)
 
 #endif /* WE_HAVE_EC_KEY */
 
+#ifdef WE_HAVE_ECDH
+int test_ecdh_direct(ENGINE *e,void *data)
+{
+    int err;
+    EVP_PKEY_CTX *kgCtx = NULL;
+    EVP_PKEY *keyA = NULL;
+    EVP_PKEY *keyB = NULL;
+    unsigned char secret[48];
+    unsigned char *secretA = NULL;
+    unsigned char *secretB = NULL;
+    const unsigned char *p;
+    const unsigned char *peerPrivKey;
+    size_t len,peerLen;
+    const ECDH_METHOD* method;
+    EC_KEY *eckeyA,*eckeyB;
+    const EC_POINT* pub;
+    (void)kgCtx;
+    (void)keyA;
+    (void)keyB;
+    (void)secret;
+    (void)secretA;
+    (void)secretB;
+    (void)p;
+    (void)peerPrivKey;
+    (void)len;
+    (void)peerLen;
+    (void)method;
+    (void)e;
+    (void)data;
+    (void)eckeyA;
+    (void)eckeyB;
+    (void)pub;
+
+    PRINT_MSG("test_ecdh_direct");
+    err = 0;
+
+ #if 0
+    if (err == 0) {
+        PRINT_MSG("Get ECDH_METHOD from engine");
+        method = ENGINE_get_ECDH(e);
+        err = method == NULL;
+    }
+#endif
+#if defined(WE_HAVE_EC_P256)
+    method  = NULL;
+    p       = ecc_key_der_256;
+    len     = sizeof(ecc_key_der_256);
+    peerPrivKey = ecc_peerkey_der_256;
+    peerLen = sizeof(ecc_peerkey_der_256);
+
+    PRINT_MSG("P256 key");
+    if (err == 0) {
+        err = (keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, len)) == NULL;
+        err = keyA == NULL;
+    }
+    if (err == 0) {
+        p = peerPrivKey;
+        err = (keyB = d2i_PrivateKey(EVP_PKEY_EC, NULL, &peerPrivKey, peerLen))
+                                                                 == NULL;
+    }
+    if (err == 0) {
+        eckeyA = EVP_PKEY_get1_EC_KEY(keyA);
+        err = eckeyA == NULL;
+    }
+    if (err == 0) {
+        pub = EC_KEY_get0_public_key(eckeyA);
+    }
+    if (err == 0) {
+        eckeyB = EVP_PKEY_get1_EC_KEY(keyB);
+        err = eckeyB == NULL;
+    }
+#if 0
+    if (err == 0) {
+        PRINT_MSG("ECDH_set_method");
+        ECDH_set_method(eckeyB, method);
+    }
+#endif
+    if (err == 0) {
+        PRINT_MSG("ECDH_compute_key");
+        err = ECDH_compute_key(secret, sizeof(secret), pub, eckeyB, NULL);
+        err = err == -1;
+    }
+    if (err == 0) {
+        err = memcmp(ecc_derived_256, secret, sizeof(ecc_derived_256));
+        err = err != 0;
+    }
+
+    EVP_PKEY_free(keyA);
+    EVP_PKEY_free(keyB);
+    EC_KEY_free(eckeyA);
+    EC_KEY_free(eckeyB);
+
+    keyA = NULL;
+    keyB = NULL;
+    eckeyA = NULL;
+    eckeyB = NULL;
+
+#endif /* WE_HAVE_EC_P256 */
+
+#if defined(WE_HAVE_EC_P384)
+    method  = NULL;
+    p       = ecc_key_der_384;
+    len     = sizeof(ecc_key_der_384);
+    peerPrivKey = ecc_peerkey_der_384;
+    peerLen = sizeof(ecc_peerkey_der_384);
+
+    PRINT_MSG("P384 key");
+    if (err == 0) {
+        err = (keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, len)) == NULL;
+        err = keyA == NULL;
+    }
+    if (err == 0) {
+        p = peerPrivKey;
+        err = (keyB = d2i_PrivateKey(EVP_PKEY_EC, NULL, &peerPrivKey, peerLen))
+                                                                 == NULL;
+    }
+    if (err == 0) {
+        eckeyA = EVP_PKEY_get1_EC_KEY(keyA);
+        err = eckeyA == NULL;
+    }
+    if (err == 0) {
+        pub = EC_KEY_get0_public_key(eckeyA);
+    }
+    if (err == 0) {
+        eckeyB = EVP_PKEY_get1_EC_KEY(keyB);
+        err = eckeyB == NULL;
+    }
+#if 0
+    if (err == 0) {
+        PRINT_MSG("ECDH_set_method");
+        ECDH_set_method(eckeyB, method);
+    }
+#endif
+    if (err == 0) {
+        PRINT_MSG("ECDH_compute_key");
+        err = ECDH_compute_key(secret, sizeof(secret), pub, eckeyB, NULL);
+        err = err == -1;
+    }
+    if (err == 0) {
+        err = memcmp(ecc_derived_384, secret, sizeof(ecc_derived_384));
+        err = err != 0;
+    }
+
+    EVP_PKEY_free(keyA);
+    EVP_PKEY_free(keyB);
+    EC_KEY_free(eckeyA);
+    EC_KEY_free(eckeyB);
+#endif /* WE_HAVE_EC_P384 */
+
+    return err;
+}
+#endif /* WE_HAVE_ECDH */
+
+
+
+
 #endif /* WE_HAVE_ECC */

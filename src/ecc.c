@@ -1032,6 +1032,8 @@ static int we_ec_key_keygen(EC_KEY *key)
 
     return ret;
 }
+#endif /* WE_HAVE_EC_KEY */
+#if defined(WE_HAVE_EC_KEY) || defined(WE_HAVE_ECDH)
 
 /**
  * Compute the EC secret for ECDH using wolfSSL.
@@ -1150,7 +1152,8 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
 
     return ret;
 }
-
+#endif /* WE_HAVE_EC_KEY || WE_HAVE_ECDH */
+#ifdef WE_HAVE_EC_KEY
 /**
  * Sign data with a private EC key.
  *
@@ -1312,46 +1315,36 @@ int we_init_ec_key_meths(void)
 
     return ret;
 }
+#endif /* WE_HAVE_EC_KEY */
+
 #ifdef WE_HAVE_ECDH
 
 /** ECDH method - ECDH using wolfSSL for the implementation. */
 ECDH_METHOD *we_ecdh_method = NULL;
 
+/*  struct ecdh_method is originally defined in openssl/crypt/ecdh/ecdh_locl.h.
+ *  However, the file is not installed along with openssl installation.
+ *  ECDH_METHOD_new function is not provided in openssl/ecdh.h.
+ */
+struct ecdh_method {
+    const char *name;
+    int (*compute_key) (void *key, size_t outlen, const EC_POINT *pub_key,
+                        EC_KEY *ecdh, void *(*KDF) (const void *in,
+                                                    size_t inlen, void *out,
+                                                    size_t *outlen));
 
-static ECDH_METHOD* ECDH_METHOD_new(const ECDH_METHOD* m)
-{
-    ECDH_METHOD* em = NULL;
+    int flags;
+    char *app_data;
+};
 
-    em = (ECDH_METHOD*)OPENSSL_malloc(sizeof(ECDH_METHOD));
-    if (em) {
-        if (m) {
-            XMEMCPY(em, m, sizeof(ECDH_METHOD));
-        }
-        else {
-            XMEMSET(em, 0, sizeof(ECDH_METHOD));
-        }
-    }
-    return em;
-}
-static void ECDH_METHOD_free( ECDH_METHOD* em) {
-    if (em) {
-        OPENSSL_free(em);
-    }
-}
-
-static void ECDH_METHOD_set_compute_key(ECDH_METHOD* em, compute_key_fp fn) {
-    if (em != NULL && fn != NULL) {
-        em->compute_key = fn;
-    }
-}
 /**
  * Compute shared secret with a private-key and a peer's public-key.
  * If key-derivation function is given, calls it with shared secret.
  *
  * @param  out     [in]  buffer to hold computed key.
  * @param  outlen  [in]  size of out buffer.
- * @param  pub_key [in]  private key of this side.
- * @param  ecdh    [in]  EC_KEY holding peer's public key.
+ * @param  pub_key [in]  peer's public key.
+ * @param  ecdh    [in]  private key.
  * @param  KDF     [in]  Key-derivation function pointer
  * @returns the number of key in buffer out on success and -1 on failure.
  */
@@ -1407,6 +1400,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
 
     return ret;
 }
+
 /**
  * Initialize the ECDH method.
  *
@@ -1417,18 +1411,18 @@ int we_init_ecdh_meth(void)
     int ret = 1;
 
     WOLFENGINE_ENTER("we_init_ecdh_meth");
-    we_ecdh_method = ECDH_METHOD_new(NULL);
+    we_ecdh_method = (ECDH_METHOD*)OPENSSL_zalloc(sizeof(ECDH_METHOD));
     if (we_ecdh_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("ECDH_METHOD_new", we_ecdh_method);
+        WOLFENGINE_ERROR_FUNC_NULL("ECDH_OpenSSL", we_ecdh_method);
         ret = 0;
     }
 
     if (ret == 1) {
-        ECDH_METHOD_set_compute_key(we_ecdh_method, we_ecdh_compute_key);
+        we_ecdh_method->compute_key = we_ecdh_compute_key;
     }
 
     if (ret == 0 && we_ecdh_method != NULL) {
-        ECDH_METHOD_free(we_ecdh_method);
+        OPENSSL_free(we_ecdh_method);
         we_ecdh_method = NULL;
     }
 
@@ -1436,7 +1430,5 @@ int we_init_ecdh_meth(void)
     return ret;
 }
 #endif /* WE_HAVE_ECDH */
-
-#endif /* WE_HAVE_EC_KEY */
 #endif /* WE_HAVE_ECC */
 

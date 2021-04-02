@@ -123,6 +123,11 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_DH
     TEST_DECL(test_dh, NULL),
 #endif /* WE_HAVE_DH */
+
+#if defined(WE_HAVE_ECDH)
+    TEST_DECL(test_ecdh_direct, NULL),
+#endif /* WE_HAVE_EDCH */
+
 #ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA
     TEST_DECL(test_rsa_sign_verify, NULL),
