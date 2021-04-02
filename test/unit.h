@@ -33,8 +33,8 @@
 #include <openssl/ssl.h>
 #include <openssl/aes.h>
 
-#include "openssl_bc.h"
-#include "we_logging.h"
+#include <wolfengine/we_logging.h>
+#include <wolfengine/we_openssl_bc.h>
 
 #define PRINT_MSG(str)         printf("MSG: %s\n", str)
 #define PRINT_ERR_MSG(str)     printf("ERR: %s\n", str)

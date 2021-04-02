@@ -1,4 +1,4 @@
-/* wolfengine.h
+/* we_wolfengine.h
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *

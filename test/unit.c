@@ -19,8 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "wolfengine.h"
-#include "we_logging.h"
+#include <wolfengine/we_wolfengine.h>
+#include <wolfengine/we_logging.h>
+
 #include "unit.h"
 
 #ifdef WOLFENGINE_DEBUG
