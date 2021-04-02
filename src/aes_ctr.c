@@ -188,6 +188,7 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define AES_CTR_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CTR_MODE)
 
 /** AES128-CTR EVP cipher method. */
