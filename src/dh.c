@@ -50,18 +50,18 @@ static int we_dh_init(DH *dh)
     int rc = 0;
     we_Dh *engineDh = NULL;
 
-    WOLFENGINE_ENTER("we_dh_init");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_init");
 
     engineDh = (we_Dh *)OPENSSL_zalloc(sizeof(we_Dh));
     if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", engineDh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_zalloc", engineDh);
         ret = 0;
     }
 
     if (ret == 1) {
         rc = wc_InitDhKey(&engineDh->key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_InitDhKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_InitDhKey", rc);
             ret = 0;
         }
         engineDh->primeLen = DEFAULT_PRIME_LEN;
@@ -70,7 +70,7 @@ static int we_dh_init(DH *dh)
     if (ret == 1) {
         rc = DH_set_ex_data(dh, 0, engineDh);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("DH_set_ex_data", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_set_ex_data", rc);
             ret = 0;
         }
     }
@@ -80,7 +80,7 @@ static int we_dh_init(DH *dh)
         OPENSSL_free(engineDh);
     }
 
-    WOLFENGINE_LEAVE("we_dh_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_init", ret);
 
     return ret;
 }
@@ -96,11 +96,11 @@ static int we_dh_finish(DH *dh)
     int ret = 1;
     we_Dh *engineDh = NULL;
 
-    WOLFENGINE_ENTER("we_dh_finish");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_finish");
 
     engineDh = (we_Dh *)DH_get_ex_data(dh, 0);
     if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("DH_get_ex_data", engineDh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get_ex_data", engineDh);
         ret = 0;
     }
 
@@ -110,7 +110,7 @@ static int we_dh_finish(DH *dh)
         DH_set_ex_data(dh, 0, NULL);
     }
 
-    WOLFENGINE_LEAVE("we_dh_finish", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_finish", ret);
 
     return ret;
 }
@@ -132,18 +132,18 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     unsigned char *gBuf = NULL;
     int gBufLen = 0;
 
-    WOLFENGINE_ENTER("we_set_dh_parameters");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_set_dh_parameters");
 
     pBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(DH_get0_p(dh)));
     if (pBuf == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", pBuf);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pBuf);
         ret = 0;
     }
 
     if (ret == 1) {
         gBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(DH_get0_g(dh)));
         if (gBuf == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", gBuf);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", gBuf);
             ret = 0;
         }
     }
@@ -151,7 +151,7 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         pBufLen = BN_bn2bin(DH_get0_p(dh), pBuf);
         if (pBufLen == 0) {
-            WOLFENGINE_ERROR_FUNC("BN_bn2bin", pBufLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", pBufLen);
             ret = 0;
         }
     }
@@ -159,7 +159,7 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         gBufLen = BN_bn2bin(DH_get0_g(dh), gBuf);
         if (gBufLen == 0) {
-            WOLFENGINE_ERROR_FUNC("BN_bn2bin", gBufLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", gBufLen);
             ret = 0;
         }
     }
@@ -167,7 +167,7 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         rc = wc_DhSetKey(&engineDh->key, pBuf, pBufLen, gBuf, gBufLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_DhSetKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhSetKey", rc);
             ret = 0;
         }
     }
@@ -177,7 +177,7 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     if (gBuf != NULL)
         OPENSSL_free(gBuf);
 
-    WOLFENGINE_LEAVE("we_set_dh_parameters", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_set_dh_parameters", ret);
 
     return ret;
 }
@@ -204,12 +204,12 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     BIGNUM *privBn = NULL;
     BIGNUM *pubBn = NULL;
 
-    WOLFENGINE_ENTER("we_dh_generate_key_int");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_generate_key_int");
 
     pubLen = BN_num_bytes(DH_get0_p(dh));
     pub = (unsigned char*)OPENSSL_malloc(pubLen);
     if (pub == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", pub);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pub);
         ret = 0;
     }
 
@@ -224,7 +224,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
 
         priv = (unsigned char*)OPENSSL_malloc(privLen);
         if (priv == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", priv);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", priv);
             ret = 0;
         }
     }
@@ -233,7 +233,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         rc = we_set_dh_parameters(dh, engineDh);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("we_set_dh_parameters", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_set_dh_parameters", rc);
             ret = 0;
         }
     }
@@ -244,7 +244,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
         rc = wc_DhGenerateKeyPair(&engineDh->key, we_rng, priv, &actualPrivLen,
                                   pub, &actualPubLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_DhGenerateKeyPair", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateKeyPair", rc);
             ret = 0;
         }
     }
@@ -252,7 +252,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         privBn = BN_bin2bn(priv, actualPrivLen, NULL);
         if (privBn == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_bin2bn", privBn);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", privBn);
             ret = 0;
         }
     }
@@ -260,7 +260,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         pubBn = BN_bin2bn(pub, actualPubLen, NULL);
         if (pubBn == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_bin2bn", pubBn);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", pubBn);
             ret = 0;
         }
     }
@@ -268,7 +268,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         rc = DH_set0_key(dh, pubBn, privBn);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("DH_set0_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_set0_key", rc);
             BN_free(privBn);
             ret = 0;
         }
@@ -279,7 +279,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     if (priv != NULL)
         OPENSSL_clear_free(priv, privLen);
 
-    WOLFENGINE_LEAVE("we_dh_generate_key_int", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_generate_key_int", ret);
 
     return ret;
 }
@@ -297,23 +297,23 @@ static int we_dh_generate_key(DH *dh)
     int rc = 0;
     we_Dh *engineDh = NULL;
 
-    WOLFENGINE_ENTER("we_dh_generate_key");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_generate_key");
 
     engineDh = (we_Dh *)DH_get_ex_data(dh, 0);
     if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("DH_get_ex_data", engineDh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get_ex_data", engineDh);
         ret = 0;
     }
 
     if (ret == 1) {
         rc = we_dh_generate_key_int(dh, engineDh);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("we_dh_generate_key_int", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_generate_key_int", rc);
             ret = 0;
         }
     }
 
-    WOLFENGINE_LEAVE("we_dh_generate_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_generate_key", ret);
 
     return ret;
 }
@@ -341,12 +341,12 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     int privLen = 0;
     unsigned int secLen = 0;
 
-    WOLFENGINE_ENTER("we_dh_compute_key_int");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_compute_key_int");
 
     if (ret == 1) {
         pubBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(pubKey));
         if (pubBuf == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", pubBuf);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pubBuf);
             ret = 0;
         }
     }
@@ -355,7 +355,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
         privBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(
                                                   DH_get0_priv_key(dh)));
         if (privBuf == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", privBuf);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", privBuf);
             ret = 0;
         }
     }
@@ -363,7 +363,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     if (ret == 1) {
         pubLen = BN_bn2bin(pubKey, pubBuf);
         if (pubLen == 0) {
-            WOLFENGINE_ERROR_FUNC("BN_bn2bin", pubLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", pubLen);
             ret = 0;
         }
     }
@@ -371,7 +371,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     if (ret == 1) {
         privLen = BN_bn2bin(DH_get0_priv_key(dh), privBuf);
         if (privLen == 0) {
-            WOLFENGINE_ERROR_FUNC("BN_bn2bin", privLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", privLen);
             ret = 0;
         }
     }
@@ -380,7 +380,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     if (ret == 1) {
         rc = we_set_dh_parameters(dh, engineDh);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("we_set_dh_parameters", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_set_dh_parameters", rc);
             ret = 0;
         }
     }
@@ -390,7 +390,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
         rc = wc_DhAgree(&engineDh->key, secret, &secLen, privBuf, privLen,
                          pubBuf, pubLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_DhAgree", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhAgree", rc);
             ret = 0;
         }
         else {
@@ -403,7 +403,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     if (privBuf != NULL)
         OPENSSL_free(privBuf);
 
-    WOLFENGINE_LEAVE("we_dh_compute_key_int", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_compute_key_int", ret);
 
     return ret;
 }
@@ -424,11 +424,11 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
     we_Dh *engineDh = NULL;
     size_t secretLen = 0;
 
-    WOLFENGINE_ENTER("we_compute_key");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_compute_key");
 
     engineDh = (we_Dh *)DH_get_ex_data(dh, 0);
     if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("DH_get_ex_data", engineDh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get_ex_data", engineDh);
         ret = -1;
     }
 
@@ -436,7 +436,7 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
         secretLen = DH_size(dh);
         ret = we_dh_compute_key_int(engineDh, secret, &secretLen, pubKey, dh);
         if (ret == 0) {
-            WOLFENGINE_ERROR_FUNC("we_dh_compute_key_int", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_compute_key_int", ret);
             ret = -1;
         }
         else {
@@ -444,7 +444,7 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
         }
     }
 
-    WOLFENGINE_LEAVE("we_compute_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_compute_key", ret);
     (void)ret;
 
     return ret;
@@ -459,11 +459,11 @@ int we_init_dh_meth(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_dh_meth");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_init_dh_meth");
 
     we_dh_method = DH_meth_new("wolfengine_dh", 0);
     if (we_dh_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("DH_meth_new", we_dh_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_meth_new", we_dh_method);
         ret = 0;
     }
 
@@ -479,7 +479,7 @@ int we_init_dh_meth(void)
         we_dh_method = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_dh_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_init_dh_meth", ret);
 
     return ret;
 }
@@ -501,18 +501,18 @@ static int we_dh_pkey_init(EVP_PKEY_CTX *ctx)
     int rc = 0;
     we_Dh *dh;
 
-    WOLFENGINE_ENTER("we_dh_pkey_init");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_init");
 
     dh = (we_Dh *)OPENSSL_zalloc(sizeof(we_Dh));
     if (dh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", dh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_zalloc", dh);
         ret = 0;
     }
 
     if (ret == 1) {
         rc = wc_InitDhKey(&dh->key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_InitDhKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_InitDhKey", rc);
             ret = 0;
         }
         dh->primeLen = DEFAULT_PRIME_LEN;
@@ -527,7 +527,7 @@ static int we_dh_pkey_init(EVP_PKEY_CTX *ctx)
         OPENSSL_free(dh);
     }
 
-    WOLFENGINE_LEAVE("we_dh_pkey_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_pkey_init", ret);
 
     return ret;
 }
@@ -541,7 +541,7 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
 {
     we_Dh *dh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
 
-    WOLFENGINE_ENTER("we_dh_pkey_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_cleanup");
 
     if (dh != NULL) {
         wc_FreeDhKey(&dh->key);
@@ -549,7 +549,7 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
         EVP_PKEY_CTX_set_data(ctx, NULL);
     }
 
-    WOLFENGINE_LEAVE("we_dh_pkey_cleanup", 1);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_pkey_cleanup", 1);
 }
 
 /**
@@ -576,11 +576,11 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 
     (void)ptr;
 
-    WOLFENGINE_ENTER("we_dh_pkey_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_ctrl");
 
     dh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
     if (dh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", dh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "EVP_PKEY_CTX_get_data", dh);
         ret = 0;
     }
 
@@ -589,7 +589,8 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             case EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN:
                 /* These are the sizes allowed by wolfCrypt. */
                 if (num != 1024 && num != 2048 && num != 3072) {
-                    WOLFENGINE_ERROR_MSG("Invalid DH prime bit length.");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_KE,
+                                         "Invalid DH prime bit length.");
                     ret = 0;
                 }
                 else {
@@ -608,13 +609,13 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_KE, errBuff);
                 ret = 0;
                 break;
         }
     }
 
-    WOLFENGINE_LEAVE("we_dh_pkey_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_pkey_ctrl", ret);
 
     return ret;
 }
@@ -640,33 +641,33 @@ static int we_convert_dh_params(DhKey *wolfDh, DH *osslDh)
     unsigned char *q = NULL;
     unsigned int qLen = 0;
 
-    WOLFENGINE_ENTER("we_convert_dh_params");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_convert_dh_params");
 
     /* Call with NULL for the buffers to get required lengths. */
     rc = wc_DhExportParamsRaw(wolfDh, NULL, &pLen, NULL, &qLen, NULL, &gLen);
     if (rc != LENGTH_ONLY_E) {
-        WOLFENGINE_ERROR_FUNC("wc_DhExportParamsRaw", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhExportParamsRaw", rc);
         ret = 0;
     }
 
     if (ret == 1) {
         p = (unsigned char*)OPENSSL_malloc(pLen);
         if (p == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", p);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", p);
             ret = 0;
         }
     }
     if (ret == 1) {
         q = (unsigned char*)OPENSSL_malloc(qLen);
         if (q == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", q);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", q);
             ret = 0;
         }
     }
     if (ret == 1) {
         g = (unsigned char*)OPENSSL_malloc(pLen);
         if (g == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", g);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", g);
             ret = 0;
         }
     }
@@ -674,7 +675,7 @@ static int we_convert_dh_params(DhKey *wolfDh, DH *osslDh)
         /* With buffers allocated, write the parameters. */
         rc = wc_DhExportParamsRaw(wolfDh, p, &pLen, q, &qLen, g, &gLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_DhExportParamsRaw", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhExportParamsRaw", rc);
             ret = 0;
         }
     }
@@ -683,28 +684,28 @@ static int we_convert_dh_params(DhKey *wolfDh, DH *osslDh)
     if (ret == 1) {
         pBn = BN_bin2bn(p, pLen, NULL);
         if (pBn == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_bin2bn", pBn);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", pBn);
             ret = 0;
         }
     }
     if (ret == 1) {
         qBn = BN_bin2bn(q, qLen, NULL);
         if (qBn == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_bin2bn", qBn);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", qBn);
             ret = 0;
         }
     }
     if (ret == 1) {
         gBn = BN_bin2bn(g, gLen, NULL);
         if (gBn == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_bin2bn", gBn);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", gBn);
             ret = 0;
         }
     }
     if (ret == 1) {
         rc = DH_set0_pqg(osslDh, pBn, qBn, gBn);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("DH_set0_pqg", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_set0_pqg", rc);
             ret = 0;
         }
     }
@@ -719,7 +720,7 @@ static int we_convert_dh_params(DhKey *wolfDh, DH *osslDh)
         OPENSSL_free(g);
     }
 
-    WOLFENGINE_LEAVE("we_convert_dh_params", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_convert_dh_params", ret);
 
     return ret;
 }
@@ -738,18 +739,19 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     we_Dh *engineDh = NULL;
     DH *dh = NULL;
 
-    WOLFENGINE_ENTER("we_dh_pkey_paramgen");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_paramgen");
     
     engineDh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
     if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", engineDh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
+                                   "EVP_PKEY_CTX_get_data", engineDh);
         ret = 0;
     }
 
     if (ret == 1) {
         dh = DH_new();
         if (dh == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("DH_new", dh);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_new", dh);
             ret = 0;
         }
     }
@@ -758,7 +760,7 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         rc = wc_DhGenerateParams(we_rng, engineDh->primeLen, &engineDh->key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("we_dh_pkey_paramgen", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_pkey_paramgen", rc);
             ret = 0;
         }
     }
@@ -767,7 +769,7 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         rc = we_convert_dh_params(&engineDh->key, dh);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("we_convert_dh_params", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_convert_dh_params", rc);
             ret = 0;
         }
     }
@@ -776,7 +778,7 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         EVP_PKEY_assign_DH(pkey, dh);
     }
 
-    WOLFENGINE_LEAVE("we_dh_pkey_paramgen", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_pkey_paramgen", ret);
 
     return ret;
 }
@@ -797,11 +799,12 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     EVP_PKEY *paramsKey;
     DH *dh;
 
-    WOLFENGINE_ENTER("we_dh_pkey_keygen");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_keygen");
     
     engineDh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
     if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", engineDh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
+                                   "EVP_PKEY_CTX_get_data", engineDh);
         ret = 0;
     }
 
@@ -809,7 +812,7 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         dh = DH_new();
         if (dh == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("DH_new", dh);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_new", dh);
             ret = 0;
         }
     }
@@ -818,7 +821,7 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         ret = EVP_PKEY_assign_DH(pkey, dh);
         if (ret != 1) {
-            WOLFENGINE_ERROR_FUNC("EVP_PKEY_assign_DH", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "EVP_PKEY_assign_DH", ret);
         }
     }
     
@@ -826,7 +829,8 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         paramsKey = EVP_PKEY_CTX_get0_pkey(ctx);
         if (paramsKey == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get0_pkey", paramsKey);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
+                                       "EVP_PKEY_CTX_get0_pkey", paramsKey);
             ret = 0;
         }
     }
@@ -835,7 +839,7 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         rc = EVP_PKEY_copy_parameters(pkey, paramsKey);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("EVP_PKEY_copy_parameters", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "EVP_PKEY_copy_parameters", rc);
             ret = 0;
         }
     }
@@ -844,12 +848,12 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         rc = we_dh_generate_key_int(dh, engineDh);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("we_dh_generate_key_int", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_generate_key_int", rc);
             ret = 0;
         }
     }
 
-    WOLFENGINE_LEAVE("we_dh_generate_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_generate_key", ret);
 
     return ret;
 }
@@ -874,18 +878,20 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     DH *peerDh = NULL;
     const BIGNUM *peerPub = NULL;
 
-    WOLFENGINE_ENTER("we_dh_pkey_derive");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_derive");
     
     engineDh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
     if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", engineDh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
+                                   "EVP_PKEY_CTX_get_data", engineDh);
         ret = 0;
     }
 
     if (ret == 1) {
         ourKey = EVP_PKEY_CTX_get0_pkey(ctx);
         if (ourKey == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get0_pkey", ourKey);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
+                                       "EVP_PKEY_CTX_get0_pkey", ourKey);
             ret = 0;
         }
     }
@@ -893,7 +899,7 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     if (ret == 1) {
         ourDh = EVP_PKEY_get0_DH(ourKey);
         if (ourDh == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_get0_DH", ourDh);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "EVP_PKEY_get0_DH", ourDh);
             ret = 0;
         }
     }
@@ -906,7 +912,8 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     if (ret == 1) {
         peerKey = EVP_PKEY_CTX_get0_peerkey(ctx);
         if (peerKey == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get0_peerkey", peerKey);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
+                                       "EVP_PKEY_CTX_get0_peerkey", peerKey);
             ret = 0;
         }
     }
@@ -914,7 +921,7 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     if (ret == 1) {
         peerDh = EVP_PKEY_get0_DH(peerKey);
         if (peerDh == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_get0_DH", peerDh);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "EVP_PKEY_get0_DH", peerDh);
             ret = 0;
         }
     }
@@ -922,7 +929,7 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     if (ret == 1) {
         peerPub = DH_get0_pub_key(peerDh);
         if (peerPub == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("DH_get0_pub_key", NULL);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get0_pub_key", NULL);
             ret = 0;
         }
     }
@@ -931,11 +938,11 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
         ret = we_dh_compute_key_int(engineDh, secret, secretLen, peerPub,
                                     ourDh);
         if (ret != 1) {
-            WOLFENGINE_ERROR_FUNC("we_dh_compute_key_int", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_compute_key_int", ret);
         }
     }
 
-    WOLFENGINE_LEAVE("we_dh_pkey_derive", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_pkey_derive", ret);
 
     return ret;
 }
@@ -949,11 +956,12 @@ int we_init_dh_pkey_meth(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_dh_pkey_meth");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_init_dh_pkey_meth");
 
     we_dh_pkey_method = EVP_PKEY_meth_new(EVP_PKEY_DH, 0);
     if (we_dh_pkey_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_dh_pkey_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
+                                   "EVP_PKEY_meth_new", we_dh_pkey_method);
         ret = 0;
     }
 
@@ -972,7 +980,7 @@ int we_init_dh_pkey_meth(void)
         we_dh_pkey_method = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_dh_pkey_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_init_dh_pkey_meth", ret);
 
     return ret;
 }

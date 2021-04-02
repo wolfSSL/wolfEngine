@@ -43,21 +43,21 @@ static ENGINE *engine_wolfengine(void)
     int rc;
     ENGINE *ret;
 
-    WOLFENGINE_ENTER("engine_wolfengine");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "engine_wolfengine");
 
     ret = ENGINE_new();
     if (ret == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("ENGINE_new", ret);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_ENGINE, "ENGINE_new", ret);
         return NULL;
     }
     rc = wolfengine_bind(ret, wolfengine_lib);
     if (rc == 0) {
-        WOLFENGINE_ERROR_FUNC("wolfengine_bind", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wolfengine_bind", rc);
         ENGINE_free(ret);
         return NULL;
     }
 
-    WOLFENGINE_LEAVE("engine_wolfengine", 1);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "engine_wolfengine", 1);
 
     return ret;
 }
@@ -67,7 +67,7 @@ static ENGINE *engine_wolfengine(void)
  */
 void ENGINE_load_wolfengine(void)
 {
-    WOLFENGINE_ENTER("ENGINE_load_wolfengine");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "ENGINE_load_wolfengine");
 
     ENGINE *toadd = engine_wolfengine();
     if (!toadd)
@@ -76,7 +76,7 @@ void ENGINE_load_wolfengine(void)
     ENGINE_free(toadd);
     ERR_clear_error();
 
-    WOLFENGINE_LEAVE("ENGINE_load_wolfengine", 1);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "ENGINE_load_wolfengine", 1);
 }
 
 #ifndef WE_NO_DYNAMIC_ENGINE

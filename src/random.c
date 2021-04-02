@@ -58,11 +58,11 @@ static int we_rand_mix_seed(unsigned char* buf, int num,
     int i;
     int j;
 
-    WOLFENGINE_ENTER("we_rand_mix_seed");
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_mix_seed");
 
     rc = wc_InitSha256(&sha256);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_InitSha256", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_InitSha256", rc);
         ret = 0;
     }
     if (rc == 0) {
@@ -71,12 +71,12 @@ static int we_rand_mix_seed(unsigned char* buf, int num,
             /* Calculate hash of seed to save from hashing long data. */
             rc = wc_Sha256Update(&sha256, seed, seedLen);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Sha256Update", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_Sha256Update", rc);
                 ret = 0;
             }
             rc = wc_Sha256Final(&sha256, seedHash);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Sha256Final", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_Sha256Final", rc);
                 ret = 0;
             }
         }
@@ -95,18 +95,18 @@ static int we_rand_mix_seed(unsigned char* buf, int num,
             /* Calculate hash of seed hash and last hash. */
             rc = wc_Sha256Update(&sha256, seedHash, sizeof(seedHash));
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Sha256Update", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_Sha256Update", rc);
                 ret = 0;
             }
             rc = wc_Sha256Update(&sha256, hash, sizeof(hash));
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Sha256Update", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_Sha256Update", rc);
                 ret = 0;
             }
             /* Put hash into buffer to for next round. */
             rc = wc_Sha256Final(&sha256, hash);
             if (rc != 0) {
-               WOLFENGINE_ERROR_FUNC("wc_Sha256Final", rc);
+               WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_Sha256Final", rc);
                ret = 0;
             }
             /* XOR this block into the random data. */
@@ -119,18 +119,18 @@ static int we_rand_mix_seed(unsigned char* buf, int num,
         if (seed == we_seed) {
             rc = wc_Sha256Update(&sha256, seedHash, sizeof(seedHash));
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Sha256Update", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_Sha256Update", rc);
                 ret = 0;
             }
             rc = wc_Sha256Update(&sha256, hash, sizeof(hash));
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Sha256Update", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_Sha256Update", rc);
                 ret = 0;
             }
             /* Put hash into global seed. */
             rc = wc_Sha256Final(&sha256, we_seed);
             if (rc != 0) {
-               WOLFENGINE_ERROR_FUNC("wc_Sha256Final", rc);
+               WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_Sha256Final", rc);
                ret = 0;
             }
         }
@@ -138,7 +138,7 @@ static int we_rand_mix_seed(unsigned char* buf, int num,
         wc_Sha256Free(&sha256);
     }
 
-    WOLFENGINE_LEAVE("we_rand_mix_seed", ret);
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_mix_seed", ret);
 
     return ret;
 }
@@ -161,13 +161,13 @@ static int we_rand_seed(const void *buf, int num)
     int rc;
 #endif
 
-    WOLFENGINE_ENTER("we_rand_seed");
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_seed");
 
 #ifndef WE_SINGLE_THREADED
     /* Lock for access to globals. */
     rc = wc_LockMutex(we_rng_mutex);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_LockMutex", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_LockMutex", rc);
         ret = 0;
     }
     else
@@ -177,7 +177,7 @@ static int we_rand_seed(const void *buf, int num)
         /* Add the seed to the underlying random number generator. */
         rc = wc_RNG_DRBG_Reseed(we_rng, buf, num);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RNG_DRBG_Reseed", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_RNG_DRBG_Reseed", rc);
             ret = 0;
         }
 #else
@@ -190,7 +190,7 @@ static int we_rand_seed(const void *buf, int num)
     #endif
     }
 
-    WOLFENGINE_LEAVE("we_rand_seed", ret);
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_seed", ret);
 
     (void)ret;
 
@@ -223,13 +223,13 @@ static int we_rand_bytes(unsigned char *buf, int num)
     WC_RNG rng;
 #endif
 
-    WOLFENGINE_ENTER("we_rand_bytes");
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_bytes");
 
 #ifdef WE_STATIC_WOLFSSL
     /* Generate true random using internal API. */
     rc = wc_GenerateSeed(&os, buf, num);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_GenerateSeed", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_GenerateSeed", rc);
         ret = 0;
     }
 
@@ -237,28 +237,28 @@ static int we_rand_bytes(unsigned char *buf, int num)
     /* Create a new random number generator that is seeded with true random. */
     rc = wc_InitRng(&rng);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_InitRng", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_InitRng", rc);
         ret = 0;
     }
     else {
         /* Generate true random. */
         rc = wc_RNG_GenerateBlock(&rng, buf, num);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RNG_GenerateBlock", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_RNG_GenerateBlock", rc);
             ret = 0;
         }
 
         /* Dispose of random number generator. */
         rc = wc_FreeRng(&rng);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_FreeRng", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_FreeRng", rc);
             ret = 0;
         }
     }
 
 #endif
 
-    WOLFENGINE_LEAVE("we_rand_bytes", ret);
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_bytes", ret);
 
     return ret;
 }
@@ -267,8 +267,8 @@ static int we_rand_bytes(unsigned char *buf, int num)
 static void we_rand_cleanup(void)
 {
     /* Global random cleanup done in internal.c: we_final_random(). */
-    WOLFENGINE_ENTER("we_rand_cleanup");
-    WOLFENGINE_LEAVE("we_rand_cleanup", 0);
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_cleanup");
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_cleanup", 0);
 }
 
 /**
@@ -286,7 +286,7 @@ static int we_rand_add(const void *buf, int num, double entropy)
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_rand_add");
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_add");
 
     /* Call seed implementation - entropy not used. */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -297,7 +297,7 @@ static int we_rand_add(const void *buf, int num, double entropy)
 #endif
     (void)entropy;
 
-    WOLFENGINE_LEAVE("we_rand_add", ret);
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_add", ret);
     (void)ret;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -317,12 +317,12 @@ static int we_rand_pseudorand(unsigned char *buf, int num)
     int ret = 1;
     int rc;
 
-    WOLFENGINE_ENTER("we_rand_pseudorand");
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_pseudorand");
 
 #ifndef WE_SINGLE_THREADED
     rc = wc_LockMutex(we_rng_mutex);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_LockMutex", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_LockMutex", rc);
     }
     else
 #endif
@@ -330,7 +330,7 @@ static int we_rand_pseudorand(unsigned char *buf, int num)
         /* Use global random to generator pseudo-random data. */
         rc = wc_RNG_GenerateBlock(we_rng, buf, num);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RNG_GenerateBlock", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_RNG_GenerateBlock", rc);
             ret = 0;
         }
     #ifndef WE_STATIC_WOLFSSL
@@ -344,7 +344,7 @@ static int we_rand_pseudorand(unsigned char *buf, int num)
     #endif
     }
 
-    WOLFENGINE_LEAVE("we_rand_pseudorand", ret);
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_pseudorand", ret);
 
     return ret;
 }
@@ -356,8 +356,8 @@ static int we_rand_pseudorand(unsigned char *buf, int num)
  */
 static int we_rand_status(void)
 {
-    WOLFENGINE_ENTER("we_rand_status");
-    WOLFENGINE_LEAVE("we_rand_status", 1);
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_status");
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_status", 1);
 
     /* Always have enough entropy. */
     return 1;

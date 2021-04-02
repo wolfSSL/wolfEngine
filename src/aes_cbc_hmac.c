@@ -64,7 +64,7 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int rc;
     we_AesCbcHmac *aes;
 
-    WOLFENGINE_ENTER("we_aes_cbc_hmac_init");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_init");
 
     if ((iv == NULL) && (key == NULL)) {
         ret = 0;
@@ -73,7 +73,8 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if (ret == 1) {
         aes = (we_AesCbcHmac *)EVP_CIPHER_CTX_get_cipher_data(ctx);
         if (aes == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_CTX_get_cipher_data", aes);
             ret = 0;
         }
     }
@@ -82,7 +83,7 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if ((ret == 1) && (!aes->init)) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesInit", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
     }
@@ -90,7 +91,7 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if ((ret == 1) && (!aes->init)) {
         rc = wc_HmacInit(&aes->hmac, NULL, INVALID_DEVID);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HmacInit", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacInit", rc);
             ret = 0;
         }
     }
@@ -108,7 +109,7 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
                               iv, enc ? AES_ENCRYPTION : AES_DECRYPTION);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_AesSetKey", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
                 ret = 0;
             }
         }
@@ -116,13 +117,13 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             /* Set the IV into wolfSSL AES object. */
             rc = wc_AesSetIV(&aes->aes, iv);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_AesSetIV", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
                 ret = 0;
             }
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_cbc_hmac_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_hmac_init", ret);
 
     return ret;
 }
@@ -158,7 +159,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         off = AES_BLOCK_SIZE;
         rc = wc_AesSetIV(&aes->aes, in);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesSetIV", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
             ret = -1;
         }
     }
@@ -167,7 +168,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         /* MAC the handshake message/data. */
         rc = wc_HmacUpdate(&aes->hmac, in + off, pLen - off);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HmacUpdate", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
             ret = -1;
         }
     }
@@ -178,7 +179,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         /* Put the MAC after data. */
         rc = wc_HmacFinal(&aes->hmac, out + pLen);
         if (rc != 0) {
-             WOLFENGINE_ERROR_FUNC("wc_HmacFinal", rc);
+             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacFinal", rc);
              ret = -1;
         }
     }
@@ -195,7 +196,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         /* Encrypt the msg and MAC but not IV. */
         rc = wc_AesCbcEncrypt(&aes->aes, out + off, in + off, (int)len - off);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesCbcEncrypt", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
             ret = 0;
         }
         else {
@@ -236,7 +237,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         off = AES_BLOCK_SIZE;
         rc = wc_AesSetIV(&aes->aes, in);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesSetIV", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
             ret = -1;
        }
     }
@@ -244,7 +245,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* Decrypt all but IV. */
         rc = wc_AesCbcDecrypt(&aes->aes, out + off, in + off, (int)len - off);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesCbcDecrypt", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcDecrypt", rc);
             ret = -1;
         }
         else {
@@ -275,7 +276,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* MAC the record header. */
         rc = wc_HmacUpdate(&aes->hmac, aes->tlsAAD, aes->pLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HmacUpdate", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
             ret = -1;
         }
     }
@@ -284,7 +285,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* MAC the message/input. */
         rc = wc_HmacUpdate(&aes->hmac, out + off, ret);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HmacUpdate", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
             ret = -1;
         }
     }
@@ -292,7 +293,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* Calculate MAC. */
         rc = wc_HmacFinal(&aes->hmac, mac);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HmacFinal", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacFinal", rc);
             ret = -1;
         }
     }
@@ -329,12 +330,13 @@ static int we_aes_cbc_hmac_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     we_AesCbcHmac* aes;
 
 
-    WOLFENGINE_ENTER("we_aes_cbc_hmac_cipher");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_cipher");
 
     /* Get the AES-CBC object to work with. */
     aes = (we_AesCbcHmac *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
     else if (aes->enc) {
@@ -344,7 +346,7 @@ static int we_aes_cbc_hmac_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         ret = we_aes_cbc_hmac_dec(aes, out, in, len);
     }
 
-    WOLFENGINE_LEAVE("we_aes_cbc_hmac_cipher", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_hmac_cipher", ret);
 
     return ret;
 }
@@ -371,7 +373,7 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     int len;
     char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
-    WOLFENGINE_ENTER("we_aes_cbc_hmac_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_ctrl");
 
     (void)arg;
     (void)ptr;
@@ -379,7 +381,8 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     /* Get the AES-CBC data to work with. */
     aes = (we_AesCbcHmac *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
     if (ret == 1) {
@@ -388,7 +391,7 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                 /* Set the HMAC key. */
                 rc = wc_HmacSetKey(&aes->hmac, WC_SHA256, ptr, arg);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_HmacSetKey", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacSetKey", rc);
                     ret = 0;
                 }
                 break;
@@ -424,7 +427,8 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                             /* MAC the record header. */
                             rc = wc_HmacUpdate(&aes->hmac, tls, arg);
                             if (rc != 0) {
-                                WOLFENGINE_ERROR_FUNC("wc_HmacUpdate", rc);
+                                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                                      "wc_HmacUpdate", rc);
                                 ret = -1;
                             }
                         }
@@ -446,13 +450,13 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                 ret = 0;
                 break;
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_cbc_hmac_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_hmac_ctrl", ret);
 
     return ret;
 }
@@ -480,7 +484,7 @@ static int we_init_aescbc_hmac_meth(EVP_CIPHER *cipher)
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_aescbc_meth");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aescbc_meth");
 
     ret = EVP_CIPHER_meth_set_iv_length(cipher, AES_IV_SIZE);
     if (ret == 1) {
@@ -499,7 +503,7 @@ static int we_init_aescbc_hmac_meth(EVP_CIPHER *cipher)
         ret = EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(we_AesCbcHmac));
     }
 
-    WOLFENGINE_LEAVE("we_init_aescbc_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_aescbc_meth", ret);
 
     return ret;
 }
@@ -513,13 +517,14 @@ int we_init_aescbc_hmac_meths()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_aescbc_meths");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aescbc_meths");
 
     /* AES128-CBC HMAC-SHA256 */
     we_aes128_cbc_hmac_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc_hmac_sha256,
         AES_BLOCK_SIZE, AES_128_KEY_SIZE);
     if (we_aes128_cbc_ciph == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-128-CBC "
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_meth_new - AES-128-CBC "
                                    "HMAC SHA256", we_aes128_cbc_ciph);
         ret = 0;
     }
@@ -532,7 +537,8 @@ int we_init_aescbc_hmac_meths()
         we_aes256_cbc_hmac_ciph = EVP_CIPHER_meth_new(
             NID_aes_256_cbc_hmac_sha256, AES_BLOCK_SIZE, AES_256_KEY_SIZE);
         if (we_aes256_cbc_ciph == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-256-CBC "
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_meth_new - AES-256-CBC "
                                        "HMAC SHA256", we_aes256_cbc_ciph);
             ret = 0;
         }
@@ -551,7 +557,7 @@ int we_init_aescbc_hmac_meths()
         we_aes256_cbc_hmac_ciph = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_aescbc_meths", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_aescbc_meths", ret);
 
     return ret;
 }
