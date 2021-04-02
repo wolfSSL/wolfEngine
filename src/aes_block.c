@@ -202,7 +202,6 @@ static int we_aes_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 ret = 0;
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -351,7 +350,6 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 }
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -728,7 +726,6 @@ static int we_aes_ecb_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 ret = 0;
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -877,7 +874,6 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 }
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;

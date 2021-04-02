@@ -445,6 +445,7 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
     }
 
     WOLFENGINE_LEAVE("we_compute_key", ret);
+    (void)ret;
 
     return ret;
 }
