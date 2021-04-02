@@ -698,7 +698,7 @@ int test_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
               const unsigned char *peerPrivKey, size_t peerLen,
               const unsigned char *derived, size_t dLen)
 {
-    int err;
+    int err = 0;
     EVP_PKEY_CTX *kgCtx = NULL;
     EVP_PKEY *keyA = NULL;
     EVP_PKEY *keyB = NULL;
@@ -707,8 +707,10 @@ int test_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
     const unsigned char *p;
 
     p = privKey;
-    err = (keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, len)) == NULL;
-    err = keyA == NULL;
+    keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, len);
+    if (keyA == NULL) {
+        err = 1;
+    }
     if (err == 0) {
         p = peerPrivKey;
         err = (keyB = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, peerLen)) == NULL;

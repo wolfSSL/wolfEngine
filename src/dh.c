@@ -368,6 +368,7 @@ static int we_dh_compute_key(unsigned char *key, const BIGNUM *pubKey, DH *dh)
         OPENSSL_free(privBuf);
 
     WOLFENGINE_LEAVE("we_compute_key", ret);
+    (void)ret;
 
     return keyLen;
 }

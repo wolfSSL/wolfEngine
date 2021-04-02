@@ -231,10 +231,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
     /* Get payload length. */
     pLen = aes->pLen;
     tls = (pLen != 0);
-    if (!tls) {
-        pLen = (int)len;
-    }
-    else if (aes->tls11) {
+    if (aes->tls11) {
         /* TLS v1.1 and v1.2 have IV before message. */
         off = AES_BLOCK_SIZE;
         rc = wc_AesSetIV(&aes->aes, in);

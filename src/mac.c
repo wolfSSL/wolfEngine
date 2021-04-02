@@ -115,10 +115,17 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
     ASN1_OCTET_STRING *key;
     EVP_PKEY *pkey;
 
-    /* pkey associated with ctx should have a password set to use */
-    pkey = EVP_PKEY_CTX_get0_pkey(ctx);
-    if (pkey == NULL) {
+    if (mac == NULL) {
+        WOLFENGINE_ERROR_MSG("we_mac pointer is NULL in we_do_digest_init");
         ret = 0;
+    }
+
+    if (ret == 1) {
+        /* pkey associated with ctx should have a password set to use */
+        pkey = EVP_PKEY_CTX_get0_pkey(ctx);
+        if (pkey == NULL) {
+            ret = 0;
+        }
     }
 
     if (ret == 1) {
@@ -238,61 +245,65 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         }
     }
 
-    switch (type) {
-        case WE_CTRL_MD_TYPE: /* handle MD passed in */
-            if (ptr != NULL && mac->algo == WE_HMAC_ALGO) {
-                mac->type = we_mac_md_to_hash_type((EVP_MD *)ptr);
-                if (mac->type < 0) {
-                    WOLFENGINE_ERROR_FUNC("we_mac_md_to_hash_type",
-                            mac->type);
-                    ret = 0;
-                }
-                else {
-                    mac->size = wc_HmacSizeByType(mac->type);
-                    if (mac->size <= 0) {
-                        WOLFENGINE_ERROR_FUNC("wc_HmacSizeByType", mac->size);
+    if (ret == 1) {
+
+        switch (type) {
+            case WE_CTRL_MD_TYPE: /* handle MD passed in */
+                if (ptr != NULL && mac->algo == WE_HMAC_ALGO) {
+                    mac->type = we_mac_md_to_hash_type((EVP_MD *)ptr);
+                    if (mac->type < 0) {
+                        WOLFENGINE_ERROR_FUNC("we_mac_md_to_hash_type",
+                                mac->type);
                         ret = 0;
                     }
+                    else {
+                        mac->size = wc_HmacSizeByType(mac->type);
+                        if (mac->size <= 0) {
+                            WOLFENGINE_ERROR_FUNC("wc_HmacSizeByType",
+                                                  mac->size);
+                            ret = 0;
+                        }
+                    }
                 }
-            }
 
-            /* with CMAC the key should be set in the Cmac structure now */
-            if (mac->algo == WE_CMAC_ALGO) {
-                ret = we_do_digest_init(ctx, mac);
-            }
-            break;
-
-        case WE_CTRL_KEY: /* handle password passed in */
-            if (ptr != NULL) {
-                if (mac->key != NULL) {
-                    OPENSSL_clear_free(mac->key, mac->keySz);
+                /* with CMAC the key should be set in the Cmac structure now */
+                if (mac->algo == WE_CMAC_ALGO) {
+                    ret = we_do_digest_init(ctx, mac);
                 }
-                mac->key = (unsigned char *)OPENSSL_zalloc(num);
-                if (mac->key == NULL) {
-                    ret = 0;
+                break;
+
+            case WE_CTRL_KEY: /* handle password passed in */
+                if (ptr != NULL) {
+                    if (mac->key != NULL) {
+                        OPENSSL_clear_free(mac->key, mac->keySz);
+                    }
+                    mac->key = (unsigned char *)OPENSSL_zalloc(num);
+                    if (mac->key == NULL) {
+                        ret = 0;
+                    }
+                    else {
+                        mac->keySz = num;
+                        memcpy(mac->key, ptr, num);
+                    }
                 }
                 else {
-                    mac->keySz = num;
-                    memcpy(mac->key, ptr, num);
+                    ret = 0;
                 }
-            }
-            else {
+                break;
+
+            case WE_CTRL_CIPHER: /* handle cipher set */
+                /* do nothing with it, we use internal AES */
+                break;
+
+            case WE_CTRL_DIGEST_INIT: /* handle digest init */
+                WOLFENGINE_MSG("Doing digest init from ctrl");
+                ret = we_do_digest_init(ctx, mac);
+                break;
+
+            default:
+                WOLFENGINE_MSG("Unsupported HMAC ctrl encountered");
                 ret = 0;
-            }
-            break;
-
-        case WE_CTRL_CIPHER: /* handle cipher set */
-            /* do nothing with it, we use internal AES */
-            break;
-
-        case WE_CTRL_DIGEST_INIT: /* handle digest init */
-            WOLFENGINE_MSG("Doing digest init from ctrl");
-            ret = we_do_digest_init(ctx, mac);
-            break;
-
-        default:
-            WOLFENGINE_MSG("Unsupported HMAC ctrl encountered");
-            ret = 0;
+        }
     }
     WOLFENGINE_LEAVE("we_mac_pkey_ctrl", ret);
     return ret;
@@ -700,6 +711,7 @@ static void we_mac_pkey_cleanup(EVP_PKEY_CTX *ctx)
         OPENSSL_free(mac);
     }
     WOLFENGINE_LEAVE("we_mac_pkey_cleanup", ret);
+    (void)ret;
 }
 
 

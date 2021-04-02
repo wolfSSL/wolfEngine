@@ -198,7 +198,6 @@ static int we_des3_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
                 ret = 0;
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -347,7 +346,6 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
                 }
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
