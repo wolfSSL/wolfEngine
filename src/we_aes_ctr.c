@@ -1,4 +1,4 @@
-/* aes_ctr.c
+/* we_aes_ctr.c
  *
  * Copyright (C) 2006-2019 wolfSSL Inc.
  *

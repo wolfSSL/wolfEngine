@@ -1,4 +1,4 @@
-/* des3_cbc.c
+/* we_des3_cbc.c
  *
  * Copyright (C) 2006-2019 wolfSSL Inc.
  *

@@ -1,4 +1,4 @@
-/* random.c
+/* we_random.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *

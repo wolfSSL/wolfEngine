@@ -1,4 +1,4 @@
-/* aes_block.c
+/* we_aes_cbc_hmac.c
  *
  * Copyright (C) 2006-2019 wolfSSL Inc.
  *
