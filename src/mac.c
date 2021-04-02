@@ -1117,6 +1117,7 @@ static void we_cmac_pkey_asn1_free(EVP_PKEY *pkey)
     #endif
     }
     WOLFENGINE_LEAVE("we_cmac_pkey_asn1_free", ret);
+    (void)ret;
 }
 
 
