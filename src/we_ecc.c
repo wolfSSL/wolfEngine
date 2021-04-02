@@ -1687,68 +1687,43 @@ int we_init_ecdh_meth(void)
 static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *dgst, int dlen, 
                     const BIGNUM *kinv, const BIGNUM *rp, EC_KEY *eckey)
 {
-    int             ret = 0;
-    ECDSA_SIG       *in_sig;
+    int             ret = 1;
+    ECDSA_SIG       *in_sig = NULL;
     unsigned int    slen;
-    unsigned char   *sig;
+    unsigned char   *sig = NULL;
+    unsigned char   *temp;
 
-    if((in_sig = ECDSA_SIG_new()) == NULL) {
+    WOLFENGINE_ENTER("we_ecdsa_do_sign_ex");
+    if((slen = ECDSA_size(eckey)) <= 0) {
         ret = 0;
     }
-    
-    sig = OPENSSL_malloc((slen = ECDSA_size(eckey)));
+
+    sig = OPENSSL_malloc((STABLE_NO_MASK));
     if(ret == 1) {
         ret = we_ec_key_sign(0, dgst, dlen, sig, &slen, kinv, rp, eckey);
     }
     if(ret == 1) {
-        in_sig = d2i_ECDSA_SIG(NULL, (const unsigned char **)&sig, slen);
+        temp = sig;
+        in_sig = d2i_ECDSA_SIG(NULL, (const unsigned char **)&temp, slen);
     }
     OPENSSL_free(sig);
-
+    WOLFENGINE_LEAVE("we_ecdsa_do_sign_ex", ret);
+    
     return in_sig;
 }
 
-/**  ECDSA_sign_setup function in the ECDSA_METHOD
+/**  setup parameters for ECDSA_sign
  *
- * @param  eckey    [in] EC key
- * @param  ctx      [in] BN_CTX, or NULL
- * @param  kInv     [in] Big number holding inverse of k. Ignored.
- * @param  r        [in] Big number holding an r sig value. Ignored.
- * @return 1 for Success
+ * This is a stub. You cannot call.
+ *
  * @return 0 for Error
  */
 
 static int we_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinv, BIGNUM **r)
 {
-    int ret;
-    BIGNUM *temp_kinv, *temp_r;
-    BN_CTX *temp_ctx;
+    (void)eckey; (void)ctx; (void)kinv; (void)r;
 
-    WOLFENGINE_ENTER("we_ecdsa_sign_setup");
-
-    if(eckey == NULL || ctx == NULL || kinv == NULL || r == NULL) {
-        ret = 0;
-    } else {
-        ret = 1;
-    }
-
-    temp_ctx  = BN_CTX_new();
-    temp_kinv = BN_new();
-    temp_r    = BN_new();
-
-    if(ret == 1 &&
-       temp_ctx != NULL && temp_kinv != NULL && temp_r != NULL) {
-            ctx = temp_ctx; *kinv = temp_kinv; *r = temp_r;
-    } else {
-        if(temp_ctx  != NULL)BN_CTX_free(temp_ctx);
-        if(temp_kinv != NULL)BN_free    (temp_kinv);
-        if(temp_r    != NULL)BN_free    (temp_r);
-        ret = 0;
-    }
-
-    WOLFENGINE_LEAVE("we_ecdsa_sign_setup", ret);
-
-    return ret;
+    return 0;
 
 }
 
@@ -1770,12 +1745,14 @@ static int we_ecdsa_do_verify(const unsigned char *dgst, int dlen,
     unsigned int    slen;
     unsigned char   *sig;
 
+    WOLFENGINE_ENTER("we_ecdsa_do_verify");
     if((slen = i2d_ECDSA_SIG(in_sig, &sig)) > 0) {
         ret = we_ec_key_verify(0, dgst, dlen, sig, slen, eckey);
     }
     if(ret == 1 && slen > 0) {
         OPENSSL_free(sig);
     }
+    WOLFENGINE_LEAVE("we_ecdsa_do_verify", ret);
     return ret;
 }
 
