@@ -25,6 +25,12 @@
 #if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
 /** List of public key types supported as ids. */
 static const int we_pkey_nids[] = {
+#ifdef WE_HAVE_HMAC
+    NID_hmac,
+#endif /* WE_HAVE_HMAC */
+#ifdef WE_HAVE_CMAC
+    NID_cmac,
+#endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_RSA
     NID_rsaEncryption,
 #endif
@@ -49,6 +55,7 @@ static const int we_pkey_nids[] = {
 #endif
 #endif
 };
+
 
 /**
  * Get the public key types supported as ids.
@@ -518,6 +525,16 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
     }
     else {
         switch (nid) {
+#ifdef WE_HAVE_HMAC
+        case NID_hmac:
+            *pkey = we_hmac_pkey_method;
+            break;
+#endif /* WE_HAVE_HMAC */
+#ifdef WE_HAVE_CMAC
+        case NID_cmac:
+            *pkey = we_cmac_pkey_method;
+            break;
+#endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_RSA
         case NID_rsaEncryption:
             *pkey = we_rsa_pkey_method;
@@ -672,6 +689,23 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_aesccm_meths();
     }
 #endif
+#ifdef WE_HAVE_HMAC
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_hmac_pkey_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
+#endif /* WE_HAVE_HMAC */
+#ifdef WE_HAVE_CMAC
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_cmac_pkey_meth();
+    }
+    if (ret == 1) {
+        ret = we_init_cmac_pkey_asn1_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
+#endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_DH
     if (ret == 1) {
         ret = we_init_dh_meth();
@@ -812,6 +846,16 @@ static int wolfengine_destroy(ENGINE *e)
 #ifdef WE_HAVE_SHA3_512
     EVP_MD_meth_free(we_sha3_512_md);
     we_sha3_512_md = NULL;
+#endif
+#ifdef WE_HAVE_HMAC
+    EVP_PKEY_meth_free(we_hmac_pkey_method);
+    we_hmac_pkey_method = NULL;
+#endif
+#ifdef WE_HAVE_CMAC
+    EVP_PKEY_meth_free(we_cmac_pkey_method);
+    we_cmac_pkey_method = NULL;
+    EVP_PKEY_asn1_free(we_cmac_pkey_asn1_method);
+    we_cmac_pkey_asn1_method = NULL;
 #endif
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     we_final_random();

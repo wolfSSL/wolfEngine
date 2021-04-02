@@ -74,6 +74,12 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_SHA3_512
     TEST_DECL(test_sha3_512, NULL),
 #endif
+#ifdef WE_HAVE_HMAC
+    TEST_DECL(test_hmac_create, NULL),
+#endif
+#ifdef WE_HAVE_CMAC
+    TEST_DECL(test_cmac_create, NULL),
+#endif
 #ifdef WE_HAVE_DES3CBC
     TEST_DECL(test_des3_cbc, NULL),
     TEST_DECL(test_des3_cbc_stream, NULL),

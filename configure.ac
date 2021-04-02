@@ -255,6 +255,30 @@ then
     fi
 fi
 
+AC_ARG_ENABLE([cmac],
+    [AS_HELP_STRING([--enable-cmac],[Enable CMAC (default: enabled)])],
+    [ ENABLED_CMAC=$enableval ],
+    [ ENABLED_CMAC=yes ]
+    )
+
+if test "$ENABLED_CMAC" = "yes"
+then
+    ENABLED_DIGEST="yes"
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_CMAC -DWE_HAVE_MAC"
+fi
+
+AC_ARG_ENABLE([hmac],
+    [AS_HELP_STRING([--enable-hmac],[Enable HMAC (default: enabled)])],
+    [ ENABLED_HMAC=$enableval ],
+    [ ENABLED_HMAC=yes ]
+    )
+
+if test "$ENABLED_HMAC" = "yes"
+then
+    ENABLED_DIGEST="yes"
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_HMAC -DWE_HAVE_MAC"
+fi
+
 # DES3-CBC
 AC_ARG_ENABLE([des3cbc],
     [AS_HELP_STRING([--enable-des3cbc],[Enable DES3-CBC (default: enabled)])],
@@ -588,6 +612,8 @@ echo "   *  - SHA3-224:                $ENABLED_SHA3_224"
 echo "   *  - SHA3-256:                $ENABLED_SHA3_256"
 echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
 echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
+echo "   * HMAC:                       $ENABLED_HMAC"
+echo "   * CMAC:                       $ENABLED_CMAC"
 echo "   * Random:                     $ENABLED_RAND"
 echo "   * RSA:                        $ENABLED_RSA"
 echo "   * DH:                         $ENABLED_DH"

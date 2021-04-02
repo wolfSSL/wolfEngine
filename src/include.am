@@ -11,6 +11,7 @@ libwolfengine_la_SOURCES += src/aes_gcm.c
 libwolfengine_la_SOURCES += src/des3_cbc.c
 libwolfengine_la_SOURCES += src/dh.c
 libwolfengine_la_SOURCES += src/digest.c
+libwolfengine_la_SOURCES += src/mac.c
 libwolfengine_la_SOURCES += src/ecc.c
 libwolfengine_la_SOURCES += src/internal.c
 libwolfengine_la_SOURCES += src/openssl_bc.c
