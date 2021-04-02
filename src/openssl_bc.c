@@ -644,4 +644,12 @@ const BIGNUM *DH_get0_pub_key(const DH *dh)
 #endif
 }
 
+DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey)
+{
+    if (pkey->type != EVP_PKEY_DH && pkey->type != EVP_PKEY_DHX) {
+        return NULL;
+    }
+    return pkey->pkey.dh;
+}
+
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */

@@ -154,6 +154,7 @@ int DH_meth_set_finish(DH_METHOD *dhm, int (*finish) (DH *));
 long DH_get_length(const DH *dh);
 int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);
 int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key);
+DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey);
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
@@ -166,4 +167,4 @@ const BIGNUM *DH_get0_pub_key(const DH *dh);
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10101000L */
 
-#endif /* OPENSSL_BC_H*/
+#endif /* OPENSSL_BC_H */
