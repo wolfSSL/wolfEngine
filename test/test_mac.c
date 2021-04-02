@@ -66,7 +66,7 @@ static int test_mac_generation(ENGINE *e, const EVP_MD *md, int pkeyType,
 static int test_hmac_create_helper(ENGINE *e, void *data, const EVP_MD *md)
 {
     int ret;
-    unsigned char pswd[] = "password";
+    unsigned char pswd[] = "My empire of dirt";
     int pswdSz;
 
     unsigned char exp[128];

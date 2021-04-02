@@ -386,10 +386,10 @@ static int we_hmac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
 
                 if (ret == 1) {
-                    unsigned char *pt;
+                    const unsigned char *pt;
 
                     hmac->keySz = ASN1_STRING_length(key);
-                    pt          = ASN1_STRING_data(key);
+                    pt          = ASN1_STRING_get0_data(key);
                     if (pt == NULL) {
                         ret = 0;
                     }

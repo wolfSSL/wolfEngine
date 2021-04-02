@@ -58,6 +58,9 @@
 /* setter function was added for MD CTX digest update */
 #define EVP_MD_CTX_set_update_fn(ctx, fn) (ctx)->update = (fn)
 
+/* ASN1_STRING_data was renamed to ASN1_STRING_get0_data */
+#define ASN1_STRING_get0_data ASN1_STRING_data
+
 void *OPENSSL_zalloc(size_t num);
 void OPENSSL_clear_free(void *str, size_t num);
 
