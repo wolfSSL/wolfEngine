@@ -50,7 +50,7 @@ sudo make install
 git clone https://github.com/wolfssl/wolfssl.git
 cd wolfssl
 ./autogen.sh
-./configure --enable-keygen --enable-sha -enable-des3 --enable-aesctr --enable-aesccm CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_DIRECT -DWC_RSA_NO_PADDING"
+./configure --enable-cmac --enable-keygen --enable-sha -enable-des3 --enable-aesctr --enable-aesccm CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_DIRECT -DWC_RSA_NO_PADDING"
 make
 sudo make install
 ```

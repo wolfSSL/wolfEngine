@@ -37,6 +37,7 @@
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/hmac.h>
+#include <wolfssl/wolfcrypt/cmac.h>
 #include <wolfssl/wolfcrypt/sha.h>
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/aes.h>
@@ -151,6 +152,20 @@ extern EVP_PKEY_METHOD *we_hmac_pkey_method;
 int we_init_hmac_pkey_meth(void);
 
 #endif /* WE_HAVE_HMAC */
+
+/*
+ * CMAC methods.
+ */
+
+#ifdef WE_HAVE_HMAC
+
+extern EVP_PKEY_METHOD *we_cmac_pkey_method;
+extern EVP_PKEY_ASN1_METHOD *we_cmac_pkey_asn1_method;
+
+int we_init_cmac_pkey_meth(void);
+int we_init_cmac_pkey_asn1_meth(void);
+
+#endif /* WE_HAVE_CMAC */
 
 /*
  * DH method.

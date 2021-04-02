@@ -74,6 +74,10 @@ int test_sha3_512(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_DIGEST */
 
+#ifdef WE_HAVE_CMAC
+int test_cmac_create(ENGINE *e, void *data);
+#endif /* WE_HAVE_HMAC */
+
 #ifdef WE_HAVE_HMAC
 int test_hmac_create(ENGINE *e, void *data);
 #endif /* WE_HAVE_HMAC */

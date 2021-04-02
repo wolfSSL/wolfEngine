@@ -1,4 +1,4 @@
-/* test_mac.c
+/* test_hmac.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
