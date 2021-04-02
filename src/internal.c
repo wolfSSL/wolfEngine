@@ -617,7 +617,7 @@ static int wolfengine_init(ENGINE *e)
     WOLFENGINE_ENTER("wolfengine_init");
 
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
-    defined(WE_HAVE_DH)
+    defined(WE_HAVE_DH) || defined(WE_HAVE_RANDOM)
     ret = we_init_random();
 #endif
 #ifdef WE_HAVE_SHA1
