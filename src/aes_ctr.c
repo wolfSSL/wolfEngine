@@ -55,20 +55,21 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int rc;
     we_AesCtr *aes;
 
-    WOLFENGINE_ENTER("we_aes_ctr_init");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_init");
 
     (void)enc;
 
     aes = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
 
     if ((ret == 1) && (((key == NULL) && (iv == NULL)) || (!aes->init))) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesInit", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
     }
@@ -82,20 +83,20 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
                               iv, AES_ENCRYPTION);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_AesSetKey", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
                 ret = 0;
             }
         }
         if (iv != NULL) {
             rc = wc_AesSetIV(&aes->aes, iv);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_AesSetIV", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
                 ret = 0;
             }
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_ctr_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ctr_init", ret);
 
     return ret;
 }
@@ -119,23 +120,24 @@ static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     we_AesCtr* aes;
     int rc;
 
-    WOLFENGINE_ENTER("we_aes_ctr_cipher");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_cipher");
 
     /* Get the AES-CTR object to work with. */
     aes = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
     if ((ret == (int)len) && (len != 0)) {
         rc = wc_AesCtrEncrypt(&aes->aes, out, in, (word32)len);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesCtrEncrypt", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCtrEncrypt", rc);
             ret = -1;
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_ctr_cipher", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ctr_cipher", ret);
 
     return ret;
 }
@@ -157,7 +159,7 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     we_AesCtr *aes;
     char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
-    WOLFENGINE_ENTER("we_aes_ctr_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_ctrl");
 
     (void)arg;
     (void)ptr;
@@ -165,7 +167,8 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     /* Get the AES-CTR data to work with. */
     aes = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes != NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
     if (ret == 1) {
@@ -173,13 +176,13 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                 ret = 0;
                 break;
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_ctr_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ctr_ctrl", ret);
 
     return ret;
 }
@@ -208,7 +211,7 @@ static int we_init_aesctr_meth(EVP_CIPHER *cipher)
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_aesctr_meth");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aesctr_meth");
 
     ret = EVP_CIPHER_meth_set_iv_length(cipher, AES_IV_SIZE);
     if (ret == 1) {
@@ -227,7 +230,7 @@ static int we_init_aesctr_meth(EVP_CIPHER *cipher)
         ret = EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(we_AesCtr));
     }
 
-    WOLFENGINE_LEAVE("we_init_aesctr_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_aesctr_meth", ret);
 
     return ret;
 }
@@ -241,13 +244,14 @@ int we_init_aesctr_meths()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_aesctr_meths");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aesctr_meths");
 
     /* AES128-CTR */
     we_aes128_ctr_ciph = EVP_CIPHER_meth_new(NID_aes_128_ctr, 1,
                                              AES_128_KEY_SIZE);
     if (we_aes128_ctr_ciph == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-128-CTR",
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_meth_new - AES-128-CTR",
                                    we_aes128_ctr_ciph);
         ret = 0;
     }
@@ -260,7 +264,8 @@ int we_init_aesctr_meths()
         we_aes192_ctr_ciph = EVP_CIPHER_meth_new(NID_aes_192_ctr, 1,
                                                  AES_192_KEY_SIZE);
         if (we_aes192_ctr_ciph == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-192-CTR",
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_meth_new - AES-192-CTR",
                                        we_aes192_ctr_ciph);
             ret = 0;
         }
@@ -274,7 +279,8 @@ int we_init_aesctr_meths()
         we_aes256_ctr_ciph = EVP_CIPHER_meth_new(NID_aes_256_ctr, 1,
                                                  AES_256_KEY_SIZE);
         if (we_aes256_ctr_ciph == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-256-CTR",
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_meth_new - AES-256-CTR",
                                        we_aes256_ctr_ciph);
             ret = 0;
         }
@@ -297,7 +303,7 @@ int we_init_aesctr_meths()
         we_aes256_ctr_ciph = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_aesctr_meths", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_aesctr_meths", ret);
 
     return ret;
 }

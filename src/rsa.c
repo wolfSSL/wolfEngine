@@ -74,11 +74,11 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
     int pubDerLen = 0;
     word32 idx = 0;
 
-    WOLFENGINE_ENTER("we_set_public_key");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_set_public_key");
 
     pubDerLen = i2d_RSAPublicKey(rsaKey, &pubDer);
     if (pubDerLen == 0) {
-        WOLFENGINE_ERROR_FUNC("i2d_RSAPublicKey", pubDerLen);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_RSAPublicKey", pubDerLen);
         ret = 0;
     }
 
@@ -86,7 +86,7 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
         rc = wc_RsaPublicKeyDecode(pubDer, &idx, &engineRsa->key,
                                    pubDerLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RsaPublicKeyDecode", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicKeyDecode", rc);
             ret = 0;
         }
     }
@@ -99,7 +99,7 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
         OPENSSL_free(pubDer);
     }
 
-    WOLFENGINE_LEAVE("we_set_public_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_set_public_key", ret);
 
     return ret;
 }
@@ -119,11 +119,11 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
     int privDerLen = 0;
     word32 idx = 0;
 
-    WOLFENGINE_ENTER("we_set_private_key");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_set_private_key");
 
     privDerLen = i2d_RSAPrivateKey(rsaKey, &privDer);
     if (privDerLen == 0) {
-        WOLFENGINE_ERROR_FUNC("i2d_RSAPrivateKey", privDerLen);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_RSAPrivateKey", privDerLen);
         ret = 0;
     }
 
@@ -131,7 +131,7 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
         rc = wc_RsaPrivateKeyDecode(privDer, &idx, &engineRsa->key,
                                     privDerLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RsaPrivateKeyDecode", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateKeyDecode", rc);
             ret = 0;
         }
     }
@@ -144,7 +144,7 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
         OPENSSL_clear_free(privDer, privDerLen);
     }
 
-    WOLFENGINE_LEAVE("we_set_private_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_set_private_key", ret);
 
     return ret;
 }
@@ -161,18 +161,18 @@ static int we_rsa_init(RSA *rsa)
     int rc = 0;
     we_Rsa *engineRsa;
 
-    WOLFENGINE_ENTER("we_rsa_init");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_init");
 
     engineRsa = (we_Rsa *)OPENSSL_zalloc(sizeof(we_Rsa));
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_zalloc", engineRsa);
         ret = 0;
     }
 
     if (ret == 1) {
         rc = wc_InitRsaKey(&engineRsa->key, NULL);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_InitRsaKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_InitRsaKey", rc);
             ret = 0;
         }
     }
@@ -181,7 +181,7 @@ static int we_rsa_init(RSA *rsa)
     if (ret == 1) {
         rc = wc_RsaSetRNG(&engineRsa->key, we_rng);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RsaSetRNG", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaSetRNG", rc);
             ret = 0;
         }
     }
@@ -190,7 +190,7 @@ static int we_rsa_init(RSA *rsa)
     if (ret == 1) {
         rc = RSA_set_app_data(rsa, engineRsa);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("RSA_set_app_data", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "RSA_set_app_data", rc);
             ret = 0;
         }
     }
@@ -213,7 +213,7 @@ static int we_rsa_finish(RSA *rsa)
 {
     we_Rsa *engineRsa;
 
-    WOLFENGINE_ENTER("we_rsa_finish");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_finish");
 
     engineRsa = RSA_get_app_data(rsa);
     if (engineRsa != NULL) {
@@ -222,7 +222,7 @@ static int we_rsa_finish(RSA *rsa)
         RSA_set_app_data(rsa, NULL);
     }
 
-    WOLFENGINE_LEAVE("we_rsa_finish", 1);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_finish", 1);
 
     return 1;
 }
@@ -244,18 +244,18 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
     int rc = 0;
     we_Rsa *engineRsa = NULL;
 
-    WOLFENGINE_ENTER("we_rsa_pub_enc");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_enc");
 
     engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
         ret = -1;
     }
 
     if (ret == 1 && !engineRsa->pubKeySet) {
         rc = we_set_public_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC("we_set_public_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", rc);
             ret = -1;
         }
     }
@@ -267,7 +267,7 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
                 rc = wc_RsaPublicEncrypt(from, fromLen, to, RSA_size(rsa),
                                          &engineRsa->key, we_rng);
                 if (rc < 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_RsaPublicEncrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt", rc);
                     ret = -1;
                 }
                 else {
@@ -281,7 +281,8 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
                                             WC_RSA_OAEP_PAD, WC_HASH_TYPE_SHA,
                                             WC_MGF1SHA1, NULL, 0);
                 if (rc < 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_RsaPublicEncrypt_ex", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
+                                          rc);
                     ret = -1;
                 }
                 else {
@@ -294,7 +295,8 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
                                             WC_RSA_NO_PAD, WC_HASH_TYPE_NONE, 0,
                                             NULL, 0);
                 if (rc < 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_RsaPublicEncrypt_ex", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
+                                          rc);
                     ret = -1;
                 }
                 else {
@@ -302,12 +304,13 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
                 }
                 break;
             default:
-                WOLFENGINE_ERROR_MSG("we_rsa_pub_enc: unknown padding");
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                     "we_rsa_pub_enc: unknown padding");
                 ret = -1;
         }
     }
 
-    WOLFENGINE_LEAVE("we_rsa_pub_enc", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pub_enc", ret);
 
     return ret;
 }
@@ -329,18 +332,18 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
     int rc = 0;
     we_Rsa *engineRsa = NULL;
 
-    WOLFENGINE_ENTER("we_rsa_priv_dec");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_dec");
 
     engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
         ret = -1;
     }
 
     if (ret == 1 && !engineRsa->privKeySet) {
         rc = we_set_private_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC("we_set_private_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_private_key", rc);
             ret = -1;
         }
     }
@@ -352,7 +355,8 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
                 rc = wc_RsaPrivateDecrypt(from, fromLen, to, RSA_size(rsa),
                                           &engineRsa->key);
                 if (rc < 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_RsaPrivateDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt",
+                                          rc);
                     ret = -1;
                 }
                 else {
@@ -366,7 +370,8 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
                                              WC_HASH_TYPE_SHA, WC_MGF1SHA1,
                                              NULL, 0);
                 if (rc < 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_RsaPrivateDecrypt_ex", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
+                                          rc);
                     ret = -1;
                 }
                 else {
@@ -378,7 +383,8 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
                                              &engineRsa->key, WC_RSA_NO_PAD,
                                              WC_HASH_TYPE_NONE, 0, NULL, 0);
                 if (rc < 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_RsaPrivateDecrypt_ex", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
+                                          rc);
                     ret = -1;
                 }
                 else {
@@ -386,12 +392,13 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
                 }
                 break;
             default:
-                WOLFENGINE_ERROR_MSG("we_rsa_priv_dec: unknown padding");
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                     "we_rsa_priv_dec: unknown padding");
                 ret = -1;
         }
     }
 
-    WOLFENGINE_LEAVE("we_rsa_priv_dec", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_priv_dec", ret);
 
     return ret;
 }
@@ -449,14 +456,14 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
     unsigned int tLen = (unsigned int)toLen;
     const EVP_MD *mdMGF1;
 
-    WOLFENGINE_ENTER("we_rsa_priv_enc_int");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc_int");
 
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
             /* PKCS 1 v1.5 padding using block type 1. */
             rc = wc_RsaSSL_Sign(from, fromLen, to, toLen, &rsa->key, we_rng);
             if (rc < 0) {
-                WOLFENGINE_ERROR_FUNC("wc_RsaSSL_Sign", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaSSL_Sign", rc);
                 ret = -1;
             }
             else {
@@ -467,7 +474,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             rc = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to, &tLen,
                               &rsa->key, RSA_PRIVATE_ENCRYPT, we_rng);
             if (rc < 0) {
-                WOLFENGINE_ERROR_FUNC("wc_RsaDirect", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", rc);
                 ret = -1;
             }
             else {
@@ -482,7 +489,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                 we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
                 &rsa->key, we_rng);
             if (rc < 0) {
-                WOLFENGINE_ERROR_FUNC("wc_RsaPSS_Sign_ex", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Sign_ex", rc);
                 ret = -1;
             }
             else {
@@ -490,11 +497,12 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             }
             break;
         default:
-            WOLFENGINE_ERROR_MSG("we_rsa_priv_enc_int: unknown padding");
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                 "we_rsa_priv_enc_int: unknown padding");
             ret = -1;
     }
 
-    WOLFENGINE_LEAVE("we_rsa_priv_enc_int", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_priv_enc_int", ret);
 
     return ret;
 }
@@ -516,18 +524,18 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
     int rc = 0;
     we_Rsa *engineRsa = NULL;
 
-    WOLFENGINE_ENTER("we_rsa_priv_enc");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc");
 
     engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
         ret = -1;
     }
 
     if (ret == 1 && !engineRsa->pubKeySet) {
         rc = we_set_public_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC("we_set_public_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", rc);
             ret = -1;
         }
     }
@@ -536,11 +544,11 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
         engineRsa->padMode = padding;
         ret = we_rsa_priv_enc_int(fromLen, from, RSA_size(rsa), to, engineRsa);
         if (ret == -1) {
-            WOLFENGINE_ERROR_FUNC("we_rsa_priv_enc_int", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_priv_enc_int", ret);
         }
     }
 
-    WOLFENGINE_LEAVE("we_rsa_priv_enc", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_priv_enc", ret);
 
     return ret;
 }
@@ -564,14 +572,14 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     unsigned int tLen = (unsigned int)toLen;
     const EVP_MD *mdMGF1;
 
-    WOLFENGINE_ENTER("we_rsa_pub_dec_int");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec_int");
 
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
             /* PKCS #1 v1.5 padding using block type 1. */
             rc = wc_RsaSSL_Verify(from, fromLen, to, toLen, &rsa->key);
             if (rc < 0) {
-                WOLFENGINE_ERROR_FUNC("wc_RsaSSL_Verify", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaSSL_Verify", rc);
                 ret = -1;
             }
             else {
@@ -582,7 +590,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
             rc = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to, &tLen,
                               &rsa->key, RSA_PUBLIC_DECRYPT, we_rng);
             if (rc < 0) {
-                WOLFENGINE_ERROR_FUNC("wc_RsaDirect", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", rc);
                 ret = -1;
             }
             else {
@@ -597,18 +605,19 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                 we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
                 &rsa->key);
             if (rc < 0) {
-                WOLFENGINE_ERROR_FUNC("wc_RsaPSS_Verify_ex", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Verify_ex", rc);
                 ret = -1;
             } else {
                 ret = rc;
             }
             break;
         default:
-            WOLFENGINE_ERROR_MSG("we_rsa_pub_dec_int: unknown padding");
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                 "we_rsa_pub_dec_int: unknown padding");
             ret = -1;
     }
 
-    WOLFENGINE_LEAVE("we_rsa_pub_dec_int", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pub_dec_int", ret);
 
     return ret;
 }
@@ -630,18 +639,18 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
     int rc = 0;
     we_Rsa *engineRsa = NULL;
 
-    WOLFENGINE_ENTER("we_rsa_pub_dec");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec");
 
     engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
         ret = -1;
     }
 
     if (ret == 1 && !engineRsa->pubKeySet) {
         rc = we_set_public_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC("we_set_public_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", rc);
             ret = -1;
         }
     }
@@ -650,11 +659,11 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
         engineRsa->padMode = padding;
         ret = we_rsa_pub_dec_int(fromLen, from, RSA_size(rsa), to, engineRsa);
         if (ret == -1) {
-            WOLFENGINE_ERROR_FUNC("we_rsa_pub_dec_int", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", ret);
         }
     }
 
-    WOLFENGINE_LEAVE("we_rsa_pub_dec", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pub_dec", ret);
 
     return ret;
 }
@@ -672,18 +681,18 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA *osslKey)
     BIGNUM *eDup = NULL, *nDup = NULL, *dDup = NULL, *pDup = NULL, *qDup = NULL,
            *dmp1Dup = NULL, *dmq1Dup = NULL, *iqmpDup = NULL;
 
-    WOLFENGINE_ENTER("we_convert_rsa");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_convert_rsa");
 
     derLen = wc_RsaKeyToDer(wolfKey, NULL, 0);
     if (derLen <= 0) {
-        WOLFENGINE_ERROR_FUNC("wc_RsaKeyToDer", derLen);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaKeyToDer", derLen);
         ret = 0;
     }
 
     if (ret == 1) {
         der = (unsigned char *)OPENSSL_malloc(derLen);
         if (der == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", der);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc", der);
             ret = 0;
         }
     }
@@ -691,7 +700,7 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA *osslKey)
     if (ret == 1) {
         derLen = wc_RsaKeyToDer(wolfKey, der, derLen);
         if (derLen <= 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RsaKeyToDer", derLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaKeyToDer", derLen);
             ret = 0;
         }
     }
@@ -705,7 +714,8 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA *osslKey)
         derPtr = (const unsigned char *)der;
         decodedRsa = d2i_RSAPrivateKey(NULL, &derPtr, derLen);
         if (decodedRsa == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("d2i_RSAPrivateKey", decodedRsa);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "d2i_RSAPrivateKey",
+                                       decodedRsa);
             ret = 0;
         }
     }
@@ -719,56 +729,56 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA *osslKey)
     if (ret == 1) {
         eDup = BN_dup(e);
         if (eDup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_dup", eDup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_dup", eDup);
             ret = 0;
         }
     }
     if (ret == 1) {
         nDup = BN_dup(n);
         if (nDup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_dup", nDup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_dup", nDup);
             ret = 0;
         }
     }
     if (ret == 1) {
         dDup = BN_dup(d);
         if (dDup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_dup", dDup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_dup", dDup);
             ret = 0;
         }
     }
     if (ret == 1) {
         pDup = BN_dup(p);
         if (pDup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_dup", pDup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_dup", pDup);
             ret = 0;
         }
     }
     if (ret == 1) {
         qDup = BN_dup(q);
         if (qDup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_dup", qDup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_dup", qDup);
             ret = 0;
         }
     }
     if (ret == 1) {
         dmp1Dup = BN_dup(dmp1);
         if (dmp1Dup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_dup", dmp1Dup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_dup", dmp1Dup);
             ret = 0;
         }
     }
     if (ret == 1) {
         dmq1Dup = BN_dup(dmq1);
         if (dmq1Dup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_dup", dmq1Dup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_dup", dmq1Dup);
             ret = 0;
         }
     }
     if (ret == 1) {
         iqmpDup = BN_dup(iqmp);
         if (iqmpDup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("BN_dup", iqmpDup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_dup", iqmpDup);
             ret = 0;
         }
     }
@@ -776,21 +786,21 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA *osslKey)
     if (ret == 1) {
         rc = RSA_set0_key(osslKey, nDup, eDup, dDup);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("RSA_set0_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "RSA_set0_key", rc);
             ret = 0;
         }
     }
     if (ret == 1) {
         rc = RSA_set0_factors(osslKey, pDup, qDup);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("RSA_set0_factors", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "RSA_set0_factors", rc);
             ret = 0;
         }
     }
     if (ret == 1) {
         rc = RSA_set0_crt_params(osslKey, dmp1Dup, dmq1Dup, iqmpDup);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("RSA_set0_crt_params", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "RSA_set0_crt_params", rc);
             ret = 0;
         }
     }
@@ -802,7 +812,7 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA *osslKey)
         RSA_free(decodedRsa);
     }
 
-    WOLFENGINE_LEAVE("we_convert_rsa", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_convert_rsa", ret);
 
     return ret;
 }
@@ -812,21 +822,21 @@ static int we_rsa_keygen_int(RsaKey *wolfKey, RSA **osslKey, int bits, long e)
     int ret = 1;
     int rc = 0;
 
-    WOLFENGINE_ENTER("we_rsa_pkey_keygen");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_keygen");
 
     if (wolfKey == NULL) {
-        WOLFENGINE_ERROR_MSG("we_rsa_keygen_int: wolfKey NULL");
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_rsa_keygen_int: wolfKey NULL");
         ret = 0;
     }
     if (osslKey == NULL) {
-        WOLFENGINE_ERROR_MSG("we_rsa_keygen_int: osslKey NULL");
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_rsa_keygen_int: osslKey NULL");
         ret = 0;
     }
 
     if (ret == 1) {
         rc = wc_MakeRsaKey(wolfKey, bits, e, we_rng);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_MakeRsaKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_MakeRsaKey", rc);
             ret = 0;
         }
     }
@@ -834,7 +844,7 @@ static int we_rsa_keygen_int(RsaKey *wolfKey, RSA **osslKey, int bits, long e)
     if (ret == 1 && *osslKey == NULL) {
         *osslKey = RSA_new();
         if (*osslKey == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("RSA_new", *osslKey);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_new", *osslKey);
             ret = 0;
         }
     }
@@ -842,12 +852,12 @@ static int we_rsa_keygen_int(RsaKey *wolfKey, RSA **osslKey, int bits, long e)
     if (ret == 1) {
         rc = we_convert_rsa(wolfKey, *osslKey);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("we_convert_rsa", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_convert_rsa", rc);
             ret = 0;
         }
     }
 
-    WOLFENGINE_LEAVE("we_rsa_keygen_int", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_keygen_int", ret);
 
     return ret;
 }
@@ -861,18 +871,18 @@ static int we_rsa_keygen(RSA *osslKey, int bits, BIGNUM *eBn, BN_GENCB *cb)
 
     (void)cb; /* Callback not supported, yet. */
 
-    WOLFENGINE_ENTER("we_rsa_keygen");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_keygen");
 
     engineRsa = (we_Rsa *)RSA_get_app_data(osslKey);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
         ret = 0;
     }
 
     if (ret == 1) {
         e = (long)BN_get_word(eBn);
         if (e == -1) {
-            WOLFENGINE_ERROR_FUNC("BN_get_word", (int)e);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "BN_get_word", (int)e);
             ret = 0;
         }
     }
@@ -880,12 +890,12 @@ static int we_rsa_keygen(RSA *osslKey, int bits, BIGNUM *eBn, BN_GENCB *cb)
     if (ret == 1) {
         rc = we_rsa_keygen_int(&engineRsa->key, &osslKey, bits, e);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC("we_rsa_keygen_int", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_keygen_int", rc);
             ret = 0;
         }
     }
 
-    WOLFENGINE_LEAVE("we_rsa_keygen", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_keygen", ret);
 
     return ret;
 }
@@ -899,11 +909,11 @@ int we_init_rsa_meth(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_rsa_meth");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_init_rsa_meth");
 
     we_rsa_method = RSA_meth_new("wolfengine_rsa", 0);
     if (we_rsa_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("RSA_meth_new", we_rsa_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_meth_new", we_rsa_method);
         ret = 0;
     }
 
@@ -922,7 +932,7 @@ int we_init_rsa_meth(void)
         we_rsa_method = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_rsa_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_init_rsa_meth", ret);
 
     return ret;
 }
@@ -944,18 +954,18 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
     int rc = 0;
     we_Rsa *rsa;
 
-    WOLFENGINE_ENTER("we_rsa_pkey_init");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_init");
 
     rsa = (we_Rsa *)OPENSSL_zalloc(sizeof(we_Rsa));
     if (rsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", rsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_zalloc", rsa);
         ret = 0;
     }
 
     if (ret == 1) {
         rc = wc_InitRsaKey(&rsa->key, NULL);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_InitRsaKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_InitRsaKey", rc);
             ret = 0;
         }
     }
@@ -971,7 +981,7 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
         OPENSSL_free(rsa);
     }
 
-    WOLFENGINE_LEAVE("we_rsa_pkey_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_init", ret);
 
     return ret;
 }
@@ -985,7 +995,7 @@ static void we_rsa_pkey_cleanup(EVP_PKEY_CTX *ctx)
 {
     we_Rsa *rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
 
-    WOLFENGINE_ENTER("we_rsa_pkey_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_cleanup");
 
     if (rsa != NULL) {
         wc_FreeRsaKey(&rsa->key);
@@ -1012,8 +1022,8 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
     (void)dst;
     (void)src;
  
-    WOLFENGINE_ENTER("we_rsa_pkey_copy");
-    WOLFENGINE_LEAVE("we_rsa_pkey_copy", ret);
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_copy");
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_copy", ret);
 
     return ret;
 }
@@ -1032,11 +1042,12 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     we_Rsa *engineRsa = NULL;
     RSA *rsa = NULL;
 
-    WOLFENGINE_ENTER("we_rsa_pkey_keygen");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_keygen");
 
     engineRsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data",
+                                   engineRsa);
         ret = 0;
     }
 
@@ -1044,7 +1055,7 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         rc = we_rsa_keygen_int(&engineRsa->key, &rsa, engineRsa->bits,
                                engineRsa->pubExp);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC("we_rsa_keygen_int", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_keygen_int", rc);
             ret = 0;
         }
     }
@@ -1052,11 +1063,11 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         ret = EVP_PKEY_assign_RSA(pkey, rsa);
         if (ret == 0) {
-            WOLFENGINE_ERROR_FUNC("EVP_PKEY_assign_RSA", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EVP_PKEY_assign_RSA", ret);
         }
     }
 
-    WOLFENGINE_LEAVE("we_rsa_pkey_keygen", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_keygen", ret);
 
     return ret;
 }
@@ -1085,11 +1096,11 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     long e;
     char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
-    WOLFENGINE_ENTER("we_rsa_pkey_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_ctrl");
 
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
     if (rsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", rsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", rsa);
         ret = 0;
     }
 
@@ -1101,7 +1112,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     num != RSA_PKCS1_OAEP_PADDING &&
                     num != RSA_NO_PADDING)
                 {
-                    WOLFENGINE_ERROR_MSG("Unsupported RSA padding mode.");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                         "Unsupported RSA padding mode.");
                     ret = 0;
                 }
                 else {
@@ -1122,14 +1134,16 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 #if OPENSSL_VERSION_NUMBER >= 0x1010100fL
             case EVP_PKEY_CTRL_RSA_KEYGEN_PRIMES:
                 /* wolfCrypt can only do key generation with 2 primes. */
-                WOLFENGINE_ERROR_MSG("wolfCrypt does not support multi-prime"
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                     "wolfCrypt does not support multi-prime"
                                      "RSA.");
                 ret = 0;
                 break;
 #endif
             case EVP_PKEY_CTRL_RSA_KEYGEN_BITS:
                 if (num < RSA_MIN_SIZE || num > RSA_MAX_SIZE) {
-                    WOLFENGINE_ERROR_MSG("RSA key size not in range.");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                         "RSA key size not in range.");
                     ret = 0;
                 }
                 else {
@@ -1141,11 +1155,13 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 bn = (BIGNUM*)ptr;
                 e = (long)BN_get_word(bn);
                 if (e == -1) {
-                    WOLFENGINE_ERROR_MSG("RSA public exponent too large.");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                         "RSA public exponent too large.");
                     ret = 0;
                 }
                 if (ret == 1 && e == 0) {
-                    WOLFENGINE_ERROR_MSG("RSA public exponent is 0.");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                         "RSA public exponent is 0.");
                     ret = 0;
                 }
                 if (ret == 1) {
@@ -1171,13 +1187,13 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
                 ret = 0;
                 break;
         }
     }
     
-    WOLFENGINE_LEAVE("we_rsa_pkey_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_ctrl", ret);
 
     return ret;
 }
@@ -1202,11 +1218,11 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     int ret = 1;
     we_Rsa *rsa = NULL;
 
-    WOLFENGINE_ENTER("we_rsa_pkey_ctrl_str");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_ctrl_str");
 
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
     if (rsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", rsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", rsa);
         ret = 0;
     }
 
@@ -1282,12 +1298,13 @@ static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
     int ret = 1;
     int hashOID = 0;
 
-    WOLFENGINE_ENTER("we_der_encode_digest");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_der_encode_digest");
 
     if (*encodedDigest == NULL) {
         *encodedDigest = (unsigned char *)OPENSSL_malloc(MAX_DER_DIGEST_SZ);
         if (*encodedDigest == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", *encodedDigest);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                       *encodedDigest);
             ret = 0;
         }
     }
@@ -1295,7 +1312,7 @@ static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
     if (ret == 1) {
         hashOID = we_nid_to_wc_hash_oid(EVP_MD_type(md));
         if (hashOID <= 0) {
-            WOLFENGINE_ERROR_FUNC("we_nid_to_wc_hash_oid", hashOID);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_nid_to_wc_hash_oid", hashOID);
             ret = 0;
         }
     }
@@ -1304,11 +1321,11 @@ static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
         ret = wc_EncodeSignature(*encodedDigest, digest, (word32)digestLen,
                                  hashOID);
         if (ret == 0) {
-            WOLFENGINE_ERROR_FUNC("wc_EncodeSignature", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_EncodeSignature", ret);
         }
     }
 
-    WOLFENGINE_LEAVE("we_der_encode_digest", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_der_encode_digest", ret);
 
     return ret;
 }
@@ -1337,11 +1354,11 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     int len;
     int actualSigLen = 0;
 
-    WOLFENGINE_ENTER("we_rsa_pkey_sign");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_sign");
 
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
     if (rsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", rsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", rsa);
         ret = 0;
     }
 
@@ -1349,20 +1366,22 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     if (ret == 1 && !rsa->privKeySet) {
         pkey = EVP_PKEY_CTX_get0_pkey(ctx);
         if (pkey == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get0_pkey", pkey);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get0_pkey",
+                                       pkey);
             ret = 0;
         }
         if (ret == 1) {
             rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey);
             if (rsaKey == NULL) {
-                WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_get0_RSA", rsaKey);
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_get0_RSA",
+                                           rsaKey);
                 ret = 0;
             }
         }
         if (ret == 1) {
             ret = we_set_private_key(rsaKey, rsa);
             if (ret == 0) {
-                WOLFENGINE_ERROR_FUNC("we_set_private_key", ret);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_private_key", ret);
             }
         }
     }
@@ -1371,7 +1390,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
         len = wc_SignatureGetSize(WC_SIGNATURE_TYPE_RSA, &rsa->key,
                                   sizeof(rsa->key));
         if (len <= 0) {
-            WOLFENGINE_ERROR_FUNC("wc_SignatureGetSize", (int)len);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_SignatureGetSize", (int)len);
             ret = 0;
         }
         else {
@@ -1387,7 +1406,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
             encodedDigestLen = we_der_encode_digest(rsa->md, tbs, tbsLen,
                                                     &encodedDigest);
             if (encodedDigestLen == 0) {
-                WOLFENGINE_ERROR_FUNC("we_der_encode_digest",
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_der_encode_digest",
                                       encodedDigestLen);
                 ret = 0;
             }
@@ -1399,7 +1418,8 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
         if (ret == 1) {
             actualSigLen = we_rsa_priv_enc_int(tbsLen, tbs, *sigLen, sig, rsa);
             if (actualSigLen == -1) {
-                WOLFENGINE_ERROR_FUNC("we_rsa_priv_enc_int", actualSigLen);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_priv_enc_int",
+                                      actualSigLen);
                 ret = 0;
             }
             else {
@@ -1412,7 +1432,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
         OPENSSL_free(encodedDigest);
     }
 
-    WOLFENGINE_LEAVE("we_rsa_pkey_sign", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_sign", ret);
 
     return ret;
 }
@@ -1440,11 +1460,11 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     unsigned char *encodedDigest = NULL;
     int encodedDigestLen = 0;
 
-    WOLFENGINE_ENTER("we_rsa_pkey_verify");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify");
 
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
     if (rsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", rsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", rsa);
         ret = 0;
     }
 
@@ -1452,20 +1472,22 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     if (ret == 1 && !rsa->pubKeySet) {
         pkey = EVP_PKEY_CTX_get0_pkey(ctx);
         if (pkey == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get0_pkey", pkey);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get0_pkey",
+                                       pkey);
             ret = 0;
         }
         if (ret == 1) {
             rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey);
             if (rsaKey == NULL) {
-                WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_get0_RSA", rsaKey);
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_get0_RSA",
+                                           rsaKey);
                 ret = 0;
             }
         }
         if (ret == 1) {
             ret = we_set_public_key(rsaKey, rsa);
             if (ret == 0) {
-                WOLFENGINE_ERROR_FUNC("we_set_public_key", ret);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", ret);
             }
         }
     }
@@ -1473,7 +1495,8 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     if (ret == 1) {
         decryptedSig = (unsigned char *)OPENSSL_malloc(sigLen);
         if (decryptedSig == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_malloc", decryptedSig);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                       decryptedSig);
             ret = 0;
         }
     }
@@ -1481,7 +1504,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     if (ret == 1) {
         rc = we_rsa_pub_dec_int(sigLen, sig, sigLen, decryptedSig, rsa);
         if (rc == -1) {
-            WOLFENGINE_ERROR_FUNC("we_rsa_pub_dec_int", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
             ret = 0;
         }
     }
@@ -1492,7 +1515,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         rc = wc_RsaPSS_CheckPadding_ex(tbs, tbsLen, decryptedSig, rc,
             we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)), rsa->saltLen, 0);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_RsaPSS_CheckPadding_ex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_CheckPadding_ex", rc);
             ret = 0;
         }
     }
@@ -1504,7 +1527,8 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
             encodedDigestLen = we_der_encode_digest(rsa->md, tbs, tbsLen,
                                                     &encodedDigest);
             if (encodedDigestLen == 0) {
-                WOLFENGINE_ERROR_FUNC("we_der_encode_digest", encodedDigestLen);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_der_encode_digest",
+                                      encodedDigestLen);
                 ret = 0;
             }
             else {
@@ -1515,7 +1539,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         if (ret == 1) {
             rc = XMEMCMP(tbs, decryptedSig, tbsLen);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("XMEMCMP", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "XMEMCMP", rc);
                 ret = 0;
             }
         }
@@ -1543,7 +1567,8 @@ int we_init_rsa_pkey_meth(void)
 
     we_rsa_pkey_method = EVP_PKEY_meth_new(EVP_PKEY_RSA, 0);
     if (we_rsa_pkey_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_rsa_pkey_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_meth_new",
+                                   we_rsa_pkey_method);
         ret = 0;
     }
 

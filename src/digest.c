@@ -37,15 +37,15 @@ static int we_sha_init(EVP_MD_CTX *ctx)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_init");
 
     rc = wc_InitSha((wc_Sha*)EVP_MD_CTX_md_data(ctx));
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_InitSha", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_InitSha", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha_init", ret);
 
     return ret;
 }
@@ -62,16 +62,16 @@ static int we_sha_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha_update");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_update");
 
     rc = wc_ShaUpdate((wc_Sha*)EVP_MD_CTX_md_data(ctx),
                          (const byte*)data, (word32)len);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_ShaUpdate", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_ShaUpdate", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha_update", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha_update", ret);
 
     return ret;
 }
@@ -87,18 +87,18 @@ static int we_sha_final(EVP_MD_CTX *ctx, unsigned char *md)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha_final");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_final");
 
     rc = wc_ShaFinal((wc_Sha*)EVP_MD_CTX_md_data(ctx), (byte*)md);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_ShaFinal", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_ShaFinal", rc);
         ret = 0;
     } else {
-        WOLFENGINE_MSG("SHA-1 Digest");
-        WOLFENGINE_BUFFER(md, WC_SHA_DIGEST_SIZE);
+        WOLFENGINE_MSG(WE_LOG_DIGEST, "SHA-1 Digest");
+        WOLFENGINE_BUFFER(WE_LOG_DIGEST, md, WC_SHA_DIGEST_SIZE);
     }
 
-    WOLFENGINE_LEAVE("we_sha_final", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha_final", ret);
 
     return ret;
 }
@@ -111,11 +111,11 @@ static int we_sha_final(EVP_MD_CTX *ctx, unsigned char *md)
  */
 static int we_sha_cleanup(EVP_MD_CTX *ctx)
 {
-    WOLFENGINE_ENTER("we_sha_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_cleanup");
 
     wc_ShaFree((wc_Sha*)EVP_MD_CTX_md_data(ctx));
 
-    WOLFENGINE_LEAVE("we_sha_cleanup", 1);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha_cleanup", 1);
     return 1;
 }
 
@@ -131,7 +131,7 @@ int we_init_sha_meth()
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_sha_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha_meth");
 
     ret = (we_sha1_md = EVP_MD_meth_new(NID_sha, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
@@ -157,7 +157,7 @@ int we_init_sha_meth()
         EVP_MD_meth_free(we_sha1_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha_meth", ret);
 
     return ret;
 };
@@ -180,15 +180,15 @@ static int we_sha224_init(EVP_MD_CTX *ctx)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha224_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_init");
 
     rc = wc_InitSha224((wc_Sha224*)EVP_MD_CTX_md_data(ctx));
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_InitSha224", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_InitSha224", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha224_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha224_init", ret);
 
     return ret;
 }
@@ -205,16 +205,16 @@ static int we_sha224_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha224_update");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_update");
 
     rc = wc_Sha224Update((wc_Sha224*)EVP_MD_CTX_md_data(ctx),
                          (const byte*)data, (word32)len);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_Sha224Update", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha224Update", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha224_update", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha224_update", ret);
 
     return ret;
 }
@@ -230,18 +230,18 @@ static int we_sha224_final(EVP_MD_CTX *ctx, unsigned char *md)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha224_final");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_final");
 
     rc = wc_Sha224Final((wc_Sha224*)EVP_MD_CTX_md_data(ctx), (byte*)md);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_Sha224Final", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha224Final", rc);
         ret = 0;
     } else {
-        WOLFENGINE_MSG("SHA-224 Digest");
-        WOLFENGINE_BUFFER(md, WC_SHA224_DIGEST_SIZE);
+        WOLFENGINE_MSG(WE_LOG_DIGEST, "SHA-224 Digest");
+        WOLFENGINE_BUFFER(WE_LOG_DIGEST, md, WC_SHA224_DIGEST_SIZE);
     }
 
-    WOLFENGINE_LEAVE("we_sha224_final", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha224_final", ret);
 
     return ret;
 }
@@ -254,11 +254,11 @@ static int we_sha224_final(EVP_MD_CTX *ctx, unsigned char *md)
  */
 static int we_sha224_cleanup(EVP_MD_CTX *ctx)
 {
-    WOLFENGINE_ENTER("we_sha224_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_cleanup");
 
     wc_Sha224Free((wc_Sha224*)EVP_MD_CTX_md_data(ctx));
 
-    WOLFENGINE_LEAVE("we_sha224_cleanup", 1);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha224_cleanup", 1);
     return 1;
 }
 
@@ -274,7 +274,7 @@ int we_init_sha224_meth()
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_sha224_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha224_meth");
 
     ret = (we_sha224_md = EVP_MD_meth_new(NID_sha224, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
@@ -300,7 +300,7 @@ int we_init_sha224_meth()
         EVP_MD_meth_free(we_sha224_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha224_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha224_meth", ret);
 
     return ret;
 };
@@ -323,15 +323,15 @@ static int we_sha256_init(EVP_MD_CTX *ctx)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha256_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_init");
 
     rc = wc_InitSha256((wc_Sha256*)EVP_MD_CTX_md_data(ctx));
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_InitSha256", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_InitSha256", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha256_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha256_init", ret);
 
     return ret;
 }
@@ -348,16 +348,16 @@ static int we_sha256_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha256_update");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_update");
 
     rc = wc_Sha256Update((wc_Sha256*)EVP_MD_CTX_md_data(ctx),
                          (const byte*)data, (word32)len);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_Sha256Update", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha256Update", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha256_update", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha256_update", ret);
 
     return ret;
 }
@@ -373,18 +373,18 @@ static int we_sha256_final(EVP_MD_CTX *ctx, unsigned char *md)
 {
     int ret = 1, rc;
 
-    WOLFENGINE_ENTER("we_sha256_final");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_final");
 
     rc = wc_Sha256Final((wc_Sha256*)EVP_MD_CTX_md_data(ctx), (byte*)md);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_Sha256Final", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha256Final", rc);
         ret = 0;
     } else {
-        WOLFENGINE_MSG("SHA-256 Digest");
-        WOLFENGINE_BUFFER(md, WC_SHA256_DIGEST_SIZE);
+        WOLFENGINE_MSG(WE_LOG_DIGEST, "SHA-256 Digest");
+        WOLFENGINE_BUFFER(WE_LOG_DIGEST, md, WC_SHA256_DIGEST_SIZE);
     }
 
-    WOLFENGINE_LEAVE("we_sha256_final", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha256_final", ret);
 
     return ret;
 }
@@ -397,11 +397,11 @@ static int we_sha256_final(EVP_MD_CTX *ctx, unsigned char *md)
  */
 static int we_sha256_cleanup(EVP_MD_CTX *ctx)
 {
-    WOLFENGINE_ENTER("we_sha256_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_cleanup");
 
     wc_Sha256Free((wc_Sha256*)EVP_MD_CTX_md_data(ctx));
 
-    WOLFENGINE_LEAVE("we_sha256_cleanup", 1);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha256_cleanup", 1);
     return 1;
 }
 
@@ -417,7 +417,7 @@ int we_init_sha256_meth()
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_sha256_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha256_meth");
 
     ret = (we_sha256_md = EVP_MD_meth_new(NID_sha256, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
@@ -443,7 +443,7 @@ int we_init_sha256_meth()
         EVP_MD_meth_free(we_sha256_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha256_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha256_meth", ret);
 
     return ret;
 };
@@ -475,18 +475,18 @@ static int we_sha_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha_init", ret);
 
     return ret;
 }
@@ -504,18 +504,18 @@ static int we_sha224_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha224_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA224;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha224_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha224_init", ret);
 
     return ret;
 }
@@ -533,18 +533,18 @@ static int we_sha256_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha256_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA256;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha256_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha256_init", ret);
 
     return ret;
 }
@@ -562,18 +562,18 @@ static int we_sha384_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha384_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha384_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA384;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha384_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha384_init", ret);
 
     return ret;
 }
@@ -591,18 +591,18 @@ static int we_sha512_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha512_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha512_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA512;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha512_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha512_init", ret);
 
     return ret;
 }
@@ -620,18 +620,18 @@ static int we_sha3_224_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha3_224_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha3_224_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_224;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha3_224_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha3_224_init", ret);
 
     return ret;
 }
@@ -649,18 +649,18 @@ static int we_sha3_256_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha3_256_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha3_256_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_256;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha3_256_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha3_256_init", ret);
 
     return ret;
 }
@@ -678,18 +678,18 @@ static int we_sha3_384_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha3_384_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha3_384_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_384;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha3_384_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha3_384_init", ret);
 
     return ret;
 }
@@ -707,18 +707,18 @@ static int we_sha3_512_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_sha3_512_init");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha3_512_init");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_512;
 
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashInit", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_sha3_512_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha3_512_init", ret);
 
     return ret;
 }
@@ -737,18 +737,18 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_digest_update");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_update");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
     rc = wc_HashUpdate(&digest->hash, digest->hashType, (const byte*)data,
                        (word32)len);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashUpdate", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashUpdate", rc);
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("we_digest_update", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_update", ret);
 
     return ret;
 }
@@ -765,20 +765,21 @@ static int we_digest_final(EVP_MD_CTX *ctx, unsigned char *md)
     int ret = 1, rc;
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_digest_final");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_final");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
     rc = wc_HashFinal(&digest->hash, digest->hashType, (byte*)md);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashFinal", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashFinal", rc);
         ret = 0;
     } else {
-        WOLFENGINE_MSG("Message Digest");
-        WOLFENGINE_BUFFER(md, wc_HashGetDigestSize(digest->hashType));
+        WOLFENGINE_MSG(WE_LOG_DIGEST, "Message Digest");
+        WOLFENGINE_BUFFER(WE_LOG_DIGEST, md,
+                          wc_HashGetDigestSize(digest->hashType));
     }
 
-    WOLFENGINE_LEAVE("we_digest_final", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_final", ret);
 
     return ret;
 }
@@ -795,25 +796,25 @@ static int we_digest_cleanup(EVP_MD_CTX *ctx)
 #if !defined(HAVE_FIPS_VERSION) || HAVE_FIPS_VERSION >= 2
     we_Digest *digest;
 
-    WOLFENGINE_ENTER("we_digest_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_cleanup");
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
     if (digest != NULL) {
         rc = wc_HashFree(&digest->hash, digest->hashType);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HashFree", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashFree", rc);
             ret = 0;
         }
     }
 #else
-    WOLFENGINE_ENTER("we_digest_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_cleanup");
 
     (void)ctx;
     ret = 1; 
 #endif
 
-    WOLFENGINE_LEAVE("we_digest_cleanup", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_cleanup", ret);
     return ret;
 }
 
@@ -827,7 +828,7 @@ static int we_init_digest_meth(EVP_MD *method)
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_digest_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_digest_meth");
 
     ret = EVP_MD_meth_set_update(method, we_digest_update);
     if (ret == 1) {
@@ -853,7 +854,7 @@ static int we_init_digest_meth(EVP_MD *method)
 #endif
 #endif
 
-    WOLFENGINE_LEAVE("we_init_digest_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_digest_meth", ret);
 
     return ret;
 }
@@ -871,7 +872,7 @@ int we_init_sha_meth()
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_sha_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha_meth");
 
     ret = (we_sha1_md = EVP_MD_meth_new(NID_sha1, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
@@ -888,7 +889,7 @@ int we_init_sha_meth()
         EVP_MD_meth_free(we_sha1_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha_meth", ret);
 
     return ret;
 };
@@ -907,7 +908,7 @@ int we_init_sha224_meth()
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_sha224_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha224_meth");
 
     ret = (we_sha224_md = EVP_MD_meth_new(NID_sha256, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
@@ -924,7 +925,7 @@ int we_init_sha224_meth()
         EVP_MD_meth_free(we_sha224_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha224_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha224_meth", ret);
 
     return ret;
 };
@@ -943,7 +944,7 @@ int we_init_sha256_meth()
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_sha256_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha256_meth");
 
     ret = (we_sha256_md = EVP_MD_meth_new(NID_sha256, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
@@ -960,7 +961,7 @@ int we_init_sha256_meth()
         EVP_MD_meth_free(we_sha256_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha256_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha256_meth", ret);
 
     return ret;
 };
@@ -979,7 +980,7 @@ int we_init_sha384_meth()
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_sha384_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha384_meth");
 
     ret = (we_sha384_md = EVP_MD_meth_new(NID_sha384, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
@@ -996,7 +997,7 @@ int we_init_sha384_meth()
         EVP_MD_meth_free(we_sha384_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha384_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha384_meth", ret);
 
     return ret;
 };
@@ -1015,7 +1016,7 @@ int we_init_sha512_meth()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_sha512_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha512_meth");
 
     ret = (we_sha512_md = EVP_MD_meth_new(NID_sha512, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
@@ -1032,7 +1033,7 @@ int we_init_sha512_meth()
         EVP_MD_meth_free(we_sha512_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha512_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha512_meth", ret);
 
     return ret;
 };
@@ -1051,7 +1052,7 @@ int we_init_sha3_224_meth()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_sha3_224_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha3_224_meth");
 
     ret = (we_sha3_224_md = EVP_MD_meth_new(NID_sha3_224,
                                             EVP_PKEY_NONE)) != NULL;
@@ -1070,7 +1071,7 @@ int we_init_sha3_224_meth()
         EVP_MD_meth_free(we_sha3_224_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha3_224_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha3_224_meth", ret);
 
     return ret;
 };
@@ -1089,7 +1090,7 @@ int we_init_sha3_256_meth()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_sha3_256_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha3_256_meth");
 
     ret = (we_sha3_256_md = EVP_MD_meth_new(NID_sha3_256,
                                             EVP_PKEY_NONE)) != NULL;
@@ -1108,7 +1109,7 @@ int we_init_sha3_256_meth()
         EVP_MD_meth_free(we_sha3_256_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha3_256_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha3_256_meth", ret);
 
     return ret;
 };
@@ -1127,7 +1128,7 @@ int we_init_sha3_384_meth()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_sha3_384_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha3_384_meth");
 
     ret = (we_sha3_384_md = EVP_MD_meth_new(NID_sha3_384,
                                             EVP_PKEY_NONE)) != NULL;
@@ -1146,7 +1147,7 @@ int we_init_sha3_384_meth()
         EVP_MD_meth_free(we_sha3_384_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha3_384_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha3_384_meth", ret);
 
     return ret;
 };
@@ -1165,7 +1166,7 @@ int we_init_sha3_512_meth()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_sha3_512_meth");
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha3_512_meth");
 
     ret = (we_sha3_512_md = EVP_MD_meth_new(NID_sha3_512,
                                             EVP_PKEY_NONE)) != NULL;
@@ -1184,7 +1185,7 @@ int we_init_sha3_512_meth()
         EVP_MD_meth_free(we_sha3_512_md);
     }
 
-    WOLFENGINE_LEAVE("we_init_sha3_512_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha3_512_meth", ret);
 
     return ret;
 };

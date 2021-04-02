@@ -73,17 +73,17 @@ static we_mac* we_mac_pkey_init(EVP_PKEY_CTX *ctx)
     int ret = 1;
     we_mac *mac = NULL;
 
-    WOLFENGINE_ENTER("we_mac_pkey_init");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_init");
 
     if (ctx == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_init, ctx: ", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_pkey_init, ctx: ", ctx);
         ret = 0;
     }
 
     if (ret == 1) {
         mac = (we_mac *)OPENSSL_zalloc(sizeof(we_mac));
         if (mac == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", mac);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_zalloc", mac);
             ret = 0;
         }
     }
@@ -96,7 +96,7 @@ static we_mac* we_mac_pkey_init(EVP_PKEY_CTX *ctx)
         OPENSSL_free(mac);
         mac = NULL;
     }
-    WOLFENGINE_LEAVE("we_mac_pkey_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_init", ret);
 
     return mac;
 }
@@ -116,7 +116,8 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
     EVP_PKEY *pkey;
 
     if (mac == NULL) {
-        WOLFENGINE_ERROR_MSG("we_mac pointer is NULL in we_do_digest_init");
+        WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
+                             "we_mac pointer is NULL in we_do_digest_init");
         ret = 0;
     }
 
@@ -163,7 +164,7 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
                 rc = wc_InitCmac(&mac->state.cmac, (const byte*)mac->key,
                     mac->keySz, WC_CMAC_AES, NULL);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_InitCmac", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_InitCmac", rc);
                     ret = 0;
                 }
                 break;
@@ -172,13 +173,13 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
                 rc = wc_HmacSetKey(&mac->state.hmac, mac->type,
                     (const byte*)mac->key, (word32)mac->keySz);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_HmacSetKey", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacSetKey", rc);
                     ret = 0;
                 }
                 break;
 
             default:
-                WOLFENGINE_ERROR_MSG("Unknown mac algo found!");
+                WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "Unknown mac algo found!");
                 ret = 0;
         }
     }
@@ -231,16 +232,17 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     int ret = 1;
     we_mac *mac = NULL;
 
-    WOLFENGINE_ENTER("we_mac_pkey_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_ctrl");
     if (ctx == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_ctrl", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_pkey_ctrl", ctx);
         ret = 0;
     }
 
     if (ret == 1) {
         mac = (we_mac *)EVP_PKEY_CTX_get_data(ctx);
         if (mac == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", mac);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                       "EVP_PKEY_CTX_get_data", mac);
             ret = 0;
         }
     }
@@ -252,14 +254,16 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 if (ptr != NULL && mac->algo == WE_HMAC_ALGO) {
                     mac->type = we_mac_md_to_hash_type((EVP_MD *)ptr);
                     if (mac->type < 0) {
-                        WOLFENGINE_ERROR_FUNC("we_mac_md_to_hash_type",
-                                mac->type);
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_MAC,
+                                              "we_mac_md_to_hash_type",
+                                              mac->type);
                         ret = 0;
                     }
                     else {
                         mac->size = wc_HmacSizeByType(mac->type);
                         if (mac->size <= 0) {
-                            WOLFENGINE_ERROR_FUNC("wc_HmacSizeByType",
+                            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC,
+                                                  "wc_HmacSizeByType",
                                                   mac->size);
                             ret = 0;
                         }
@@ -296,16 +300,16 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
 
             case WE_CTRL_DIGEST_INIT: /* handle digest init */
-                WOLFENGINE_MSG("Doing digest init from ctrl");
+                WOLFENGINE_MSG(WE_LOG_MAC, "Doing digest init from ctrl");
                 ret = we_do_digest_init(ctx, mac);
                 break;
 
             default:
-                WOLFENGINE_MSG("Unsupported HMAC ctrl encountered");
+                WOLFENGINE_MSG(WE_LOG_MAC, "Unsupported HMAC ctrl encountered");
                 ret = 0;
         }
     }
-    WOLFENGINE_LEAVE("we_mac_pkey_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_ctrl", ret);
     return ret;
 }
 
@@ -325,9 +329,10 @@ static int we_mac_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     (void)ctx;
     (void)type;
     (void)value;
-    WOLFENGINE_ENTER("we_mac_pkey_ctrl_str");
-    WOLFENGINE_ERROR_MSG("This function is currently a stub, was not used in test cases");
-    WOLFENGINE_LEAVE("we_mac_pkey_ctrl_str", ret);
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_ctrl_str");
+    WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
+            "This function is currently a stub, was not used in test cases");
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_ctrl_str", ret);
     return ret;
 }
 
@@ -345,17 +350,20 @@ static int we_mac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     ASN1_OCTET_STRING *key;
     we_mac *mac;
 
-    WOLFENGINE_ENTER("we_mac_pkey_keygen");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_keygen");
     if (ctx == NULL || pkey == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_keygen, ctx:  ", ctx);
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_keygen, pkey: ", pkey);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_mac_pkey_keygen, ctx:  ", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_mac_pkey_keygen, pkey: ", pkey);
         ret = 0;
     }
 
     if (ret == 1) {
         mac = (we_mac *)EVP_PKEY_CTX_get_data(ctx);
         if (mac == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", mac);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                       "EVP_PKEY_CTX_get_data", mac);
             ret = 0;
         }
     }
@@ -380,7 +388,7 @@ static int we_mac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         EVP_PKEY_assign(pkey, algo, key);
     }
 
-    WOLFENGINE_LEAVE("we_mac_pkey_keygen", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_keygen", ret);
     return ret;
 }
 
@@ -397,10 +405,12 @@ static int we_mac_pkey_signctx_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mdCtx,
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("wc_mac_pkey_signctx_init");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "wc_mac_pkey_signctx_init");
     if (ctx == NULL || mdCtx == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_signctx_init, ctx: ", ctx);
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_signctx_init, data:", mdCtx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_mac_pkey_signctx_init, ctx: ", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_mac_pkey_signctx_init, data:", mdCtx);
         ret = 0;
     }
 
@@ -413,7 +423,7 @@ static int we_mac_pkey_signctx_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mdCtx,
         EVP_MD_CTX_set_update_fn(mdCtx, fn);
     }
 
-    WOLFENGINE_LEAVE("wc_mac_pkey_signctx_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "wc_mac_pkey_signctx_init", ret);
     return ret;
 }
 
@@ -430,14 +440,14 @@ static we_mac* we_mac_copy(we_mac *src)
     we_mac *mac = NULL;
 
     if (src == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_copy", src);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_copy", src);
         ret = 0;
     }
 
     if (ret == 1) {
         mac = (we_mac *)OPENSSL_zalloc(sizeof(we_mac));
         if (mac == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("OPENSSL_zalloc", mac);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_zalloc", mac);
             ret = 0;
         }
     }
@@ -546,7 +556,8 @@ static int wolfSSL_HmacCopy(Hmac* des, Hmac* src)
 #endif /* WOLFSSL_SHA3 */
 
         default:
-            WOLFENGINE_ERROR_MSG("Unknown/supported hash used with HMAC");
+            WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
+                                 "Unknown/supported hash used with HMAC");
             return 0;
     }
 
@@ -613,15 +624,16 @@ static int we_mac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
     we_mac *dup;
 
     if (dst == NULL || src == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_copy, dst: ", dst);
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_copy, src: ", src);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_pkey_copy, dst: ", dst);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_pkey_copy, src: ", src);
         ret = 0;
     }
 
     if (ret == 1) {
         mac = (we_mac *)EVP_PKEY_CTX_get_data(src);
         if (mac == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", mac);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                       "EVP_PKEY_CTX_get_data", mac);
             ret = 0;
         }
     }
@@ -629,7 +641,7 @@ static int we_mac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
     if (ret == 1) {
         dup = we_mac_copy(mac);
         if (dup == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("we_mac_copy", dup);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_copy", dup);
             ret = 0;
         }
     }
@@ -649,12 +661,12 @@ static int we_mac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
         #endif
 
             default:
-                WOLFENGINE_ERROR_MSG("Unknown/supported MAC algo");
+                WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "Unknown/supported MAC algo");
                 ret = 0;
         }
 
         if (ret != 1) {
-            WOLFENGINE_ERROR_FUNC("wolfSSL_*Copy", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wolfSSL_*Copy", ret);
         }
     }
 
@@ -675,16 +687,18 @@ static void we_mac_pkey_cleanup(EVP_PKEY_CTX *ctx)
     int ret = 1;
     we_mac *mac;
 
-    WOLFENGINE_ENTER("we_mac_pkey_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_cleanup");
     if (ctx == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_mac_pkey_cleanup, ctx: ", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_mac_pkey_cleanup, ctx: ", ctx);
         ret = 0;
     }
 
     if (ret == 1) {
         mac = (we_mac *)EVP_PKEY_CTX_get_data(ctx);
         if (mac == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", mac);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                       "EVP_PKEY_CTX_get_data", mac);
             ret = 0;
         }
     }
@@ -710,7 +724,7 @@ static void we_mac_pkey_cleanup(EVP_PKEY_CTX *ctx)
         }
         OPENSSL_free(mac);
     }
-    WOLFENGINE_LEAVE("we_mac_pkey_cleanup", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_cleanup", ret);
     (void)ret;
 }
 
@@ -731,18 +745,18 @@ static int we_hmac_pkey_init(EVP_PKEY_CTX *ctx)
     int ret = 1, rc;
     we_mac *mac = NULL;
 
-    WOLFENGINE_ENTER("we_hmac_pkey_init");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_init");
 
     mac = we_mac_pkey_init(ctx);
     if (mac == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("wc_mac_pkey_init", mac);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "wc_mac_pkey_init", mac);
         ret = 0;
     }
 
     if (ret == 1) {
         rc = wc_HmacInit(&mac->state.hmac, NULL, INVALID_DEVID);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HmacInit", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacInit", rc);
             ret = 0;
         }
     }
@@ -751,7 +765,7 @@ static int we_hmac_pkey_init(EVP_PKEY_CTX *ctx)
         mac->algo = WE_HMAC_ALGO;
     }
 
-    WOLFENGINE_LEAVE("we_hmac_pkey_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_init", ret);
     return ret;
 }
 
@@ -770,8 +784,10 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     we_mac *mac;
 
     if (ctx == NULL || data == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_hmac_pkey_update, ctx: ", ctx);
-        WOLFENGINE_ERROR_FUNC_NULL("we_hmac_pkey_update, data:", (void*)data);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_hmac_pkey_update, ctx: ", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_hmac_pkey_update, data:", (void*)data);
         ret = 0;
     }
 
@@ -785,7 +801,8 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
         else {
             mac = (we_mac *)EVP_PKEY_CTX_get_data(pkeyCtx);
             if (mac == NULL) {
-                WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", mac);
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                           "EVP_PKEY_CTX_get_data", mac);
                 ret = 0;
             }
         }
@@ -794,7 +811,7 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     if (ret == 1) {
         rc = wc_HmacUpdate(&mac->state.hmac, (const byte*)data, (word32)dataSz);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HmacUpdate", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacUpdate", rc);
             ret = 0;
         }
     }
@@ -831,25 +848,30 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
     int ret = 1, rc;
     we_mac *mac;
 
-    WOLFENGINE_ENTER("we_hmac_pkey_signctx");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_signctx");
     if (ctx == NULL || siglen == NULL || mdCtx == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_hmac_pkey_signctx, ctx:    ", ctx);
-        WOLFENGINE_ERROR_FUNC_NULL("we_hmac_pkey_signctx, siglen: ", siglen);
-        WOLFENGINE_ERROR_FUNC_NULL("we_hmac_pkey_signctx, mdCtx:  ", mdCtx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_hmac_pkey_signctx, ctx:    ", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_hmac_pkey_signctx, siglen: ", siglen);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_hmac_pkey_signctx, mdCtx:  ", mdCtx);
         ret = 0;
     }
 
     if (ret == 1) {
         mac = (we_mac *)EVP_PKEY_CTX_get_data(ctx);
         if (mac == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", mac);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                       "EVP_PKEY_CTX_get_data", mac);
             ret = 0;
         }
     }
 
     if (ret == 1 && sig != NULL) {
         if (*siglen < (size_t)mac->size) {
-            WOLFENGINE_ERROR_MSG("MAC output buffer was too small");
+            WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
+                                 "MAC output buffer was too small");
             ret = 0;
         }
     }
@@ -857,7 +879,7 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
     if (ret == 1 && sig != NULL) {
         rc = wc_HmacFinal(&mac->state.hmac, (byte*)sig);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_HmacFinal", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacFinal", rc);
             ret = 0;
         }
     }
@@ -881,7 +903,8 @@ int we_init_hmac_pkey_meth(void)
 
     we_hmac_pkey_method = EVP_PKEY_meth_new(EVP_PKEY_HMAC, 0);
     if (we_hmac_pkey_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_hmac_pkey_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "EVP_PKEY_meth_new", we_hmac_pkey_method);
         ret = 0;
     }
 
@@ -929,8 +952,10 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     we_mac *mac;
 
     if (ctx == NULL || data == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_cmac_pkey_update, ctx: ", ctx);
-        WOLFENGINE_ERROR_FUNC_NULL("we_cmac_pkey_update, data:", (void*)data);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_cmac_pkey_update, ctx: ", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_cmac_pkey_update, data:", (void*)data);
         ret = 0;
     }
 
@@ -944,7 +969,8 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
         else {
             mac = (we_mac *)EVP_PKEY_CTX_get_data(pkeyCtx);
             if (mac == NULL) {
-                WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", mac);
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                           "EVP_PKEY_CTX_get_data", mac);
                 ret = 0;
             }
         }
@@ -953,7 +979,7 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     if (ret == 1) {
         rc = wc_CmacUpdate(&mac->state.cmac, (const byte*)data, (word32)dataSz);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_CmacUpdate", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_CmacUpdate", rc);
             ret = 0;
         }
     }
@@ -990,25 +1016,29 @@ static int we_cmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
     int ret = 1, rc;
     we_mac *mac;
 
-    WOLFENGINE_ENTER("we_cmac_pkey_signctx");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_pkey_signctx");
     if (ctx == NULL || siglen == NULL || mdCtx == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("we_cmac_pkey_signctx, ctx:    ", ctx);
-        WOLFENGINE_ERROR_FUNC_NULL("we_cmac_pkey_signctx, siglen: ", siglen);
-        WOLFENGINE_ERROR_FUNC_NULL("we_cmac_pkey_signctx, mdCtx:  ", mdCtx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_cmac_pkey_signctx, ctx:    ", ctx);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                    "we_cmac_pkey_signctx, siglen: ", siglen);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "we_cmac_pkey_signctx, mdCtx:  ", mdCtx);
         ret = 0;
     }
 
     if (ret == 1) {
         mac = (we_mac *)EVP_PKEY_CTX_get_data(ctx);
         if (mac == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", mac);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                       "EVP_PKEY_CTX_get_data", mac);
             ret = 0;
         }
     }
 
     if (ret == 1 && sig != NULL) {
         if (*siglen < WC_CMAC_TAG_MIN_SZ) {
-            WOLFENGINE_ERROR_MSG("MAC output buffer was too small");
+            WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "MAC output buffer was too small");
             ret = 0;
         }
     }
@@ -1016,7 +1046,7 @@ static int we_cmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
     if (ret == 1 && sig != NULL) {
         rc = wc_CmacFinal(&mac->state.cmac, (byte*)sig, (word32*)siglen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_CmacFinal", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_CmacFinal", rc);
             ret = 0;
         }
     }
@@ -1026,7 +1056,7 @@ static int we_cmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
         *siglen = WC_CMAC_TAG_MAX_SZ;
     }
 
-    WOLFENGINE_LEAVE("we_cmac_pkey_signctx", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_signctx", ret);
     return ret;
 }
 
@@ -1042,11 +1072,11 @@ static int we_cmac_pkey_init(EVP_PKEY_CTX *ctx)
     int ret = 1;
     we_mac *mac = NULL;
 
-    WOLFENGINE_ENTER("we_cmac_pkey_init");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_pkey_init");
 
     mac = we_mac_pkey_init(ctx);
     if (mac == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("wc_mac_pkey_init", mac);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "wc_mac_pkey_init", mac);
         ret = 0;
     }
 
@@ -1054,7 +1084,7 @@ static int we_cmac_pkey_init(EVP_PKEY_CTX *ctx)
         mac->algo = WE_CMAC_ALGO;
     }
 
-    WOLFENGINE_LEAVE("we_cmac_pkey_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_init", ret);
     return ret;
 }
 
@@ -1080,11 +1110,12 @@ int we_init_cmac_pkey_meth(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_cmac_pkey_meth");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_init_cmac_pkey_meth");
     we_cmac_pkey_method = EVP_PKEY_meth_new(EVP_PKEY_CMAC,
             EVP_PKEY_FLAG_SIGCTX_CUSTOM);
     if (we_cmac_pkey_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_cmac_pkey_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                   "EVP_PKEY_meth_new", we_cmac_pkey_method);
         ret = 0;
     }
 
@@ -1105,7 +1136,7 @@ int we_init_cmac_pkey_meth(void)
         we_cmac_pkey_method = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_cmac_pkey_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_init_cmac_pkey_meth", ret);
     return ret;
 }
 
@@ -1128,7 +1159,7 @@ static void we_cmac_pkey_asn1_free(EVP_PKEY *pkey)
         ASN1_OCTET_STRING_free(key);
     #endif
     }
-    WOLFENGINE_LEAVE("we_cmac_pkey_asn1_free", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_asn1_free", ret);
     (void)ret;
 }
 
@@ -1154,11 +1185,11 @@ int we_init_cmac_pkey_asn1_meth(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_cmac_pkey_asn1_meth");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_init_cmac_pkey_asn1_meth");
     we_cmac_pkey_asn1_method = EVP_PKEY_asn1_new(EVP_PKEY_CMAC, 0, "CMAC",
             "wolfSSL ASN1 CMAC method");
     if (we_cmac_pkey_asn1_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_asn1_new",
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "EVP_PKEY_asn1_new",
                 we_cmac_pkey_asn1_method);
         ret = 0;
     }
@@ -1180,7 +1211,7 @@ int we_init_cmac_pkey_asn1_meth(void)
         we_cmac_pkey_asn1_method = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_cmac_pkey_asn1_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_init_cmac_pkey_asn1_meth", ret);
     return ret;
 }
 #endif /* WE_HAVE_CMAC */
