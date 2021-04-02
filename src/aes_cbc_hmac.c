@@ -465,6 +465,7 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     (EVP_CIPH_FLAG_CUSTOM_CIPHER        | \
      EVP_CIPH_ALWAYS_CALL_INIT          | \
      EVP_CIPH_CBC_MODE                  | \
+     EVP_CIPH_FLAG_DEFAULT_ASN1         | \
      EVP_CIPH_FLAG_AEAD_CIPHER)
 
 /** AES128-CBC HMAC SHA256 EVP cipher method. */

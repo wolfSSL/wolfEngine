@@ -458,6 +458,7 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define DES3_CBC_FLAGS             \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CBC_MODE)
 
 /** DES3-CBC EVP cipher method. */
