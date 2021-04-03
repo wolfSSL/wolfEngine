@@ -1351,13 +1351,13 @@ struct ecdh_method {
 static int we_ecdh_compute_key(void* out, size_t outlen,
                                 const EC_POINT* pub_key, EC_KEY* ecdh,
                                 void*(*KDF)(const void*in, size_t inlen,
-                                    void*out, size_t* outlen)) {
+                                    void*out, size_t* outlen))
+{
     int  ret = 1;
 
     unsigned char* secret = NULL;
     size_t secretLen = 0;
-    size_t inLen, outBufLen;
-    void*  outBuf = NULL;
+    size_t deriveLen;
 
     WOLFENGINE_ENTER("we_ecdh_compute_key");
 
@@ -1370,24 +1370,9 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
         return -1;
 
     if (KDF) {
-        inLen = secretLen;
-        outBufLen= 0;
-        /* get necessary size of buffer */
-        if (KDF(secret, inLen, NULL, &outBufLen)) {
-
-            if ((outBuf = OPENSSL_malloc(outBufLen)) != NULL) {
-
-                if (KDF(secret, inLen, outBuf, &outBufLen)) {
-
-                    XMEMCPY(out, secret, MIN(outlen, outBufLen));
-                    ret = MIN(outlen, outBufLen);
-
-                    OPENSSL_free(outBuf);
-                }
-            }
-            else {
-                ret = -1;
-            }
+        deriveLen= 0;
+        if (KDF(secret, secretLen, out, &deriveLen)) {
+            ret = deriveLen;
         }
         else {
             ret = -1;
@@ -1395,6 +1380,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
     }
     else {
         XMEMCPY(out, secret, MIN(outlen, secretLen));
+        ret = MIN(outlen, secretLen);
     }
     OPENSSL_free(secret);
 

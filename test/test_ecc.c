@@ -1041,22 +1041,20 @@ int test_ecdh_direct(ENGINE *e,void *data)
     PRINT_MSG("test_ecdh_direct");
     err = 0;
 
- #if 0
     if (err == 0) {
         PRINT_MSG("Get ECDH_METHOD from engine");
         method = ENGINE_get_ECDH(e);
         err = method == NULL;
     }
-#endif
 #if defined(WE_HAVE_EC_P256)
-    method  = NULL;
+
     p       = ecc_key_der_256;
     len     = sizeof(ecc_key_der_256);
     peerPrivKey = ecc_peerkey_der_256;
     peerLen = sizeof(ecc_peerkey_der_256);
 
-    PRINT_MSG("P256 key");
     if (err == 0) {
+        PRINT_MSG("test for P256 keys");
         err = (keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, len)) == NULL;
         err = keyA == NULL;
     }
@@ -1076,19 +1074,35 @@ int test_ecdh_direct(ENGINE *e,void *data)
         eckeyB = EVP_PKEY_get1_EC_KEY(keyB);
         err = eckeyB == NULL;
     }
-#if 0
     if (err == 0) {
-        PRINT_MSG("ECDH_set_method");
-        ECDH_set_method(eckeyB, method);
-    }
-#endif
-    if (err == 0) {
-        PRINT_MSG("ECDH_compute_key");
+        PRINT_MSG("Compute shared secret with OpenSSL default method");
         err = ECDH_compute_key(secret, sizeof(secret), pub, eckeyB, NULL);
         err = err == -1;
     }
     if (err == 0) {
+        PRINT_MSG("Compare shared secret with known-answer");
         err = memcmp(ecc_derived_256, secret, sizeof(ecc_derived_256));
+        memset(secret, 0, sizeof(secret));
+        if (err == 0)
+            PRINT_MSG("They matched");
+        err = err != 0;
+    }
+    /* test again with ECDH_METHOD of wolfEngine */
+    if (err == 0) {
+        PRINT_MSG("ECDH_set_method");
+        err = ECDH_set_method(eckeyB, method);
+        err = err != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Compute shared secret with wolfEngine");
+        err = ECDH_compute_key(secret, sizeof(secret), pub, eckeyB, NULL);
+        err = err == -1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Compare shared secret with known-answer");
+        err = memcmp(ecc_derived_256, secret, sizeof(ecc_derived_256));
+        if (err == 0)
+            PRINT_MSG("They matched");
         err = err != 0;
     }
 
@@ -1105,14 +1119,14 @@ int test_ecdh_direct(ENGINE *e,void *data)
 #endif /* WE_HAVE_EC_P256 */
 
 #if defined(WE_HAVE_EC_P384)
-    method  = NULL;
+
     p       = ecc_key_der_384;
     len     = sizeof(ecc_key_der_384);
     peerPrivKey = ecc_peerkey_der_384;
     peerLen = sizeof(ecc_peerkey_der_384);
 
-    PRINT_MSG("P384 key");
     if (err == 0) {
+        PRINT_MSG("test for P384 keys");
         err = (keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, len)) == NULL;
         err = keyA == NULL;
     }
@@ -1132,19 +1146,34 @@ int test_ecdh_direct(ENGINE *e,void *data)
         eckeyB = EVP_PKEY_get1_EC_KEY(keyB);
         err = eckeyB == NULL;
     }
-#if 0
     if (err == 0) {
-        PRINT_MSG("ECDH_set_method");
-        ECDH_set_method(eckeyB, method);
-    }
-#endif
-    if (err == 0) {
-        PRINT_MSG("ECDH_compute_key");
+        PRINT_MSG("Compute shared secret with OpenSSL default method");
         err = ECDH_compute_key(secret, sizeof(secret), pub, eckeyB, NULL);
         err = err == -1;
     }
     if (err == 0) {
+        PRINT_MSG("Compare shared secret with known-answer");
         err = memcmp(ecc_derived_384, secret, sizeof(ecc_derived_384));
+        if (err == 0)
+            PRINT_MSG("They matched");
+        err = err != 0;
+    }
+    /* test again with ECDH_METHOD of wolfEngine */
+    if (err == 0) {
+        PRINT_MSG("ECDH_set_method");
+        err = ECDH_set_method(eckeyB, method);
+        err = err != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Compute shared secret with wolfEngine");
+        err = ECDH_compute_key(secret, sizeof(secret), pub, eckeyB, NULL);
+        err = err == -1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Compare shared secret with known-answer");
+        err = memcmp(ecc_derived_384, secret, sizeof(ecc_derived_384));
+        if (err == 0)
+            PRINT_MSG("They matched");
         err = err != 0;
     }
 
@@ -1152,6 +1181,7 @@ int test_ecdh_direct(ENGINE *e,void *data)
     EVP_PKEY_free(keyB);
     EC_KEY_free(eckeyA);
     EC_KEY_free(eckeyB);
+
 #endif /* WE_HAVE_EC_P384 */
 
     return err;

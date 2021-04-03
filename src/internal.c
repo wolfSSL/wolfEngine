@@ -661,11 +661,11 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_ec_key_meths();
     }
 #endif
-#if defined(WE_HAVE_EC_KEY) && defined(WE_HAVE_ECDH)
+#if defined(WE_HAVE_ECDH)
     if (ret == 1) {
         ret = we_init_ecdh_meth();
     }
-#endif /* WE_HAVE_EC_KEY && WE_HAVE_ECDH */
+#endif /* WE_HAVE_ECDH */
 
 #endif
 
