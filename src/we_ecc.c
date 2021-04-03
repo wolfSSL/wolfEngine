@@ -1592,7 +1592,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
     size_t secretLen = 0;
     size_t deriveLen;
 
-    WOLFENGINE_ENTER("we_ecdh_compute_key");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_ecdh_compute_key");
 
     if (out == NULL || outlen == 0 || pub_key == NULL || ecdh == NULL )
         return -1;
@@ -1629,10 +1629,11 @@ int we_init_ecdh_meth(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_ecdh_meth");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_init_ecdh_meth");
     we_ecdh_method = (ECDH_METHOD*)OPENSSL_zalloc(sizeof(ECDH_METHOD));
     if (we_ecdh_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("ECDH_OpenSSL", we_ecdh_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_ENGINE, "ECDH_OpenSSL",
+                                            we_ecdh_method);
         ret = 0;
     }
 
@@ -1645,7 +1646,7 @@ int we_init_ecdh_meth(void)
         we_ecdh_method = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_ecdh_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_init_ecdh_meth", ret);
     return ret;
 }
 #endif /* WE_HAVE_ECDH */
