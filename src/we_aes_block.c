@@ -1,4 +1,4 @@
-/* aes_block.c
+/* we_aes_block.c
  *
  * Copyright (C) 2006-2019 wolfSSL Inc.
  *
@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "internal.h"
+#include <wolfengine/we_internal.h>
 
 #if defined(WE_HAVE_AESCBC) || defined(WE_HAVE_AESECB)
 
@@ -65,7 +65,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int rc;
     we_AesBlock *aes;
 
-    WOLFENGINE_ENTER("we_aes_cbc_init");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_init");
 
     if ((iv == NULL) && (key == NULL)) {
         ret = 0;
@@ -74,7 +74,8 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if (ret == 1) {
         aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
         if (aes == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_CTX_get_cipher_data", aes);
             ret = 0;
         }
     }
@@ -82,7 +83,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if ((ret == 1) && (!aes->init)) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesInit", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
     }
@@ -98,20 +99,20 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
                               iv, enc ? AES_ENCRYPTION : AES_DECRYPTION);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_AesSetKey", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
                 ret = 0;
             }
         }
         else {
             rc = wc_AesSetIV(&aes->aes, iv);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_AesSetIV", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
                 ret = 0;
             }
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_cbc_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_init", ret);
 
     return ret;
 }
@@ -137,13 +138,14 @@ static int we_aes_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
     int outl = 0;
     int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
-    WOLFENGINE_ENTER("we_aes_cbc_encrypt");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_encrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
         if (noPad) {
             if (aes->over != 0) {
-                WOLFENGINE_ERROR_MSG("No Pad - last encrypt block not full");
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "No Pad - last encrypt block not full");
                 ret = 0;
             }
         }
@@ -181,7 +183,8 @@ static int we_aes_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 rc = wc_AesCbcEncrypt(&aes->aes, out, aes->lastBlock,
                                       AES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_AesCbcEncrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesCbcEncrypt", rc);
                     ret = 0;
                 }
                 /* Data put to output. */
@@ -198,11 +201,10 @@ static int we_aes_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
 
             rc = wc_AesCbcEncrypt(&aes->aes, out, in, l);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_AesCbcEncrypt", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
                 ret = 0;
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -222,7 +224,7 @@ static int we_aes_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
         ret = -1;
     }
 
-    WOLFENGINE_LEAVE("we_aes_cbc_encrypt", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_encrypt", ret);
 
     return ret;
 }
@@ -248,13 +250,14 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
     int outl = 0;
     int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
-    WOLFENGINE_ENTER("we_aes_cbc_decrypt");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_decrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
         if (noPad) {
             if (aes->over != 0) {
-                WOLFENGINE_ERROR_MSG("No Pad - last decrypt block not full");
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "No Pad - last decrypt block not full");
                 ret = 0;
             }
         }
@@ -264,7 +267,8 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
 
             /* Must have a full block over to decrypt. */
             if (aes->over != AES_BLOCK_SIZE) {
-                WOLFENGINE_ERROR_MSG("Padding - last cached decrypt block not "
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "Padding - last cached decrypt block not "
                                      "full");
                 ret = 0;
             }
@@ -273,7 +277,8 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 rc = wc_AesCbcDecrypt(&aes->aes, aes->lastBlock, aes->lastBlock,
                                       AES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_AesCbcDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesCbcDecrypt", rc);
                     ret = 0;
                 }
                 aes->over = 0;
@@ -282,7 +287,7 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 /* Last byte is length of padding. */
                 pad = aes->lastBlock[AES_BLOCK_SIZE - 1];
                 if ((pad == 0) || (pad > AES_BLOCK_SIZE)) {
-                    WOLFENGINE_ERROR_MSG("Padding byte invalid");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Padding byte invalid");
                     ret = 0;
                 }
             }
@@ -293,7 +298,8 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 /* Check padding bytes are all the same. */
                 for (i = outl; (ret == 1) && (i < AES_BLOCK_SIZE - 1); i++) {
                    if (aes->lastBlock[i] != pad) {
-                       WOLFENGINE_ERROR_MSG("Padding byte doesn't different");
+                       WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                            "Padding byte doesn't different");
                        ret = 0;
                    }
                 }
@@ -324,7 +330,8 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 rc = wc_AesCbcDecrypt(&aes->aes, out, aes->lastBlock,
                                       AES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_AesCbcDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesCbcDecrypt", rc);
                     ret = 0;
                 }
                 /* Data put to output. */
@@ -346,12 +353,12 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
             if (l > 0) {
                 rc = wc_AesCbcDecrypt(&aes->aes, out, in, l);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_AesCbcDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesCbcDecrypt", rc);
                     ret = 0;
                 }
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -371,7 +378,7 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
         ret = -1;
     }
 
-    WOLFENGINE_LEAVE("we_aes_cbc_decrypt", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_decrypt", ret);
 
     return ret;
 }
@@ -394,12 +401,13 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     int ret;
     we_AesBlock* aes;
 
-    WOLFENGINE_ENTER("we_aes_cbc_cipher");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_cipher");
 
     /* Get the AES-CBC object to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
     else if (aes->enc) {
@@ -409,7 +417,7 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         ret = we_aes_cbc_decrypt(ctx, aes, out, in, len);
     }
 
-    WOLFENGINE_LEAVE("we_aes_cbc_cipher", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_cipher", ret);
 
     return ret;
 }
@@ -431,7 +439,7 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     we_AesBlock *aes;
     char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
-    WOLFENGINE_ENTER("we_aes_cbc_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_ctrl");
 
     (void)arg;
     (void)ptr;
@@ -439,7 +447,8 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     /* Get the AES-CBC data to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes != NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
     if (ret == 1) {
@@ -447,13 +456,13 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                 ret = 0;
                 break;
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_cbc_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_ctrl", ret);
 
     return ret;
 }
@@ -462,6 +471,7 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define AES_CBC_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CBC_MODE)
 
 /** AES128-CBC EVP cipher method. */
@@ -481,7 +491,7 @@ static int we_init_aescbc_meth(EVP_CIPHER *cipher)
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_aescbc_meth");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aescbc_meth");
 
     ret = EVP_CIPHER_meth_set_iv_length(cipher, AES_IV_SIZE);
     if (ret == 1) {
@@ -500,7 +510,7 @@ static int we_init_aescbc_meth(EVP_CIPHER *cipher)
         ret = EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(we_AesBlock));
     }
 
-    WOLFENGINE_LEAVE("we_init_aescbc_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_aescbc_meth", ret);
 
     return ret;
 }
@@ -514,13 +524,14 @@ int we_init_aescbc_meths()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_aescbc_meths");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aescbc_meths");
 
     /* AES128-CBC */
     we_aes128_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc, AES_BLOCK_SIZE,
                                              AES_128_KEY_SIZE);
     if (we_aes128_cbc_ciph == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-128-CBC",
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_meth_new - AES-128-CBC",
                                    we_aes128_cbc_ciph);
         ret = 0;
     }
@@ -534,7 +545,8 @@ int we_init_aescbc_meths()
                                                  AES_BLOCK_SIZE,
                                                  AES_192_KEY_SIZE);
         if (we_aes192_cbc_ciph == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-192-CBC",
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_meth_new - AES-192-CBC",
                                        we_aes192_cbc_ciph);
             ret = 0;
         }
@@ -549,7 +561,8 @@ int we_init_aescbc_meths()
                                                  AES_BLOCK_SIZE,
                                                  AES_256_KEY_SIZE);
         if (we_aes256_cbc_ciph == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-256-CBC",
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_meth_new - AES-256-CBC",
                                        we_aes256_cbc_ciph);
             ret = 0;
         }
@@ -572,7 +585,7 @@ int we_init_aescbc_meths()
         we_aes256_cbc_ciph = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_aescbc_meths", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_aescbc_meths", ret);
 
     return ret;
 }
@@ -601,20 +614,21 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int rc;
     we_AesBlock *aes;
 
-    WOLFENGINE_ENTER("we_aes_ecb_init");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_init");
 
     (void)iv;
 
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
 
     if ((ret == 1) && ((key == NULL) || (!aes->init))) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesInit", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
     }
@@ -631,12 +645,12 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
                           NULL, enc ? AES_ENCRYPTION : AES_DECRYPTION);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_AesSetKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
             ret = 0;
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_ecb_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_init", ret);
 
     return ret;
 }
@@ -662,13 +676,14 @@ static int we_aes_ecb_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
     int outl = 0;
     int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
-    WOLFENGINE_ENTER("we_aes_ecb_encrypt");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_encrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
         if (noPad) {
             if (aes->over != 0) {
-                WOLFENGINE_ERROR_MSG("No Pad - last encrypt block not full");
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "No Pad - last encrypt block not full");
                 ret = 0;
             }
         }
@@ -706,7 +721,8 @@ static int we_aes_ecb_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 rc = wc_AesEcbEncrypt(&aes->aes, out, aes->lastBlock,
                                       AES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_AesEcbEncrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesEcbEncrypt", rc);
                     ret = 0;
                 }
                 /* Data put to output. */
@@ -723,11 +739,10 @@ static int we_aes_ecb_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
 
             rc = wc_AesEcbEncrypt(&aes->aes, out, in, l);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_AesEcbEncrypt", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesEcbEncrypt", rc);
                 ret = 0;
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -747,7 +762,7 @@ static int we_aes_ecb_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
         ret = -1;
     }
 
-    WOLFENGINE_LEAVE("we_aes_ecb_encrypt", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_encrypt", ret);
 
     return ret;
 }
@@ -773,13 +788,14 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
     int outl = 0;
     int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
-    WOLFENGINE_ENTER("we_aes_ecb_decrypt");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_decrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
         if (noPad) {
             if (aes->over != 0) {
-                WOLFENGINE_ERROR_MSG("No Pad - last decrypt block not full");
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "No Pad - last decrypt block not full");
                 ret = 0;
             }
         }
@@ -789,7 +805,8 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
 
             /* Must have a full block over to decrypt. */
             if (aes->over != AES_BLOCK_SIZE) {
-                WOLFENGINE_ERROR_MSG("Padding - last cached decrypt block not "
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "Padding - last cached decrypt block not "
                                      "full");
                 ret = 0;
             }
@@ -798,7 +815,8 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 rc = wc_AesEcbDecrypt(&aes->aes, aes->lastBlock, aes->lastBlock,
                                       AES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_AesEcbDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesEcbDecrypt", rc);
                     ret = 0;
                 }
                 aes->over = 0;
@@ -807,7 +825,7 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 /* Last byte is length of padding. */
                 pad = aes->lastBlock[AES_BLOCK_SIZE - 1];
                 if ((pad == 0) || (pad > AES_BLOCK_SIZE)) {
-                    WOLFENGINE_ERROR_MSG("Padding byte invalid");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Padding byte invalid");
                     ret = 0;
                 }
             }
@@ -818,7 +836,8 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 /* Check padding bytes are all the same. */
                 for (i = outl; (ret == 1) && (i < AES_BLOCK_SIZE - 1); i++) {
                    if (aes->lastBlock[i] != pad) {
-                       WOLFENGINE_ERROR_MSG("Padding byte doesn't different");
+                       WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                            "Padding byte doesn't different");
                        ret = 0;
                    }
                 }
@@ -849,7 +868,8 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 rc = wc_AesEcbDecrypt(&aes->aes, out, aes->lastBlock,
                                       AES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_AesEcbDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesEcbDecrypt", rc);
                     ret = 0;
                 }
                 /* Data put to output. */
@@ -871,12 +891,12 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
             if (l > 0) {
                 rc = wc_AesEcbDecrypt(&aes->aes, out, in, l);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_AesEcbDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesEcbDecrypt", rc);
                     ret = 0;
                 }
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -896,7 +916,7 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
         ret = -1;
     }
 
-    WOLFENGINE_LEAVE("we_aes_ecb_decrypt", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_decrypt", ret);
 
     return ret;
 }
@@ -919,12 +939,13 @@ static int we_aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     int ret;
     we_AesBlock* aes;
 
-    WOLFENGINE_ENTER("we_aes_ecb_cipher");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_cipher");
 
     /* Get the AES object to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
     else if (aes->enc) {
@@ -934,7 +955,7 @@ static int we_aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         ret = we_aes_ecb_decrypt(ctx, aes, out, in, len);
     }
 
-    WOLFENGINE_LEAVE("we_aes_ecb_cipher", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_cipher", ret);
 
     return ret;
 }
@@ -956,7 +977,7 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     we_AesBlock *aes;
     char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
-    WOLFENGINE_ENTER("we_aes_ecb_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_ctrl");
 
     (void)arg;
     (void)ptr;
@@ -964,7 +985,8 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     /* Get the AES-ECB data to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes != NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", aes);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
     if (ret == 1) {
@@ -972,13 +994,13 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                 ret = 0;
                 break;
         }
     }
 
-    WOLFENGINE_LEAVE("we_aes_ecb_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_ctrl", ret);
 
     return ret;
 }
@@ -987,6 +1009,7 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define AES_ECB_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_ECB_MODE)
 
 /** AES128-ECB EVP cipher method. */
@@ -1006,7 +1029,7 @@ static int we_init_aesecb_meth(EVP_CIPHER *cipher)
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_aesecb_meth");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aesecb_meth");
 
     ret = EVP_CIPHER_meth_set_iv_length(cipher, 0);
     if (ret == 1) {
@@ -1025,7 +1048,7 @@ static int we_init_aesecb_meth(EVP_CIPHER *cipher)
         ret = EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(we_AesBlock));
     }
 
-    WOLFENGINE_LEAVE("we_init_aesecb_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_aesecb_meth", ret);
 
     return ret;
 }
@@ -1039,13 +1062,14 @@ int we_init_aesecb_meths()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_aesecb_meths");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aesecb_meths");
 
     /* AES128-ECB */
     we_aes128_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_128_ecb, AES_BLOCK_SIZE,
                                              AES_128_KEY_SIZE);
     if (we_aes128_ecb_ciph == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-128-ECB",
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_meth_new - AES-128-ECB",
                                    we_aes128_ecb_ciph);
         ret = 0;
     }
@@ -1058,7 +1082,8 @@ int we_init_aesecb_meths()
         we_aes192_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_192_ecb,
             AES_BLOCK_SIZE, AES_192_KEY_SIZE);
         if (we_aes192_ecb_ciph == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-192-ECB",
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_meth_new - AES-192-ECB",
                                        we_aes192_ecb_ciph);
             ret = 0;
         }
@@ -1072,7 +1097,8 @@ int we_init_aesecb_meths()
         we_aes256_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_256_ecb,
             AES_BLOCK_SIZE, AES_256_KEY_SIZE);
         if (we_aes256_ecb_ciph == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_meth_new - AES-256-ECB",
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_meth_new - AES-256-ECB",
                                        we_aes256_ecb_ciph);
             ret = 0;
         }
@@ -1095,7 +1121,7 @@ int we_init_aesecb_meths()
         we_aes256_ecb_ciph = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_aesecb_meths", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_aesecb_meths", ret);
 
     return ret;
 }

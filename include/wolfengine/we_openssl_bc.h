@@ -1,4 +1,4 @@
-/* openssl_bc.h
+/* we_openssl_bc.h
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
@@ -52,6 +52,15 @@
 #define EVP_MD_CTX_new          EVP_MD_CTX_create
 #define EVP_MD_CTX_free         EVP_MD_CTX_destroy
 
+/* getter function was added for PKEY ctx */
+#define EVP_MD_CTX_pkey_ctx(ctx) (ctx)->pctx
+
+/* setter function was added for MD CTX digest update */
+#define EVP_MD_CTX_set_update_fn(ctx, fn) (ctx)->update = (fn)
+
+/* ASN1_STRING_data was renamed to ASN1_STRING_get0_data */
+#define ASN1_STRING_get0_data ASN1_STRING_data
+
 void *OPENSSL_zalloc(size_t num);
 void OPENSSL_clear_free(void *str, size_t num);
 
@@ -102,8 +111,6 @@ int EC_KEY_oct2key(EC_KEY *key, const unsigned char *buf, size_t len,
                    BN_CTX *ctx);
 int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len);
 
-void RSA_get0_key(const RSA *r,
-                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
 RSA_METHOD *RSA_meth_new(const char *name, int flags);
 void RSA_meth_free(RSA_METHOD *meth);
 int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa));
@@ -124,6 +131,18 @@ int RSA_meth_set_priv_dec(RSA_METHOD *meth,
                                            unsigned char *to, RSA *rsa,
                                            int padding));
 int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa));
+int RSA_meth_set_keygen(RSA_METHOD *meth,
+                        int (*keygen) (RSA *rsa, int bits, BIGNUM *e,
+                                       BN_GENCB *cb));
+void RSA_get0_key(const RSA *r,
+                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d);
+void RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q);
+void RSA_get0_crt_params(const RSA *r,
+                         const BIGNUM **dmp1, const BIGNUM **dmq1,
+                         const BIGNUM **iqmp);
+int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d);
+int RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q);
+int RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp);
 
 DH_METHOD *DH_meth_new(const char *name, int flags);
 void DH_meth_free(DH_METHOD *dhm);
@@ -135,6 +154,7 @@ int DH_meth_set_finish(DH_METHOD *dhm, int (*finish) (DH *));
 long DH_get_length(const DH *dh);
 int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);
 int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key);
+DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey);
 
 size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
                                  point_conversion_form_t form,
@@ -150,4 +170,4 @@ const BIGNUM *DH_get0_pub_key(const DH *dh);
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10101000L */
 
-#endif /* OPENSSL_BC_H*/
+#endif /* OPENSSL_BC_H */

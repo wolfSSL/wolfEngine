@@ -255,6 +255,30 @@ then
     fi
 fi
 
+AC_ARG_ENABLE([cmac],
+    [AS_HELP_STRING([--enable-cmac],[Enable CMAC (default: enabled)])],
+    [ ENABLED_CMAC=$enableval ],
+    [ ENABLED_CMAC=yes ]
+    )
+
+if test "$ENABLED_CMAC" = "yes"
+then
+    ENABLED_DIGEST="yes"
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_CMAC -DWE_HAVE_MAC"
+fi
+
+AC_ARG_ENABLE([hmac],
+    [AS_HELP_STRING([--enable-hmac],[Enable HMAC (default: enabled)])],
+    [ ENABLED_HMAC=$enableval ],
+    [ ENABLED_HMAC=yes ]
+    )
+
+if test "$ENABLED_HMAC" = "yes"
+then
+    ENABLED_DIGEST="yes"
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_HMAC -DWE_HAVE_MAC"
+fi
+
 # DES3-CBC
 AC_ARG_ENABLE([des3cbc],
     [AS_HELP_STRING([--enable-des3cbc],[Enable DES3-CBC (default: enabled)])],
@@ -451,6 +475,28 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_ECKEYGEN"
 fi
 
+AC_ARG_ENABLE([p192],
+    [AS_HELP_STRING([--enable-p192],[Enable EC Curve P-192 (default: enabled)])],
+    [ ENABLED_EC_P192=$enableval ],
+    [ ENABLED_EC_P192=$ENABLED_ECC ]
+    )
+
+if test "$ENABLED_EC_P192" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_P192"
+fi
+
+AC_ARG_ENABLE([p224],
+    [AS_HELP_STRING([--enable-p224],[Enable EC Curve P-224 (default: enabled)])],
+    [ ENABLED_EC_P224=$enableval ],
+    [ ENABLED_EC_P224=$ENABLED_ECC ]
+    )
+
+if test "$ENABLED_EC_P224" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_P224"
+fi
+
 AC_ARG_ENABLE([p256],
     [AS_HELP_STRING([--enable-p256],[Enable EC Curve P-256 (default: enabled)])],
     [ ENABLED_EC_P256=$enableval ],
@@ -471,6 +517,17 @@ AC_ARG_ENABLE([p384],
 if test "$ENABLED_EC_P384" = "yes"
 then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_P384"
+fi
+
+AC_ARG_ENABLE([p521],
+    [AS_HELP_STRING([--enable-p521],[Enable EC Curve P-521 (default: enabled)])],
+    [ ENABLED_EC_P521=$enableval ],
+    [ ENABLED_EC_P521=$ENABLED_ECC ]
+    )
+
+if test "$ENABLED_EC_P521" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EC_P521"
 fi
 
 
@@ -555,6 +612,8 @@ echo "   *  - SHA3-224:                $ENABLED_SHA3_224"
 echo "   *  - SHA3-256:                $ENABLED_SHA3_256"
 echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
 echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
+echo "   * HMAC:                       $ENABLED_HMAC"
+echo "   * CMAC:                       $ENABLED_CMAC"
 echo "   * Random:                     $ENABLED_RAND"
 echo "   * RSA:                        $ENABLED_RSA"
 echo "   * DH:                         $ENABLED_DH"
@@ -570,8 +629,11 @@ echo "   *  - EC_KEY:                  $ENABLED_EC_KEY"
 echo "   *  - ECDSA:                   $ENABLED_ECDSA"
 echo "   *  - EC Key Gen:              $ENABLED_ECKG"
 echo "   *  - ECDH:                    $ENABLED_ECDH"
+echo "   *  - P-192:                   $ENABLED_EC_P192"
+echo "   *  - P-224:                   $ENABLED_EC_P224"
 echo "   *  - P-256:                   $ENABLED_EC_P256"
 echo "   *  - P-384:                   $ENABLED_EC_P384"
+echo "   *  - P-521:                   $ENABLED_EC_P521"
 echo ""
 echo "---"
 

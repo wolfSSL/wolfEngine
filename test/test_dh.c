@@ -60,7 +60,7 @@ int test_dh(ENGINE *e, void *data)
 
     (void)data;
 
-    PRINT_MSG("Generate a DH key-pair with OpenSSL");  
+    PRINT_MSG("Generate a DH key pair with OpenSSL");
     dhOpenSSL = DH_new();
     err = dhOpenSSL == NULL;
     if (err == 0) {
@@ -79,7 +79,7 @@ int test_dh(ENGINE *e, void *data)
     }
 
     if (err == 0) {
-        PRINT_MSG("Generate a DH key-pair with wolfEngine");
+        PRINT_MSG("Generate a DH key pair with wolfEngine");
         dhWolfEngine = DH_new();
         err = dhWolfEngine == NULL;
     }
@@ -147,5 +147,128 @@ int test_dh(ENGINE *e, void *data)
 
     return err;
 }
+
+#ifdef WE_HAVE_EVP_PKEY
+
+int test_dh_pkey(ENGINE *e, void *data)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *params = NULL;
+    EVP_PKEY *keyOpenSSL = NULL;
+    EVP_PKEY *keyWolfEngine = NULL;
+    unsigned char *secretOpenSSL = NULL;
+    size_t secretLenOpenSSL = 0;
+    unsigned char *secretWolfEngine = NULL;
+    size_t secretLenWolfEngine = 0;
+
+    (void)data;
+
+    /* TODO: Test key gen with setting params explicitly via ctrl commands. */
+
+    PRINT_MSG("Generate DH parameters and key pair with wolfEngine");
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, e)) == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_paramgen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_paramgen(ctx, &params) != 1;
+    }
+    if (err == 0) {
+        EVP_PKEY_CTX_free(ctx);
+        ctx = EVP_PKEY_CTX_new(params, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &keyWolfEngine) != 1;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Generate DH key pair with OpenSSL and params from "
+                  "wolfEngine");
+        EVP_PKEY_CTX_free(ctx);
+        ctx = EVP_PKEY_CTX_new(params, NULL);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &keyOpenSSL) != 1;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Compute shared secret with OpenSSL private key and "
+                  "wolfEngine public key.");
+        EVP_PKEY_CTX_free(ctx);
+        ctx = EVP_PKEY_CTX_new(keyOpenSSL, NULL);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_init(ctx) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_set_peer(ctx, keyWolfEngine) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive(ctx, NULL, &secretLenOpenSSL) <= 0;
+    }
+    if (err == 0) {
+        secretOpenSSL = (unsigned char*)OPENSSL_malloc(secretLenOpenSSL);
+        err = secretOpenSSL == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive(ctx, secretOpenSSL, &secretLenOpenSSL) <= 0;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Compute shared secret with wolfEngine private key and "
+                  "OpenSSL public key.");
+        EVP_PKEY_CTX_free(ctx);
+        ctx = EVP_PKEY_CTX_new(keyWolfEngine, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_init(ctx) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_set_peer(ctx, keyOpenSSL) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive(ctx, NULL, &secretLenWolfEngine) <= 0;
+    }
+    if (err == 0) {
+        secretWolfEngine = (unsigned char*)OPENSSL_malloc(secretLenWolfEngine);
+        err = secretWolfEngine == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive(ctx, secretWolfEngine, &secretLenWolfEngine) <= 0;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Ensure shared secrets are the same.");
+        err = secretLenOpenSSL != secretLenWolfEngine;
+    }
+    if (err == 0) {
+        err = memcmp(secretOpenSSL, secretWolfEngine, secretLenOpenSSL) != 0;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(params);
+    EVP_PKEY_free(keyOpenSSL);
+    EVP_PKEY_free(keyWolfEngine);
+
+    if (secretWolfEngine != NULL)
+        OPENSSL_free(secretWolfEngine);
+    if (secretOpenSSL != NULL)
+        OPENSSL_free(secretOpenSSL);
+
+    return err;
+}
+
+#endif /* WE_HAVE_EVP_PKEY */
 
 #endif /* WE_HAVE_DH */

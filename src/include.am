@@ -3,19 +3,20 @@
 # All paths should be given relative to the root
 
 libwolfengine_la_SOURCES =
-libwolfengine_la_SOURCES += src/aes_block.c
-libwolfengine_la_SOURCES += src/aes_cbc_hmac.c
-libwolfengine_la_SOURCES += src/aes_ccm.c
-libwolfengine_la_SOURCES += src/aes_ctr.c
-libwolfengine_la_SOURCES += src/aes_gcm.c
-libwolfengine_la_SOURCES += src/des3_cbc.c
-libwolfengine_la_SOURCES += src/dh.c
-libwolfengine_la_SOURCES += src/digest.c
-libwolfengine_la_SOURCES += src/ecc.c
-libwolfengine_la_SOURCES += src/internal.c
-libwolfengine_la_SOURCES += src/openssl_bc.c
-libwolfengine_la_SOURCES += src/random.c
-libwolfengine_la_SOURCES += src/rsa.c
+libwolfengine_la_SOURCES += src/we_aes_block.c
+libwolfengine_la_SOURCES += src/we_aes_cbc_hmac.c
+libwolfengine_la_SOURCES += src/we_aes_ccm.c
+libwolfengine_la_SOURCES += src/we_aes_ctr.c
+libwolfengine_la_SOURCES += src/we_aes_gcm.c
+libwolfengine_la_SOURCES += src/we_des3_cbc.c
+libwolfengine_la_SOURCES += src/we_dh.c
+libwolfengine_la_SOURCES += src/we_digest.c
+libwolfengine_la_SOURCES += src/we_mac.c
+libwolfengine_la_SOURCES += src/we_ecc.c
+libwolfengine_la_SOURCES += src/we_internal.c
+libwolfengine_la_SOURCES += src/we_openssl_bc.c
+libwolfengine_la_SOURCES += src/we_random.c
+libwolfengine_la_SOURCES += src/we_rsa.c
 libwolfengine_la_SOURCES += src/we_logging.c
-libwolfengine_la_SOURCES += src/wolfengine.c
+libwolfengine_la_SOURCES += src/we_wolfengine.c
 

@@ -1,4 +1,4 @@
-/* internal.h
+/* we_internal.h
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
@@ -37,6 +37,7 @@
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/hmac.h>
+#include <wolfssl/wolfcrypt/cmac.h>
 #include <wolfssl/wolfcrypt/sha.h>
 #include <wolfssl/wolfcrypt/sha256.h>
 #include <wolfssl/wolfcrypt/aes.h>
@@ -49,8 +50,9 @@
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/random.h>
 
-#include "openssl_bc.h"
-#include "we_logging.h"
+#include <wolfengine/we_openssl_bc.h>
+
+#include <wolfengine/we_logging.h>
 
 /*
  * Global random
@@ -95,6 +97,7 @@ int we_init_sha3_384_meth(void);
 extern EVP_MD *we_sha3_512_md;
 int we_init_sha3_512_meth(void);
 
+int we_nid_to_wc_hash_type(int nid);
 int we_nid_to_wc_hash_oid(int nid);
 
 /*
@@ -141,17 +144,44 @@ int we_init_aesccm_meths(void);
 extern RAND_METHOD* we_random_method;
 
 /*
+ * HMAC methods.
+ */
+
+#ifdef WE_HAVE_HMAC
+
+extern EVP_PKEY_METHOD *we_hmac_pkey_method;
+
+int we_init_hmac_pkey_meth(void);
+
+#endif /* WE_HAVE_HMAC */
+
+/*
+ * CMAC methods.
+ */
+
+#ifdef WE_HAVE_HMAC
+
+extern EVP_PKEY_METHOD *we_cmac_pkey_method;
+extern EVP_PKEY_ASN1_METHOD *we_cmac_pkey_asn1_method;
+
+int we_init_cmac_pkey_meth(void);
+int we_init_cmac_pkey_asn1_meth(void);
+
+#endif /* WE_HAVE_CMAC */
+
+/*
  * DH method.
  */
 
 #ifdef WE_HAVE_DH
 
 extern DH_METHOD *we_dh_method;
-
 int we_init_dh_meth(void);
 
-#endif /* WE_HAVE_DH */
+extern EVP_PKEY_METHOD *we_dh_pkey_method;
+int we_init_dh_pkey_meth(void);
 
+#endif /* WE_HAVE_DH */
 
 /*
  * RSA methods.
@@ -185,8 +215,11 @@ int we_init_ecdh_meth(void);
 extern EC_KEY_METHOD *we_ec_key_method;
 #endif
 extern EVP_PKEY_METHOD *we_ec_method;
+extern EVP_PKEY_METHOD *we_ec_p192_method;
+extern EVP_PKEY_METHOD *we_ec_p224_method;
 extern EVP_PKEY_METHOD *we_ec_p256_method;
 extern EVP_PKEY_METHOD *we_ec_p384_method;
+extern EVP_PKEY_METHOD *we_ec_p521_method;
 int we_init_ecc_meths(void);
 int we_init_ec_key_meths(void);
 

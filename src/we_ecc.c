@@ -1,4 +1,4 @@
-/* ecc.c
+/* we_ecc.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "internal.h"
+#include <wolfengine/we_internal.h>
 
 #ifdef WE_HAVE_ECC
 /*
@@ -37,28 +37,46 @@ static int we_ec_get_curve_id(int curveName, int *curveId)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_ec_get_curve_id");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_get_curve_id");
 
     switch (curveName) {
+#ifdef WE_HAVE_EC_P192
+        case NID_X9_62_prime192v1:
+            WOLFENGINE_MSG(WE_LOG_PK, "Set P-192");
+            *curveId = ECC_SECP192R1;
+            break;
+#endif
+#ifdef WE_HAVE_EC_P224
+        case NID_secp224r1:
+            WOLFENGINE_MSG(WE_LOG_PK, "Set P-224");
+            *curveId = ECC_SECP224R1;
+            break;
+#endif
 #ifdef WE_HAVE_EC_P256
         case NID_X9_62_prime256v1:
-            WOLFENGINE_MSG("Set P-256");
+            WOLFENGINE_MSG(WE_LOG_PK, "Set P-256");
             *curveId = ECC_SECP256R1;
             break;
 #endif
 #ifdef WE_HAVE_EC_P384
         case NID_secp384r1:
-            WOLFENGINE_MSG("Set P-384");
+            WOLFENGINE_MSG(WE_LOG_PK, "Set P-384");
             *curveId = ECC_SECP384R1;
             break;
 #endif
+#ifdef WE_HAVE_EC_P521
+        case NID_secp521r1:
+            WOLFENGINE_MSG(WE_LOG_PK, "Set P-521");
+            *curveId = ECC_SECP521R1;
+            break;
+#endif
         default:
-            WOLFENGINE_ERROR_MSG("Unsupported ECC curve name");
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unsupported ECC curve name");
             ret = 0;
             break;
     }
 
-    WOLFENGINE_LEAVE("we_ec_get_curve_id", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_get_curve_id", ret);
 
     return ret;
 }
@@ -77,12 +95,12 @@ static int we_ec_set_private(ecc_key *key, int curveId, const EC_KEY *ecKey)
     size_t privLen = 0;
     unsigned char* privBuf = NULL;
 
-    WOLFENGINE_ENTER("we_ec_set_private");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_set_private");
 
     /* Get the EC key private key as binary data. */
     privLen = EC_KEY_priv2buf(ecKey, &privBuf);
     if (privLen <= 0) {
-        WOLFENGINE_ERROR_FUNC("EC_KEY_priv2buf", (int)privLen);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EC_KEY_priv2buf", (int)privLen);
         ret = 0;
     }
     /* Import private key. */
@@ -90,7 +108,8 @@ static int we_ec_set_private(ecc_key *key, int curveId, const EC_KEY *ecKey)
         rc = wc_ecc_import_private_key_ex(privBuf, (word32)privLen, NULL, 0,
                                           key, curveId);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_import_private_key_ex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                  "wc_ecc_import_private_key_ex", rc);
             ret = 0;
         }
     }
@@ -100,7 +119,7 @@ static int we_ec_set_private(ecc_key *key, int curveId, const EC_KEY *ecKey)
         OPENSSL_clear_free(privBuf, privLen);
     }
 
-    WOLFENGINE_LEAVE("we_ec_set_private", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_set_private", ret);
 
     return ret;
 }
@@ -121,13 +140,13 @@ static int we_ec_set_public(ecc_key *key, int curveId, EC_KEY *ecKey)
     unsigned char* x;
     unsigned char* y;
 
-    WOLFENGINE_ENTER("we_ec_set_public");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_set_public");
 
     /* Get the EC key public key as and uncompressed point. */
     pubLen = EC_KEY_key2buf(ecKey, POINT_CONVERSION_UNCOMPRESSED, &pubBuf,
                             NULL);
     if (pubLen <= 0) {
-        WOLFENGINE_ERROR_FUNC("EC_KEY_key2buf", (int)pubLen);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EC_KEY_key2buf", (int)pubLen);
         ret = 0;
     }
 
@@ -138,14 +157,14 @@ static int we_ec_set_public(ecc_key *key, int curveId, EC_KEY *ecKey)
         y = x + ((pubLen - 1) / 2);
         rc = wc_ecc_import_unsigned(key, x, y, NULL, curveId);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_import_unsigned", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_import_unsigned", rc);
             ret = 0;
         }
     }
 
     OPENSSL_free(pubBuf);
 
-    WOLFENGINE_LEAVE("we_ec_set_public", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_set_public", ret);
 
     return ret;
 }
@@ -164,7 +183,7 @@ static int we_ec_export_key(ecc_key *ecc, int len, EC_KEY *key)
     unsigned char *buf = NULL;
     unsigned char *d = NULL;
 
-    WOLFENGINE_ENTER("we_ec_export_key");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_export_key");
 
     /* Allocate buffer to hold private and public key data. */
     ret = (buf = (unsigned char *)OPENSSL_malloc(len * 3 + 1)) != NULL;
@@ -179,7 +198,7 @@ static int we_ec_export_key(ecc_key *ecc, int len, EC_KEY *key)
         /* Export public and private key data. */
         rc = wc_ecc_export_private_raw(ecc, x, &xLen, y, &yLen, d, &dLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_export_private", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_export_private", rc);
             ret = 0;
         }
     }
@@ -188,14 +207,14 @@ static int we_ec_export_key(ecc_key *ecc, int len, EC_KEY *key)
         buf[0] = ECC_POINT_UNCOMP;
         ret = EC_KEY_oct2key(key, buf, len * 2 + 1, NULL);
         if (ret == 0) {
-            WOLFENGINE_ERROR_FUNC("EC_KEY_oct2key", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EC_KEY_oct2key", ret);
         }
     }
     if (ret == 1) {
         /* Import private key. */
         ret = EC_KEY_oct2priv(key, d, len);
         if (ret == 0) {
-            WOLFENGINE_ERROR_FUNC("EC_KEY_oct2priv", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EC_KEY_oct2priv", ret);
         }
     }
 
@@ -203,7 +222,7 @@ static int we_ec_export_key(ecc_key *ecc, int len, EC_KEY *key)
         OPENSSL_clear_free(buf, len * 3 + 1);
     }
 
-    WOLFENGINE_LEAVE("we_ec_export_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_export_key", ret);
 
     return ret;
 }
@@ -252,7 +271,7 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
     we_Ecc *ecc;
     int keyInited = 0;
 
-    WOLFENGINE_ENTER("we_ec_init");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_init");
 
     /* Allocate a new internal EC object. */
     ret = (ecc = (we_Ecc*)OPENSSL_zalloc(sizeof(we_Ecc))) != NULL;
@@ -262,7 +281,7 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
         if (rc == 0) {
             keyInited = 1;
         } else {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
             ret = 0;
         }
     }
@@ -272,7 +291,7 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
         /* Set the random number generator for use in EC operations. */
         rc = wc_ecc_set_rng(&ecc->key, we_rng);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_set_rng", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_set_rng", rc);
             ret = 0;
         }
     }
@@ -291,12 +310,90 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
         OPENSSL_free(ecc);
     }
 
-    WOLFENGINE_LEAVE("we_ec_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_init", ret);
 
     return ret;
 }
 
 #ifdef WE_HAVE_ECKEYGEN
+
+#ifdef WE_HAVE_EC_P192
+/**
+ * Initialize and set the data required to complete an EC P-192 operation.
+ *
+ * @param  ctx  [in]  Public key context of operation.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_ec_p192_init(EVP_PKEY_CTX *ctx)
+{
+    int ret;
+    we_Ecc *ecc;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p192_init");
+
+    /* Create the internal EC object in context. */
+    ret = we_ec_init(ctx);
+    if (ret == 1) {
+        /* Get the internal EC object. */
+        ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+        /* Setup P-192 curve. */
+        ecc->curveId = ECC_SECP192R1;
+        ecc->curveName = NID_X9_62_prime192v1;
+        ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
+        if (ecc->group == NULL) {
+            /* Failed - free allocated data. */
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
+                                       ecc->group);
+            wc_ecc_free(&ecc->key);
+            OPENSSL_free(ecc);
+            ret = 0;
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_p192_init", ret);
+
+    return ret;
+}
+#endif
+#ifdef WE_HAVE_EC_P224
+/**
+ * Initialize and set the data required to complete an EC P-224 operation.
+ *
+ * @param  ctx  [in]  Public key context of operation.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_ec_p224_init(EVP_PKEY_CTX *ctx)
+{
+    int ret;
+    we_Ecc *ecc;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p224_init");
+
+    /* Create the internal EC object in context. */
+    ret = we_ec_init(ctx);
+    if (ret == 1) {
+        /* Get the internal EC object. */
+        ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+        /* Setup P-224 curve. */
+        ecc->curveId = ECC_SECP224R1;
+        ecc->curveName = NID_secp224r1;
+        ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
+        if (ecc->group == NULL) {
+            /* Failed - free allocated data. */
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
+                                       ecc->group);
+            wc_ecc_free(&ecc->key);
+            OPENSSL_free(ecc);
+            ret = 0;
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_p224_init", ret);
+
+    return ret;
+}
+#endif
+
 #ifdef WE_HAVE_EC_P256
 /**
  * Initialize and set the data required to complete an EC P-256 operations.
@@ -309,7 +406,7 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
     int ret;
     we_Ecc *ecc;
 
-    WOLFENGINE_ENTER("we_ec_p256_init");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p256_init");
 
     /* Create the internal EC object in context. */
     ret = we_ec_init(ctx);
@@ -322,7 +419,7 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
         if (ecc->group == NULL) {
             /* Failed - free allocated data. */
-            WOLFENGINE_ERROR_FUNC_NULL("EC_GROUP_new_by_curve_name",
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             wc_ecc_free(&ecc->key);
             OPENSSL_free(ecc);
@@ -330,7 +427,7 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
         }
     }
 
-    WOLFENGINE_LEAVE("we_ec_p256_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_p256_init", ret);
 
     return ret;
 }
@@ -348,7 +445,7 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
     int ret;
     we_Ecc *ecc;
 
-    WOLFENGINE_ENTER("we_ec_p384_init");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p384_init");
 
     /* Create the internal EC object in context. */
     ret = we_ec_init(ctx);
@@ -361,7 +458,7 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
         if (ecc->group == NULL) {
             /* Failed - free allocated data. */
-            WOLFENGINE_ERROR_FUNC_NULL("EC_GROUP_new_by_curve_name",
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             wc_ecc_free(&ecc->key);
             OPENSSL_free(ecc);
@@ -369,7 +466,47 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
         }
     }
 
-    WOLFENGINE_LEAVE("we_ec_p384_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_p384_init", ret);
+
+    return ret;
+}
+
+#endif
+
+#ifdef WE_HAVE_EC_P521
+/**
+ * Initialize and set the data required to complete an EC P-521 operations.
+ *
+ * @param  ctx  [in]  Public key context of operation.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_ec_p521_init(EVP_PKEY_CTX *ctx)
+{
+    int ret;
+    we_Ecc *ecc;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p521_init");
+
+    /* Create the internal EC object in context. */
+    ret = we_ec_init(ctx);
+    if (ret == 1) {
+        /* Get the internal EC object. */
+        ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+        /* Setup P-521 curve. */
+        ecc->curveId = ECC_SECP521R1;
+        ecc->curveName = NID_secp521r1;
+        ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
+        if (ecc->group == NULL) {
+            /* Failed - free allocated data. */
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
+                                       ecc->group);
+            wc_ecc_free(&ecc->key);
+            OPENSSL_free(ecc);
+            ret = 0;
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_p521_init", ret);
 
     return ret;
 }
@@ -390,13 +527,13 @@ static int we_ec_copy(EVP_PKEY_CTX *dst, const EVP_PKEY_CTX *src)
 static int we_ec_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 #endif
 {
-    WOLFENGINE_ENTER("we_ec_copy");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_copy");
 
     /* Nothing to copy as src is empty. */
     (void)src;
     (void)dst;
 
-    WOLFENGINE_LEAVE("we_ec_copy", 1);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_copy", 1);
 
     return 1;
 }
@@ -410,7 +547,7 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
 {
     we_Ecc *ecc;
 
-    WOLFENGINE_ENTER("we_ec_cleanup");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_cleanup");
     
     ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
     if (ecc != NULL) {
@@ -427,7 +564,7 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
         EVP_PKEY_CTX_set_data(ctx, NULL);
     }
 
-    WOLFENGINE_LEAVE("we_ec_cleanup", 1);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_cleanup", 1);
 }
 
 #if defined(WE_HAVE_ECDSA) || defined(WE_HAVE_ECDH)
@@ -445,7 +582,7 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
     EVP_PKEY *pkey;
     const EC_GROUP *group;
 
-    WOLFENGINE_ENTER("we_ec_get_ec_key");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_get_ec_key");
 
     /* Get the EVP_PKEY object performing operation with. */
     ret = (pkey = EVP_PKEY_CTX_get0_pkey(ctx)) != NULL;
@@ -461,7 +598,8 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
         /* Retrieve group parameters to setup curve in wolfSSL object. */
         group = EC_KEY_get0_group(*ecKey);
         if (group == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EC_KEY_get0_group", (EC_GROUP*)group);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_KEY_get0_group",
+                                       (EC_GROUP*)group);
             ret = 0;
         }
     }
@@ -471,7 +609,7 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
                                   &ecc->curveId);
     }
 
-    WOLFENGINE_LEAVE("we_ec_get_ec_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_get_ec_key", ret);
 
     return ret;
 }
@@ -497,7 +635,7 @@ static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
     we_Ecc *ecc;
     EC_KEY *ecKey = NULL;
 
-    WOLFENGINE_ENTER("we_ecdsa_sign");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_sign");
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -524,7 +662,7 @@ static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
         rc = wc_ecc_sign_hash(tbs, (word32)tbsLen, sig, &outLen, we_rng,
                               &ecc->key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_sign_hash", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash", rc);
             ret = 0;
         }
         if (ret == 1) {
@@ -533,7 +671,7 @@ static int we_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sigLen,
         }
     }
 
-    WOLFENGINE_LEAVE("we_ecdsa_sign", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_sign", ret);
 
     return ret;
 }
@@ -557,7 +695,7 @@ static int we_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     EC_KEY *ecKey = NULL;
     int res;
 
-    WOLFENGINE_ENTER("we_ecdsa_verify");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_verify");
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -578,7 +716,7 @@ static int we_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         rc = wc_ecc_verify_hash(sig, (word32)sigLen, tbs, (word32)tbsLen, &res,
                                 &ecc->key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_verify_hash", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
             ret = 0;
         }
     }
@@ -587,7 +725,7 @@ static int we_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         ret = res;
     }
 
-    WOLFENGINE_LEAVE("we_ecdsa_verify", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_verify", ret);
 
     return ret;
 }
@@ -609,14 +747,15 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     EVP_PKEY *ctxPkey;
     int len = 0;
 
-    WOLFENGINE_ENTER("we_ec_keygen");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_keygen");
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
     if (ret == 1) {
         len = wc_ecc_get_curve_size_from_id(ecc->curveId);
         if (len < 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_get_curve_size_from_id", len);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                  "wc_ecc_get_curve_size_from_id", len);
         }
 
         ctxPkey = EVP_PKEY_CTX_get0_pkey(ctx);
@@ -630,7 +769,7 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         /* EVP_PKEY object needs an EC_KEY object. */
         ret = EVP_PKEY_assign_EC_KEY(pkey, ecKey);
         if (ret == 0) {
-            WOLFENGINE_ERROR_FUNC("EVP_PKEY_assign_EC_KEY", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EVP_PKEY_assign_EC_KEY", ret);
             EC_KEY_free(ecKey);
         }
     }
@@ -650,7 +789,7 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         /* Generate a new EC key with wolfSSL. */
         rc = wc_ecc_make_key_ex(we_rng, len, &ecc->key, ecc->curveId);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_make_key_ex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_make_key_ex", rc);
             ret = 0;
         }
     }
@@ -663,7 +802,7 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         ret = we_ec_export_key(&ecc->key, len, ecKey);
     }
 
-    WOLFENGINE_LEAVE("we_ec_keygen", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_keygen", ret);
 
     return ret;
 }
@@ -687,7 +826,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
     word32 len = (word32)*keyLen;
     ecc_key peer;
 
-    WOLFENGINE_ENTER("we_ecdh_derive");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdh_derive");
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -708,7 +847,8 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
         /* Return secret size in bytes. */
         rc = wc_ecc_get_curve_size_from_id(ecc->curveId);
         if (rc < 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_get_curve_size_from_id", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                  "wc_ecc_get_curve_size_from_id", rc);
         } else {
             *keyLen = (size_t)rc;
         }
@@ -717,7 +857,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
         /* Create a new wolfSSL ECC key and set peer's public key. */
         rc = wc_ecc_init(&peer);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
             ret = 0;
         } else {
             /* Format of peer's public key point:
@@ -729,7 +869,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
             /* Import public key into wolfSSL object. */
             rc = wc_ecc_import_unsigned(&peer, x, y, NULL, ecc->curveId);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_ecc_import_unsigned", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_import_unsigned", rc);
                 ret = 0;
             }
 
@@ -737,7 +877,8 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                 /* Calculate shared secret using wolfSSL. */
                 rc = wc_ecc_shared_secret(&ecc->key, &peer, key, &len);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_ecc_shared_secret", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                          "wc_ecc_shared_secret", rc);
                     ret = 0;
                 }
             }
@@ -751,7 +892,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
         }
     }
 
-    WOLFENGINE_LEAVE("we_ecdh_derive", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdh_derive", ret);
 
     return ret;
 }
@@ -781,11 +922,11 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     (void)num;
     (void)ptr;
 
-    WOLFENGINE_ENTER("we_ec_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_ctrl");
 
     ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
     if (ecc == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_CTX_get_data", ecc);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", ecc);
         ret = 0;
     }
 
@@ -794,20 +935,21 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         #ifdef WE_HAVE_ECDSA
             /* Keep a copy of the digest object. */
             case EVP_PKEY_CTRL_MD:
-                WOLFENGINE_MSG("received type: EVP_PKEY_CTRL_MD");
+                WOLFENGINE_MSG(WE_LOG_PK, "received type: EVP_PKEY_CTRL_MD");
                 ecc->md = (EVP_MD*)ptr;
                 break;
 
             /* Initialize digest. */
             case EVP_PKEY_CTRL_DIGESTINIT:
-                WOLFENGINE_MSG("received type: EVP_PKEY_CTRL_DIGEST");
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "received type: EVP_PKEY_CTRL_DIGEST");
                 break;
         #endif
 
         #ifdef WE_HAVE_ECKEYGEN
             /* Set the group to use. */
             case EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID:
-                WOLFENGINE_MSG(
+                WOLFENGINE_MSG(WE_LOG_PK, 
                         "received type: EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID");
                 ecc->curveName = num;
                 /* Get wolfSSL EC id from NID. */
@@ -824,7 +966,8 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         #ifdef WE_HAVE_ECDH
             /* Set the peer key (public key from peer). */
             case EVP_PKEY_CTRL_PEER_KEY:
-                WOLFENGINE_MSG("received type: EVP_PKEY_CTRL_PEER_KEY");
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "received type: EVP_PKEY_CTRL_PEER_KEY");
                 peerKey = (EVP_PKEY *)ptr;
                 /* Get the OpenSSL EC_KEY object. */
             #if OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -850,13 +993,13 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
                 ret = 0;
                 break;
         }
     }
 
-    WOLFENGINE_LEAVE("we_ec_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_ctrl", ret);
 
     return ret;
 }
@@ -864,6 +1007,14 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 /** EVP public key method - EC using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_ec_method = NULL;
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+/** EVP public key method - EC P-192 using wolfSSL for the implementation. */
+EVP_PKEY_METHOD *we_ec_p192_method = NULL;
+#endif
+#ifdef WE_HAVE_EC_P224
+/** EVP public key method - EC P-224 using wolfSSL for the implementation. */
+EVP_PKEY_METHOD *we_ec_p224_method = NULL;
+#endif
 #ifdef WE_HAVE_EC_P256
 /** EVP public key method - EC P-256 using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_ec_p256_method = NULL;
@@ -871,6 +1022,10 @@ EVP_PKEY_METHOD *we_ec_p256_method = NULL;
 #ifdef WE_HAVE_EC_P384
 /** EVP public key method - EC P-384 using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_ec_p384_method = NULL;
+#endif
+#ifdef WE_HAVE_EC_P521
+/** EVP public key method - EC P-521 using wolfSSL for the implementation. */
+EVP_PKEY_METHOD *we_ec_p521_method = NULL;
 #endif
 #endif
 
@@ -883,11 +1038,12 @@ int we_init_ecc_meths(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_ecc_meths");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_init_ecc_meths");
 
     we_ec_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
     if (we_ec_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_ec_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
+                                   "EVP_PKEY_meth_new", we_ec_method);
         ret = 0;
     } else {
         EVP_PKEY_meth_set_init(we_ec_method, we_ec_init);
@@ -909,11 +1065,48 @@ int we_init_ecc_meths(void)
     }
 
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+    if (ret == 1) {
+        we_ec_p192_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
+        if (we_ec_p192_method == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_meth_new",
+                                       we_ec_p192_method);
+            ret = 0;
+        } else {
+            EVP_PKEY_meth_set_init(we_ec_p192_method, we_ec_p192_init);
+            EVP_PKEY_meth_set_copy(we_ec_p192_method, we_ec_copy);
+            EVP_PKEY_meth_set_cleanup(we_ec_p192_method, we_ec_cleanup);
+
+            EVP_PKEY_meth_set_keygen(we_ec_p192_method, NULL, we_ec_keygen);
+
+            EVP_PKEY_meth_set_ctrl(we_ec_p192_method, we_ec_ctrl, NULL);
+        }
+    }
+#endif
+#ifdef WE_HAVE_EC_P224
+    if (ret == 1) {
+        we_ec_p224_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
+        if (we_ec_p224_method == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_meth_new",
+                                       we_ec_p224_method);
+            ret = 0;
+        } else {
+            EVP_PKEY_meth_set_init(we_ec_p224_method, we_ec_p224_init);
+            EVP_PKEY_meth_set_copy(we_ec_p224_method, we_ec_copy);
+            EVP_PKEY_meth_set_cleanup(we_ec_p224_method, we_ec_cleanup);
+
+            EVP_PKEY_meth_set_keygen(we_ec_p224_method, NULL, we_ec_keygen);
+
+            EVP_PKEY_meth_set_ctrl(we_ec_p224_method, we_ec_ctrl, NULL);
+        }
+    }
+#endif
 #ifdef WE_HAVE_EC_P256
     if (ret == 1) {
         we_ec_p256_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
         if (we_ec_p256_method == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_ec_p256_method);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_meth_new",
+                                       we_ec_p256_method);
             ret = 0;
         } else {
             EVP_PKEY_meth_set_init(we_ec_p256_method, we_ec_p256_init);
@@ -930,7 +1123,8 @@ int we_init_ecc_meths(void)
     if (ret == 1) {
         we_ec_p384_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
         if (we_ec_p384_method == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_PKEY_meth_new", we_ec_p384_method);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_meth_new",
+                                       we_ec_p384_method);
             ret = 0;
         } else {
             EVP_PKEY_meth_set_init(we_ec_p384_method, we_ec_p384_init);
@@ -943,6 +1137,24 @@ int we_init_ecc_meths(void)
         }
     }
 #endif
+#ifdef WE_HAVE_EC_P521
+    if (ret == 1) {
+        we_ec_p521_method = EVP_PKEY_meth_new(EVP_PKEY_EC, 0);
+        if (we_ec_p521_method == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_meth_new",
+                                       we_ec_p521_method);
+            ret = 0;
+        } else {
+            EVP_PKEY_meth_set_init(we_ec_p521_method, we_ec_p521_init);
+            EVP_PKEY_meth_set_copy(we_ec_p521_method, we_ec_copy);
+            EVP_PKEY_meth_set_cleanup(we_ec_p521_method, we_ec_cleanup);
+
+            EVP_PKEY_meth_set_keygen(we_ec_p521_method, NULL, we_ec_keygen);
+
+            EVP_PKEY_meth_set_ctrl(we_ec_p521_method, we_ec_ctrl, NULL);
+        }
+    }
+#endif
 #endif
 
     if (ret == 0) {
@@ -951,6 +1163,18 @@ int we_init_ecc_meths(void)
             we_ec_method = NULL;
         }
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+        if (we_ec_p192_method != NULL) {
+            EVP_PKEY_meth_free(we_ec_p192_method);
+            we_ec_p192_method = NULL;
+        }
+#endif
+#ifdef WE_HAVE_EC_P224
+        if (we_ec_p224_method != NULL) {
+            EVP_PKEY_meth_free(we_ec_p224_method);
+            we_ec_p224_method = NULL;
+        }
+#endif
 #ifdef WE_HAVE_EC_P256
         if (we_ec_p256_method != NULL) {
             EVP_PKEY_meth_free(we_ec_p256_method);
@@ -962,11 +1186,17 @@ int we_init_ecc_meths(void)
             EVP_PKEY_meth_free(we_ec_p384_method);
             we_ec_p384_method = NULL;
         }
+#endif
+#ifdef WE_HAVE_EC_P521
+        if (we_ec_p521_method != NULL) {
+            EVP_PKEY_meth_free(we_ec_p521_method);
+            we_ec_p521_method = NULL;
+        }
+#endif
+#endif
     }
-#endif
-#endif
 
-    WOLFENGINE_LEAVE("we_init_ecc_meths", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_init_ecc_meths", ret);
 
     return ret;
 }
@@ -991,7 +1221,7 @@ static int we_ec_key_keygen(EC_KEY *key)
     ecc_key* pEcc = NULL;
     int len = 0;
 
-    WOLFENGINE_ENTER("we_ec_key_keygen");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_keygen");
 
     /* Get the wolfSSL EC curve id for the group. */
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(EC_KEY_get0_group(key)),
@@ -999,14 +1229,15 @@ static int we_ec_key_keygen(EC_KEY *key)
     if (ret == 1) {
         len = wc_ecc_get_curve_size_from_id(curveId);
         if (len < 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_get_curve_size_from_id", len);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                  "wc_ecc_get_curve_size_from_id", len);
             ret = 0;
 
         } else {
             /* Initialize a wolfSSL EC key object. */
             rc = wc_ecc_init(&ecc);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
                 ret = 0;
             }
         }
@@ -1017,7 +1248,7 @@ static int we_ec_key_keygen(EC_KEY *key)
         /* Generate key. */
         rc = wc_ecc_make_key_ex(we_rng, len, &ecc, curveId);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_make_key_ex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_make_key_ex", rc);
             ret = 0;
         }
     }
@@ -1028,7 +1259,7 @@ static int we_ec_key_keygen(EC_KEY *key)
 
     wc_ecc_free(pEcc);
 
-    WOLFENGINE_LEAVE("we_ec_key_keygen", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_key_keygen", ret);
 
     return ret;
 }
@@ -1059,7 +1290,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     unsigned char* peerKey = NULL;
     unsigned char* secret = NULL;
 
-    WOLFENGINE_ENTER("we_ec_key_compute_key");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_compute_key");
 
     /* Get wolfSSL curve id for EC group. */
     group = EC_KEY_get0_group(ecdh);
@@ -1073,7 +1304,8 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     if (ret == 1) {
         rc = wc_ecc_get_curve_size_from_id(curveId);
         if (rc < 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_get_curve_size_from_id", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                  "wc_ecc_get_curve_size_from_id", rc);
             ret = 0;
         } else {
             len = (word32)rc;
@@ -1087,7 +1319,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
         /* Initialize the wolfSSL private key object. */
         rc = wc_ecc_init(&key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
             ret = 0;
         }
     }
@@ -1097,7 +1329,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
         /* Set RNG for side-channel resistant code. */
         rc = wc_ecc_set_rng(&key, we_rng);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_set_rng", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_set_rng", rc);
             ret = 0;
         }
     }
@@ -1112,7 +1344,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
         /* Initialize wolfSSL ECC key for peer's public key. */
         rc = wc_ecc_init(&peer);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
             ret = 0;
         }
     }
@@ -1125,7 +1357,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
         /* Import the public point into wolfSSL key object. */
         rc = wc_ecc_import_unsigned(pPeer, x, y, NULL, curveId);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_import_unsigned", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_import_unsigned", rc);
             ret = 0;
         }
     }
@@ -1133,7 +1365,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
         /* Calculate shared secret. */
         rc = wc_ecc_shared_secret(pKey, pPeer, secret, &len);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_shared_secret", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_shared_secret", rc);
             ret = 0;
         }
     }
@@ -1148,7 +1380,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     wc_ecc_free(pPeer);
     wc_ecc_free(pKey);
 
-    WOLFENGINE_LEAVE("we_ec_key_compute_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_key_compute_key", ret);
 
     return ret;
 }
@@ -1179,7 +1411,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     int curveId;
     word32 outLen;
 
-    WOLFENGINE_ENTER("we_ec_key_sign");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_sign");
 
     (void)type;
     (void)kinv;
@@ -1192,7 +1424,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
         /* Initialize a wolfSSL key object. */
         rc = wc_ecc_init(&key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("we_ecc_init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_init", rc);
             ret = 0;
         }
     }
@@ -1212,7 +1444,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
         outLen = *sigLen;
         rc = wc_ecc_sign_hash(dgst, dLen, sig, &outLen, we_rng, &key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_sign_hash", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash", rc);
             ret = 0;
         }
         if (ret == 1) {
@@ -1223,7 +1455,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
 
     wc_ecc_free(pKey);
 
-    WOLFENGINE_LEAVE("we_ec_key_sign", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_key_sign", ret);
 
     return ret;
 }
@@ -1248,7 +1480,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
     const EC_GROUP *group;
     int curveId;
 
-    WOLFENGINE_ENTER("we_ec_key_verify");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_verify");
 
     (void)type;
 
@@ -1259,7 +1491,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         /* Initialize a wolfSSL key object. */
         rc = wc_ecc_init(&key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
             ret = 0;
         }
     }
@@ -1273,7 +1505,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         /* Verify hash with wolfSSL. */
         rc = wc_ecc_verify_hash(sig, sigLen, dgst, dLen, &res, &key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_verify_hash", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
             ret = 0;
         }
     }
@@ -1284,7 +1516,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
 
     wc_ecc_free(pKey);
 
-    WOLFENGINE_LEAVE("we_ec_key_verify", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_key_verify", ret);
 
     return ret;
 }
@@ -1298,11 +1530,12 @@ int we_init_ec_key_meths(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_ec_key_meths");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_init_ec_key_meths");
 
     we_ec_key_method = EC_KEY_METHOD_new(NULL);
     if (we_ec_key_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EC_KEY_METHOD_new", we_ec_key_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
+                                   "EC_KEY_METHOD_new", we_ec_key_method);
         ret = 0;
     } else {
         EC_KEY_METHOD_set_keygen(we_ec_key_method, we_ec_key_keygen);
@@ -1311,7 +1544,7 @@ int we_init_ec_key_meths(void)
         EC_KEY_METHOD_set_verify(we_ec_key_method, we_ec_key_verify, NULL);
     }
 
-    WOLFENGINE_LEAVE("we_init_ec_key_meths", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_init_ec_key_meths", ret);
 
     return ret;
 }

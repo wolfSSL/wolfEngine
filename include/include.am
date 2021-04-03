@@ -2,4 +2,8 @@
 # All paths should be given relative to the root
 #
 
-noinst_HEADERS = include/openssl_bc.h
+noinst_HEADERS = include/wolfengine/we_internal.h \
+                  include/wolfengine/we_logging.h \
+                  include/wolfengine/we_openssl_bc.h
+
+pkginclude_HEADERS = include/wolfengine/we_wolfengine.h

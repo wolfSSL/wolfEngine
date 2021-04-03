@@ -1,4 +1,4 @@
-/* internal.c
+/* we_internal.c
  *
  * Copyright (C) 2006-2019 wolfSSL Inc.
  *
@@ -19,27 +19,46 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "wolfengine.h"
-#include "internal.h"
+#include <wolfengine/we_wolfengine.h>
+#include <wolfengine/we_internal.h>
 
 #if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
 /** List of public key types supported as ids. */
 static const int we_pkey_nids[] = {
+#ifdef WE_HAVE_HMAC
+    NID_hmac,
+#endif /* WE_HAVE_HMAC */
+#ifdef WE_HAVE_CMAC
+    NID_cmac,
+#endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_RSA
     NID_rsaEncryption,
+#endif
+#ifdef WE_HAVE_DH
+    NID_dhKeyAgreement,
 #endif
 #ifdef WE_HAVE_ECC
     NID_X9_62_id_ecPublicKey,
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+    NID_X9_62_prime192v1,
+#endif
+#ifdef WE_HAVE_EC_P224
+    NID_secp224r1,
+#endif
 #ifdef WE_HAVE_EC_P256
     NID_X9_62_prime256v1,
 #endif
 #ifdef WE_HAVE_EC_P384
     NID_secp384r1,
 #endif
+#ifdef WE_HAVE_EC_P521
+    NID_secp521r1,
+#endif
 #endif
 #endif
 };
+
 
 /**
  * Get the public key types supported as ids.
@@ -55,7 +74,7 @@ int we_pkey_get_nids(const int **nids)
 #endif /* WE_HAVE_EVP_PKEY || WE_USE_HASH */
 
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
-    defined(WE_HAVE_RANDOM)
+    defined(WE_HAVE_RANDOM) || defined(WE_HAVE_DH)
 
 /*
  * Random number generator
@@ -84,12 +103,12 @@ static int we_init_random()
     int ret = 1;
     int rc;
 
-    WOLFENGINE_ENTER("we_init_random");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_init_random");
 
     if (!we_globalRngInited) {
         rc = wc_InitRng(&we_globalRng);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_InitRng", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wc_InitRng", rc);
             ret = 0;
         }
     #ifndef WE_SINGLE_THREADED
@@ -97,7 +116,7 @@ static int we_init_random()
             rc = wc_InitMutex(&we_global_rng_mutex);
             if (rc != 0) {
                 wc_FreeRng(&we_globalRng);
-                WOLFENGINE_ERROR_FUNC("wc_InitRng", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wc_InitRng", rc);
                 ret = 0;
             }
         }
@@ -107,7 +126,7 @@ static int we_init_random()
         }
     }
 
-    WOLFENGINE_LEAVE("we_init_random", ret);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_init_random", ret);
 
     return ret;
 }
@@ -163,15 +182,14 @@ static const int we_digest_nids[] = {
  * Convert an OpenSSL hash NID to a wolfCrypt hash OID.
  *
  * @param  nid  [in]  OpenSSL NID to convert.
- * @return  Returns the OID if a NID -> OID mapping exists and a negative value
- *          if it doesn't.
+ * @returns  Hash type corresponding to the NID or WC_HASH_TYPE_NONE
+ *           when not supported.
  */
-int we_nid_to_wc_hash_oid(int nid)
+int we_nid_to_wc_hash_type(int nid)
 {
     int hashType = WC_HASH_TYPE_NONE;
-    int ret;
 
-    WOLFENGINE_ENTER("we_nid_to_wc_hash_oid");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_oid");
 
     switch (nid) {
 #ifdef WE_HAVE_SHA1
@@ -223,12 +241,26 @@ int we_nid_to_wc_hash_oid(int nid)
 #endif
     }
 
+    return hashType;
+}
+
+/**
+ * Convert an OpenSSL hash NID to a wolfCrypt hash OID.
+ *
+ * @param  nid  [in]  OpenSSL NID to convert.
+ * @return  Returns the OID if a NID -> OID mapping exists and a negative value
+ *          if it doesn't.
+ */
+int we_nid_to_wc_hash_oid(int nid) {
+    int hashType = we_nid_to_wc_hash_type(nid);
+    int ret;
+
     ret = wc_HashGetOID(hashType);
     if (ret < 0) {
-        WOLFENGINE_ERROR_FUNC("wc_HashGetOID", ret);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wc_HashGetOID", ret);
     }
 
-    WOLFENGINE_LEAVE("we_nid_to_wc_hash_oid", ret);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_nid_to_wc_hash_oid", ret);
 
     return ret;
 }
@@ -309,7 +341,7 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
             break;
 #endif
         default:
-            WOLFENGINE_ERROR_MSG("Unsupported digest NID");
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "Unsupported digest NID");
             *digest = NULL;
             ret = 0;
             break;
@@ -452,7 +484,7 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
             break;
 #endif
         default:
-            WOLFENGINE_ERROR_MSG("Unsupported cipher NID");
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "Unsupported cipher NID");
             *cipher = NULL;
             ret = 0;
             break;
@@ -496,15 +528,40 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
     }
     else {
         switch (nid) {
+#ifdef WE_HAVE_HMAC
+        case NID_hmac:
+            *pkey = we_hmac_pkey_method;
+            break;
+#endif /* WE_HAVE_HMAC */
+#ifdef WE_HAVE_CMAC
+        case NID_cmac:
+            *pkey = we_cmac_pkey_method;
+            break;
+#endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_RSA
         case NID_rsaEncryption:
             *pkey = we_rsa_pkey_method;
             break;
 #endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_DH
+        case NID_dhKeyAgreement:
+            *pkey = we_dh_pkey_method;
+            break;
+#endif /* WE_HAVE_DH */
         case NID_X9_62_id_ecPublicKey:
             *pkey = we_ec_method;
             break;
 #ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+        case NID_X9_62_prime192v1:
+            *pkey = we_ec_p192_method;
+            break;
+#endif
+#ifdef WE_HAVE_EC_P224
+        case NID_secp224r1:
+            *pkey = we_ec_p224_method;
+            break;
+#endif
 #ifdef WE_HAVE_EC_P256
         case NID_X9_62_prime256v1:
             *pkey = we_ec_p256_method;
@@ -514,10 +571,15 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
         case NID_secp384r1:
             *pkey = we_ec_p384_method;
             break;
-#endif 
+#endif
+#ifdef WE_HAVE_EC_P521
+        case NID_secp521r1:
+            *pkey = we_ec_p521_method;
+            break;
+#endif
 #endif /* WE_HAVE_ECKEYGEN */
         default:
-            WOLFENGINE_ERROR_MSG("Unsupported public key NID");
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "Unsupported public key NID");
             *pkey = NULL;
             ret = 0;
             break;
@@ -552,9 +614,10 @@ static int wolfengine_init(ENGINE *e)
 
     (void)e;
 
-    WOLFENGINE_ENTER("wolfengine_init");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_init");
 
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
+    defined(WE_HAVE_DH) || defined(WE_HAVE_RANDOM)
     ret = we_init_random();
 #endif
 #ifdef WE_HAVE_SHA1
@@ -635,7 +698,29 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_aesccm_meths();
     }
 #endif
+#ifdef WE_HAVE_HMAC
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_hmac_pkey_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
+#endif /* WE_HAVE_HMAC */
+#ifdef WE_HAVE_CMAC
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_cmac_pkey_meth();
+    }
+    if (ret == 1) {
+        ret = we_init_cmac_pkey_asn1_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
+#endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_DH
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_dh_pkey_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
     if (ret == 1) {
         ret = we_init_dh_meth();
     }
@@ -669,7 +754,7 @@ static int wolfengine_init(ENGINE *e)
 
 #endif
 
-    WOLFENGINE_LEAVE("wolfengine_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_init", ret);
 
     return ret;
 }
@@ -682,7 +767,7 @@ static int wolfengine_init(ENGINE *e)
  */
 static int wolfengine_destroy(ENGINE *e)
 {
-    WOLFENGINE_ENTER("wolfengine_destroy");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_destroy");
 
     (void)e;
 
@@ -782,17 +867,29 @@ static int wolfengine_destroy(ENGINE *e)
     EVP_MD_meth_free(we_sha3_512_md);
     we_sha3_512_md = NULL;
 #endif
+#ifdef WE_HAVE_HMAC
+    EVP_PKEY_meth_free(we_hmac_pkey_method);
+    we_hmac_pkey_method = NULL;
+#endif
+#ifdef WE_HAVE_CMAC
+    EVP_PKEY_meth_free(we_cmac_pkey_method);
+    we_cmac_pkey_method = NULL;
+    EVP_PKEY_asn1_free(we_cmac_pkey_asn1_method);
+    we_cmac_pkey_asn1_method = NULL;
+#endif
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     we_final_random();
 #endif
 
-    WOLFENGINE_LEAVE("wolfengine_destroy", 1);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_destroy", 1);
 
     return 1;
 }
 
-#define WOLFENGINE_CMD_ENABLE_DEBUG     ENGINE_CMD_BASE
-#define WOLFENGINE_CMD_SET_LOGGING_CB   (ENGINE_CMD_BASE + 1)
+#define WOLFENGINE_CMD_ENABLE_DEBUG          ENGINE_CMD_BASE
+#define WOLFENGINE_CMD_SET_LOG_LEVEL         (ENGINE_CMD_BASE + 1)
+#define WOLFENGINE_CMD_SET_LOG_COMPONENTS    (ENGINE_CMD_BASE + 2)
+#define WOLFENGINE_CMD_SET_LOGGING_CB        (ENGINE_CMD_BASE + 3)
 
 /**
  * wolfEngine control command list.
@@ -810,6 +907,15 @@ static int wolfengine_destroy(ENGINE *e)
  *                have defined WOLFENGINE_DEBUG or used --enable-debug.
  *                (1 = enable, 0 = disable)
  *
+ * log_level    - Set wolfEngine logging level. Input is bitmask of levels
+ *                from we_logging.h wolfEngine_LogType enum. Default wolfEngine
+ *                log level, if not set, logs error, enter/leave, and info.
+ *
+ * log_components - Set wolfEngine components to be included in log messages.
+ *                  Input is bitmask of levels from we_logging.h
+ *                  wolfEngine_LogComponents enum. Default wolfEngine component
+ *                  selection logs all components unless set by application.
+ *
  * INTERNAL COMMANDS (not listed here, as not NUMERIC, STRING, or NO_INPUT):
  * "set_logging_cb" - Sets the wolfEngine loggging callback, function pointer
  *                    passed in must match wolfEngine_Logging_cb prototype
@@ -821,6 +927,15 @@ static ENGINE_CMD_DEFN wolfengine_cmd_defns[] = {
     { WOLFENGINE_CMD_ENABLE_DEBUG,
       "enable_debug",
       "Enable wolfEngine debug logging (1=enable, 0=disable)",
+      ENGINE_CMD_FLAG_NUMERIC },
+    { WOLFENGINE_CMD_SET_LOG_LEVEL,
+      "log_level",
+      "Set wolfEngine logging level (bitmask from wolfEngine_LogType)",
+      ENGINE_CMD_FLAG_NUMERIC },
+    { WOLFENGINE_CMD_SET_LOG_COMPONENTS,
+      "log_components",
+      "Set components to be logged by wolfEngine "
+          "(bitmask from wolfEngine_LogComponents)",
       ENGINE_CMD_FLAG_NUMERIC },
     { WOLFENGINE_CMD_SET_LOGGING_CB,
       "set_logging_cb",
@@ -855,7 +970,7 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
     (void)e;
     (void)p;
 
-    WOLFENGINE_ENTER("wolfengine_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_ctrl");
 
     switch (cmd) {
         case ENGINE_CTRL_SET_LOGSTREAM:
@@ -872,24 +987,39 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
                 wolfEngine_Debugging_OFF();
             }
             break;
+        case WOLFENGINE_CMD_SET_LOG_LEVEL:
+            if (wolfEngine_SetLogLevel((int)i) < 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE,
+                                     "Failed to set logging level");
+                ret = 0;
+            }
+            break;
+        case WOLFENGINE_CMD_SET_LOG_COMPONENTS:
+            if (wolfEngine_SetLogComponents((int)i) < 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE,
+                                     "Failed to set log components");
+                ret = 0;
+            }
+            break;
         case WOLFENGINE_CMD_SET_LOGGING_CB:
             /* if f is NULL, resets logging back to default */
             if (wolfEngine_SetLoggingCb((wolfEngine_Logging_cb)f) != 0) {
-                WOLFENGINE_ERROR_MSG(
+                WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, 
                         "Error registering wolfEngine logging callback");
                 ret = 0;
             } else {
-                WOLFENGINE_MSG("wolfEngine user logging callback registered");
+                WOLFENGINE_MSG(WE_LOG_ENGINE,
+                               "wolfEngine user logging callback registered");
             }
             break;
         default:
             XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                       cmd);
-            WOLFENGINE_ERROR_MSG(errBuff);
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, errBuff);
             ret = 0;
     }
 
-    WOLFENGINE_LEAVE("wolfengine_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_ctrl", ret);
 
     return ret;
 }
@@ -929,7 +1059,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("wolfengine_bind");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_bind");
 
     if ((id != NULL) &&
                  (XSTRNCMP(id, wolfengine_lib, XSTRLEN(wolfengine_lib)) != 0)) {
@@ -991,7 +1121,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
         ret = 0;
     }
 
-    WOLFENGINE_LEAVE("wolfengine_bind", ret);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_bind", ret);
 
     return ret;
 }

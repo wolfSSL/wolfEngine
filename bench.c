@@ -23,7 +23,8 @@
 #include <sys/time.h>
 #include <string.h>
 
-#include "wolfengine.h"
+#include <wolfengine/we_wolfengine.h>
+#include <wolfengine/we_openssl_bc.h>
 
 #include <openssl/engine.h>
 #include <openssl/evp.h>
@@ -31,7 +32,6 @@
 #include <openssl/ssl.h>
 #include <openssl/aes.h>
 
-#include "openssl_bc.h"
 
 #define BENCH_DECL(alg, func)        { alg, func, 0 }
 

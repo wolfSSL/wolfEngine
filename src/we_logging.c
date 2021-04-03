@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "internal.h"
+#include <wolfengine/we_internal.h>
 
 #ifdef WOLFENGINE_DEBUG
 
@@ -35,6 +35,17 @@ static wolfEngine_Logging_cb log_function = NULL;
 /* Flag indicating if logging is enabled, controlled via
  * wolfEngine_Debugging_ON() and wolfEngine_Debugging_OFF() */
 static int loggingEnabled = 0;
+
+/* Logging level. Bitmask of logging levels in wolfEngine_LogType.
+ * Can be set by application through ENGINE_ctrl command. Default log
+ * level includes error, enter/leave, and info. Does not turn on verbose
+ * by default. */
+static int engineLogLevel = WE_LOG_LEVEL_DEFAULT;
+
+/* Components which will be logged when debug enabled. Bitmask of components
+ * in wolfEngine_LogComponents. Can be set by application through ENGINE_ctrl
+ * command. Default components include all. */
+static int engineLogComponents = WE_LOG_COMPONENTS_DEFAULT;
 
 #endif /* WOLFENGINE_DEBUG */
 
@@ -86,6 +97,44 @@ void wolfEngine_Debugging_OFF(void)
 #endif
 }
 
+/**
+ * Set wolfEngine logging level.
+ * Deafult logging level for wolfEngine is WE_LOG_LEVEL_DEFAULT.
+ *
+ * @param levelMask [IN] Bitmask of logging levels from wolfEngine_LogType
+ *                  in we_logging.h.
+ * @return 0 on success, NOT_COMPILED_IN if debugging has not been enabled.
+ */
+int wolfEngine_SetLogLevel(int levelMask)
+{
+#ifdef WOLFENGINE_DEBUG
+    engineLogLevel = levelMask;
+    return 0;
+#else
+    (void)levelMask;
+    return NOT_COMPILED_IN;
+#endif
+}
+
+/**
+ * Set which components to log in wolfEngine debug logs.
+ * Default component level for wolfEngine is WE_LOG_COMPONENT_DEFAULT.
+ *
+ * @param componentMask [IN] Bitmask of components from
+ *                      wolfEngine_LogComponents in we_logging.h.
+ * @return 0 on success, NOT_COMPILED_IN if debugging has not been enabled.
+ */
+int wolfEngine_SetLogComponents(int componentMask)
+{
+#ifdef WOLFENGINE_DEBUG
+    engineLogComponents = componentMask;
+    return 0;
+#else
+    (void)componentMask;
+    return NOT_COMPILED_IN;
+#endif
+}
+
 #ifdef WOLFENGINE_DEBUG
 
 /**
@@ -96,10 +145,19 @@ void wolfEngine_Debugging_OFF(void)
  * @param logLevel   [IN] Log level.
  * @param logMessage [IN] Log message.
  */
-static void wolfengine_log(const int logLevel, const char *const logMessage)
+static void wolfengine_log(const int logLevel, const int component,
+                           const char *const logMessage)
 {
+    /* Don't log messages that do not match our current logging level */
+    if ((engineLogLevel & logLevel) != logLevel)
+        return;
+
+    /* Don't log messages from components that do not match enabled list */
+    if ((engineLogComponents & component) != component)
+        return;
+
     if (log_function) {
-        log_function(logLevel, logMessage);
+        log_function(logLevel, component, logMessage);
     } else {
 #if defined(WOLFENGINE_USER_LOG)
         WOLFENGINE_USER_LOG(logMessage);
@@ -114,77 +172,83 @@ static void wolfengine_log(const int logLevel, const char *const logMessage)
 /**
  * Log function for general messages.
  *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
  * @param msg  [IN] Log message.
  */
-void WOLFENGINE_MSG(const char* msg)
+void WOLFENGINE_MSG(int component, const char* msg)
 {
     if (loggingEnabled) {
-        wolfengine_log(WE_LOG_INFO, msg);
+        wolfengine_log(WE_LOG_INFO, component, msg);
     }
 }
 
 /**
  * Log function used to record function entry.
  *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
  * @param msg  [IN] Log message.
  */
-void WOLFENGINE_ENTER(const char* msg)
+void WOLFENGINE_ENTER(int component, const char* msg)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer), "wolfEngine Entering %s", msg);
-        wolfengine_log(WE_LOG_ENTER, buffer);
+        wolfengine_log(WE_LOG_ENTER, component, buffer);
     }
 }
 
 /**
  * Log function used to record function exit.
  *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
  * @param msg  [IN] Log message.
  * @param ret  [IN] Value that function will be returning.
  */
-void WOLFENGINE_LEAVE(const char* msg, int ret)
+void WOLFENGINE_LEAVE(int component, const char* msg, int ret)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer), "wolfEngine Leaving %s, return %d",
                   msg, ret);
-        wolfengine_log(WE_LOG_LEAVE, buffer);
+        wolfengine_log(WE_LOG_LEAVE, component, buffer);
     }
 }
 
 /**
  * Log function for error code, general error message.
  *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
  * @param error  [IN] error code to be logged.
  * @param file   [IN] Source file where error is called. 
  * @param line   [IN] Line in source file where error is called. 
  */
-void WOLFENGINE_ERROR_LINE(int error, const char* file, int line)
+void WOLFENGINE_ERROR_LINE(int component, int error, const char* file, int line)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer),
                   "%s:%d - wolfEngine error occurred, error = %d", file, line,
                   error);
-        wolfengine_log(WE_LOG_ERROR, buffer);
+        wolfengine_log(WE_LOG_ERROR, component, buffer);
     }
 }
 
 /**
  * Log function for error message.
  *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
  * @param msg  [IN] Error message.
  * @param file [IN] Source file where error is called. 
  * @param line [IN] Line in source file where error is called. 
  */
-void WOLFENGINE_ERROR_MSG_LINE(const char* msg, const char* file, int line)
+void WOLFENGINE_ERROR_MSG_LINE(int component, const char* msg,
+                               const char* file, int line)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer), "%s:%d - wolfEngine Error %s",
                   file, line, msg);
-        wolfengine_log(WE_LOG_ERROR, buffer);
+        wolfengine_log(WE_LOG_ERROR, component, buffer);
     }
 }
 
@@ -192,20 +256,21 @@ void WOLFENGINE_ERROR_MSG_LINE(const char* msg, const char* file, int line)
  * Log function to convey function name and error for functions returning an
  * integer return code.
  *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
  * @param funcName  [IN] Name of function called.
  * @param ret       [IN] Return of function.
  * @param file      [IN] Source file where error is called. 
  * @param line      [IN] Line in source file where error is called. 
  */
-void WOLFENGINE_ERROR_FUNC_LINE(const char* funcName, int ret, const char* file,
-                                int line)
+void WOLFENGINE_ERROR_FUNC_LINE(int component, const char* funcName, int ret,
+                                const char* file, int line)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer),
                   "%s:%d - Error calling %s: ret = %d", file, line, funcName,
                   ret);
-        wolfengine_log(WE_LOG_ERROR, buffer);
+        wolfengine_log(WE_LOG_ERROR, component, buffer);
     }
 }
 
@@ -213,20 +278,21 @@ void WOLFENGINE_ERROR_FUNC_LINE(const char* funcName, int ret, const char* file,
  * Log function to convey function name and error for functions returning a
  * pointer.
  *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
  * @param funcName  [IN] Name of function called.
  * @param ret       [IN] Return of function.
  * @param file      [IN] Source file where error is called. 
  * @param line      [IN] Line in source file where error is called. 
  */
-void WOLFENGINE_ERROR_FUNC_NULL_LINE(const char* funcName, void *ret,
-                                     const char* file, int line)
+void WOLFENGINE_ERROR_FUNC_NULL_LINE(int component, const char* funcName,
+                                     void *ret, const char* file, int line)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
         XSNPRINTF(buffer, sizeof(buffer),
                   "%s:%d - Error calling %s: ret = %p", file, line, funcName,
                   ret);
-        wolfengine_log(WE_LOG_ERROR, buffer);
+        wolfengine_log(WE_LOG_ERROR, component, buffer);
     }
 }
 
@@ -239,10 +305,12 @@ void WOLFENGINE_ERROR_FUNC_NULL_LINE(const char* funcName, void *ret,
 /**
  * Log function to print buffer.
  *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
  * @param buffer  [IN] Buffer to print.
  * @param length  [IN] Length of buffer, octets.
  */
-void WOLFENGINE_BUFFER(const unsigned char* buffer, unsigned int length)
+void WOLFENGINE_BUFFER(int component, const unsigned char* buffer,
+                       unsigned int length)
 {
     int i, buflen = (int)length, bufidx;
     char line[(WOLFENGINE_LINE_LEN * 4) + 3]; /* \t00..0F | chars...chars\0 */
@@ -252,7 +320,7 @@ void WOLFENGINE_BUFFER(const unsigned char* buffer, unsigned int length)
     }
 
     if (!buffer) {
-        wolfengine_log(WE_LOG_VERBOSE, "\tNULL");
+        wolfengine_log(WE_LOG_VERBOSE, component, "\tNULL");
         return;
     }
 
@@ -283,7 +351,7 @@ void WOLFENGINE_BUFFER(const unsigned char* buffer, unsigned int length)
             }
         }
 
-        wolfengine_log(WE_LOG_VERBOSE, line);
+        wolfengine_log(WE_LOG_VERBOSE, component, line);
         buffer += WOLFENGINE_LINE_LEN;
         buflen -= WOLFENGINE_LINE_LEN;
     }

@@ -1,4 +1,4 @@
-/* openssl_bc.c
+/* we_openssl_bc.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "openssl_bc.h"
+#include <wolfengine/we_openssl_bc.h>
 
 /* These were all added in OpenSSL 1.1.0 */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -317,17 +317,6 @@ int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len)
     return 1;
 }
 
-void RSA_get0_key(const RSA *r,
-                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
-{
-    if (n != NULL)
-        *n = r->n;
-    if (e != NULL)
-        *e = r->e;
-    if (d != NULL)
-        *d = r->d;
-}
-
 int RSA_meth_set_init(RSA_METHOD *meth, int (*init) (RSA *rsa))
 {
     meth->init = init;
@@ -376,6 +365,14 @@ int RSA_meth_set_finish(RSA_METHOD *meth, int (*finish) (RSA *rsa))
     return 1;
 }
 
+int RSA_meth_set_keygen(RSA_METHOD *meth,
+                        int (*keygen) (RSA *rsa, int bits, BIGNUM *e,
+                                       BN_GENCB *cb))
+{
+    meth->rsa_keygen = keygen;
+    return 1;
+}
+
 RSA_METHOD *RSA_meth_new(const char *name, int flags)
 {
     RSA_METHOD *meth = OPENSSL_zalloc(sizeof(*meth));
@@ -396,6 +393,110 @@ void RSA_meth_free(RSA_METHOD *meth)
     if (meth != NULL) {
         OPENSSL_free(meth);
     }
+}
+
+void RSA_get0_key(const RSA *r,
+                  const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
+{
+    if (n != NULL)
+        *n = r->n;
+    if (e != NULL)
+        *e = r->e;
+    if (d != NULL)
+        *d = r->d;
+}
+
+void RSA_get0_factors(const RSA *r, const BIGNUM **p, const BIGNUM **q)
+{
+    if (p != NULL)
+        *p = r->p;
+    if (q != NULL)
+        *q = r->q;
+}
+
+void RSA_get0_crt_params(const RSA *r,
+                         const BIGNUM **dmp1, const BIGNUM **dmq1,
+                         const BIGNUM **iqmp)
+{
+    if (dmp1 != NULL)
+        *dmp1 = r->dmp1;
+    if (dmq1 != NULL)
+        *dmq1 = r->dmq1;
+    if (iqmp != NULL)
+        *iqmp = r->iqmp;
+}
+
+int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d)
+{
+    /* If the fields n and e in r are NULL, the corresponding input
+     * parameters MUST be non-NULL for n and e.  d may be
+     * left NULL (in case only the public key is used).
+     */
+    if ((r->n == NULL && n == NULL)
+        || (r->e == NULL && e == NULL))
+        return 0;
+
+    if (n != NULL) {
+        BN_free(r->n);
+        r->n = n;
+    }
+    if (e != NULL) {
+        BN_free(r->e);
+        r->e = e;
+    }
+    if (d != NULL) {
+        BN_clear_free(r->d);
+        r->d = d;
+    }
+
+    return 1;
+}
+
+int RSA_set0_factors(RSA *r, BIGNUM *p, BIGNUM *q)
+{
+    /* If the fields p and q in r are NULL, the corresponding input
+     * parameters MUST be non-NULL.
+     */
+    if ((r->p == NULL && p == NULL)
+        || (r->q == NULL && q == NULL))
+        return 0;
+
+    if (p != NULL) {
+        BN_clear_free(r->p);
+        r->p = p;
+    }
+    if (q != NULL) {
+        BN_clear_free(r->q);
+        r->q = q;
+    }
+
+    return 1;
+}
+
+int RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp)
+{
+    /* If the fields dmp1, dmq1 and iqmp in r are NULL, the corresponding input
+     * parameters MUST be non-NULL.
+     */
+    if ((r->dmp1 == NULL && dmp1 == NULL)
+        || (r->dmq1 == NULL && dmq1 == NULL)
+        || (r->iqmp == NULL && iqmp == NULL))
+        return 0;
+
+    if (dmp1 != NULL) {
+        BN_clear_free(r->dmp1);
+        r->dmp1 = dmp1;
+    }
+    if (dmq1 != NULL) {
+        BN_clear_free(r->dmq1);
+        r->dmq1 = dmq1;
+    }
+    if (iqmp != NULL) {
+        BN_clear_free(r->iqmp);
+        r->iqmp = iqmp;
+    }
+
+    return 1;
 }
 
 DH_METHOD *DH_meth_new(const char *name, int flags)
@@ -541,6 +642,14 @@ const BIGNUM *DH_get0_pub_key(const DH *dh)
     DH_get0_key(dh, &pub_key, NULL);
     return pub_key;
 #endif
+}
+
+DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey)
+{
+    if (pkey->type != EVP_PKEY_DH && pkey->type != EVP_PKEY_DHX) {
+        return NULL;
+    }
+    return pkey->pkey.dh;
 }
 
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */

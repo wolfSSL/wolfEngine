@@ -1,4 +1,4 @@
-/* des3_cbc.c
+/* we_des3_cbc.c
  *
  * Copyright (C) 2006-2019 wolfSSL Inc.
  *
@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "internal.h"
+#include <wolfengine/we_internal.h>
 
 
 #ifdef WE_HAVE_DES3CBC
@@ -61,7 +61,7 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int rc;
     we_Des3Cbc *des3;
 
-    WOLFENGINE_ENTER("we_des3_cbc_init");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_init");
 
     if ((iv == NULL) && (key == NULL)) {
         ret = 0;
@@ -70,7 +70,8 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if (ret == 1) {
         des3 = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
         if (des3 == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", des3);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                       "EVP_CIPHER_CTX_get_cipher_data", des3);
             ret = 0;
         }
     }
@@ -78,7 +79,7 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if ((ret == 1) && (!des3->init)) {
         rc = wc_Des3Init(&des3->des3, NULL, INVALID_DEVID);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_Des3Init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3Init", rc);
             ret = 0;
         }
     }
@@ -94,20 +95,20 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             rc = wc_Des3_SetKey(&des3->des3, key, iv,
                                 enc ? DES_ENCRYPTION : DES_DECRYPTION);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Des3_SetKey", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetKey", rc);
                 ret = 0;
             }
         }
         else {
             rc = wc_Des3_SetIV(&des3->des3, iv);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Des3_SetIV", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetIV", rc);
                 ret = 0;
             }
         }
     }
 
-    WOLFENGINE_LEAVE("we_des3_cbc_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_init", ret);
 
     return ret;
 }
@@ -133,13 +134,14 @@ static int we_des3_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
     int outl = 0;
     int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
-    WOLFENGINE_ENTER("we_des3_cbc_encrypt");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_encrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
         if (noPad) {
             if (des3->over != 0) {
-                WOLFENGINE_ERROR_MSG("No Pad - last encrypt block not full");
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "No Pad - last encrypt block not full");
                 ret = 0;
             }
         }
@@ -177,7 +179,8 @@ static int we_des3_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
                 rc = wc_Des3_CbcEncrypt(&des3->des3, out, des3->lastBlock,
                                         DES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_Des3_CbcEncrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_Des3_CbcEncrypt", rc);
                     ret = 0;
                 }
                 /* Data put to output. */
@@ -194,11 +197,11 @@ static int we_des3_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
 
             rc = wc_Des3_CbcEncrypt(&des3->des3, out, in, l);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC("wc_Des3_CbcEncrypt", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                      "wc_Des3_CbcEncrypt", rc);
                 ret = 0;
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -218,7 +221,7 @@ static int we_des3_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
         ret = -1;
     }
 
-    WOLFENGINE_LEAVE("we_des3_cbc_encrypt", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_encrypt", ret);
 
     return ret;
 }
@@ -244,13 +247,14 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
     int outl = 0;
     int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
-    WOLFENGINE_ENTER("we_des3_cbc_decrypt");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_decrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
         if (noPad) {
             if (des3->over != 0) {
-                WOLFENGINE_ERROR_MSG("No Pad - last decrypt block not full");
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "No Pad - last decrypt block not full");
                 ret = 0;
             }
         }
@@ -260,7 +264,8 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
 
             /* Must have a full block over to decrypt. */
             if (des3->over != DES_BLOCK_SIZE) {
-                WOLFENGINE_ERROR_MSG("Padding - last cached decrypt block not "
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "Padding - last cached decrypt block not "
                                      "full");
                 ret = 0;
             }
@@ -269,7 +274,8 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
                 rc = wc_Des3_CbcDecrypt(&des3->des3, des3->lastBlock,
                                         des3->lastBlock, DES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_Des3_CbcDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_Des3_CbcDecrypt", rc);
                     ret = 0;
                 }
                 des3->over = 0;
@@ -278,7 +284,7 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
                 /* Last byte is length of padding. */
                 pad = des3->lastBlock[DES_BLOCK_SIZE - 1];
                 if ((pad == 0) || (pad > DES_BLOCK_SIZE)) {
-                    WOLFENGINE_ERROR_MSG("Padding byte invalid");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Padding byte invalid");
                     ret = 0;
                 }
             }
@@ -289,7 +295,8 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
                 /* Check padding bytes are all the same. */
                 for (i = outl; (ret == 1) && (i < DES_BLOCK_SIZE - 1); i++) {
                    if (des3->lastBlock[i] != pad) {
-                       WOLFENGINE_ERROR_MSG("Padding byte doesn't different");
+                       WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                            "Padding byte doesn't different");
                        ret = 0;
                    }
                 }
@@ -320,7 +327,8 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
                 rc = wc_Des3_CbcDecrypt(&des3->des3, out, des3->lastBlock,
                                         DES_BLOCK_SIZE);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_Des3_CbcDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_Des3_CbcDecrypt", rc);
                     ret = 0;
                 }
                 /* Data put to output. */
@@ -342,12 +350,12 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
             if (l > 0) {
                 rc = wc_Des3_CbcDecrypt(&des3->des3, out, in, l);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC("wc_Des3_CbcDecrypt", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_Des3_CbcDecrypt", rc);
                     ret = 0;
                 }
             }
 
-            out += l;
             outl += l;
             in += l;
             len -= l;
@@ -367,7 +375,7 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
         ret = -1;
     }
 
-    WOLFENGINE_LEAVE("we_des3_cbc_decrypt", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_decrypt", ret);
 
     return ret;
 }
@@ -390,12 +398,13 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     int ret;
     we_Des3Cbc* des3;
 
-    WOLFENGINE_ENTER("we_des3_cbc_cipher");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_cipher");
 
     /* Get the DES3-CBC object to work with. */
     des3 = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (des3 == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", des3);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", des3);
         ret = -1;
     }
     else if (des3->enc) {
@@ -405,7 +414,7 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         ret = we_des3_cbc_decrypt(ctx, des3, out, in, len);
     }
 
-    WOLFENGINE_LEAVE("we_des3_cbc_cipher", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_cipher", ret);
 
     return ret;
 }
@@ -427,7 +436,7 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     we_Des3Cbc *des3;
     char errBuff[WOLFENGINE_MAX_ERROR_SZ];
 
-    WOLFENGINE_ENTER("we_des3_cbc_ctrl");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_ctrl");
 
     (void)arg;
     (void)ptr;
@@ -435,7 +444,8 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     /* Get the DES3-CBC data to work with. */
     des3 = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (des3 != NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("EVP_CIPHER_CTX_get_cipher_data", des3);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", des3);
         ret = 0;
     }
     if (ret == 1) {
@@ -443,13 +453,13 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                 ret = 0;
                 break;
         }
     }
 
-    WOLFENGINE_LEAVE("we_des3_cbc_ctrl", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_ctrl", ret);
 
     return ret;
 }
@@ -458,6 +468,7 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define DES3_CBC_FLAGS             \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CBC_MODE)
 
 /** DES3-CBC EVP cipher method. */
@@ -473,7 +484,7 @@ static int we_init_des3cbc_meth(EVP_CIPHER *cipher)
 {
     int ret;
 
-    WOLFENGINE_ENTER("we_init_des3cbc_meth");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_des3cbc_meth");
 
     ret = EVP_CIPHER_meth_set_iv_length(cipher, DES_IV_SIZE);
     if (ret == 1) {
@@ -492,7 +503,7 @@ static int we_init_des3cbc_meth(EVP_CIPHER *cipher)
         ret = EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(we_Des3Cbc));
     }
 
-    WOLFENGINE_LEAVE("we_init_des3cbc_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_des3cbc_meth", ret);
 
     return ret;
 }
@@ -506,12 +517,12 @@ int we_init_des3cbc_meths()
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER("we_init_des3cbc_meths");
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_des3cbc_meths");
 
     /* DES3-CBC */
     we_des3_cbc_ciph = EVP_CIPHER_meth_new(NID_des_ede3_cbc, 1, DES3_KEY_SIZE);
     if (we_des3_cbc_ciph == NULL) {
-        WOLFENGINE_ERROR_MSG("EVP_CIPHER_meth_new - DES3-CBC");
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "EVP_CIPHER_meth_new - DES3-CBC");
         ret = 0;
     }
     if (ret == 1) {
@@ -524,7 +535,7 @@ int we_init_des3cbc_meths()
         we_des3_cbc_ciph = NULL;
     }
 
-    WOLFENGINE_LEAVE("we_init_des3cbc_meths", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_init_des3cbc_meths", ret);
 
     return ret;
 }

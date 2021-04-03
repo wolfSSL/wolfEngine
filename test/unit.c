@@ -19,8 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include "wolfengine.h"
-#include "we_logging.h"
+#include <wolfengine/we_wolfengine.h>
+#include <wolfengine/we_logging.h>
+
 #include "unit.h"
 
 #ifdef WOLFENGINE_DEBUG
@@ -74,6 +75,12 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_SHA3_512
     TEST_DECL(test_sha3_512, NULL),
 #endif
+#ifdef WE_HAVE_HMAC
+    TEST_DECL(test_hmac_create, NULL),
+#endif
+#ifdef WE_HAVE_CMAC
+    TEST_DECL(test_cmac_create, NULL),
+#endif
 #ifdef WE_HAVE_DES3CBC
     TEST_DECL(test_des3_cbc, NULL),
     TEST_DECL(test_des3_cbc_stream, NULL),
@@ -122,6 +129,9 @@ TEST_CASE test_case[] = {
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_DH
     TEST_DECL(test_dh, NULL),
+#ifdef WE_HAVE_EVP_PKEY
+    TEST_DECL(test_dh_pkey, NULL),
+#endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_DH */
 
 #if defined(WE_HAVE_ECDH)
@@ -130,9 +140,43 @@ TEST_CASE test_case[] = {
 
 #ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA
-    TEST_DECL(test_rsa_sign_verify, NULL),
-    TEST_DECL(test_rsa_keygen, NULL),
+    TEST_DECL(test_rsa_sign_verify_pkcs1, NULL),
+    TEST_DECL(test_rsa_sign_verify_no_pad, NULL),
+    TEST_DECL(test_rsa_sign_verify_pss, NULL),
+    TEST_DECL(test_rsa_pkey_keygen, NULL),
 #endif /* WE_HAVE_RSA */
+#ifdef WE_HAVE_EC_P192
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_eckeygen_p192_by_nid, NULL),
+        TEST_DECL(test_eckeygen_p192, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ecdh_p192_keygen, NULL),
+    #endif
+        TEST_DECL(test_ecdh_p192, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ecdsa_p192_pkey, NULL),
+        TEST_DECL(test_ecdsa_p192, NULL),
+    #endif
+#endif
+#ifdef WE_HAVE_EC_P224
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_eckeygen_p224_by_nid, NULL),
+        TEST_DECL(test_eckeygen_p224, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ecdh_p224_keygen, NULL),
+    #endif
+        TEST_DECL(test_ecdh_p224, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ecdsa_p224_pkey, NULL),
+        TEST_DECL(test_ecdsa_p224, NULL),
+    #endif
+#endif
 #ifdef WE_HAVE_EC_P256
     #ifdef WE_HAVE_ECKEYGEN
         TEST_DECL(test_eckeygen_p256_by_nid, NULL),
@@ -165,8 +209,52 @@ TEST_CASE test_case[] = {
         TEST_DECL(test_ecdsa_p384, NULL),
     #endif
 #endif
+#ifdef WE_HAVE_EC_P521
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_eckeygen_p521_by_nid, NULL),
+        TEST_DECL(test_eckeygen_p521, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ecdh_p521_keygen, NULL),
+    #endif
+        TEST_DECL(test_ecdh_p521, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ecdsa_p521_pkey, NULL),
+        TEST_DECL(test_ecdsa_p521, NULL),
+    #endif
+#endif
 #endif /* WE_HAVE_EVP_PKEY */
 #ifdef WE_HAVE_EC_KEY
+#ifdef WE_HAVE_EC_P192
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_keygen_p192_by_nid, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_ecdh_p192_keygen, NULL),
+    #endif
+        TEST_DECL(test_ec_key_ecdh_p192, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ec_key_ecdsa_p192, NULL),
+    #endif
+#endif
+#ifdef WE_HAVE_EC_P224
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_keygen_p224_by_nid, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_ecdh_p224_keygen, NULL),
+    #endif
+        TEST_DECL(test_ec_key_ecdh_p224, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ec_key_ecdsa_p224, NULL),
+    #endif
+#endif
 #ifdef WE_HAVE_EC_P256
     #ifdef WE_HAVE_ECKEYGEN
         TEST_DECL(test_ec_key_keygen_p256_by_nid, NULL),
@@ -193,6 +281,20 @@ TEST_CASE test_case[] = {
     #endif
     #ifdef WE_HAVE_ECDSA
         TEST_DECL(test_ec_key_ecdsa_p384, NULL),
+    #endif
+#endif
+#ifdef WE_HAVE_EC_P521
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_keygen_p521_by_nid, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDH
+    #ifdef WE_HAVE_ECKEYGEN
+        TEST_DECL(test_ec_key_ecdh_p521_keygen, NULL),
+    #endif
+        TEST_DECL(test_ec_key_ecdh_p521, NULL),
+    #endif
+    #ifdef WE_HAVE_ECDSA
+        TEST_DECL(test_ec_key_ecdsa_p521, NULL),
     #endif
 #endif
 #endif /* WE_HAVE_EC_KEY */
