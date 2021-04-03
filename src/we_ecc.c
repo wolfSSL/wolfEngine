@@ -1203,7 +1203,7 @@ int we_init_ecc_meths(void)
 
 #endif /* WE_HAVE_EVP_PKEY */
 
-#if defined(WE_HAVE_EC_KEY) || defined(WE_HAVE_ECDSA) 
+#if defined(WE_HAVE_EC_KEY) || defined(WE_HAVE_ECDSA)
 /**
  * Sign data with a private EC key.
  *
@@ -1253,7 +1253,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
         ret = we_ec_set_private(&key, curveId, ecKey);
     }
 
-    if (ret == 1 && sig == NULL) {
+    if (ret == 1) {
         /* Return signature size in bytes. */
         *sigLen = wc_ecc_sig_size(&key);
     }
@@ -1683,9 +1683,12 @@ int we_init_ecdh_meth(void)
  * @return  allocated ECDSA_SIG
  * @return  NULL on failure.
  */
+void print_buffer(const char *desc, const unsigned char *buffer, size_t len);
+#define PRINT_BUFFER(d, b, l)  print_buffer(d, b, l)
 
 static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *dgst, int dlen, 
                     const BIGNUM *kinv, const BIGNUM *rp, EC_KEY *eckey)
+
 {
     int             ret = 1;
     ECDSA_SIG       *in_sig = NULL;
@@ -1694,18 +1697,36 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *dgst, int dlen,
     unsigned char   *temp;
 
     WOLFENGINE_ENTER("we_ecdsa_do_sign_ex");
-    if((slen = ECDSA_size(eckey)) <= 0) {
+    printf("we_ecdsa_do_sign_ex");
+    if((slen = ECDSA_size(eckey)) <= 0 || (sig = OPENSSL_malloc(slen)) == NULL) {
         ret = 0;
     }
-
-    sig = OPENSSL_malloc((STABLE_NO_MASK));
     if(ret == 1) {
         ret = we_ec_key_sign(0, dgst, dlen, sig, &slen, kinv, rp, eckey);
     }
+
+    /**** FOR DEBUGGING, verify SIG */
+    ret = we_ec_key_verify(0, dgst, dlen, sig, slen, eckey);
+    WOLFENGINE_LEAVE("DEBUG: slen = ", slen);
+    PRINT_BUFFER("DEBUG sig", sig, slen);
+    WOLFENGINE_LEAVE("DEBUG: we_ec_key_verify 1", ret);
+    /************************************/
+
     if(ret == 1) {
         temp = sig;
         in_sig = d2i_ECDSA_SIG(NULL, (const unsigned char **)&temp, slen);
     }
+
+    /**** FOR DEBUGGING, verify SIG */
+    if((slen = i2d_ECDSA_SIG(in_sig, &sig)) > 0) {
+        ret = we_ec_key_verify(0, dgst, dlen, sig, slen, eckey);
+    }
+    WOLFENGINE_LEAVE("DEBUG: slen = ", slen);
+    PRINT_BUFFER("DEBUG sig", sig, slen);
+    WOLFENGINE_LEAVE("DEBUG: we_ec_key_verify 2", ret);
+    /************************************/
+
+
     OPENSSL_free(sig);
     WOLFENGINE_LEAVE("we_ecdsa_do_sign_ex", ret);
     
