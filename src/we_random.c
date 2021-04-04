@@ -157,7 +157,7 @@ static int we_rand_seed(const void *buf, int num)
 #endif
 {
     int ret = 1;
-#ifdef WE_STATIC_WOLFSSL
+#if defined(WE_STATIC_WOLFSSL) || !defined(WE_SINGLE_THREADED)
     int rc;
 #endif
 

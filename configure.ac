@@ -88,7 +88,7 @@ AC_ARG_ENABLE([singlethreaded],
     [ ENABLED_SINGLETHREADED=no ]
     )
 
-if test "$ENABLED_SINGLETHREADED" != "yes"
+if test "$ENABLED_SINGLETHREADED" = "yes"
 then
     AM_CFLAGS="$AM_CFLAGS -DWE_SINGLE_THREADED"
 fi
