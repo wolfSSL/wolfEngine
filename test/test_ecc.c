@@ -1657,7 +1657,7 @@ int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
 {
     int err;
     unsigned int sigLen;
-    WOLFENGINE_ENTER("test_ec_key_ecdsa_sign");
+    WOLFENGINE_MSG("test_ec_key_ecdsa_sign");
     sigLen = (unsigned int)*ecdsaSigLen;
     err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
     if (err == 0) {
@@ -1671,7 +1671,6 @@ int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
         PRINT_BUFFER("Signature", ecdsaSig, sigLen);
         *ecdsaSigLen = sigLen;
     }
-    WOLFENGINE_LEAVE("test_ec_key_ecdsa_sign", err);
 
     return err;
 }
@@ -1992,16 +1991,8 @@ static int test_ecdsa_sign(EC_KEY *key, unsigned char *hash,
     err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
     if (err == 0) {
         PRINT_BUFFER("Signature", ecdsaSig, sigLen);
-    }
-    if (err == 0) {
-        sigLen = (unsigned int)*ecdsaSigLen;
-        err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
-    }
-    if (err == 0) {
-        PRINT_BUFFER("Signature", ecdsaSig, sigLen);
         *ecdsaSigLen = sigLen;
     }
-    PRINT_MSG("LEAVE: test_ecdsa_sign");
 
     return err;
 }
@@ -2012,13 +2003,14 @@ static int test_ecdsa_verify(EC_KEY *key, unsigned char *hash,
 {
     int err;
 
+    PRINT_MSG("ENTER: test_ecdsa_verify");
     err = ECDSA_verify(0, hash, (int)hashLen, ecdsaSig, (int)ecdsaSigLen,
                        key) != 1;
     if (err == 0) {
         PRINT_MSG("Signature verified");
     }
     else {
-        PRINT_MSG("Signature not verified");
+        PRINT_MSG("Signature NOT verified");
     }
 
     return err;
@@ -2040,10 +2032,8 @@ int test_ecdsa(ENGINE *e, void *data)
         err0 = ecdsaMeth == NULL;
     }
     if (err0 == 0) {
-        err0 = ENGINE_set_default_ECDSA(e);
-    }
-    if (err0 == 0) {
-        err0 = ECDSA_set_method(ecdsaWE, ecdsaMeth) != 1;
+        ENGINE_set_default_ECDSA(e);
+        ECDSA_set_method(ecdsaWE, ecdsaMeth);
     }
 
     PRINT_MSG("ECDSA: Verify with wolfengine (DER 256)");
@@ -2090,7 +2080,7 @@ static int test_ecdsa_key(const unsigned char *privKey,
     }
     if (err == 0) {
         PRINT_MSG("ECDSA: Verify with wolfengine");
-        err = test_ecdsa_verify(key, buf, sizeof(buf), ecdsaSig,
+        err = test_ecdsa_verify(keyOSSL, buf, sizeof(buf), ecdsaSig,
                                        ecdsaSigLen);
     }
     if (err == 0) {
