@@ -1203,145 +1203,6 @@ int we_init_ecc_meths(void)
 
 #endif /* WE_HAVE_EVP_PKEY */
 
-#if defined(WE_HAVE_EC_KEY)
-/**
- * Sign data with a private EC key.
- *
- * @param  type    [in]      Type of EC key. Ignored.
- * @param  dgst    [in]      Digest to be signed.
- * @param  dLen    [in]      Length of digest.
- * @param  sig     [in]      Buffer to hold signature data.
- *                           NULL indicates length of signature requested.
- * @param  sigLen  [in/out]  Length of signature buffer.
- * @param  kInv    [in]      Big number holding inverse of k. Ignored.
- * @param  r       [in]      Big number holding an r sig value. Ignored.
- * @parma  ecKey   [in]      EC key object.
- * @returns  1 on success and 0 on failure.
- */
-static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
-                          unsigned char *sig, unsigned int *sigLen,
-                          const BIGNUM *kinv, const BIGNUM *r, EC_KEY *ecKey)
-{
-    int ret, rc;
-    ecc_key key;
-    ecc_key *pKey = NULL;
-    const EC_GROUP *group;
-    int curveId;
-    word32 outLen;
-
-    WOLFENGINE_ENTER("we_ec_key_sign");
-
-    (void)type;
-    (void)kinv;
-    (void)r;
-
-    /* Get wolfSSL curve id for EC group. */
-    group = EC_KEY_get0_group(ecKey);
-    ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
-    if (ret == 1) {
-        /* Initialize a wolfSSL key object. */
-        rc = wc_ecc_init(&key);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("we_ecc_init", rc);
-            ret = 0;
-        }
-    }
-    if (ret == 1) {
-        pKey = &key;
-
-        /* Set private key into wolfSSL key object. */
-        ret = we_ec_set_private(&key, curveId, ecKey);
-    }
-
-    if (ret == 1) {
-        /* Return signature size in bytes. */
-        *sigLen = wc_ecc_sig_size(&key);
-    }
-    if (ret == 1 && sig != NULL) {
-        /* Sign hash with wolfSSL. */
-        outLen = *sigLen;
-        rc = wc_ecc_sign_hash(dgst, dLen, sig, &outLen, we_rng, &key);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_sign_hash", rc);
-            ret = 0;
-        }
-        if (ret == 1) {
-            /* Return actual size. */
-            *sigLen = outLen;
-        }
-    }
-
-    wc_ecc_free(pKey);
-
-    WOLFENGINE_LEAVE("we_ec_key_sign", ret);
-
-    return ret;
-}
-
-
-/**
- * Verify data with a public EC key.
- *
- * @param  type    [in]  Type of EC key. Ignored.
- * @param  dgst    [in]  Digest to be verified.
- * @param  dLen    [in]  Length of digest.
- * @param  sig     [in]  Signature data.
- * @param  sigLen  [in]  Length of signature data.
- * @returns  1 on success and 0 on failure.
- */
-static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
-                            const unsigned char *sig, int sigLen, EC_KEY *ecKey)
-{
-    int ret, rc;
-    int res;
-    ecc_key key;
-    ecc_key *pKey = NULL;
-    const EC_GROUP *group;
-    int curveId;
-
-    WOLFENGINE_ENTER("we_ec_key_verify");
-
-    (void)type;
-
-    /* Get wolfSSL curve id for EC group. */
-    group = EC_KEY_get0_group(ecKey);
-    ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
-    if (ret == 1) {
-        /* Initialize a wolfSSL key object. */
-        rc = wc_ecc_init(&key);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
-            ret = 0;
-        }
-    }
-    if (ret == 1) {
-        pKey = &key;
-
-        /* Set public key into wolfSSL key object. */
-        ret = we_ec_set_public(&key, curveId, ecKey);
-    }
-    if (ret == 1) {
-        /* Verify hash with wolfSSL. */
-        rc = wc_ecc_verify_hash(sig, sigLen, dgst, dLen, &res, &key);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_verify_hash", rc);
-            ret = 0;
-        }
-    }
-    if (ret == 1) {
-        /* Verification result is 1 on success and 0 on failure. */
-        ret = res;
-    }
-
-    wc_ecc_free(pKey);
-
-    WOLFENGINE_LEAVE("we_ec_key_verify", ret);
-
-    return ret;
-}
-
-#endif /* WE_HAVE_EC_KEY || WE_HAVE_ECDSA */
-
 #ifdef WE_HAVE_EC_KEY
 /* Method for using wolfSSL thorugh the EC_KEY API. */
 EC_KEY_METHOD *we_ec_key_method = NULL;
@@ -1525,6 +1386,142 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
 }
 #endif /* WE_HAVE_EC_KEY || WE_HAVE_ECDH */
 #ifdef WE_HAVE_EC_KEY
+/**
+ * Sign data with a private EC key.
+ *
+ * @param  type    [in]      Type of EC key. Ignored.
+ * @param  dgst    [in]      Digest to be signed.
+ * @param  dLen    [in]      Length of digest.
+ * @param  sig     [in]      Buffer to hold signature data.
+ *                           NULL indicates length of signature requested.
+ * @param  sigLen  [in/out]  Length of signature buffer.
+ * @param  kInv    [in]      Big number holding inverse of k. Ignored.
+ * @param  r       [in]      Big number holding an r sig value. Ignored.
+ * @parma  ecKey   [in]      EC key object.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
+                          unsigned char *sig, unsigned int *sigLen,
+                          const BIGNUM *kinv, const BIGNUM *r, EC_KEY *ecKey)
+{
+    int ret, rc;
+    ecc_key key;
+    ecc_key *pKey = NULL;
+    const EC_GROUP *group;
+    int curveId;
+    word32 outLen;
+
+    WOLFENGINE_ENTER("we_ec_key_sign");
+
+    (void)type;
+    (void)kinv;
+    (void)r;
+
+    /* Get wolfSSL curve id for EC group. */
+    group = EC_KEY_get0_group(ecKey);
+    ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
+    if (ret == 1) {
+        /* Initialize a wolfSSL key object. */
+        rc = wc_ecc_init(&key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("we_ecc_init", rc);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        pKey = &key;
+
+        /* Set private key into wolfSSL key object. */
+        ret = we_ec_set_private(&key, curveId, ecKey);
+    }
+
+    if (ret == 1 && sig == NULL) {
+        /* Return signature size in bytes. */
+        *sigLen = wc_ecc_sig_size(&key);
+    }
+    if (ret == 1 && sig != NULL) {
+        /* Sign hash with wolfSSL. */
+        outLen = *sigLen;
+        rc = wc_ecc_sign_hash(dgst, dLen, sig, &outLen, we_rng, &key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_ecc_sign_hash", rc);
+            ret = 0;
+        }
+        if (ret == 1) {
+            /* Return actual size. */
+            *sigLen = outLen;
+        }
+    }
+
+    wc_ecc_free(pKey);
+
+    WOLFENGINE_LEAVE("we_ec_key_sign", ret);
+
+    return ret;
+}
+
+
+/**
+ * Verify data with a public EC key.
+ *
+ * @param  type    [in]  Type of EC key. Ignored.
+ * @param  dgst    [in]  Digest to be verified.
+ * @param  dLen    [in]  Length of digest.
+ * @param  sig     [in]  Signature data.
+ * @param  sigLen  [in]  Length of signature data.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
+                            const unsigned char *sig, int sigLen, EC_KEY *ecKey)
+{
+    int ret, rc;
+    int res;
+    ecc_key key;
+    ecc_key *pKey = NULL;
+    const EC_GROUP *group;
+    int curveId;
+
+    WOLFENGINE_ENTER("we_ec_key_verify");
+
+    (void)type;
+
+    /* Get wolfSSL curve id for EC group. */
+    group = EC_KEY_get0_group(ecKey);
+    ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
+    if (ret == 1) {
+        /* Initialize a wolfSSL key object. */
+        rc = wc_ecc_init(&key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        pKey = &key;
+
+        /* Set public key into wolfSSL key object. */
+        ret = we_ec_set_public(&key, curveId, ecKey);
+    }
+    if (ret == 1) {
+        /* Verify hash with wolfSSL. */
+        rc = wc_ecc_verify_hash(sig, sigLen, dgst, dLen, &res, &key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC("wc_ecc_verify_hash", rc);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        /* Verification result is 1 on success and 0 on failure. */
+        ret = res;
+    }
+
+    wc_ecc_free(pKey);
+
+    WOLFENGINE_LEAVE("we_ec_key_verify", ret);
+
+    return ret;
+}
+
 /**
  * Initialize the ECC method.
  *
