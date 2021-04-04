@@ -22,6 +22,10 @@
 #ifndef WE_LOGGING_H
 #define WE_LOGGING_H
 
+#ifdef WOLFENGINE_USER_SETTINGS
+    #include "user_settings.h"
+#endif
+
 #ifndef WOLFENGINE_MAX_ERROR_SZ
 #define WOLFENGINE_MAX_ERROR_SZ 80
 #endif
