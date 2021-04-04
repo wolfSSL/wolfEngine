@@ -635,7 +635,7 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
     we_Ecc *ecc;
     EC_KEY *ecKey = NULL;
 
-    WOLFENGINE_ENTER("we_pkey_ecdsa_sign");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_sign");
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -671,7 +671,7 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
         }
     }
 
-    WOLFENGINE_LEAVE("we_pkey_ecdsa_sign", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_sign", ret);
 
     return ret;
 }
@@ -695,7 +695,7 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     EC_KEY *ecKey = NULL;
     int res;
 
-    WOLFENGINE_ENTER("we_pkey_ecdsa_verify");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_verify");
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -725,7 +725,7 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         ret = res;
     }
 
-    WOLFENGINE_LEAVE("we_pkey_ecdsa_verify", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_verify", ret);
 
     return ret;
 }
@@ -1411,7 +1411,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     int curveId;
     word32 outLen;
 
-    WOLFENGINE_ENTER("we_ec_key_sign");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_sign");
 
     (void)type;
     (void)kinv;
@@ -1424,7 +1424,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
         /* Initialize a wolfSSL key object. */
         rc = wc_ecc_init(&key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("we_ecc_init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_init", rc);
             ret = 0;
         }
     }
@@ -1444,7 +1444,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
         outLen = *sigLen;
         rc = wc_ecc_sign_hash(dgst, dLen, sig, &outLen, we_rng, &key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_sign_hash", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash", rc);
             ret = 0;
         }
         if (ret == 1) {
@@ -1455,7 +1455,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
 
     wc_ecc_free(pKey);
 
-    WOLFENGINE_LEAVE("we_ec_key_sign", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_key_sign", ret);
 
     return ret;
 }
@@ -1481,7 +1481,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
     const EC_GROUP *group;
     int curveId;
 
-    WOLFENGINE_ENTER("we_ec_key_verify");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_verify");
 
     (void)type;
 
@@ -1492,7 +1492,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         /* Initialize a wolfSSL key object. */
         rc = wc_ecc_init(&key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_init", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
             ret = 0;
         }
     }
@@ -1506,7 +1506,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         /* Verify hash with wolfSSL. */
         rc = wc_ecc_verify_hash(sig, sigLen, dgst, dLen, &res, &key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC("wc_ecc_verify_hash", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
             ret = 0;
         }
     }
@@ -1517,7 +1517,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
 
     wc_ecc_free(pKey);
 
-    WOLFENGINE_LEAVE("we_ec_key_verify", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_key_verify", ret);
 
     return ret;
 }
@@ -1709,14 +1709,15 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
     ecc_key we_key;
     int curveId;
     
-    WOLFENGINE_ENTER("ECDSA_do_sign");
+    WOLFENGINE_ENTER(WE_LOG_PK, "ECDSA_do_sign");
 
     if (d == NULL || key == NULL) {
-        WOLFENGINE_MSG("wolfSSL_ECDSA_do_sign Bad arguments");
+        WOLFENGINE_MSG(WE_LOG_PK, "wolfSSL_ECDSA_do_sign Bad arguments");
         return NULL;
     }
 
-    ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(EC_KEY_get0_group(key)), &curveId);
+    ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(
+                                    EC_KEY_get0_group(key)), &curveId);
     if (ret == 1) {
         /* Initialize a wolfSSL key object. */
         ret = wc_ecc_init(&we_key);
@@ -1729,9 +1730,11 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         initTmpRng = 1;
     }
     else {
-        WOLFENGINE_MSG("wolfSSL_ECDSA_do_sign Bad RNG Init, trying global");
+        WOLFENGINE_MSG(WE_LOG_PK, 
+                "wolfSSL_ECDSA_do_sign Bad RNG Init, trying global");
         if (initGlobalRNG == 0)
-            WOLFENGINE_MSG("wolfSSL_ECDSA_do_sign Global RNG no Init");
+            WOLFENGINE_MSG(WE_LOG_PK, 
+                "wolfSSL_ECDSA_do_sign Global RNG no Init");
         else
             rng = &globalRNG;
     }
@@ -1744,7 +1747,7 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
             /* ECDSA Sign */ 
             if (wc_ecc_sign_hash_ex(d, dlen, rng, &we_key,
                                     &sig_r, &sig_s) != MP_OKAY) {
-                WOLFENGINE_MSG("wc_ecc_sign_hash_ex failed");
+                WOLFENGINE_MSG(WE_LOG_PK, "wc_ecc_sign_hash_ex failed");
             }
 
             else {
@@ -1765,7 +1768,8 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
                     !(sig->r = BN_bin2bn(r_bin, r_size, NULL)) ||
                     !(sig->s = BN_bin2bn(s_bin, s_size, NULL))
                 ) {
-                    WOLFENGINE_MSG("r/s to ECDSA_SIG conversion failed");
+                    WOLFENGINE_MSG(WE_LOG_PK, 
+                        "r/s to ECDSA_SIG conversion failed");
                 }
 
             #ifdef WOLFENGINE_DEBUG_ECDSA
@@ -1774,22 +1778,24 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
 
                 PRINT_BUFFER("Digest", d, dlen);
 
-                WOLFENGINE_MSG("wc_ecc_verify_hash_ex");
+                WOLFENGINE_MSG(WE_LOG_PK, "wc_ecc_verify_hash_ex");
                 we_ec_set_public(&we_key, curveId, key);
-                if (wc_ecc_verify_hash_ex(&sig_r, &sig_s, d, dlen, &check_sig, &we_key) != MP_OKAY) {
-                    WOLFENGINE_MSG("wc_ecc_verify_hash failed");
+                if (wc_ecc_verify_hash_ex(&sig_r, &sig_s, d, dlen, &check_sig,
+                                          &we_key) != MP_OKAY) {
+                    WOLFENGINE_MSG(WE_LOG_PK, "wc_ecc_verify_hash failed");
                     OPENSSL_free(r_bin);
                     OPENSSL_free(s_bin);
                     return NULL;
                 }
                 else if (check_sig == 0) {
-                    WOLFENGINE_MSG("wc_ecc_verify_hash incorrect signature detected");
+                    WOLFENGINE_MSG(WE_LOG_PK, 
+                        "wc_ecc_verify_hash incorrect signature detected");
                     return NULL;
-                } else
-                    WOLFENGINE_MSG("wc_ecc_verify_hash signature verified");
-                WOLFENGINE_ENTER("INTERNAL: we_ecdsa_do_verify");
-                ret = we_ecdsa_do_verify(d, dlen, sig, key);
-                WOLFENGINE_LEAVE("INTERNAL: we_ecdsa_do_verify", ret);
+                } else {
+                    WOLFENGINE_MSG(WE_LOG_PK, 
+                        "wc_ecc_verify_hash signature verified");
+                    ret = we_ecdsa_do_verify(d, dlen, sig, key);
+                }
                 }
                 #endif
 
@@ -1814,7 +1820,8 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
  * @return 0 for Error
  */
 
-static int we_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinv, BIGNUM **r)
+static int we_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, 
+                                        BIGNUM **kinv, BIGNUM **r)
 {
     (void)eckey; (void)ctx; (void)kinv; (void)r;
 
@@ -1836,18 +1843,19 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
     unsigned char *r_bin, *s_bin;
     int check_sig = 0;
     
-    WOLFENGINE_ENTER("ECDSA_do_verify");
+    WOLFENGINE_ENTER(WE_LOG_PK,"ECDSA_do_verify");
 
     if (d == NULL || sig == NULL || key == NULL) {
-        WOLFENGINE_MSG("wolfSSL_ECDSA_do_verify Bad arguments");
+        WOLFENGINE_MSG(WE_LOG_PK,"wolfSSL_ECDSA_do_verify Bad arguments");
         return WOLFENGINE_FATAL_ERROR;
     }
 
-    if( we_ec_get_curve_id(EC_GROUP_get_curve_name(EC_KEY_get0_group(key)), &curveId) != 1 ||
+    if( we_ec_get_curve_id(EC_GROUP_get_curve_name(
+                            EC_KEY_get0_group(key)), &curveId) != 1 ||
         wc_ecc_init(&we_key) != 0 ||
         we_ec_set_public(&we_key, curveId, key) != 1) {
         
-        WOLFENGINE_MSG("Invalid key");
+        WOLFENGINE_MSG(WE_LOG_PK,"Invalid key");
         return WOLFENGINE_FATAL_ERROR;
     }
 
@@ -1861,11 +1869,11 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
         if(mp_read_unsigned_bin(&sig_r, r_bin, r_bin_sz) != MP_OKAY ||
            mp_read_unsigned_bin(&sig_s, s_bin, s_bin_sz) != MP_OKAY) {
         
-            WOLFENGINE_MSG("ECDSA_SIG to r/s conversion failed");
+            WOLFENGINE_MSG(WE_LOG_PK,"ECDSA_SIG to r/s conversion failed");
             return WOLFENGINE_FATAL_ERROR;
         }   
     } else {
-        WOLFENGINE_MSG("ECDSA_SIG to r/s conversion failed");
+        WOLFENGINE_MSG(WE_LOG_PK,"ECDSA_SIG to r/s conversion failed");
         return WOLFENGINE_FATAL_ERROR;
     }
 
@@ -1873,16 +1881,18 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
     PRINT_BUFFER("DEBUG: Digest", d, dlen);
     #endif
 
-    if (wc_ecc_verify_hash_ex(&sig_r, &sig_s, d, dlen, &check_sig, &we_key) != MP_OKAY) {
-        WOLFENGINE_MSG("wc_ecc_verify_hash failed");
+    if (wc_ecc_verify_hash_ex(
+            &sig_r, &sig_s, d, dlen, &check_sig, &we_key) != MP_OKAY) {
+        WOLFENGINE_MSG(WE_LOG_PK, "wc_ecc_verify_hash failed");
         return WOLFENGINE_FATAL_ERROR;
     }
     else if (check_sig == 0) {
-        WOLFENGINE_MSG("wc_ecc_verify_hash incorrect signature detected");
+        WOLFENGINE_MSG(WE_LOG_PK,
+                    "wc_ecc_verify_hash incorrect signature detected");
         return WOLFENGINE_FAILURE;
     }
 
-    WOLFENGINE_MSG("wc_ecc_verify_hash signature verified");
+    WOLFENGINE_MSG(WE_LOG_PK,"wc_ecc_verify_hash signature verified");
     return WOLFENGINE_SUCCESS;
 }
 
@@ -1901,7 +1911,8 @@ int we_init_ecdsa_meth(void)
 
     we_ecdsa_method = ECDSA_METHOD_new(NULL);
     if (we_ecdsa_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL("ECDSA_METHOD_new", we_ecdsa_method);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
+                                    "ECDSA_METHOD_new", we_ecdsa_method);
         ret = 0;
     }
 
