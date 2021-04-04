@@ -557,8 +557,8 @@ fi
 
 if test "x$ENABLED_USERSETTINGS" = "xyes"
 then
-    # Replace all options and just use DWOLENGINE_USER_SETTINGS
-    AM_CFLAGS="-DWOLENGINE_USER_SETTINGS"
+    # Replace all options and just use -DWOLFENGINE_USER_SETTINGS
+    AM_CFLAGS="-DWOLFENGINE_USER_SETTINGS"
 fi
 
 
