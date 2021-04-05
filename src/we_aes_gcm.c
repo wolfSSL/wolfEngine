@@ -356,7 +356,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   ptr [in] Unused
                  */
                 if (arg <= 0 || arg > GCM_NONCE_MAX_SZ) {
-                    WOLFENGINE_ERROR_MSG("Invalid nonce length");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid nonce length");
                     ret = 0;
                 }
                 else {
@@ -426,7 +426,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   ptr [in] generated IV/nonce data
                  */
                 if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ)) {
-                    WOLFENGINE_ERROR_MSG("Invalid nonce length");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid nonce length");
                     ret = 0;
                 }
                 else {
@@ -461,11 +461,11 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   ptr [in] tag data to copy
                  */
                 if ((arg <= 0) || (arg > AES_BLOCK_SIZE)) {
-                    WOLFENGINE_ERROR_MSG("Invalid tag size");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid tag size");
                     ret = 0;
                 }
                 else if ((!aes->enc) && (ptr == NULL)) {
-                    WOLFENGINE_ERROR_MSG("No tag for decrypt");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "No tag for decrypt");
                     ret = 0;
                 }
                 else {
@@ -483,7 +483,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   ptr [in] AAD to use
                  */
                 if (arg != EVP_AEAD_TLS1_AAD_LEN) {
-                    WOLFENGINE_ERROR_MSG("Invalid TLS AAD size");
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid TLS AAD size");
                     ret = 0;
                 }
                 if (ret == 1) {
@@ -504,7 +504,8 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                         aes->aadLen = arg;
                         len = (aes->aad[arg - 2] << 8) | aes->aad[arg - 1];
                         if (len < EVP_GCM_TLS_EXPLICIT_IV_LEN) {
-                            WOLFENGINE_ERROR_MSG("Length in AAD invalid");
+                            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                "Length in AAD invalid");
                             ret = 0;
                         }
                     }
@@ -512,7 +513,8 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                         len -= EVP_GCM_TLS_EXPLICIT_IV_LEN;
                         if (!aes->enc) {
                             if (len < EVP_GCM_TLS_TAG_LEN) {
-                                WOLFENGINE_ERROR_MSG("Length in AAD invalid");
+                                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                    "Length in AAD invalid");
                                 ret = 0;
                             }
                             else {
@@ -532,7 +534,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
-                WOLFENGINE_ERROR_MSG(errBuff);
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                 ret = 0;
                 break;
         }
