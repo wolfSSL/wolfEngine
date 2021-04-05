@@ -868,12 +868,9 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
         }
     }
 
-    if (ret == 1 && sig != NULL) {
-        if (*siglen < (size_t)mac->size) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
-                                 "MAC output buffer was too small");
-            ret = 0;
-        }
+    /* siglen always gets set, even if smaller than mac->size */
+    if (ret == 1) {
+        *siglen = (size_t)mac->size;
     }
 
     if (ret == 1 && sig != NULL) {
@@ -882,10 +879,6 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
             WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacFinal", rc);
             ret = 0;
         }
-    }
-
-    if (ret == 1) {
-        *siglen = (size_t)mac->size;
     }
 
     return ret;
