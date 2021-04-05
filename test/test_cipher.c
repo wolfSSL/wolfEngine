@@ -173,7 +173,7 @@ static int test_stream_enc(ENGINE *e, const EVP_CIPHER *cipher,
 {
     int err;
     EVP_CIPHER_CTX *ctx;
-    int eLen;
+    int eLen = 0;
     int encLen;
     int i;
     int j;

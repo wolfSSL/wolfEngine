@@ -88,7 +88,7 @@ AC_ARG_ENABLE([singlethreaded],
     [ ENABLED_SINGLETHREADED=no ]
     )
 
-if test "$ENABLED_SINGLETHREADED" != "yes"
+if test "$ENABLED_SINGLETHREADED" = "yes"
 then
     AM_CFLAGS="$AM_CFLAGS -DWE_SINGLE_THREADED"
 fi
@@ -557,8 +557,8 @@ fi
 
 if test "x$ENABLED_USERSETTINGS" = "xyes"
 then
-    # Replace all options and just use DWOLENGINE_USER_SETTINGS
-    AM_CFLAGS="-DWOLENGINE_USER_SETTINGS"
+    # Replace all options and just use -DWOLFENGINE_USER_SETTINGS
+    AM_CFLAGS="-DWOLFENGINE_USER_SETTINGS"
 fi
 
 
