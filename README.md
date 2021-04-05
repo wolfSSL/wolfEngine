@@ -40,18 +40,6 @@ wolfEngine is a library that can be used as an Engine in OpenSSL.
 * SHA-3 support is only available with OpenSSL versions 1.1.1+.
 * EC_KEY_METHOD is only available with OpenSSL versions 1.1.1+.
 
-Versions 1.1.1 and below of OpenSSL did not handle AES-GCM/CCM through the Engine interface.
-
-The only change necessary is to add GCM/CCM mode to a switch statement.
-For example, for OpenSSL 1.1.1, add the following to crypto/evp/evp_enc.c at line 188:
-
-```
-
-+         case EVP_CIPH_GCM_MODE:
-+         case EVP_CIPH_CCM_MODE:
-          case EVP_CIPH_CTR_MODE:
-```
-
 To get CBC cipher suites working in OpensSL 1.1.1, modify ssl/record/ssl3_record.c at 1125:
 
 ```
