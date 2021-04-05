@@ -453,7 +453,7 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 break;
 
             case EVP_CTRL_AEAD_TLS1_AAD:
-                WOLFENGINE_MSG("EVP_CTRL_AEAD_TLS1_AAD");
+                WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_TLS1_AAD");
                 /* Set additional authentication data for TLS
                  *   arg [in] size of AAD
                  *   ptr [in] AAD to use
