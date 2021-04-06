@@ -1673,9 +1673,6 @@ int we_init_ecdh_meth(void)
 #if OPENSSL_VERSION_NUMBER <= 0x100020ffL
 
 #ifdef WOLFENGINE_DEBUG_ECDSA
-void print_buffer(const char *desc, const unsigned char *buffer, size_t len);
-#define PRINT_BUFFER(d, b, l)  print_buffer(d, b, l)
-
 static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
                             const ECDSA_SIG *sig, EC_KEY *key);
 #endif
@@ -1781,14 +1778,16 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         }
 
         #ifdef WOLFENGINE_DEBUG_ECDSA
-        WOLFENGINE_MSG(WE_LOG_PK, "Successful ECDSA_SIG, Let's confirm the signature");
         {
             int check_sig;
+            WOLFENGINE_MSG(WE_LOG_PK, "Successful ECDSA_SIG sig generation, "
+                                      "confirming signature");
 
-            PRINT_BUFFER("Digest", d, dlen);
-
+            WOLFENGINE_MSG(WE_LOG_PK, "Input digest:");
+            WOLFENGINE_BUFFER(WE_LOG_PK, d, dlen);
             WOLFENGINE_MSG(WE_LOG_PK, "Verifying signature with "
                                       "wc_ecc_verify_hash_ex()");
+
             if((ret = we_ec_set_public(&we_key, curveId, key)) != 1) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, 
                         "Fail to set the public key", ret);
@@ -1925,7 +1924,8 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
     }
 
     #ifdef WOLFENGINE_DEBUG_ECDSA
-    PRINT_BUFFER("DEBUG: Digest", d, dlen);
+    WOLFENGINE_MSG(WE_LOG_PK, "Input digest to wc_ecc_verify_hash_ex():");
+    WOLFENGINE_BUFFER(WE_LOG_PK, d, dlen);
     #endif
 
     if ((ret = wc_ecc_verify_hash_ex(
