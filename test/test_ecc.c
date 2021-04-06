@@ -2020,33 +2020,43 @@ static int test_ecdsa_key(const unsigned char *privKey, size_t privKeyLen);
 
 int test_ecdsa(ENGINE *e, void *data)
 {
-    (void)data;
-    (void)e;
-    int err0, err1, err2;
+    int err = 0;
     EC_KEY *ecdsaWE;
     ECDSA_METHOD *ecdsaMeth;
+    (void)data;
 
     ecdsaWE = EC_KEY_new();
-    err0 = ecdsaWE == NULL;
-    if (err0 == 0) {
-        ecdsaMeth = (ECDSA_METHOD *)ENGINE_get_ECDSA(e);
-        err0 = ecdsaMeth == NULL;
+    if (ecdsaWE == NULL) {
+        err = 1;
     }
-    if (err0 == 0) {
+    if (err == 0) {
+        ecdsaMeth = (ECDSA_METHOD *)ENGINE_get_ECDSA(e);
+        if (ecdsaMeth == NULL) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
         ENGINE_set_default_ECDSA(e);
         ECDSA_set_method(ecdsaWE, ecdsaMeth);
     }
 
-    PRINT_MSG("ECDSA: Verify with wolfengine (DER 256)");
-    err1 = test_ecdsa_key(ecc_key_der_256, sizeof(ecc_key_der_256));
-    if (err1 != 0)
-        PRINT_MSG("ERROR: Verify with wolfengine");
-    
-    PRINT_MSG("ECDSA: Verify with wolfengine (DER 384)");
-    err2 = test_ecdsa_key(ecc_key_der_384, sizeof(ecc_key_der_384));
-    if (err2 != 0)
-        PRINT_MSG("ERROR: Verify with wolfengine");
-    return err0 | err1 | err2 ;
+    if (err == 0) {
+        PRINT_MSG("ECDSA: Verify with wolfengine (DER 256)");
+        err = test_ecdsa_key(ecc_key_der_256, sizeof(ecc_key_der_256));
+        if (err != 0) {
+            PRINT_MSG("ERROR: Verify with wolfengine");
+        }
+    }
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA: Verify with wolfengine (DER 384)");
+        err = test_ecdsa_key(ecc_key_der_384, sizeof(ecc_key_der_384));
+        if (err != 0) {
+            PRINT_MSG("ERROR: Verify with wolfengine");
+        }
+    }
+
+    return err;
 }
 
 static int test_ecdsa_key(const unsigned char *privKey,
