@@ -1580,7 +1580,7 @@ struct ecdh_method {
  * @param  pub_key [in]  peer's public key.
  * @param  ecdh    [in]  private key.
  * @param  KDF     [in]  Key-derivation function pointer
- * @returns the number of key in buffer out on success and -1 on failure.
+ * @returns the number of key bytes in buffer out on success and -1 on failure.
  */
 static int we_ecdh_compute_key(void* out, size_t outlen,
                                 const EC_POINT* pub_key, EC_KEY* ecdh,
@@ -1595,8 +1595,11 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_ecdh_compute_key");
 
-    if (out == NULL || outlen == 0 || pub_key == NULL || ecdh == NULL )
+    if (out == NULL || outlen == 0 || pub_key == NULL || ecdh == NULL ) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_KE,
+                             "we_ecdh_compute_key() bad function arguments");
         ret = -1;
+    }
 
     if (ret != -1) {
         ret = we_ec_key_compute_key(&secret, &secretLen, pub_key,
@@ -1622,15 +1625,18 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
             XMEMCPY(out, secret, MIN(outlen, secretLen));
             ret = MIN(outlen, secretLen);
         }
+    }
+
+    if (secret != NULL) {
         OPENSSL_free(secret);
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_KE, "we_init_ec_key_meths", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_ecdh_compute_key", ret);
     return ret;
 }
 
 /**
- * Initialize the ECDH method.
+ * Initialize the ECDH_METHOD structure.
  *
  * @return  1 on success and 0 on failure.
  */
@@ -1655,7 +1661,7 @@ int we_init_ecdh_meth(void)
         we_ecdh_method = NULL;
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_KE, "we_ecdh_compute_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_init_ecdh_meth", ret);
     return ret;
 }
 #endif /* WE_HAVE_ECDH */
