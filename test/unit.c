@@ -135,7 +135,18 @@ TEST_CASE test_case[] = {
 #endif /* WE_HAVE_DH */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #if defined(WE_HAVE_ECDH)
-    TEST_DECL(test_ecdh_direct, NULL),
+    #ifdef WE_HAVE_EC_P192
+        TEST_DECL(test_ecdh_direct_p192, NULL),
+    #endif
+    #ifdef WE_HAVE_EC_P256
+        TEST_DECL(test_ecdh_direct_p256, NULL),
+    #endif
+    #ifdef WE_HAVE_EC_P384
+        TEST_DECL(test_ecdh_direct_p384, NULL),
+    #endif
+    #ifdef WE_HAVE_EC_P521
+        TEST_DECL(test_ecdh_direct_p521, NULL),
+    #endif
 #endif /* WE_HAVE_EDCH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 #ifdef WE_HAVE_EVP_PKEY
