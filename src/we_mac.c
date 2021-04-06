@@ -347,7 +347,7 @@ static int we_mac_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
 static int we_mac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 {
     int ret = 1;
-    ASN1_OCTET_STRING *key;
+    ASN1_OCTET_STRING *key = NULL;
     we_mac *mac;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_keygen");
@@ -1155,9 +1155,7 @@ static void we_cmac_pkey_asn1_free(EVP_PKEY *pkey)
         ret = 0;
     }
     else {
-    #if OPENSSL_VERSION_NUMBER < 0x10100000L
         ASN1_OCTET_STRING_free(key);
-    #endif
     }
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_asn1_free", ret);
     (void)ret;

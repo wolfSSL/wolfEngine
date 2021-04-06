@@ -861,13 +861,7 @@ static int wolfengine_destroy(ENGINE *e)
     EVP_MD_meth_free(we_sha3_512_md);
     we_sha3_512_md = NULL;
 #endif
-#ifdef WE_HAVE_HMAC
-    EVP_PKEY_meth_free(we_hmac_pkey_method);
-    we_hmac_pkey_method = NULL;
-#endif
 #ifdef WE_HAVE_CMAC
-    EVP_PKEY_meth_free(we_cmac_pkey_method);
-    we_cmac_pkey_method = NULL;
     EVP_PKEY_asn1_free(we_cmac_pkey_asn1_method);
     we_cmac_pkey_asn1_method = NULL;
 #endif
