@@ -217,8 +217,9 @@ int test_eckeygen_p521(ENGINE *e, void *data);
 
 int test_ecdh_derive(ENGINE *e, EVP_PKEY *key, EVP_PKEY *peerKey,
                      unsigned char **pSecret, size_t expLen);
-
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 int test_ecdh_direct(ENGINE *e,void *data);
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 #ifdef WE_HAVE_ECKEYGEN
 
 int test_ecdh_keygen(ENGINE *e, int nid, int len);

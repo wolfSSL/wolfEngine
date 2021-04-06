@@ -1550,6 +1550,7 @@ int we_init_ec_key_meths(void)
 }
 #endif /* WE_HAVE_EC_KEY */
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #ifdef WE_HAVE_ECDH
 
 /** ECDH method - ECDH using wolfSSL for the implementation. */
@@ -1592,31 +1593,39 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
     size_t secretLen = 0;
     size_t deriveLen;
 
-    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_ecdh_compute_key");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_ecdh_compute_key");
 
     if (out == NULL || outlen == 0 || pub_key == NULL || ecdh == NULL )
-        return -1;
+        ret = -1;
 
-    ret = we_ec_key_compute_key(&secret, &secretLen, pub_key, (const EC_KEY*)ecdh);
-
-    if (ret != 1)
-        return -1;
-
-    if (KDF) {
-        deriveLen= 0;
-        if (KDF(secret, secretLen, out, &deriveLen)) {
-            ret = deriveLen;
-        }
-        else {
+    if (ret != -1) {
+        ret = we_ec_key_compute_key(&secret, &secretLen, pub_key,
+                                                (const EC_KEY*)ecdh);
+        if (ret == 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE,
+                                        "we_ec_key_compute_key", ret);
             ret = -1;
         }
     }
-    else {
-        XMEMCPY(out, secret, MIN(outlen, secretLen));
-        ret = MIN(outlen, secretLen);
+    if (ret != -1) {
+        if (KDF) {
+            deriveLen= 0;
+            if (KDF(secret, secretLen, out, &deriveLen)) {
+                ret = deriveLen;
+            }
+            else {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "KDF", ret);
+                ret = -1;
+            }
+        }
+        else {
+            XMEMCPY(out, secret, MIN(outlen, secretLen));
+            ret = MIN(outlen, secretLen);
+        }
+        OPENSSL_free(secret);
     }
-    OPENSSL_free(secret);
 
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_init_ec_key_meths", ret);
     return ret;
 }
 
@@ -1629,10 +1638,10 @@ int we_init_ecdh_meth(void)
 {
     int ret = 1;
 
-    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_init_ecdh_meth");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_init_ecdh_meth");
     we_ecdh_method = (ECDH_METHOD*)OPENSSL_zalloc(sizeof(ECDH_METHOD));
     if (we_ecdh_method == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_ENGINE, "ECDH_OpenSSL",
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_zalloc",
                                             we_ecdh_method);
         ret = 0;
     }
@@ -1646,9 +1655,10 @@ int we_init_ecdh_meth(void)
         we_ecdh_method = NULL;
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_init_ecdh_meth", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_ecdh_compute_key", ret);
     return ret;
 }
 #endif /* WE_HAVE_ECDH */
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 #endif /* WE_HAVE_ECC */
 

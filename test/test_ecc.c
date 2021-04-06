@@ -1809,7 +1809,7 @@ int test_ec_key_ecdsa_p521(ENGINE *e, void *data)
 #endif /* WE_HAVE_ECDSA */
 
 #endif /* WE_HAVE_EC_KEY */
-
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 #ifdef WE_HAVE_ECDH
 int test_ecdh_direct(ENGINE *e,void *data)
 {
@@ -1992,7 +1992,7 @@ int test_ecdh_direct(ENGINE *e,void *data)
     return err;
 }
 #endif /* WE_HAVE_ECDH */
-
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
 
 
