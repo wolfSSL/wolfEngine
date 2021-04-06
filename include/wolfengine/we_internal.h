@@ -213,10 +213,12 @@ int we_init_ecdh_meth(void);
  */
 
 #ifdef WE_HAVE_ECDSA
+#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
 
 extern ECDSA_METHOD *we_ecdsa_method;
 int we_init_ecdsa_meth(void);
 
+#endif
 #endif /* WE_HAVE_ECDSA */
 
 /*
