@@ -150,7 +150,7 @@ static const unsigned char rsa_key_der_2048[] =
 /* Copy RSA params from a to b. Surprisingly, there's no function I can find to
    do this with OpenSSL. There are functions to duplicate private/public keys
    and return a corresponding RSA object, but no function duplicates BOTH
-   private and public parameters. */
+   private and public parameters. Returns 1 on success and 0 on failure. */
 static int copy_rsa(RSA *a, RSA *b)
 {
     const BIGNUM *aN = NULL, *aE = NULL, *aD = NULL, *aP = NULL, *aQ = NULL,
@@ -194,7 +194,90 @@ static int copy_rsa(RSA *a, RSA *b)
     return 1;
 }
 
-int test_rsa_direct(ENGINE *e, void *data)
+/* Load the RSA key held in buffer rsa_key_der_2048 into wolfEngine and OpenSSL
+   RSA keys for use in RSA direct tests. Returns 1 on success, 0 on failure. */
+static int load_static_rsa_key(ENGINE *e, RSA **weRsaKey, RSA **osslRsaKey)
+{
+    int ret = 1;
+    int rc = 0;
+    const unsigned char *p = rsa_key_der_2048;
+    EVP_PKEY *pkey = NULL;
+    RSA *rsa = NULL;
+
+    if (e == NULL) {
+        PRINT_MSG("load_static_rsa_key: e was NULL.");
+        ret = 0;
+    }
+    if (weRsaKey == NULL) {
+        PRINT_MSG("load_static_rsa_key: weRsaKey was NULL.");
+        ret = 0;
+    }
+    if (osslRsaKey == NULL) {
+        PRINT_MSG("load_static_rsa_key: osslRsaKey was NULL.");
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+        if (pkey == NULL) {
+            PRINT_MSG("load_static_rsa_key: d2i_PrivateKey failed.");
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        rsa = EVP_PKEY_get0_RSA(pkey);
+        if (rsa == NULL) {
+            PRINT_MSG("load_static_rsa_key: EVP_PKEY_get0_RSA failed.");
+            ret = 0;
+        }
+    }
+
+    if (ret == 1 && *weRsaKey == NULL) {
+        *weRsaKey = RSA_new_method(e);
+        if (*weRsaKey == NULL) {
+            PRINT_MSG("load_static_rsa_key: RSA_new_method failed.");
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        rc = copy_rsa(rsa, *weRsaKey);
+        if (rc != 1) {
+            PRINT_MSG("load_static_rsa_key: copy_rsa w/ weRsaKey failed.");
+            ret = 0;
+        }
+    }
+
+    if (ret == 1 && *osslRsaKey == NULL) {
+        *osslRsaKey = RSA_new();
+        if (*osslRsaKey == NULL) {
+            PRINT_MSG("load_static_rsa_key: RSA_new failed.");
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        rc = copy_rsa(rsa, *osslRsaKey);
+        if (rc != 1) {
+            PRINT_MSG("load_static_rsa_key: copy_rsa w/ osslRsaKey failed.");
+            ret = 0;
+        }
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return ret;
+}
+
+enum RsaTestType {
+    PRIVATE_ENCRYPT,
+    PRIVATE_DECRYPT,
+    PUBLIC_ENCRYPT,
+    PUBLIC_DECRYPT
+};
+typedef enum RsaTestType RsaTestType;
+
+/* Test the RSA_METHOD API (AKA RSA direct) for a particular half of the key
+   pair (public/private) and direction (encrypt/decrypt). */
+static int test_rsa_direct(ENGINE *e, RsaTestType testType)
 {
     int err = 0;
     RSA *weRsaKey = NULL;
@@ -205,7 +288,6 @@ int test_rsa_direct(ENGINE *e, void *data)
     int encryptedLen = 0;
     unsigned char *decryptedBuf = NULL;
     int decryptedLen = 0;
-    const RSA_METHOD *rsaMeth = NULL;
     typedef struct {
         int padding;
         const char *padName;
@@ -216,63 +298,9 @@ int test_rsa_direct(ENGINE *e, void *data)
     TestVector testVectors[numTestVectors];
     int i = 0;
     int rsaSize = 0;
-    BIGNUM *pubExp = NULL;
-    const int bits = 2048;
-    BIGNUM *n = NULL;
-    BIGNUM *pubExpFromKey = NULL;
 
-    (void)data;
-
-    /* Set up the RSA key. weRsaKey and osslRsaKey have the same key pair, but
-       weRsaKey uses wolfEngine for RSA operations and osslRsaKey uses OpenSSL's
-       default implementation. Key pair is generated with wolfEngine and copied
-       into osslRsaKey. */
-    weRsaKey = RSA_new();
-    err = weRsaKey == NULL;
-    if (err == 0) {
-        pubExp = BN_new();
-        err = pubExp == NULL;
-    }
-    if (err == 0) {
-        err = BN_set_word(pubExp, 65537) != 1;
-    }
-    if (err == 0) {
-        rsaMeth = ENGINE_get_RSA(e);
-        err = rsaMeth == NULL;
-    }
-    if (err == 0) {
-        err = RSA_set_method(weRsaKey, rsaMeth) != 1;
-    }
-    if (err == 0) {
-        PRINT_MSG("Generate RSA key with wolfEngine");
-        err = RSA_generate_key_ex(weRsaKey, bits, pubExp, NULL) == 0;
-    }
-    if (err == 0) {
-        PRINT_MSG("Verify parameters were used");
-        RSA_get0_key(weRsaKey, (const BIGNUM **)&n,
-                     (const BIGNUM **)&pubExpFromKey, NULL);
-        err = BN_num_bits(n) != bits;
-    }
-    if (err == 0) {
-        err = BN_cmp(pubExp, pubExpFromKey) != 0;
-    }
-
-    if (err == 0) {
-        osslRsaKey = RSA_new();
-        err = osslRsaKey == NULL;
-    }
-    if (err == 0) {
-        err = copy_rsa(weRsaKey, osslRsaKey) != 1;
-    }
-    if (err == 0) {
-        rsaMeth = RSA_get_default_method();
-        err = rsaMeth == NULL;
-    }
-    if (err == 0) {
-        err = RSA_set_method(osslRsaKey, rsaMeth) != 1;
-    }
-
-    /* Set up buffers. */
+    PRINT_MSG("Load RSA key");    
+    err = load_static_rsa_key(e, &weRsaKey, &osslRsaKey) != 1;
     if (err == 0) {
         rsaSize = RSA_size(weRsaKey);
         err = RAND_bytes(buf, sizeof(buf)) == 0;
@@ -310,103 +338,105 @@ int test_rsa_direct(ENGINE *e, void *data)
                                       noPaddingBuf, rsaSize};
     }
 
-
     for (; err == 0 && i < numTestVectors; ++i) {
         PRINT_MSG(testVectors[i].padName);
-        if (err == 0) {
-            PRINT_MSG("Public encrypt with OpenSSL");
-            encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
-                                              testVectors[i].inBuf,
-                                              encryptedBuf, osslRsaKey,
-                                              testVectors[i].padding);
-            err = encryptedLen <= 0;
-        }
-        if (err == 0) {
-            PRINT_MSG("Private decrypt with wolfengine");
-            decryptedLen = RSA_private_decrypt(encryptedLen, encryptedBuf,
-                                               decryptedBuf, weRsaKey,
-                                               testVectors[i].padding);
-            err = decryptedLen <= 0;
+        switch (testType) {
+            case PRIVATE_ENCRYPT:
+                if (testVectors[i].padding == RSA_PKCS1_OAEP_PADDING) {
+                    /* OpenSSL doesn't support OAEP padding for private
+                       encrypt. */
+                    continue;
+                }
+                if (err == 0) {
+                    PRINT_MSG("Private encrypt with wolfengine");
+                    PRINT_MSG(testVectors[i].padName);
+                    encryptedLen = RSA_private_encrypt(testVectors[i].inBufLen,
+                                                       testVectors[i].inBuf,
+                                                       encryptedBuf, weRsaKey,
+                                                       testVectors[i].padding);
+                    err = encryptedLen <= 0;
+                }
+                if (err == 0) {
+                    PRINT_MSG("Public decrypt with OpenSSL");
+                    decryptedLen = RSA_public_decrypt(encryptedLen,
+                                                      encryptedBuf,
+                                                      decryptedBuf, osslRsaKey,
+                                                      testVectors[i].padding);
+                    err = decryptedLen <= 0;
+                }
+                break;
+            case PRIVATE_DECRYPT:
+                if (err == 0) {
+                    PRINT_MSG("Public encrypt with OpenSSL");
+                    encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
+                                                      testVectors[i].inBuf,
+                                                      encryptedBuf, osslRsaKey,
+                                                      testVectors[i].padding);
+                    err = encryptedLen <= 0;
+                }
+                if (err == 0) {
+                    PRINT_MSG("Private decrypt with wolfengine");
+                    decryptedLen = RSA_private_decrypt(encryptedLen,
+                                                       encryptedBuf,
+                                                       decryptedBuf, weRsaKey,
+                                                       testVectors[i].padding);
+                    err = decryptedLen <= 0;
+                }
+                break;
+            case PUBLIC_ENCRYPT:
+                if (err == 0) {
+                    PRINT_MSG("Public encrypt with wolfengine");
+                    PRINT_MSG(testVectors[i].padName);
+                    encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
+                                                      testVectors[i].inBuf,
+                                                      encryptedBuf, weRsaKey,
+                                                      testVectors[i].padding);
+                    err = encryptedLen <= 0;
+                }
+                if (err == 0) {
+                    PRINT_MSG("Private decrypt with OpenSSL");
+                    decryptedLen = RSA_private_decrypt(encryptedLen,
+                                                       encryptedBuf,
+                                                       decryptedBuf, osslRsaKey,
+                                                       testVectors[i].padding);
+                    err = decryptedLen <= 0;
+                }
+                break;
+            case PUBLIC_DECRYPT:
+                if (testVectors[i].padding == RSA_PKCS1_OAEP_PADDING) {
+                    /* OpenSSL doesn't support OAEP padding for private
+                       encrypt. */
+                    continue;
+                }
+                if (err == 0) {
+                    PRINT_MSG("Private encrypt with OpenSSL");
+                    PRINT_MSG(testVectors[i].padName);
+                    encryptedLen = RSA_private_encrypt(testVectors[i].inBufLen,
+                                                       testVectors[i].inBuf,
+                                                       encryptedBuf, osslRsaKey,
+                                                       testVectors[i].padding);
+                    err = encryptedLen <= 0;
+                }
+                if (err == 0) {
+                    PRINT_MSG("Public decrypt with wolfengine");
+                    decryptedLen = RSA_public_decrypt(encryptedLen,
+                                                      encryptedBuf,
+                                                      decryptedBuf, weRsaKey,
+                                                      testVectors[i].padding);
+                    err = decryptedLen <= 0;
+                }
+                break;
+            default:
+                PRINT_MSG("test_rsa_direct: unsupported test type.");
+                err = 1;
+                break;
         }
         if (err == 0) {
             err = decryptedLen != testVectors[i].inBufLen;
         }
         if (err == 0) {
-            err = memcmp(decryptedBuf, testVectors[i].inBuf, decryptedLen) != 0;
-        }
-
-        if (err == 0) {
-            PRINT_MSG("Public encrypt with wolfengine");
-            PRINT_MSG(testVectors[i].padName);
-            encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
-                                              testVectors[i].inBuf,
-                                              encryptedBuf, weRsaKey,
-                                              testVectors[i].padding);
-            err = encryptedLen <= 0;
-        }
-        if (err == 0) {
-            PRINT_MSG("Private decrypt with OpenSSL");
-            decryptedLen = RSA_private_decrypt(encryptedLen, encryptedBuf,
-                                               decryptedBuf, osslRsaKey,
-                                               testVectors[i].padding);
-            err = decryptedLen <= 0;
-        }
-        if (err == 0) {
-            err = decryptedLen != testVectors[i].inBufLen;
-        }
-        if (err == 0) {
-            err = memcmp(decryptedBuf, testVectors[i].inBuf, decryptedLen) != 0;
-        }
-
-        if (testVectors[i].padding == RSA_PKCS1_OAEP_PADDING) {
-            /* OpenSSL doesn't support OAEP padding for private encrypt. */
-            continue;
-        }
-
-        if (err == 0) {
-            PRINT_MSG("Private encrypt with OpenSSL");
-            PRINT_MSG(testVectors[i].padName);
-            encryptedLen = RSA_private_encrypt(testVectors[i].inBufLen,
-                                               testVectors[i].inBuf,
-                                               encryptedBuf, osslRsaKey,
-                                               testVectors[i].padding);
-            err = encryptedLen <= 0;
-        }
-        if (err == 0) {
-            PRINT_MSG("Public decrypt with wolfengine");
-            decryptedLen = RSA_public_decrypt(encryptedLen, encryptedBuf,
-                                              decryptedBuf, weRsaKey,
-                                              testVectors[i].padding);
-            err = decryptedLen <= 0;
-        }
-        if (err == 0) {
-            err = decryptedLen != testVectors[i].inBufLen;
-        }
-        if (err == 0) {
-            err = memcmp(decryptedBuf, testVectors[i].inBuf, decryptedLen) != 0;
-        }
-
-        if (err == 0) {
-            PRINT_MSG("Private encrypt with wolfengine");
-            PRINT_MSG(testVectors[i].padName);
-            encryptedLen = RSA_private_encrypt(testVectors[i].inBufLen,
-                                               testVectors[i].inBuf,
-                                               encryptedBuf, weRsaKey,
-                                               testVectors[i].padding);
-            err = encryptedLen <= 0;
-        }
-        if (err == 0) {
-            PRINT_MSG("Public decrypt with OpenSSL");
-            decryptedLen = RSA_public_decrypt(encryptedLen, encryptedBuf,
-                                              decryptedBuf, osslRsaKey,
-                                              testVectors[i].padding);
-            err = decryptedLen <= 0;
-        }
-        if (err == 0) {
-            err = decryptedLen != testVectors[i].inBufLen;
-        }
-        if (err == 0) {
-            err = memcmp(decryptedBuf, testVectors[i].inBuf, decryptedLen) != 0;
+            err = memcmp(decryptedBuf, testVectors[i].inBuf,
+                         decryptedLen) != 0;
         }
     }
 
@@ -421,6 +451,71 @@ int test_rsa_direct(ENGINE *e, void *data)
         OPENSSL_free(noPaddingBuf);
 
     return err;
+}
+
+int test_rsa_direct_key_gen(ENGINE *e, void *data)
+{
+    int err = 0;
+    RSA *rsaKey = NULL;
+    BIGNUM *pubExp = NULL;
+    const int bits = 2048;
+    BIGNUM *n = NULL;
+    BIGNUM *pubExpFromKey = NULL;
+
+    (void)data;
+
+    rsaKey = RSA_new_method(e);
+    err = rsaKey == NULL;
+    if (err == 0) {
+        pubExp = BN_new();
+        err = pubExp == NULL;
+    }
+    if (err == 0) {
+        err = BN_set_word(pubExp, 65537) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Generate RSA key with wolfEngine");
+        err = RSA_generate_key_ex(rsaKey, bits, pubExp, NULL) == 0;
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify parameters were used");
+        RSA_get0_key(rsaKey, (const BIGNUM **)&n,
+                     (const BIGNUM **)&pubExpFromKey, NULL);
+        err = BN_num_bits(n) != bits;
+    }
+    if (err == 0) {
+        err = BN_cmp(pubExp, pubExpFromKey) != 0;
+    }
+
+    return err;
+}
+
+int test_rsa_direct_priv_enc(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_direct(e, PRIVATE_ENCRYPT);
+}
+
+int test_rsa_direct_priv_dec(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_direct(e, PRIVATE_DECRYPT);
+}
+
+int test_rsa_direct_pub_enc(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_direct(e, PUBLIC_ENCRYPT);
+}
+
+int test_rsa_direct_pub_dec(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_direct(e, PUBLIC_DECRYPT);
 }
 
 #ifdef WE_HAVE_EVP_PKEY

@@ -163,7 +163,11 @@ int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
 #endif /* WE_HAVE_EVP_PKEY */
 
 #ifdef WE_HAVE_RSA
-int test_rsa_direct(ENGINE *e, void *data);
+int test_rsa_direct_key_gen(ENGINE *e, void *data);
+int test_rsa_direct_priv_enc(ENGINE *e, void *data);
+int test_rsa_direct_priv_dec(ENGINE *e, void *data);
+int test_rsa_direct_pub_enc(ENGINE *e, void *data);
+int test_rsa_direct_pub_dec(ENGINE *e, void *data);
 #ifdef WE_HAVE_EVP_PKEY
 int test_rsa_sign_verify_pkcs1(ENGINE *e, void *data);
 int test_rsa_sign_verify_no_pad(ENGINE *e, void *data);

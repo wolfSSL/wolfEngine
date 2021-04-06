@@ -532,10 +532,10 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
         ret = -1;
     }
 
-    if (ret == 1 && !engineRsa->pubKeySet) {
-        rc = we_set_public_key(rsa, engineRsa);
+    if (ret == 1 && !engineRsa->privKeySet) {
+        rc = we_set_private_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_private_key", rc);
             ret = -1;
         }
     }
