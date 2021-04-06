@@ -156,6 +156,9 @@ int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);
 int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key);
 DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey);
 
+size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
+                                 point_conversion_form_t form,
+                                 unsigned char **pbuf, BN_CTX *ctx);
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
 #if OPENSSL_VERSION_NUMBER < 0x10101000L

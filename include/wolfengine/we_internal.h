@@ -197,6 +197,17 @@ int we_init_rsa_meth(void);
 #endif /* WE_HAVE_RSA */
 
 /*
+ * ECDH methods.
+ */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#ifdef WE_HAVE_ECDH
+
+extern ECDH_METHOD *we_ecdh_method;
+int we_init_ecdh_meth(void);
+
+#endif /* WE_HAVE_ECDH */
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+/*
  * ECC methods.
  */
 

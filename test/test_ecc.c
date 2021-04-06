@@ -1809,5 +1809,172 @@ int test_ec_key_ecdsa_p521(ENGINE *e, void *data)
 #endif /* WE_HAVE_ECDSA */
 
 #endif /* WE_HAVE_EC_KEY */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#ifdef WE_HAVE_ECDH
+
+static int test_ecdh_direct(ENGINE* e, const unsigned char* keyDer,
+                            size_t keyDerLen, const unsigned char* keyPeerDer,
+                            size_t keyPeerDerLen,
+                            const unsigned char* knownSecret,
+                            size_t knownSecretLen)
+{
+    int err = 0, rc;
+    EVP_PKEY *keyA = NULL;
+    EVP_PKEY *keyB = NULL;
+    unsigned char secret[66];
+    const unsigned char *p;
+    const unsigned char *peerPrivKey;
+    const ECDH_METHOD* method;
+    EC_KEY *eckeyA,*eckeyB;
+    const EC_POINT* pub;
+
+    PRINT_MSG("Get ECDH_METHOD from engine");
+    method = ENGINE_get_ECDH(e);
+    if (method == NULL) {
+        err = 1;
+    }
+
+    p = keyDer;
+    peerPrivKey = keyPeerDer;
+
+    /* sanity check on secret buffer size */
+    if (sizeof(secret) < knownSecretLen) {
+        PRINT_MSG("Shared secret buffer too small for secret operation");
+        err = 1;
+    }
+
+    if (err == 0) {
+        keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, keyDerLen);
+        if (keyA == NULL) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        keyB = d2i_PrivateKey(EVP_PKEY_EC, NULL, &peerPrivKey, keyPeerDerLen);
+        if (keyB == NULL) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        eckeyA = EVP_PKEY_get1_EC_KEY(keyA);
+        if (eckeyA == NULL) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        pub = EC_KEY_get0_public_key(eckeyA);
+        if (pub == NULL) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        eckeyB = EVP_PKEY_get1_EC_KEY(keyB);
+        if (eckeyB == NULL) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("Compute ECDH shared secret with OpenSSL default method");
+        rc = ECDH_compute_key(secret, sizeof(secret), pub, eckeyB, NULL);
+        if (rc == -1 || ((size_t)rc != knownSecretLen)) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("Compare shared secret with known-answer");
+        if (memcmp(knownSecret, secret, knownSecretLen) != 0) {
+            err = 1;
+        } else {
+            PRINT_MSG("OpenSSL ECDH shared secret matched expected value");
+        }
+        memset(secret, 0, sizeof(secret));
+    }
+    /* test again with ECDH_METHOD of wolfEngine */
+    if (err == 0) {
+        PRINT_MSG("Setting wolfEngine with ECDH_set_method");
+        rc = ECDH_set_method(eckeyB, method);
+        if (rc != 1) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("Compute ECDH shared secret with wolfEngine");
+        rc = ECDH_compute_key(secret, sizeof(secret), pub, eckeyB, NULL);
+        if (rc == -1 || ((size_t)rc != knownSecretLen)) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("Compare wolfEngine ECDH shared secret with known-answer");
+        if (memcmp(knownSecret, secret, knownSecretLen) != 0) {
+            PRINT_MSG("wolfEngine ECDH shared secret did not match expected");
+            err = 1;
+        } else {
+            PRINT_MSG("wolfEngine ECDH shared secret matched expected value");
+        }
+    }
+
+    EVP_PKEY_free(keyA);
+    EVP_PKEY_free(keyB);
+    EC_KEY_free(eckeyA);
+    EC_KEY_free(eckeyB);
+
+    keyA = NULL;
+    keyB = NULL;
+    eckeyA = NULL;
+    eckeyB = NULL;
+
+    return err;
+}
+
+
+#if defined(WE_HAVE_EC_P192)
+int test_ecdh_direct_p192(ENGINE* e, void* data)
+{
+    (void)data;
+    PRINT_MSG("test_ecdh_direct_p192");
+    return test_ecdh_direct(e, ecc_key_der_192, sizeof(ecc_key_der_192),
+                            ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
+                            ecc_derived_192, sizeof(ecc_derived_192));
+}
+#endif /* WE_HAVE_EC_P256 */
+
+#if defined(WE_HAVE_EC_P256)
+int test_ecdh_direct_p256(ENGINE* e, void* data)
+{
+    (void)data;
+    PRINT_MSG("test_ecdh_direct_p256");
+    return test_ecdh_direct(e, ecc_key_der_256, sizeof(ecc_key_der_256),
+                            ecc_peerkey_der_256, sizeof(ecc_peerkey_der_256),
+                            ecc_derived_256, sizeof(ecc_derived_256));
+}
+#endif /* WE_HAVE_EC_P256 */
+
+#if defined(WE_HAVE_EC_P384)
+int test_ecdh_direct_p384(ENGINE* e, void* data)
+{
+    (void)data;
+    PRINT_MSG("test_ecdh_direct_p384");
+    return test_ecdh_direct(e, ecc_key_der_384, sizeof(ecc_key_der_384),
+                            ecc_peerkey_der_384, sizeof(ecc_peerkey_der_384),
+                            ecc_derived_384, sizeof(ecc_derived_384));
+}
+#endif /* WE_HAVE_EC_P384 */
+
+#if defined(WE_HAVE_EC_P521)
+int test_ecdh_direct_p521(ENGINE* e, void* data)
+{
+    (void)data;
+    PRINT_MSG("test_ecdh_direct_p521");
+    return test_ecdh_direct(e, ecc_key_der_521, sizeof(ecc_key_der_521),
+                            ecc_peerkey_der_521, sizeof(ecc_peerkey_der_521),
+                            ecc_derived_521, sizeof(ecc_derived_521));
+}
+#endif /* WE_HAVE_EC_P521 */
+
+#endif /* WE_HAVE_ECDH */
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+
+
 
 #endif /* WE_HAVE_ECC */
