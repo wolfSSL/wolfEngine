@@ -1684,8 +1684,8 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
  * 
  * @param  d        [in]   Pointer to digest buffer
  * @param  dlen     [in]   Digest length.
- * @param  kinv     [in]   Precomputed kinv (Not supported, ignored)
- * @param  rp       [in]   Precomputed r    (Not supported, ignored)
+ * @param  kinv     [in]   Precomputed kinv (Not supported)
+ * @param  rp       [in]   Precomputed r    (Not supported)
  * @param  key      [in]   EC Key
  * @return  pointer to allocated ECDSA_SIG
  * @return  NULL on failure.
@@ -1694,16 +1694,22 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
 static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen, 
                     const BIGNUM *kinv, const BIGNUM *rp, EC_KEY *key)
 {
-    (void) kinv; (void)rp;
     ECDSA_SIG *sig = NULL;
     ecc_key we_key;
-    int curveId;
+    int curveId = 0;
     mp_int sig_r, sig_s;
     int r_size, s_size;
     unsigned char *r_bin = NULL, *s_bin = NULL;
     int ret;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_do_sign_ex");
+
+    if (kinv != NULL || rp != NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_ecdsa_do_sign_ex() does not "
+                             "support kinv or rp BIGNUM arguments, must be "
+                             "passed as NULL");
+        return NULL;
+    }
 
     if (d == NULL || key == NULL) {
         WOLFENGINE_MSG(WE_LOG_PK, "we_ecdsa_do_sign_ex Bad arguments");
@@ -1781,7 +1787,8 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
 
             PRINT_BUFFER("Digest", d, dlen);
 
-            WOLFENGINE_MSG(WE_LOG_PK, "wc_ecc_verify_hash_ex");
+            WOLFENGINE_MSG(WE_LOG_PK, "Verifying signature with "
+                                      "wc_ecc_verify_hash_ex()");
             if((ret = we_ec_set_public(&we_key, curveId, key)) != 1) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, 
                         "Fail to set the public key", ret);
@@ -1859,7 +1866,7 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
                             const ECDSA_SIG *sig, EC_KEY *key)
 {
     ecc_key we_key;
-    int curveId;
+    int curveId = 0;
     mp_int sig_r, sig_s;
     int ret;
 

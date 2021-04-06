@@ -1657,7 +1657,7 @@ int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
 {
     int err;
     unsigned int sigLen;
-    WOLFENGINE_MSG("test_ec_key_ecdsa_sign");
+    PRINT_MSG("test_ec_key_ecdsa_sign");
     sigLen = (unsigned int)*ecdsaSigLen;
     err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
     if (err == 0) {
