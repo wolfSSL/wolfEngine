@@ -24,13 +24,10 @@
 
 #include <openssl/opensslv.h>
 
-#ifndef EVP_CTRL_GET_IVLEN
-/* Get IV len is not define and used in versions below 1.1.0 and below. */
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
+/* Get IV len is not define and used in versions below 3.0.0 and below. */
 #define EVP_CTRL_GET_IVLEN    0x25
-#endif
-
-#if OPENSSL_VERSION_NUMBER < 0x10101000L
-/* Custom IV length not defined and used in versions 1.1.0 and below. */
+/* Custom IV length not defined and used in versions 3.0.0 and below. */
 #define EVP_CIPH_CUSTOM_IV_LENGTH    0
 #endif
 

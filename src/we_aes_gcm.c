@@ -548,7 +548,6 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 /** Flags for AES-GCM method. */
 #define AES_GCM_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
-     EVP_CIPH_CUSTOM_IV          | \
      EVP_CIPH_CUSTOM_IV_LENGTH   | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_CTRL_INIT          | \
