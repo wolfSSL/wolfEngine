@@ -1616,7 +1616,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
         if (KDF) {
             deriveLen= 0;
             if (KDF(secret, secretLen, out, &deriveLen)) {
-                ret = deriveLen;
+                ret = (int)deriveLen;
             }
             else {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "KDF", ret);
@@ -1625,7 +1625,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
         }
         else {
             XMEMCPY(out, secret, MIN(outlen, secretLen));
-            ret = MIN(outlen, secretLen);
+            ret = MIN((int)outlen, (int)secretLen);
         }
     }
 

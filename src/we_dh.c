@@ -440,7 +440,7 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
             ret = -1;
         }
         else {
-            ret = secretLen;
+            ret = (int)secretLen;
         }
     }
 

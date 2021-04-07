@@ -461,7 +461,8 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
             /* PKCS 1 v1.5 padding using block type 1. */
-            rc = wc_RsaSSL_Sign(from, fromLen, to, toLen, &rsa->key, we_rng);
+            rc = wc_RsaSSL_Sign(from, (word32)fromLen, to, (word32)toLen,
+                    &rsa->key, we_rng);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaSSL_Sign", rc);
                 ret = -1;
@@ -577,7 +578,8 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
             /* PKCS #1 v1.5 padding using block type 1. */
-            rc = wc_RsaSSL_Verify(from, fromLen, to, toLen, &rsa->key);
+            rc = wc_RsaSSL_Verify(from, (word32)fromLen, to, (word32)toLen,
+                    &rsa->key);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaSSL_Verify", rc);
                 ret = -1;
@@ -1512,7 +1514,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     if (ret == 1 && rsa->padMode == RSA_PKCS1_PSS_PADDING) {
         /* Verify call in we_rsa_pub_dec_int only decrypts - this actually
            checks padding. */
-        rc = wc_RsaPSS_CheckPadding_ex(tbs, tbsLen, decryptedSig, rc,
+        rc = wc_RsaPSS_CheckPadding_ex(tbs, (word32)tbsLen, decryptedSig, rc,
             we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)), rsa->saltLen, 0);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_CheckPadding_ex", rc);
