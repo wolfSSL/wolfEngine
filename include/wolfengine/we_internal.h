@@ -29,6 +29,17 @@
     #include "user_settings.h"
 #endif
 
+/* This define controls the index used for the wolfEngine RSA external data
+ * in wolfEngine's RSA_METHOD implementation. This allows the user to put the
+ * wolfEngine external data at a specific index at compile time to avoid
+ * collisions with other, non-wolfEngine external data. For instance, you may
+ * have an application that is already using indexes 0 and 1, so you would
+ * define WE_RSA_EX_DATA_IDX to 2 to avoid colliding with the data at index 0
+ * (the default index). */
+#ifndef WE_RSA_EX_DATA_IDX
+#define WE_RSA_EX_DATA_IDX 0
+#endif
+
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
