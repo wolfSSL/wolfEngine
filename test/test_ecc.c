@@ -1825,7 +1825,7 @@ static int test_ecdh_direct(ENGINE* e, const unsigned char* keyDer,
     const unsigned char *p;
     const unsigned char *peerPrivKey;
     const ECDH_METHOD* method;
-    EC_KEY *eckeyA,*eckeyB;
+    EC_KEY *eckeyA = NULL,*eckeyB = NULL;
     const EC_POINT* pub;
 
     PRINT_MSG("Get ECDH_METHOD from engine");
