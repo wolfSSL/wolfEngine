@@ -68,6 +68,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_init");
 
     if ((iv == NULL) && (key == NULL)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "iv == NULL && key == NULL");
         ret = 0;
     }
 
@@ -467,10 +468,14 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     return ret;
 }
 
-/** Flags for AES-CBC method. */
+/** Flags for AES-CBC method.
+ *
+ * NOTE: EVP_CIPH_ALWAYS_CALL_INIT is deliberately not added. This flag
+ *       causes the AES init method to be called even if key is NULL. Currently
+ *       wolfEngine does not need to initialize until a key is available.
+ */
 #define AES_CBC_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
-     EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CBC_MODE)
 
