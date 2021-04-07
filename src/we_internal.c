@@ -753,6 +753,13 @@ static int wolfengine_init(ENGINE *e)
     }
 #endif /* WE_HAVE_ECDH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+#ifdef WE_HAVE_ECDSA
+#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+    if (ret == 1) {
+        we_init_ecdsa_meth();
+    }
+#endif
+#endif
 
 #endif
 
@@ -1037,6 +1044,7 @@ static const RSA_METHOD *we_rsa(void)
     return we_rsa_method;
 }
 #endif /* WE_HAVE_RSA */
+
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 #if defined(WE_HAVE_ECC) && defined(WE_HAVE_ECDH)
 /**
@@ -1050,6 +1058,21 @@ static const ECDH_METHOD *we_ecdh(void)
 }
 #endif /* WE_HAVE_ECC && WE_HAVE_ECDH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+
+#ifdef WE_HAVE_ECDSA
+#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+/**
+ * Return the ECDSA method.
+ *
+ * @return  Pointer to the ECDSA method.
+ */
+static const ECDSA_METHOD *we_ecdsa(void)
+{
+    return we_ecdsa_method;
+}
+#endif
+#endif /* WE_HAVE_ECDSA */
+
 /**
  * Bind the wolfengine into an engine object.
  *
@@ -1098,6 +1121,13 @@ int wolfengine_bind(ENGINE *e, const char *id)
         ret = 0;
     }
 #endif /* WE_HAVE_DH */
+#ifdef WE_HAVE_ECDSA
+#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+    if (ret == 1 && ENGINE_set_ECDSA(e, we_ecdsa()) == 0) {
+        ret = 0;
+    }
+#endif
+#endif
 #ifdef WE_HAVE_EVP_PKEY
     if (ret == 1 && ENGINE_set_pkey_meths(e, we_pkey) == 0) {
         ret = 0;
