@@ -188,9 +188,9 @@ static int we_rsa_init(RSA *rsa)
 #endif /* WC_RSA_BLINDING */
 
     if (ret == 1) {
-        rc = RSA_set_app_data(rsa, engineRsa);
+        rc = RSA_set_ex_data(rsa, WE_RSA_EX_DATA_IDX, engineRsa);
         if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "RSA_set_app_data", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "RSA_set_ex_data", rc);
             ret = 0;
         }
     }
@@ -215,11 +215,11 @@ static int we_rsa_finish(RSA *rsa)
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_finish");
 
-    engineRsa = RSA_get_app_data(rsa);
+    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
     if (engineRsa != NULL) {
         wc_FreeRsaKey(&engineRsa->key);
         OPENSSL_free(engineRsa);
-        RSA_set_app_data(rsa, NULL);
+        RSA_set_ex_data(rsa, WE_RSA_EX_DATA_IDX, NULL);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_finish", 1);
@@ -246,9 +246,9 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_enc");
 
-    engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
+    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
         ret = -1;
     }
 
@@ -334,9 +334,9 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_dec");
 
-    engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
+    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
         ret = -1;
     }
 
@@ -527,9 +527,9 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc");
 
-    engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
+    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
         ret = -1;
     }
 
@@ -643,9 +643,9 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec");
 
-    engineRsa = (we_Rsa *)RSA_get_app_data(rsa);
+    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
         ret = -1;
     }
 
@@ -875,9 +875,9 @@ static int we_rsa_keygen(RSA *osslKey, int bits, BIGNUM *eBn, BN_GENCB *cb)
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_keygen");
 
-    engineRsa = (we_Rsa *)RSA_get_app_data(osslKey);
+    engineRsa = (we_Rsa *)RSA_get_ex_data(osslKey, WE_RSA_EX_DATA_IDX);
     if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_app_data", engineRsa);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
         ret = 0;
     }
 
