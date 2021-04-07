@@ -60,6 +60,7 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_init");
 
     if ((iv == NULL) && (key == NULL)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "iv == NULL && key == NULL");
         ret = 0;
     }
 
@@ -281,10 +282,12 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
  *       handles the last block of encryption/decryption and padding itself.
  *       Further, adding the flag will break wolfEngine compatibility with
  *       certain TLS 1.0/1.1 ciphers.
+ * NOTE: EVP_CIPH_ALWAYS_CALL_INIT is deliberately not added. This flag
+ *       causes the AES init method to be called even if key is NULL. Currently
+ *       wolfEngine does not need to initialize until a key is available.
  */
 #define DES3_CBC_FLAGS             \
-     (EVP_CIPH_ALWAYS_CALL_INIT  | \
-     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
+     (EVP_CIPH_FLAG_DEFAULT_ASN1 | \
      EVP_CIPH_CBC_MODE)
 
 /** DES3-CBC EVP cipher method. */
