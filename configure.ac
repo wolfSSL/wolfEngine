@@ -387,6 +387,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_DH"
 fi
 
+# EVP_PKEY
+AC_ARG_ENABLE([evp-pkey],
+    [AS_HELP_STRING([--enable-evp-pkey],[Enable EVP_PKEY APIs (default: enabled)])],
+    [ ENABLED_EVP_PKEY=$enableval ],
+    [ ENABLED_EVP_PKEY=yes ]
+    )
+
+if test "$ENABLED_EVP_PKEY" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EVP_PKEY"
+fi
+
 # ECC
 AC_ARG_ENABLE([ecc],
     [AS_HELP_STRING([--enable-ecc],[Enable ECC (default: enabled)])],
@@ -397,17 +409,6 @@ AC_ARG_ENABLE([ecc],
 if test "$ENABLED_ECC" = "yes"
 then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_ECC"
-fi
-
-AC_ARG_ENABLE([evp-pkey],
-    [AS_HELP_STRING([--enable-evp-pkey],[Enable ECC using EVP_PKEY (default: enabled)])],
-    [ ENABLED_EVP_PKEY=$enableval ],
-    [ ENABLED_EVP_PKEY=$ENABLED_ECC ]
-    )
-
-if test "$ENABLED_EVP_PKEY" = "yes"
-then
-    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_EVP_PKEY"
 fi
 
 AC_ARG_ENABLE([ec-key],
@@ -547,7 +548,7 @@ then
         AC_MSG_ERROR([cannot enable SHA-512 without enabling hash.])
     fi
 fi
-if test "$ENABLED_DH" = "yes"
+if test "$ENABLED_ECDH" = "yes"
 then
     if test "$ENABLED_ECKG" = "no"
     then
