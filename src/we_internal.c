@@ -501,7 +501,7 @@ static const EC_KEY_METHOD *we_ec(void)
 }
 #endif
 
-#ifdef WE_HAVE_EVP_PKEY
+#if defined(WE_HAVE_EVP_PKEY)
 /**
  * Returns the list of public keys supported or the public key method for the
  * id.
@@ -548,9 +548,11 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             *pkey = we_dh_pkey_method;
             break;
 #endif /* WE_HAVE_DH */
+#ifdef WE_HAVE_ECC
         case NID_X9_62_id_ecPublicKey:
             *pkey = we_ec_method;
             break;
+#endif /* WE_HAVE_ECC */
 #ifdef WE_HAVE_ECKEYGEN
 #ifdef WE_HAVE_EC_P192
         case NID_X9_62_prime192v1:
@@ -699,21 +701,17 @@ static int wolfengine_init(ENGINE *e)
     }
 #endif
 #ifdef WE_HAVE_HMAC
-#ifdef WE_HAVE_EVP_PKEY
     if (ret == 1) {
         ret = we_init_hmac_pkey_meth();
     }
-#endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
-#ifdef WE_HAVE_EVP_PKEY
     if (ret == 1) {
         ret = we_init_cmac_pkey_meth();
     }
     if (ret == 1) {
         ret = we_init_cmac_pkey_asn1_meth();
     }
-#endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_DH
 #ifdef WE_HAVE_EVP_PKEY
@@ -1122,7 +1120,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
     }
 #endif
 #endif
-#ifdef WE_HAVE_EVP_PKEY
+#if defined(WE_HAVE_EVP_PKEY)
     if (ret == 1 && ENGINE_set_pkey_meths(e, we_pkey) == 0) {
         ret = 0;
     }
