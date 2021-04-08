@@ -1,0 +1,13 @@
+diff --git a/crypto/evp/evp_enc.c b/crypto/evp/evp_enc.c
+index 7d7be24..8b4b15b 100644
+--- a/crypto/evp/evp_enc.c
++++ b/crypto/evp/evp_enc.c
+@@ -241,6 +241,8 @@ int EVP_CipherInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
+             memcpy(ctx->iv, ctx->oiv, EVP_CIPHER_CTX_iv_length(ctx));
+             break;
+ 
++        case EVP_CIPH_GCM_MODE:
++        case EVP_CIPH_CCM_MODE:
+         case EVP_CIPH_CTR_MODE:
+             ctx->num = 0;
+             /* Don't reuse IV for CTR mode */

@@ -1,0 +1,15 @@
+diff --git a/ssl/record/ssl3_record.c b/ssl/record/ssl3_record.c
+index e59ac5a..ee3682e 100644
+--- a/ssl/record/ssl3_record.c
++++ b/ssl/record/ssl3_record.c
+@@ -1122,6 +1122,10 @@ int tls1_enc(SSL *s, SSL3_RECORD *recs, size_t n_recs, int sending)
+             }
+         }
+ 
++        if ((EVP_CIPHER_mode(enc) != EVP_CIPH_GCM_MODE) &&
++            (EVP_CIPHER_mode(enc) != EVP_CIPH_CCM_MODE)) {
++            EVP_CIPHER_CTX_set_padding(ds, 0);
++        }
+         /* TODO(size_t): Convert this call */
+         tmpr = EVP_Cipher(ds, recs[0].data, recs[0].input,
+                           (unsigned int)reclen[0]);
