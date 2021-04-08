@@ -22,7 +22,7 @@
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
 
-#if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH) || defined(WE_HAVE_MAC)
+#if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
 /** List of public key types supported as ids. */
 static const int we_pkey_nids[] = {
 #ifdef WE_HAVE_HMAC
@@ -501,7 +501,7 @@ static const EC_KEY_METHOD *we_ec(void)
 }
 #endif
 
-#if defined(WE_HAVE_EVP_PKEY) || defined(WE_HAVE_MAC)
+#if defined(WE_HAVE_EVP_PKEY)
 /**
  * Returns the list of public keys supported or the public key method for the
  * id.
@@ -528,7 +528,6 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
     }
     else {
         switch (nid) {
-#ifdef WE_HAVE_MAC
 #ifdef WE_HAVE_HMAC
         case NID_hmac:
             *pkey = we_hmac_pkey_method;
@@ -539,8 +538,6 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             *pkey = we_cmac_pkey_method;
             break;
 #endif /* WE_HAVE_CMAC */
-#endif /* WE_HAVE_MAC */
-#ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA
         case NID_rsaEncryption:
             *pkey = we_rsa_pkey_method;
@@ -551,9 +548,11 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             *pkey = we_dh_pkey_method;
             break;
 #endif /* WE_HAVE_DH */
+#ifdef WE_HAVE_ECC
         case NID_X9_62_id_ecPublicKey:
             *pkey = we_ec_method;
             break;
+#endif /* WE_HAVE_ECC */
 #ifdef WE_HAVE_ECKEYGEN
 #ifdef WE_HAVE_EC_P192
         case NID_X9_62_prime192v1:
@@ -581,7 +580,6 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             break;
 #endif
 #endif /* WE_HAVE_ECKEYGEN */
-#endif /* WE_HAVE_EVP_PKEY */
         default:
             WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "Unsupported public key NID");
             *pkey = NULL;
@@ -592,7 +590,7 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
 
     return ret;
 }
-#endif /* WE_HAVE_EVP_PKEY || WE_HAVE_MAC */
+#endif /* WE_HAVE_EVP_PKEY */
 
 /**
  * Initialize all wolfengine global data.
@@ -1128,7 +1126,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
     }
 #endif
 #endif
-#if defined(WE_HAVE_EVP_PKEY) || defined(WE_HAVE_MAC)
+#if defined(WE_HAVE_EVP_PKEY)
     if (ret == 1 && ENGINE_set_pkey_meths(e, we_pkey) == 0) {
         ret = 0;
     }

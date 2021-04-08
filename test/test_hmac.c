@@ -21,7 +21,7 @@
 
 #include "unit.h"
 
-#ifdef WE_HAVE_MAC
+#ifdef WE_HAVE_HMAC
 
 static int test_mac_generation(ENGINE *e, const EVP_MD *md, int pkeyType,
                            unsigned char *pswd, int pswdSz, unsigned char *msg,
@@ -61,7 +61,6 @@ static int test_mac_generation(ENGINE *e, const EVP_MD *md, int pkeyType,
     return err;
 }
 
-#ifdef WE_HAVE_HMAC
 
 static int test_hmac_create_helper(ENGINE *e, void *data, const EVP_MD *md)
 {
@@ -169,8 +168,7 @@ int test_hmac_create(ENGINE *e, void *data)
 #endif
     return ret;
 }
-#endif
 
-#endif /* WE_HAVE_MAC */
+#endif /* WE_HAVE_HMAC */
 
 

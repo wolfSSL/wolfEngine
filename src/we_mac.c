@@ -21,7 +21,7 @@
 
 #include <wolfengine/we_internal.h>
 
-#if defined(WE_HAVE_MAC)
+#if defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC)
 
 /* type of algorithms that the we_mac structure could be */
 #define WE_HMAC_ALGO 1

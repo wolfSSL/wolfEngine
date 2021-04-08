@@ -24,7 +24,7 @@
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/cmac.h>
 
-#ifdef WE_HAVE_MAC
+#ifdef WE_HAVE_CMAC
 
 static int test_mac_generation(ENGINE *e, const EVP_CIPHER *c,
                            unsigned char *key, int keySz, unsigned char *msg,
@@ -78,7 +78,6 @@ static int test_mac_generation(ENGINE *e, const EVP_CIPHER *c,
     return err;
 }
 
-#ifdef WE_HAVE_CMAC
 
 static int test_cmac_create_helper(ENGINE *e, unsigned char *in,
         int inSz, unsigned char *key, int keySz, const EVP_CIPHER *c)
@@ -155,8 +154,7 @@ int test_cmac_create(ENGINE *e, void *data)
 
     return ret;
 }
-#endif
 
-#endif /* WE_HAVE_MAC */
+#endif /* WE_HAVE_CMAC */
 
 
