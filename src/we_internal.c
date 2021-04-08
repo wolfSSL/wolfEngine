@@ -59,6 +59,14 @@ static const int we_pkey_nids[] = {
 #endif
 };
 
+static const int we_pkey_asn1_nids[] = {
+#ifdef WE_HAVE_HMAC
+    NID_hmac,
+#endif /* WE_HAVE_HMAC */
+#ifdef WE_HAVE_CMAC
+    NID_cmac,
+#endif /* WE_HAVE_CMAC */
+};
 
 /**
  * Get the public key types supported as ids.
@@ -70,6 +78,18 @@ int we_pkey_get_nids(const int **nids)
 {
     *nids = we_pkey_nids;
     return (sizeof(we_pkey_nids)) / sizeof(*we_pkey_nids);
+}
+
+/**
+ * Get the public key ASN.1 types supported as ids.
+ *
+ * @param nids [out]  Public key ASN.1 nids.
+ * @returns  Number of NIDs in list.
+ */
+int we_pkey_asn1_get_nids(const int **nids)
+{
+    *nids = we_pkey_asn1_nids;
+    return (sizeof(we_pkey_asn1_nids)) / sizeof(*we_pkey_asn1_nids);
 }
 #endif /* WE_HAVE_EVP_PKEY || WE_USE_HASH */
 
@@ -581,7 +601,43 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
 #endif
 #endif /* WE_HAVE_ECKEYGEN */
         default:
-            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "Unsupported public key NID");
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "we_pkey: Unsupported public "
+                                                "key NID");
+            *pkey = NULL;
+            ret = 0;
+            break;
+        }
+    }
+
+    return ret;
+}
+
+static int we_pkey_asn1(ENGINE *e, EVP_PKEY_ASN1_METHOD **pkey,
+                        const int **nids, int nid)
+{
+    int ret = 1;
+
+    (void)e;
+
+    if (pkey == NULL) {
+        /* Return a list of supported nids */
+        ret = we_pkey_asn1_get_nids(nids);
+    }
+    else {
+        switch (nid) {
+#ifdef WE_HAVE_HMAC
+        case NID_hmac:
+            *pkey = we_hmac_pkey_asn1_method;
+            break;
+#endif /* WE_HAVE_HMAC */
+#ifdef WE_HAVE_CMAC
+        case NID_cmac:
+            *pkey = we_cmac_pkey_asn1_method;
+            break;
+#endif /* WE_HAVE_CMAC */
+        default:
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "we_pkey_asn1: Unsupported "
+                                                "public key NID");
             *pkey = NULL;
             ret = 0;
             break;
@@ -703,6 +759,9 @@ static int wolfengine_init(ENGINE *e)
 #ifdef WE_HAVE_HMAC
     if (ret == 1) {
         ret = we_init_hmac_pkey_meth();
+    }
+    if (ret == 1) {
+        ret = we_init_hmac_pkey_asn1_meth();
     }
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
@@ -1122,6 +1181,9 @@ int wolfengine_bind(ENGINE *e, const char *id)
 #endif
 #if defined(WE_HAVE_EVP_PKEY)
     if (ret == 1 && ENGINE_set_pkey_meths(e, we_pkey) == 0) {
+        ret = 0;
+    }
+    if (ret == 1 && ENGINE_set_pkey_asn1_meths(e, we_pkey_asn1) == 0) {
         ret = 0;
     }
 #endif
