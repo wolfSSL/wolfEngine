@@ -540,7 +540,7 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             break;
 #endif /* WE_HAVE_CMAC */
 #endif /* WE_HAVE_MAC */
-#ifdef WE_HAVE_PKEY
+#ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA
         case NID_rsaEncryption:
             *pkey = we_rsa_pkey_method;
@@ -581,7 +581,7 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             break;
 #endif
 #endif /* WE_HAVE_ECKEYGEN */
-#endif /* WE_HAVE_PKEY */
+#endif /* WE_HAVE_EVP_PKEY */
         default:
             WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "Unsupported public key NID");
             *pkey = NULL;
