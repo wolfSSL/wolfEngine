@@ -46,10 +46,15 @@ The only change necessary is to add GCM/CCM mode to a switch statement.
 For example, for OpenSSL 1.1.1, add the following to crypto/evp/evp_enc.c at line 188:
 
 ```
+          switch (EVP_CIPHER_CTX_mode(ctx)) {
+          ...
 
 +         case EVP_CIPH_GCM_MODE:
 +         case EVP_CIPH_CCM_MODE:
           case EVP_CIPH_CTR_MODE:
+              ctx->num = 0;
+              /* Don't reuse IV for CTR mode */
+          ...
 ```
 
 To get CBC cipher suites working in OpensSL 1.1.1, modify ssl/record/ssl3_record.c at 1125:
