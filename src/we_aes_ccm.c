@@ -45,6 +45,10 @@
 #define EVP_CTRL_CCM_SET_IV_FIXED       EVP_CTRL_GCM_SET_IV_FIXED
 #endif
 
+/* MIN/MAX values for CCM length field (RFC3610) */
+#define CCM_LEN_FIELD_MIN_SZ  2
+#define CCM_LEN_FIELD_MAX_SZ  8
+
 #ifdef WE_HAVE_AESCCM
 
 /*
@@ -72,6 +76,10 @@ typedef struct we_AesCcm
     unsigned char *aad;
     /** Length of AAD stored. */
     int            aadLen;
+    /** Size of CCM length field, default is 8 for OpenSSL AES unless set
+     *  with ctrl function. wolfSSL calculates L based on nonce, but OpenSSL
+     *  allows ctrl command to set L. */
+    int            L;
     /** Flag to indicate whether object initialized. */
     unsigned int   init:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
@@ -107,8 +115,10 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if ((ret == 1) && (((key == NULL) && (iv == NULL)) || (!aes->init))) {
-        /* No IV yet. */
-        aes->ivLen = 0;
+        /* Default L size for OpenSSL is 8, used to calc nonce/iv size */
+        aes->L = CCM_LEN_FIELD_MAX_SZ;
+        /* No IV yet, set to default length (15-L). */
+        aes->ivLen = 15 - aes->L;
         aes->ivSet = 0;
         /* No tag set. */
         aes->tagLen = 0;
@@ -130,9 +140,9 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         }
     }
     if ((ret == 1) && (iv != NULL)) {
-        /* Cache IV - see ctrl func for other ways to set IV. */
-        aes->ivLen = CCM_NONCE_MAX_SZ;
-        XMEMCPY(aes->iv, iv, CCM_NONCE_MAX_SZ);
+        /* Cache IV - see ctrl func for other ways to set IV. IV length
+         * default set above, unless reset by application through ctrl cmd. */
+        XMEMCPY(aes->iv, iv, aes->ivLen);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ccm_init", ret);
@@ -251,8 +261,10 @@ static int we_aes_ccm_tls_cipher(we_AesCcm *aes, unsigned char *out,
  * @param  len  [in]      Length of AAD or data to encrypt/decrypt.
  * @return  When out is NULL, length of input data on success and 0 on failure.
  *          <br>
- *          When out is not NULL, length of output data on success and 0 on
+ *          When out is not NULL, and either in is not NULL or length is not 0,
+ *          length of output data on success and 0 on
  *          failure.
+ *          When out is not NULL, in is NULL, and len is 0, return 0 (no data).
  */
 static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                              const unsigned char *in, size_t len)
@@ -276,7 +288,8 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         ret = we_aes_ccm_tls_cipher(aes, out, in, len);
     }
     else if ((ret == 1) && (out == NULL) && (in == NULL)) {
-        /* Don't need to cache length of plain text. */
+        /* Don't need to cache length of plain text. Just return size. */
+        ret = len;
     }
     else if ((ret == 1) && (out == NULL)) {
         /* Resize stored AAD and append new data. */
@@ -290,6 +303,8 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             aes->aad = p;
             XMEMCPY(aes->aad + aes->aadLen, in, len);
             aes->aadLen += len;
+            /* Return size of AAD data added */
+            ret = len;
         }
     }
     else if ((ret == 1) && (len > 0)) {
@@ -319,6 +334,8 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             if (ret == 1) {
                 /* Cache nonce/IV. */
                 XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
+                /* Return encrypted data length */
+                ret = len;
             }
         }
         else {
@@ -333,6 +350,8 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             if (ret == 1) {
                 /* Cache nonce/IV. */
                 XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
+                /* Return decrypted data length */
+                ret = len;
             }
         }
 
@@ -340,6 +359,9 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         OPENSSL_free(aes->aad);
         aes->aad = NULL;
         aes->aadLen = 0;
+    } else if ((ret == 1) && (in == NULL)) {
+        /* no error, but no input data or AAD to process, return 0 length */
+        ret = 0;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ccm_cipher", ret);
@@ -382,6 +404,21 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_CCM_SET_L:
+                WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_CCM_SET_L");
+                /* Set the length field, L
+                 *   arg [in] value to use for length field (L)
+                 *   ptr [in] Unused
+                 */
+                if ((arg <= 0) ||
+                    arg < CCM_LEN_FIELD_MIN_SZ || arg > CCM_LEN_FIELD_MAX_SZ) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                         "Invalid CCM length field");
+                    ret = 0;
+                } else {
+                    aes->L = arg;
+                }
+                break;
             case EVP_CTRL_AEAD_SET_IVLEN:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_SET_IVLEN");
                 /* Set the IV/nonce length to use

@@ -33,7 +33,8 @@
 static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
                             unsigned char *key, unsigned char *iv, int ivLen,
                             unsigned char *aad, unsigned char *msg, int len,
-                            unsigned char *enc, unsigned char *tag, int ccm)
+                            unsigned char *enc, unsigned char *tag, int ccm,
+                            int ccmL)
 {
     int err;
     EVP_CIPHER_CTX *ctx;
@@ -44,7 +45,15 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
     if (err == 0) {
         err = EVP_EncryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
     }
+    if (err == 0 && ccm && ccmL != 0) {
+        /* Applications can set CCM length field (L), default is 8 if unset. */
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_L, ccmL, NULL) != 1;
+    }
     if (err == 0) {
+        if (ccm && ccmL != 0) {
+            /* adjust IV based on L, should be 15-L */
+            ivLen = 15-ccmL;
+        }
         err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, ivLen,
                                   NULL) != 1;
     }
@@ -59,11 +68,19 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
     if ((err == 0) && ccm) {
         /* OpenSSL's CCM needs the length of plaintext set. */
         err = EVP_EncryptUpdate(ctx, NULL, &encLen, NULL, len) != 1;
+        if (encLen != len) {
+            /* Should return length */
+            err = 1;
+        }
     }
     if ((err == 0) && ccm) {
         /* No AAD streaming available in OpenSSL CCM mode. */
         err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad,
                                 (int)strlen((char *)aad)) != 1;
+        if (encLen != (int)strlen((char *)aad)) {
+            /* Should return length of AAD data added */
+            err = 1;
+        }
     }
     if ((err == 0) && !ccm) {
         /* AAD streaming available in OpenSSL GCM mode - part 1. */
@@ -76,9 +93,16 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
     }
     if (err == 0) {
         err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, len) != 1;
+        if (encLen != len) {
+            err = 1;
+        }
     }
     if (err == 0) {
         err = EVP_EncryptFinal_ex(ctx, enc + encLen, &encLen) != 1;
+        if (encLen != 0) {
+            /* should be no more data left */
+            err = 1;
+        }
     }
     if (err == 0) {
         err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tagLen, tag) != 1;
@@ -98,7 +122,7 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
                             unsigned char *key, unsigned char *iv, int ivLen,
                             unsigned char *aad, unsigned char *msg, int len,
                             unsigned char *enc, unsigned char *tag,
-                            unsigned char *dec, int ccm)
+                            unsigned char *dec, int ccm, int ccmL)
 {
     int err;
     EVP_CIPHER_CTX *ctx;
@@ -109,7 +133,15 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
     if (err == 0) {
         err = EVP_DecryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
     }
+    if (err == 0 && ccm && ccmL != 0) {
+        /* Applications can set CCM length field (L), default is 8 if unset. */
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_L, ccmL, NULL) != 1;
+    }
     if (err == 0) {
+        if (ccm && ccmL != 0) {
+            /* adjust IV based on L, should be 15-L */
+            ivLen = 15-ccmL;
+        }
         err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, ivLen,
                                   NULL) != 1;
     }
@@ -152,7 +184,7 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
 }
 
 static int test_aes_tag(ENGINE *e, void *data, const EVP_CIPHER *cipher,
-                        int keyLen, int ivLen, int ccm)
+                        int keyLen, int ivLen, int ccm, int ccmL)
 {
     int err = 0;
     unsigned char msg[] = "Test pattern";
@@ -177,23 +209,23 @@ static int test_aes_tag(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     if (err == 0) {
         PRINT_MSG("Encrypt with OpenSSL");
         err = test_aes_tag_enc(NULL, cipher, key, iv, ivLen, aad, msg,
-                               sizeof(msg), enc, tag, ccm);
+                               sizeof(msg), enc, tag, ccm, ccmL);
     }
     if (err == 0) {
         PRINT_MSG("Decrypt with wolfengine");
         err = test_aes_tag_dec(e, cipher, key, iv, ivLen, aad, msg, sizeof(msg),
-                               enc, tag, dec, ccm);
+                               enc, tag, dec, ccm, ccmL);
     }
 
     if (err == 0) {
         PRINT_MSG("Encrypt with wolfengine");
         err = test_aes_tag_enc(e, cipher, key, iv, ivLen, aad, msg, sizeof(msg),
-                               enc, tag, ccm);
+                               enc, tag, ccm, ccmL);
     }
     if (err == 0) {
         PRINT_MSG("Decrypt with OpenSSL");
         err = test_aes_tag_dec(NULL, cipher, key, iv, ivLen, aad, msg,
-                               sizeof(msg), enc, tag, dec, ccm);
+                               sizeof(msg), enc, tag, dec, ccm, ccmL);
     }
 
     return err;
@@ -286,7 +318,7 @@ static int test_aes_tag_fixed(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     if (err == 0) {
         PRINT_MSG("Decrypt with wolfengine");
         err = test_aes_tag_dec(e, cipher, key, iv, ivLen, aad, msg, sizeof(msg),
-                               enc, tag, dec, 0);
+                               enc, tag, dec, 0, 0);
     }
 
     if (err == 0) {
@@ -297,7 +329,7 @@ static int test_aes_tag_fixed(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     if (err == 0) {
         PRINT_MSG("Decrypt with OpenSSL");
         err = test_aes_tag_dec(NULL, cipher, key, iv, ivLen, aad, msg,
-                               sizeof(msg), enc, tag, dec, 0);
+                               sizeof(msg), enc, tag, dec, 0, 0);
     }
 
     return err;
@@ -488,21 +520,21 @@ static int test_aes_tag_tls(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
 int test_aes128_gcm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_128_gcm(), 16, 12, 0);
+    return test_aes_tag(e, data, EVP_aes_128_gcm(), 16, 12, 0, 0);
 }
 
 /******************************************************************************/
 
 int test_aes192_gcm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_192_gcm(), 24, 12, 0);
+    return test_aes_tag(e, data, EVP_aes_192_gcm(), 24, 12, 0, 0);
 }
 
 /******************************************************************************/
 
 int test_aes256_gcm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_256_gcm(), 32, 12, 0);
+    return test_aes_tag(e, data, EVP_aes_256_gcm(), 32, 12, 0, 0);
 }
 
 /******************************************************************************/
@@ -529,21 +561,51 @@ int test_aes128_gcm_tls(ENGINE *e, void *data)
 
 int test_aes128_ccm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1);
+    int err = 0;
+
+    /* test with default length field (L) */
+    err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 0);
+
+    /* test with modified length field (L) of 7 */
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 7);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
 
 int test_aes192_ccm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1);
+    int err = 0;
+
+    /* test with default length field (L) */
+    err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 0);
+
+    /* test with modified length field (L) of 7 */
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 7);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
 
 int test_aes256_ccm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1);
+    int err = 0;
+
+    /* test with default length field (L) */
+    err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 0);
+
+    /* test with modified length field (L) of 7 */
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 7);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
