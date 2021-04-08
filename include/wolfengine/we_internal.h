@@ -74,8 +74,8 @@ extern WC_RNG* we_rng;
 extern wolfSSL_Mutex* we_rng_mutex;
 #endif
 
-/* For digest method in OpenSSL 1.0.2 */
 int we_pkey_get_nids(const int** nids);
+int we_pkey_asn1_get_nids(const int** nids);
 
 /*
  * Digest methods.
@@ -161,8 +161,10 @@ extern RAND_METHOD* we_random_method;
 #ifdef WE_HAVE_HMAC
 
 extern EVP_PKEY_METHOD *we_hmac_pkey_method;
+extern EVP_PKEY_ASN1_METHOD *we_hmac_pkey_asn1_method;
 
 int we_init_hmac_pkey_meth(void);
+int we_init_hmac_pkey_asn1_meth(void);
 
 #endif /* WE_HAVE_HMAC */
 

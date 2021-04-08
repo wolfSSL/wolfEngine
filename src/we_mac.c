@@ -478,6 +478,32 @@ static we_mac* we_mac_copy(we_mac *src)
     return mac;
 }
 
+/**
+ * Treat pkey as an ASN1_OCTET_STRING and free it.
+ *
+ * @param  pkey  [in]  Key to free.
+ * @returns  1 on success and 0 on failure.
+ */
+static void we_mac_pkey_asn1_free(EVP_PKEY *pkey)
+{
+    int ret = 1;
+    ASN1_OCTET_STRING *key;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_asn1_free");
+
+    key = (ASN1_OCTET_STRING*)EVP_PKEY_get0(pkey);
+    if (key == NULL) {
+        ret = 0;
+    }
+    else {
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
+        ASN1_OCTET_STRING_free(key);
+    #endif
+    }
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_asn1_free", ret);
+    (void)ret;
+}
+
 #ifdef WE_HAVE_HMAC
 /* From src/ssl.c in wolfSSL
  * helper function for Deep copy of internal wolfSSL hmac structure
@@ -734,6 +760,10 @@ static void we_mac_pkey_cleanup(EVP_PKEY_CTX *ctx)
 /** EVP PKEY digest method - HMAC using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_hmac_pkey_method = NULL;
 
+/** EVP PKEY asn1 method - HMAC using wolfSSL for the implementation. */
+EVP_PKEY_ASN1_METHOD *we_hmac_pkey_asn1_method = NULL;
+
+
 /**
  * Initialize the HMAC operation using wolfSSL.
  *
@@ -917,6 +947,58 @@ int we_init_hmac_pkey_meth(void)
         we_hmac_pkey_method = NULL;
     }
 
+    return ret;
+}
+
+
+/**
+ * Gets the max HMAC tag size.
+ *
+ * @returns max HMAC tag size.
+ */
+static int we_hmac_pkey_asn1_size(const EVP_PKEY *pkey)
+{
+    (void)pkey;
+    return WC_HMAC_BLOCK_SIZE;
+}
+
+
+/**
+ * Create a new method and assign the functions to use for ASN.1 HMAC
+ * operations.
+ *
+ * @returns  1 on success and 0 on failure.
+ */
+int we_init_hmac_pkey_asn1_meth(void)
+{
+    int ret = 1;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_init_hmac_pkey_asn1_meth");
+    we_hmac_pkey_asn1_method = EVP_PKEY_asn1_new(EVP_PKEY_HMAC, 0, "HMAC",
+            "wolfSSL ASN1 HMAC method");
+    if (we_hmac_pkey_asn1_method == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "EVP_PKEY_asn1_new",
+                we_hmac_pkey_asn1_method);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        EVP_PKEY_asn1_set_free(we_hmac_pkey_asn1_method, we_mac_pkey_asn1_free);
+        EVP_PKEY_asn1_set_public(we_hmac_pkey_asn1_method, 0, 0, 0, 0,
+                we_hmac_pkey_asn1_size, 0);
+    }
+
+    /* add our created asn1 method to the internal list of available methods */
+    if (ret == 1) {
+        EVP_PKEY_asn1_add0(we_hmac_pkey_asn1_method);
+    }
+
+    if (ret == 0 && we_hmac_pkey_asn1_method != NULL) {
+        EVP_PKEY_asn1_free(we_hmac_pkey_asn1_method);
+        we_hmac_pkey_asn1_method = NULL;
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_init_hmac_pkey_asn1_meth", ret);
     return ret;
 }
 #endif /* WE_HAVE_HMAC */
@@ -1135,32 +1217,9 @@ int we_init_cmac_pkey_meth(void)
 
 
 /**
- * In wolfSSL the key is a ASN1_OCTET_STRING not a CMAC_CTX to reuse HMAC code.
+ * Gets the max CMAC tag size.
  *
- */
-static void we_cmac_pkey_asn1_free(EVP_PKEY *pkey)
-{
-    int ret = 1;
-    ASN1_OCTET_STRING *key;
-
-    key = (ASN1_OCTET_STRING*)EVP_PKEY_get0(pkey);
-    if (key == NULL) {
-        ret = 0;
-    }
-    else {
-    #if OPENSSL_VERSION_NUMBER < 0x10100000L
-        ASN1_OCTET_STRING_free(key);
-    #endif
-    }
-    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_asn1_free", ret);
-    (void)ret;
-}
-
-
-/**
- * Gets the max CMAC tag size
- *
- * @returns max CMAC tag size
+ * @returns max CMAC tag size.
  */
 static int we_cmac_pkey_asn1_size(const EVP_PKEY *pkey)
 {
@@ -1170,7 +1229,8 @@ static int we_cmac_pkey_asn1_size(const EVP_PKEY *pkey)
 
 
 /**
- * Create a new method and assign the functions to use for CMAC
+ * Create a new method and assign the functions to use for ASN.1 CMAC
+ * operations.
  *
  * @returns  1 on success and 0 on failure.
  */
@@ -1188,8 +1248,7 @@ int we_init_cmac_pkey_asn1_meth(void)
     }
 
     if (ret == 1) {
-        EVP_PKEY_asn1_set_free(we_cmac_pkey_asn1_method,
-                we_cmac_pkey_asn1_free);
+        EVP_PKEY_asn1_set_free(we_cmac_pkey_asn1_method, we_mac_pkey_asn1_free);
         EVP_PKEY_asn1_set_public(we_cmac_pkey_asn1_method, 0, 0, 0, 0,
                 we_cmac_pkey_asn1_size, 0);
     }
