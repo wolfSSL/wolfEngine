@@ -305,7 +305,10 @@ static int we_init_des3cbc_meth(EVP_CIPHER *cipher)
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_des3cbc_meth");
 
-    ret = EVP_CIPHER_meth_set_iv_length(cipher, DES_IV_SIZE);
+    /* NOTE: We intentionally set the IV length to DES_BLOCK_SIZE (8) here
+     *       rather than use DES_IV_SIZE, which is 16 in some wolfCrypt
+     *       versions. 8 is the correct value. */
+    ret = EVP_CIPHER_meth_set_iv_length(cipher, DES_BLOCK_SIZE);
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_flags(cipher, DES3_CBC_FLAGS);
     }
