@@ -246,10 +246,17 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_enc");
 
-    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
-    if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
+    if (fromLen < 0) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative input buffer length.");
         ret = -1;
+    }
+
+    if (ret == 1) {
+        engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
+        if (engineRsa == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
+            ret = -1;
+        }
     }
 
     if (ret == 1 && !engineRsa->pubKeySet) {
@@ -334,10 +341,17 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_dec");
 
-    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
-    if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
+    if (fromLen < 0) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative input buffer length.");
         ret = -1;
+    }
+
+    if (ret == 1) {
+        engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
+        if (engineRsa == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
+            ret = -1;
+        }
     }
 
     if (ret == 1 && !engineRsa->privKeySet) {
@@ -527,10 +541,17 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc");
 
-    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
-    if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
+    if (fromLen < 0) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative input buffer length.");
         ret = -1;
+    }
+
+    if (ret == 1) {
+        engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
+        if (engineRsa == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
+            ret = -1;
+        }
     }
 
     if (ret == 1 && !engineRsa->privKeySet) {
@@ -643,10 +664,17 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec");
 
-    engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
-    if (engineRsa == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
+    if (fromLen < 0) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative input buffer length.");
         ret = -1;
+    }
+
+    if (ret == 1) {
+        engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
+        if (engineRsa == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "RSA_get_ex_data", engineRsa);
+            ret = -1;
+        }
     }
 
     if (ret == 1 && !engineRsa->pubKeySet) {
