@@ -933,10 +933,6 @@ static int wolfengine_destroy(ENGINE *e)
     EVP_MD_meth_free(we_sha3_512_md);
     we_sha3_512_md = NULL;
 #endif
-#ifdef WE_HAVE_CMAC
-    EVP_PKEY_asn1_free(we_cmac_pkey_asn1_method);
-    we_cmac_pkey_asn1_method = NULL;
-#endif
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     we_final_random();
 #endif

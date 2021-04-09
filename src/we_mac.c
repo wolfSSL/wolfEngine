@@ -496,9 +496,27 @@ static void we_mac_pkey_asn1_free(EVP_PKEY *pkey)
         ret = 0;
     }
     else {
-    #if OPENSSL_VERSION_NUMBER < 0x10100000L
-        ASN1_OCTET_STRING_free(key);
-    #endif
+        int id;
+        id = EVP_PKEY_id(pkey);
+
+        switch (id) {
+            case EVP_PKEY_HMAC:
+                /*always free ASN1_OCTET_STRING with HMAC (it is default type)*/
+                ASN1_OCTET_STRING_free(key);
+                break;
+
+            case EVP_PKEY_CMAC:
+            #if OPENSSL_VERSION_NUMBER < 0x10101000L
+                /* version 1.1.1 added CMAC support and setting CMAC_CTX
+                 * since this function seems to be called even on default
+                 * pkey's right now we are avoiding the free until a
+                 * solution is found
+                 * @TODO
+                 */
+                ASN1_OCTET_STRING_free(key);
+            #endif
+                break;
+        }
     }
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_asn1_free", ret);
     (void)ret;
