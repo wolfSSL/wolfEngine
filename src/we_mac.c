@@ -115,6 +115,8 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
     ASN1_OCTET_STRING *key;
     EVP_PKEY *pkey;
 
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_do_digest_init");
+
     if (mac == NULL) {
         WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
                              "we_mac pointer is NULL in we_do_digest_init");
@@ -183,6 +185,9 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
                 ret = 0;
         }
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_do_digest_init", ret);
+
     return ret;
 }
 
@@ -195,25 +200,19 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
  */
 static int we_mac_md_to_hash_type(EVP_MD *md)
 {
-    int nid;
+    int ret;
+    int wcHashType;
 
-    nid = EVP_MD_type(md);
-    switch (nid) {
-        case NID_md5:    return WC_MD5;
-        case NID_sha1:   return WC_SHA;
-        case NID_sha256: return WC_SHA256;
-        case NID_sha512: return WC_SHA512;
-        case NID_sha384: return WC_SHA384;
-        case NID_sha224: return WC_SHA224;
-    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-        case NID_sha3_224: return WC_SHA3_224;
-        case NID_sha3_256: return WC_SHA3_256;
-        case NID_sha3_384: return WC_SHA3_384;
-        case NID_sha3_512: return WC_SHA3_512;
-    #endif
-        default:
-            return -1;
+    wcHashType = we_nid_to_wc_hash_type(EVP_MD_type(md));
+    if (wcHashType == WC_HASH_TYPE_NONE) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "we_nid_to_wc_hash_type", wcHashType);
+        ret = -1;
     }
+    else {
+        ret = wcHashType;
+    }
+
+    return ret;
 }
 
 
@@ -473,8 +472,9 @@ static we_mac* we_mac_copy(we_mac *src)
 
     if (ret != 1 && mac != NULL) {
         OPENSSL_free(mac);
-        return NULL;
+        mac = NULL;
     }
+
     return mac;
 }
 
@@ -505,13 +505,17 @@ static void we_mac_pkey_asn1_free(EVP_PKEY *pkey)
 }
 
 #ifdef WE_HAVE_HMAC
-/* From src/ssl.c in wolfSSL
+/* Based on wolfSSL_HmacCopy in src/ssl.c in wolfSSL
  * helper function for Deep copy of internal wolfSSL hmac structure
- * returns 1 on success */
-static int wolfSSL_HmacCopy(Hmac* des, Hmac* src)
+ * returns 1 on success, 0 on failure */
+static int we_hmac_copy(Hmac* des, Hmac* src)
 {
     void* heap;
-    int ret;
+    int ret = 1;
+    int rc = 0;
+    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_copy");
 
 #ifndef HAVE_FIPS
     heap = src->heap;
@@ -519,87 +523,96 @@ static int wolfSSL_HmacCopy(Hmac* des, Hmac* src)
     heap = NULL;
 #endif
     if (wc_HmacInit(des, heap, 0) != 0) {
-        return 0;
+        ret = 0;
     }
 
-    /* requires that hash structures have no dynamic parts to them */
-    switch (src->macType) {
-    #ifndef NO_MD5
-        case WC_MD5:
-            ret = wc_Md5Copy(&src->hash.md5, &des->hash.md5);
-            break;
-    #endif /* !NO_MD5 */
+    if (ret == 1) {
+        /* requires that hash structures have no dynamic parts to them */
+        switch (src->macType) {
+        #ifndef NO_MD5
+            case WC_MD5:
+                rc = wc_Md5Copy(&src->hash.md5, &des->hash.md5);
+                break;
+        #endif /* !NO_MD5 */
 
-    #ifndef NO_SHA
-        case WC_SHA:
-            ret = wc_ShaCopy(&src->hash.sha, &des->hash.sha);
-            break;
-    #endif /* !NO_SHA */
+        #ifndef NO_SHA
+            case WC_SHA:
+                rc = wc_ShaCopy(&src->hash.sha, &des->hash.sha);
+                break;
+        #endif /* !NO_SHA */
 
-    #ifdef WOLFSSL_SHA224
-        case WC_SHA224:
-            ret = wc_Sha224Copy(&src->hash.sha224, &des->hash.sha224);
-            break;
-    #endif /* WOLFSSL_SHA224 */
+        #ifdef WOLFSSL_SHA224
+            case WC_SHA224:
+                rc = wc_Sha224Copy(&src->hash.sha224, &des->hash.sha224);
+                break;
+        #endif /* WOLFSSL_SHA224 */
 
-    #ifndef NO_SHA256
-        case WC_SHA256:
-            ret = wc_Sha256Copy(&src->hash.sha256, &des->hash.sha256);
-            break;
-    #endif /* !NO_SHA256 */
+        #ifndef NO_SHA256
+            case WC_SHA256:
+                rc = wc_Sha256Copy(&src->hash.sha256, &des->hash.sha256);
+                break;
+        #endif /* !NO_SHA256 */
 
-    #ifdef WOLFSSL_SHA384
-        case WC_SHA384:
-            ret = wc_Sha384Copy(&src->hash.sha384, &des->hash.sha384);
-            break;
-    #endif /* WOLFSSL_SHA384 */
-    #ifdef WOLFSSL_SHA512
-        case WC_SHA512:
-            ret = wc_Sha512Copy(&src->hash.sha512, &des->hash.sha512);
-            break;
-    #endif /* WOLFSSL_SHA512 */
-#ifdef WOLFSSL_SHA3
-    #ifndef WOLFSSL_NOSHA3_224
-        case WC_SHA3_224:
-            ret = wc_Sha3_224_Copy(&src->hash.sha3, &des->hash.sha3);
-            break;
-    #endif /* WOLFSSL_NO_SHA3_224 */
-    #ifndef WOLFSSL_NOSHA3_256
-        case WC_SHA3_256:
-            ret = wc_Sha3_256_Copy(&src->hash.sha3, &des->hash.sha3);
-            break;
-    #endif /* WOLFSSL_NO_SHA3_256 */
-    #ifndef WOLFSSL_NOSHA3_384
-        case WC_SHA3_384:
-            ret = wc_Sha3_384_Copy(&src->hash.sha3, &des->hash.sha3);
-            break;
-    #endif /* WOLFSSL_NO_SHA3_384 */
-    #ifndef WOLFSSL_NOSHA3_512
-        case WC_SHA3_512:
-            ret = wc_Sha3_512_Copy(&src->hash.sha3, &des->hash.sha3);
-            break;
-    #endif /* WOLFSSL_NO_SHA3_512 */
-#endif /* WOLFSSL_SHA3 */
+        #ifdef WOLFSSL_SHA384
+            case WC_SHA384:
+                rc = wc_Sha384Copy(&src->hash.sha384, &des->hash.sha384);
+                break;
+        #endif /* WOLFSSL_SHA384 */
+        #ifdef WOLFSSL_SHA512
+            case WC_SHA512:
+                rc = wc_Sha512Copy(&src->hash.sha512, &des->hash.sha512);
+                break;
+        #endif /* WOLFSSL_SHA512 */
+    #ifdef WOLFSSL_SHA3
+        #ifndef WOLFSSL_NOSHA3_224
+            case WC_SHA3_224:
+                rc = wc_Sha3_224_Copy(&src->hash.sha3, &des->hash.sha3);
+                break;
+        #endif /* WOLFSSL_NO_SHA3_224 */
+        #ifndef WOLFSSL_NOSHA3_256
+            case WC_SHA3_256:
+                rc = wc_Sha3_256_Copy(&src->hash.sha3, &des->hash.sha3);
+                break;
+        #endif /* WOLFSSL_NO_SHA3_256 */
+        #ifndef WOLFSSL_NOSHA3_384
+            case WC_SHA3_384:
+                rc = wc_Sha3_384_Copy(&src->hash.sha3, &des->hash.sha3);
+                break;
+        #endif /* WOLFSSL_NO_SHA3_384 */
+        #ifndef WOLFSSL_NOSHA3_512
+            case WC_SHA3_512:
+                rc = wc_Sha3_512_Copy(&src->hash.sha3, &des->hash.sha3);
+                break;
+        #endif /* WOLFSSL_NO_SHA3_512 */
+    #endif /* WOLFSSL_SHA3 */
 
-        default:
-            WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
-                                 "Unknown/supported hash used with HMAC");
-            return 0;
+            default:
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unknown/unsupported hash "
+                          "used with HMAC: %d", src->macType);
+                WOLFENGINE_ERROR_MSG(WE_LOG_MAC, errBuff);
+                rc = -1;
+        }
+
+        if (rc != 0) {
+            ret = 0;
+        }
     }
 
-    if (ret != 0)
-        return 0;
+    if (ret == 1) {
+        XMEMCPY((byte*)des->ipad, (byte*)src->ipad, WC_HMAC_BLOCK_SIZE);
+        XMEMCPY((byte*)des->opad, (byte*)src->opad, WC_HMAC_BLOCK_SIZE);
+        XMEMCPY((byte*)des->innerHash, (byte*)src->innerHash,
+                WC_MAX_DIGEST_SIZE);
+    #ifndef HAVE_FIPS
+        des->heap    = heap;
+    #endif
+        des->macType = src->macType;
+        des->innerHashKeyed = src->innerHashKeyed;
+    }
 
-    XMEMCPY((byte*)des->ipad, (byte*)src->ipad, WC_HMAC_BLOCK_SIZE);
-    XMEMCPY((byte*)des->opad, (byte*)src->opad, WC_HMAC_BLOCK_SIZE);
-    XMEMCPY((byte*)des->innerHash, (byte*)src->innerHash, WC_MAX_DIGEST_SIZE);
-#ifndef HAVE_FIPS
-    des->heap    = heap;
-#endif
-    des->macType = src->macType;
-    des->innerHashKeyed = src->innerHashKeyed;
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_copy", ret);
 
-    return 1;
+    return ret;
 }
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
@@ -611,22 +624,32 @@ static int wolfSSL_HmacCopy(Hmac* des, Hmac* src)
   * @param  src [in]  The Cmac structure copying from
   * @returns  1 on success
   */
-static int wolfSSL_CmacCopy(we_mac* mac, Cmac* des, Cmac* src)
+static int we_cmac_copy(we_mac* mac, Cmac* des, Cmac* src)
 {
     int ret = 1, rc;
 
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_copy");
+
     rc = wc_InitCmac(des, (const byte*)mac->key, mac->keySz, WC_CMAC_AES, NULL);
     if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_InitCmac", ret);
         ret = 0;
     }
 
-    /* copy over state of CMAC */
-    memcpy(des->buffer, src->buffer, AES_BLOCK_SIZE); /* partially stored block */
-    memcpy(des->digest, src->digest, AES_BLOCK_SIZE); /* running digest */
-    memcpy(des->k1, src->k1, AES_BLOCK_SIZE);
-    memcpy(des->k2, src->k2, AES_BLOCK_SIZE);
-    des->bufferSz = src->bufferSz;
-    des->totalSz = src->totalSz;
+    if (ret == 1) {
+        /* copy over state of CMAC */
+        /* partially stored block */
+        memcpy(des->buffer, src->buffer, AES_BLOCK_SIZE);
+        /* running digest */
+        memcpy(des->digest, src->digest, AES_BLOCK_SIZE);
+        memcpy(des->k1, src->k1, AES_BLOCK_SIZE);
+        memcpy(des->k2, src->k2, AES_BLOCK_SIZE);
+        des->bufferSz = src->bufferSz;
+        des->totalSz = src->totalSz;
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_copy", ret);
+
     return ret;
 }
 #endif /* WE_HAVE_CMAC */
@@ -648,6 +671,8 @@ static int we_mac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
     int ret = 1;
     we_mac *mac;
     we_mac *dup;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_copy");
 
     if (dst == NULL || src == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_pkey_copy, dst: ", dst);
@@ -676,13 +701,13 @@ static int we_mac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
         switch (mac->algo) {
         #ifdef WE_HAVE_HMAC
             case WE_HMAC_ALGO:
-                ret = wolfSSL_HmacCopy(&dup->state.hmac, &mac->state.hmac);
+                ret = we_hmac_copy(&dup->state.hmac, &mac->state.hmac);
                 break;
         #endif
 
         #ifdef WE_HAVE_CMAC
             case WE_CMAC_ALGO:
-                ret = wolfSSL_CmacCopy(mac, &dup->state.cmac, &mac->state.cmac);
+                ret = we_cmac_copy(mac, &dup->state.cmac, &mac->state.cmac);
                 break;
         #endif
 
@@ -692,13 +717,16 @@ static int we_mac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
         }
 
         if (ret != 1) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wolfSSL_*Copy", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "we_*mac_copy", ret);
         }
     }
 
     if (ret == 1) {
         EVP_PKEY_CTX_set_data(dst, dup);
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_copy", ret);
+
     return ret;
 }
 
@@ -813,6 +841,8 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     int ret = 1, rc = 0;
     we_mac *mac;
 
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_update");
+
     if (ctx == NULL || data == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_hmac_pkey_update, ctx: ", ctx);
@@ -845,6 +875,9 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
             ret = 0;
         }
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_update", ret);
+
     return ret;
 }
 
@@ -911,6 +944,8 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
         }
     }
 
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_signctx", ret);
+
     return ret;
 }
 
@@ -923,6 +958,8 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
 int we_init_hmac_pkey_meth(void)
 {
     int ret = 1;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_init_hmac_pkey_meth");
 
     we_hmac_pkey_method = EVP_PKEY_meth_new(EVP_PKEY_HMAC, 0);
     if (we_hmac_pkey_method == NULL) {
@@ -946,6 +983,8 @@ int we_init_hmac_pkey_meth(void)
         EVP_PKEY_meth_free(we_hmac_pkey_method);
         we_hmac_pkey_method = NULL;
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_init_hmac_pkey_meth", ret);
 
     return ret;
 }
@@ -1026,6 +1065,8 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     int ret = 1, rc = 0;
     we_mac *mac;
 
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_pkey_update");
+
     if (ctx == NULL || data == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_cmac_pkey_update, ctx: ", ctx);
@@ -1058,6 +1099,9 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
             ret = 0;
         }
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_update", ret);
+
     return ret;
 }
 
