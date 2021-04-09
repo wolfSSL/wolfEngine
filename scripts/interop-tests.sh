@@ -12,7 +12,7 @@
 
 FAILED=0
 
-if [ [ -z "${WOLFSSL_DIR}" ] && [ ! -z "${WOLFSSL_INSTALL}" ] ]; then
+if [ -z "${WOLFSSL_DIR}" ] && [ ! -z "${WOLFSSL_INSTALL}" ]; then
     printf "WOLFSSL_DIR env needs set to location of wolfSSL\n"
     exit 1
 fi
