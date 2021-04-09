@@ -119,6 +119,7 @@ if [ -z "${WOLFSSL_INSTALL}" ]; then
 else
     printf "\tUsing wolfSSL installed at $WOLFSSL_INSTALL\n"
 fi
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$WOLFSSL_INSTALL/lib"
 
 
 if [ -z "${WOLFENGINE_1_1_1_INSTALL}" ]; then
@@ -130,7 +131,7 @@ if [ -z "${WOLFENGINE_1_1_1_INSTALL}" ]; then
     printf " Building wolfEngine..."
     cd wolfEngine
     ./autogen.sh &> /dev/null
-    ./configure --with-openssl=$OPENSSL_1_1_1_INSTALL --prefix=$WOLFENGINE_1_1_1_INSTALL &> $LOGFILE
+    ./configure CPPFLAGS=-I${WOLFSSL_INSTALL}/include --with-openssl=$OPENSSL_1_1_1_INSTALL --prefix=$WOLFENGINE_1_1_1_INSTALL &> $LOGFILE
     if [ $? != 0 ]; then
         printf "config failed\n"
         exit 1
@@ -158,7 +159,7 @@ if [ -z "${WOLFENGINE_1_0_2_INSTALL}" ]; then
     printf " Building wolfEngine..."
     cd wolfEngine
     ./autogen.sh &> /dev/null
-    ./configure --with-openssl=$OPENSSL_1_0_2_INSTALL --prefix=$WOLFENGINE_1_0_2_INSTALL &> $LOGFILE
+    ./configure CPPFLAGS=-I${WOLFSSL_INSTALL}/include --with-openssl=$OPENSSL_1_0_2_INSTALL --prefix=$WOLFENGINE_1_0_2_INSTALL &> $LOGFILE
     if [ $? != 0 ]; then
         printf "config failed\n"
         exit 1
