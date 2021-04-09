@@ -29,16 +29,12 @@ printf "Setting up ...\n"
 if [ -z "${OPENSSL_1_1_1_INSTALL}" ]; then
     printf "\tOPENSSL_1_1_1_INSTALL not set, cloning it..."
     git clone --depth=1 -b OpenSSL_1_1_1b https://github.com/openssl/openssl.git openssl-1_1_1b &> $LOGFILE
-    if [ $? != 0 ]; then
-        printf " Error cloning OpenSSL 1.1.1b\n"
-        exit 1
-    fi
     OPENSSL_1_1_1_INSTALL=$PWD/openssl-1_1_1b-install
 
     #Build the library
     printf " Building OpenSSL 1.1.1b..."
     cd openssl-1_1_1b
-    ./config --prefix=$OPENSSL_1_1_1_INSTALL &> $LOGFILE
+    ./config shared --prefix=$OPENSSL_1_1_1_INSTALL &> $LOGFILE
     if [ $? != 0 ]; then
         printf "config failed\n"
         exit 1
@@ -58,16 +54,12 @@ fi
 if [ -z "${OPENSSL_1_0_2_INSTALL}" ]; then
     printf "\tOPENSSL_1_0_2_INSTALL not set, cloning it..."
     git clone --depth=1 -b OpenSSL_1_0_2h https://github.com/openssl/openssl.git openssl-1_0_2h &> $LOGFILE
-    if [ $? != 0 ]; then
-        printf " Error cloning OpenSSL 1.0.2h\n"
-        exit 1
-    fi
     OPENSSL_1_0_2_INSTALL=$PWD/openssl-1_0_2h-install
 
     #Build the library
     printf " Building OpenSSL 1.0.2h..."
     cd openssl-1_0_2h
-    ./config --prefix=$OPENSSL_1_0_2_INSTALL &> $LOGFILE
+    ./config shared --prefix=$OPENSSL_1_0_2_INSTALL &> $LOGFILE
     if [ $? != 0 ]; then
         printf "config failed\n"
         exit 1
