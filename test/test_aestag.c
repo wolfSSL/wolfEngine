@@ -91,7 +91,8 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
         err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad + 1,
                                 (int)strlen((char *)aad) - 1) != 1;
     }
-    if (err == 0) {
+    if (err == 0 && len > 0) {
+        /* Update with msg, if len > 0 (not GMAC) */
         err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, len) != 1;
         if (encLen != len) {
             err = 1;
@@ -159,9 +160,17 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
     if (err == 0) {
         err = EVP_DecryptUpdate(ctx, NULL, &decLen, aad,
                                 (int)strlen((char *)aad)) != 1;
+        if (err == 0 && (decLen != (int)strlen((char *)aad))) {
+            PRINT_MSG("EVP_DecryptUpdate did not return correct size of AAD");
+            err = 1;
+        }
     }
-    if (err == 0) {
+    if (err == 0 && len > 0) {
+        /* Not used in GMAC test (len == 0) */
         err = EVP_DecryptUpdate(ctx, dec, &decLen, enc, len) != 1;
+    } else {
+        /* Reset decLen, represented AAD length above */
+        decLen = 0;
     }
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     /* Bug in older versions has tag_set cleared and causes failure. */
@@ -226,6 +235,49 @@ static int test_aes_tag(ENGINE *e, void *data, const EVP_CIPHER *cipher,
         PRINT_MSG("Decrypt with OpenSSL");
         err = test_aes_tag_dec(NULL, cipher, key, iv, ivLen, aad, msg,
                                sizeof(msg), enc, tag, dec, ccm, ccmL);
+    }
+
+    return err;
+}
+
+/* AES-GCM GMAC test, empty plaintext, operation only outputs tag value */
+static int test_aes_gcm_gmac(ENGINE* e, void* data, const EVP_CIPHER* cipher,
+                             int keyLen, int ivLen)
+{
+    int err = 0;
+    unsigned char key[32];
+    unsigned char iv[AES_BLOCK_SIZE];
+    unsigned char aad[] = "AAD";
+    unsigned char tag[AES_BLOCK_SIZE];
+
+    (void)data;
+
+    memset(key, 0, keyLen);
+    memset(iv, 0, ivLen);
+
+    PRINT_BUFFER("Key", key, keyLen);
+    PRINT_BUFFER("IV", iv, ivLen);
+
+    if (err == 0) {
+        PRINT_MSG("Encrypt with OpenSSL");
+        err = test_aes_tag_enc(NULL, cipher, key, iv, ivLen, aad, NULL,
+                               0, NULL, tag, 0, 0);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt with wolfengine");
+        err = test_aes_tag_dec(e, cipher, key, iv, ivLen, aad, NULL, 0,
+                               NULL, tag, NULL, 0, 0);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Encrypt with wolfengine");
+        err = test_aes_tag_enc(e, cipher, key, iv, ivLen, aad, NULL, 0,
+                               NULL, tag, 0, 0);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt with OpenSSL");
+        err = test_aes_tag_dec(NULL, cipher, key, iv, ivLen, aad, NULL,
+                               0, NULL, tag, NULL, 0, 0);
     }
 
     return err;
@@ -520,21 +572,45 @@ static int test_aes_tag_tls(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
 int test_aes128_gcm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_128_gcm(), 16, 12, 0, 0);
+    int err = 0;
+
+    err = test_aes_tag(e, data, EVP_aes_128_gcm(), 16, 12, 0, 0);
+
+    if (err == 0) {
+        err = test_aes_gcm_gmac(e, data, EVP_aes_128_gcm(), 16, 12);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
 
 int test_aes192_gcm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_192_gcm(), 24, 12, 0, 0);
+    int err = 0;
+
+    err = test_aes_tag(e, data, EVP_aes_192_gcm(), 24, 12, 0, 0);
+
+    if (err == 0) {
+        err = test_aes_gcm_gmac(e, data, EVP_aes_192_gcm(), 24, 12);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
 
 int test_aes256_gcm(ENGINE *e, void *data)
 {
-    return test_aes_tag(e, data, EVP_aes_256_gcm(), 32, 12, 0, 0);
+    int err = 0;
+
+    err = test_aes_tag(e, data, EVP_aes_256_gcm(), 32, 12, 0, 0);
+
+    if (err == 0) {
+        err = test_aes_gcm_gmac(e, data, EVP_aes_256_gcm(), 32, 12);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
