@@ -28,7 +28,7 @@ fi
 printf "Setting up ...\n"
 if [ -z "${OPENSSL_1_1_1_INSTALL}" ]; then
     printf "\tOPENSSL_1_1_1_INSTALL not set, cloning it..."
-    git clone --depth=1 -b OpenSSL_1_1_1b https://github.com/openssl/openssl.git openssl-1_1_1b &> $LOGFILE
+    git clone --depth=1 -b OpenSSL_1_1_1b git@github.com:openssl/openssl.git openssl-1_1_1b &> $LOGFILE
     OPENSSL_1_1_1_INSTALL=$PWD/openssl-1_1_1b-install
 
     #Build the library
@@ -53,8 +53,8 @@ fi
 
 if [ -z "${OPENSSL_1_0_2_INSTALL}" ]; then
     printf "\tOPENSSL_1_0_2_INSTALL not set, cloning it..."
-    git clone --depth=1 -b OpenSSL_1_0_2h https://github.com/openssl/openssl.git openssl-1_0_2h &> $LOGFILE
-    OPENSSL_1_0_2_INSTALL=$PWD/openssl-1_0_2h-install
+    git clone --depth=1 -b OpenSSL_1_0_2h git@github.com:openssl/openssl.git openssl-1_0_2h &> $LOGFILE
+    OPENSSL_1_0_2_INSTALL=${PWD}/openssl-1_0_2h-install
 
     #Build the library
     printf " Building OpenSSL 1.0.2h..."
@@ -79,11 +79,7 @@ fi
 
 if [ -z "${WOLFSSL_INSTALL}" ]; then
     printf "\tWOLFSSL_INSTALL not set, cloning it..."
-    git clone --depth=1 https://github.com/wolfssl/wolfssl &> $LOGFILE
-    if [ $? != 0 ]; then
-        printf " Error cloning wolfSSL\n"
-        exit 1
-    fi
+    git clone --depth=1 git@github.com:wolfssl/wolfssl.git &> $LOGFILE
     WOLFSSL_INSTALL=$PWD/wolfssl-install
 
     #Build the library
@@ -102,8 +98,8 @@ if [ -z "${WOLFSSL_INSTALL}" ]; then
         exit 1
     fi
 
-    if [ -z "$WOLFSSL_CERTS" ]; then
-        WOLFSSL_CERTS=$PWD/wolfssl/certs
+    if [ -z "${WOLFSSL_DIR}" ]; then
+        WOLFSSL_DIR=${PWD}/wolfssl
     fi
     printf "done\n"
     cd ..
@@ -111,12 +107,12 @@ if [ -z "${WOLFSSL_INSTALL}" ]; then
 else
     printf "\tUsing wolfSSL installed at $WOLFSSL_INSTALL\n"
 fi
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$WOLFSSL_INSTALL/lib"
+export LD_LIBRARY_PATH="$WOLFSSL_INSTALL/lib:$LD_LIBRARY_PATH"
 
 
 if [ -z "${WOLFENGINE_1_1_1_INSTALL}" ]; then
     printf "\tWOLENGINE_1_1_1_INSTALL not set, cloning it..."
-    git clone --depth=1 https://github.com/wolfssl/wolfEngine &> $LOGFILE
+    git clone --depth=1 git@github.com:wolfssl/wolfEngine.git &> $LOGFILE
     WOLFENGINE_1_1_1_INSTALL=$PWD/wolfengine-1_1_1-install
 
     #Build the library
@@ -144,7 +140,7 @@ fi
 
 if [ -z "${WOLFENGINE_1_0_2_INSTALL}" ]; then
     printf "\tWOLENGINE_1_0_2_INSTALL not set, cloning it..."
-    git clone --depth=1 https://github.com/wolfssl/wolfEngine &> $LOGFILE
+    git clone --depth=1 git@github.com:wolfssl/wolfEngine.git &> $LOGFILE
     WOLFENGINE_1_0_2_INSTALL=$PWD/wolfengine-1_0_2-install
 
     #Build the library
@@ -178,7 +174,7 @@ cd $WOLFSSL_DIR
 export WOLFSSL_OPENSSL_TEST=1
 printf "\tTesting with OpenSSL version 1.1.1..."
 export OPENSSL_ENGINES=${WOLFENGINE_1_1_1_INSTALL}/lib
-export OPENSSL_ENGINE_ID="-engine libwolfengine"
+export OPENSSL_ENGINE_ID="libwolfengine"
 export LD_LIBRARY_PATH=${OPENSSL_1_1_1_INSTALL}/lib
 export OPENSSL=${OPENSSL_1_1_1_INSTALL}/bin/openssl
 
@@ -207,7 +203,7 @@ printf "\tTesting with OpenSSL version 1.0.2..."
 export OPENSSL_ENGINES=${WOLFENGINE_1_0_2_INSTALL}/lib
 export LD_LIBRARY_PATH=${OPENSSL_1_0_2_INSTALL}/lib
 export OPENSSL=${OPENSSL_1_0_2_INSTALL}/bin/openssl
-export OPENSSL_ENGINE_ID="-engine wolfengine"
+export OPENSSL_ENGINE_ID="wolfengine"
 
 # check the engine can be found and used before running tests
 $OPENSSL engine -tt wolfengine &> $LOGFILE
