@@ -183,6 +183,7 @@ if [ $? != 0 ]; then
     printf "$OPENSSL engine -tt libwolfengine\n"
     FAILED=1
 else
+    grep "available" $LOGFILE
     if [ $? != 0 ]; then
         printf "engine not available\n"
     else
@@ -210,7 +211,6 @@ if [ $? != 0 ]; then
     printf "$OPENSSL engine -tt wolfengine\n"
     FAILED=1
 else
-    cat $LOGFILE
     grep "available" $LOGFILE
     if [ $? != 0 ]; then
         printf "engine not available\n"
