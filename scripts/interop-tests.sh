@@ -98,11 +98,9 @@ if [ -z "${WOLFSSL_INSTALL}" ]; then
         exit 1
     fi
 
-    if [ -z "${WOLFSSL_DIR}" ]; then
-        WOLFSSL_DIR=${PWD}/wolfssl
-    fi
-    printf "done\n"
     cd ..
+    WOLFSSL_DIR=${PWD}/wolfssl
+    printf "done\n"
 
 else
     printf "\tUsing wolfSSL installed at $WOLFSSL_INSTALL\n"
