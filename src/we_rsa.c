@@ -56,6 +56,40 @@ typedef struct we_Rsa
     int pubKeySet:1;
 } we_Rsa;
 
+/**
+ * Convert an OpenSSL hash NID to a wolfSSL MGF1 algorithm.
+ *
+ * @param  nid  [in]  OpenSSL hash NID to convert.
+ * @returns  wolfSSL MGF1 algorithm or WC_MGF1NONE on failure.
+ */
+static int we_mgf_from_hash(int nid)
+{
+    int mgf;
+
+    switch (nid) {
+        case NID_sha1:
+            mgf = WC_MGF1SHA1;
+            break;
+        case NID_sha224:
+            mgf = WC_MGF1SHA224;
+            break;
+        case NID_sha256:
+            mgf = WC_MGF1SHA256;
+            break;
+        case NID_sha384:
+            mgf = WC_MGF1SHA384;
+            break;
+        case NID_sha512:
+            mgf = WC_MGF1SHA512;
+            break;
+        default:
+            mgf = WC_MGF1NONE;
+            break;
+    }
+
+    return mgf;
+}
+
 /** RSA direct method - RSA using wolfSSL for the implementation. */
 RSA_METHOD *we_rsa_method = NULL;
 
@@ -188,6 +222,9 @@ static int we_rsa_init(RSA *rsa)
 #endif /* WC_RSA_BLINDING */
 
     if (ret == 1) {
+        /* OpenSSL's default RSA_METHOD uses SHA-1 for OAEP padding. We mirror
+         * that default here. */
+        engineRsa->md = EVP_sha1();
         rc = RSA_set_ex_data(rsa, WE_RSA_EX_DATA_IDX, engineRsa);
         if (rc != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "RSA_set_ex_data", rc);
@@ -241,6 +278,7 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
 {
     int ret = 1;
     int rc = 0;
+    const EVP_MD *mdMGF1 = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_enc_int");
 
@@ -258,10 +296,11 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_PKCS1_OAEP_PADDING:
-            /* OAEP padding using SHA-1, MGF1. */
+            mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
             rc = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
-                    (word32)toLen, &rsa->key, we_rng, WC_RSA_OAEP_PAD,
-                                        WC_HASH_TYPE_SHA, WC_MGF1SHA1, NULL, 0);
+                (word32)toLen, &rsa->key, we_rng, WC_RSA_OAEP_PAD,
+                we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
                                       rc);
@@ -359,6 +398,7 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
 {
     int ret = 1;
     int rc = 0;
+    const EVP_MD *mdMGF1 = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_dec_int");
 
@@ -377,10 +417,11 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_PKCS1_OAEP_PADDING:
-            /* OAEP padding using SHA-1, MGF1. */
+            mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
             rc = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
-                    (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD, WC_HASH_TYPE_SHA,
-                                         WC_MGF1SHA1, NULL, 0);
+                (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD,
+                we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
                                       rc);
@@ -465,40 +506,6 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_priv_dec", ret);
 
     return ret;
-}
-
-/**
- * Convert an OpenSSL hash NID to a wolfSSL MGF1 algorithm.
- *
- * @param  nid  [in]  OpenSSL hash NID to convert.
- * @returns  wolfSSL MGF1 algorithm or WC_MGF1NONE on failure.
- */
-static int we_mgf_from_hash(int nid)
-{
-    int mgf;
-
-    switch (nid) {
-        case NID_sha1:
-            mgf = WC_MGF1SHA1;
-            break;
-        case NID_sha224:
-            mgf = WC_MGF1SHA224;
-            break;
-        case NID_sha256:
-            mgf = WC_MGF1SHA256;
-            break;
-        case NID_sha384:
-            mgf = WC_MGF1SHA384;
-            break;
-        case NID_sha512:
-            mgf = WC_MGF1SHA512;
-            break;
-        default:
-            mgf = WC_MGF1NONE;
-            break;
-    }
-
-    return mgf;
 }
 
 /**
@@ -1158,9 +1165,15 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
  *  - EVP_PKEY_CTRL_RSA_PADDING: set the padding mode.
  *  - EVP_PKEY_CTRL_GET_RSA_PADDING: get the padding mode.
  *  - EVP_PKEY_CTRL_MD: set the digest method for sign/verify.
- *  - EVP_PKEY_CTRL_GET_MD: get the digets method for sign/verify.
+ *  - EVP_PKEY_CTRL_GET_MD: get the digest method for sign/verify.
+ *  - EVP_PKEY_CTRL_RSA_OAEP_MD: set the digest method for OAEP label.
+ *  - EVP_PKEY_CTRL_GET_RSA_OAEP_MD: get the digest method for OAEP label.
  *  - EVP_PKEY_CTRL_RSA_KEYGEN_BITS: set the key size in bits.
  *  - EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP: set the public exponent, "e."
+ *  - EVP_PKEY_CTRL_RSA_PSS_SALTLEN: set the salt length for PSS padding.
+ *  - EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN:  get the salt length for PSS padding.
+ *  - EVP_PKEY_CTRL_RSA_MGF1_MD: Set the MGF1 digest to use for OAEP, PSS.
+ *  - EVP_PKEY_CTRL_GET_RSA_MGF1_MD: Get the MGF1 digest used for OAEP, PSS.
  *
  * @param  ctx   [in]  Public key context of operation.
  * @param  type  [in]  Type of operation to perform.
@@ -1198,6 +1211,12 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 else {
                     rsa->padMode = num;
+                    if (rsa->md == NULL && (num == RSA_PKCS1_OAEP_PADDING ||
+                        num == RSA_PKCS1_PSS_PADDING)) {
+                       /* Default to SHA-1 as the message digest for OAEP and
+                          PSS padding. */
+                       rsa->md = EVP_sha1();
+                    }
                 }
                 break;
             case EVP_PKEY_CTRL_GET_RSA_PADDING:
@@ -1208,6 +1227,28 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
             case EVP_PKEY_CTRL_GET_MD:
                 *(const EVP_MD **)ptr = rsa->md;
+                break;
+            case EVP_PKEY_CTRL_RSA_OAEP_MD:
+                if (rsa->padMode != RSA_PKCS1_OAEP_PADDING) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Can't use "
+                        "EVP_PKEY_CTRL_RSA_OAEP_MD when padding mode "
+                        "isn't OAEP.");
+                    ret = 0;
+                }
+                else {
+                    rsa->md = (const EVP_MD *)ptr;
+                }
+                break;
+            case EVP_PKEY_CTRL_GET_RSA_OAEP_MD:
+                if (rsa->padMode != RSA_PKCS1_OAEP_PADDING) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Can't use "
+                        "EVP_PKEY_CTRL_GET_RSA_OAEP_MD when padding mode "
+                        "isn't OAEP.");
+                    ret = 0;
+                }
+                else {
+                    *(const EVP_MD **)ptr = rsa->md;
+                }
                 break;
             case EVP_PKEY_CTRL_DIGESTINIT:
                 break;
@@ -1251,6 +1292,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             case EVP_PKEY_CTRL_RSA_PSS_SALTLEN:
                 /* Store salt length to use with RSA-PSS. */
                 if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Can't set PSS salt length "
+                                         "when padding mode isn't PSS.");
                     ret = 0;
                 }
                 rsa->saltLen = num;
@@ -1258,10 +1301,41 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             case EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN:
                 /* Get the salt length to use with RSA-PSS. */
                 if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Can't get PSS salt length "
+                                         "when padding mode isn't PSS.");
                     ret = 0;
                 }
                 if (ret == 1) {
                     *(int *)ptr = rsa->saltLen;
+                }
+                break;
+            case EVP_PKEY_CTRL_RSA_MGF1_MD:
+                if (rsa->padMode != RSA_PKCS1_OAEP_PADDING &&
+                    rsa->padMode != RSA_PKCS1_PSS_PADDING) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Can't set MGF1 digest "
+                                         "when padding mode isn't OAEP or "
+                                         "PSS.");
+                    ret = 0;
+                }
+                else {
+                    rsa->mdMGF1 = (const EVP_MD *)ptr;
+                }
+                break;
+            case EVP_PKEY_CTRL_GET_RSA_MGF1_MD:
+                if (rsa->padMode != RSA_PKCS1_OAEP_PADDING &&
+                    rsa->padMode != RSA_PKCS1_PSS_PADDING) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Can't get MGF1 digest "
+                                         "when padding mode isn't OAEP or "
+                                         "PSS.");
+                    ret = 0;
+                }
+                else {
+                    if (rsa->mdMGF1 != NULL) {
+                        *(const EVP_MD **)ptr = rsa->mdMGF1;
+                    }
+                    else {
+                        *(const EVP_MD **)ptr = rsa->md;
+                    }
                 }
                 break;
             default:

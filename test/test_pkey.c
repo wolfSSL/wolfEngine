@@ -120,11 +120,11 @@ int test_digest_verify(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,
 
 int test_pkey_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *hash,
                    size_t hashLen, unsigned char *sig,
-                   size_t *sigLen, int padMode)
+                   size_t *sigLen, int padMode, const EVP_MD *rsaMd,
+                   const EVP_MD *rsaMgf1Md)
 {
     int err;
     EVP_PKEY_CTX *ctx = NULL;
-    size_t sigBufLen = *sigLen;
 
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
     err = EVP_PKEY_set1_engine(pkey, e) != 1;
@@ -143,23 +143,13 @@ int test_pkey_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *hash,
     if ((err == 0) && padMode == RSA_PKCS1_PSS_PADDING) {
         err = EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1) < 0;
     }
-    if (err == 0) {
-        err = EVP_PKEY_sign(ctx, sig, sigLen, hash, hashLen) != 1;
+    if ((err == 0) && padMode == RSA_PKCS1_PSS_PADDING && rsaMd != NULL) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, rsaMd) <= 0;
+    }
+    if ((err == 0) && padMode == RSA_PKCS1_PSS_PADDING && rsaMgf1Md != NULL) {
+        err = EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, rsaMgf1Md) <= 0;
     }
     if (err == 0) {
-        PRINT_BUFFER("Signature", sig, *sigLen);
-    }
-    if (err == 0) {
-        err = EVP_PKEY_sign_init(ctx) != 1;
-    }
-    if ((err == 0) && padMode) {
-        err = EVP_PKEY_CTX_set_rsa_padding(ctx, padMode) <= 0;
-    }
-    if ((err == 0) && padMode == RSA_PKCS1_PSS_PADDING) {
-        err = EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1) < 0;
-    }
-    if (err == 0) {
-        *sigLen = sigBufLen;
         err = EVP_PKEY_sign(ctx, sig, sigLen, hash, hashLen) != 1;
     }
     if (err == 0) {
@@ -173,7 +163,8 @@ int test_pkey_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *hash,
 
 int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
                      unsigned char *hash, size_t hashLen,
-                     unsigned char *sig, size_t sigLen, int padMode)
+                     unsigned char *sig, size_t sigLen, int padMode,
+                     const EVP_MD *rsaMd, const EVP_MD *rsaMgf1Md)
 {
     int err;
     EVP_PKEY_CTX *ctx = NULL;
@@ -195,23 +186,11 @@ int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
     if ((err == 0) && padMode == RSA_PKCS1_PSS_PADDING) {
         err = EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1) < 0;
     }
-    if (err == 0) {
-        err = EVP_PKEY_verify(ctx, sig, sigLen, hash, hashLen) != 1;
+    if ((err == 0) && padMode == RSA_PKCS1_PSS_PADDING && rsaMd != NULL) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, rsaMd) <= 0;
     }
-    if (err == 0) {
-        PRINT_MSG("Signature verified");
-    }
-    else {
-        PRINT_MSG("Signature not verified");
-    }
-    if (err == 0) {
-        err = EVP_PKEY_verify_init(ctx) != 1;
-    }
-    if ((err == 0) && padMode) {
-        err = EVP_PKEY_CTX_set_rsa_padding(ctx, padMode) <= 0;
-    }
-    if ((err == 0) && padMode == RSA_PKCS1_PSS_PADDING) {
-        err = EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1) < 0;
+    if ((err == 0) && padMode == RSA_PKCS1_PSS_PADDING && rsaMgf1Md != NULL) {
+        err = EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, rsaMgf1Md) <= 0;
     }
     if (err == 0) {
         err = EVP_PKEY_verify(ctx, sig, sigLen, hash, hashLen) != 1;
@@ -229,7 +208,8 @@ int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
 }
 
 int test_pkey_enc(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
-                  unsigned char *ciphertext, size_t cipherLen, int padMode)
+                  unsigned char *ciphertext, size_t cipherLen, int padMode,
+                  const EVP_MD *rsaMd, const EVP_MD *rsaMgf1Md)
 {
     int err;
     EVP_PKEY_CTX *ctx = NULL;
@@ -249,6 +229,12 @@ int test_pkey_enc(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
     if ((err == 0) && padMode) {
         err = EVP_PKEY_CTX_set_rsa_padding(ctx, padMode) <= 0;
     }
+    if ((err == 0) && padMode == RSA_PKCS1_OAEP_PADDING && rsaMd != NULL) {
+        err = EVP_PKEY_CTX_set_rsa_oaep_md(ctx, rsaMd) <= 0;
+    }
+    if ((err == 0) && padMode == RSA_PKCS1_OAEP_PADDING && rsaMgf1Md != NULL) {
+        err = EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, rsaMgf1Md) <= 0;
+    }
     if (err == 0) {
         err = EVP_PKEY_encrypt(ctx, NULL, &len, msg, msgLen) != 1;
     }
@@ -265,7 +251,8 @@ int test_pkey_enc(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
 }
 
 int test_pkey_dec(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
-                  unsigned char *ciphertext, size_t cipherLen, int padMode)
+                  unsigned char *ciphertext, size_t cipherLen, int padMode,
+                  const EVP_MD *rsaMd, const EVP_MD *rsaMgf1Md)
 {
     int err = 0;
     EVP_PKEY_CTX *ctx = NULL;
@@ -292,6 +279,12 @@ int test_pkey_dec(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
     }
     if ((err == 0) && padMode) {
         err = EVP_PKEY_CTX_set_rsa_padding(ctx, padMode) <= 0;
+    }
+    if ((err == 0) && padMode == RSA_PKCS1_OAEP_PADDING && rsaMd != NULL) {
+        err = EVP_PKEY_CTX_set_rsa_oaep_md(ctx, rsaMd) <= 0;
+    }
+    if ((err == 0) && padMode == RSA_PKCS1_OAEP_PADDING && rsaMgf1Md != NULL) {
+        err = EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, rsaMgf1Md) <= 0;
     }
     if (err == 0) {
         err = EVP_PKEY_decrypt(ctx, buf, &len, ciphertext, cipherLen) != 1;

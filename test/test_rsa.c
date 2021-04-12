@@ -520,7 +520,8 @@ int test_rsa_direct_pub_dec(ENGINE *e, void *data)
 
 #ifdef WE_HAVE_EVP_PKEY
 
-static int test_rsa_sign_verify_pad(ENGINE *e, int padMode)
+static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
+                                    const EVP_MD *mgf1Md)
 {
     int err;
     int res;
@@ -570,18 +571,18 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode)
         PRINT_MSG("Test signing/verifying arbitrary data");
         PRINT_MSG("Sign with OpenSSL");
         err = test_pkey_sign(pkey, NULL, buf, bufLen, rsaSig, &rsaSigLen,
-                             padMode);
+                             padMode, md, mgf1Md);
     }
     if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
         PRINT_MSG("Verify with wolfengine");
         err = test_pkey_verify(pkey, e, buf, bufLen, rsaSig, rsaSigLen,
-                               padMode);
+                               padMode, md, mgf1Md);
     }
     if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
         PRINT_MSG("Verify bad signature with wolfengine");
         rsaSig[1] ^= 0x80;
         res = test_pkey_verify(pkey, e, buf, bufLen, rsaSig, rsaSigLen,
-                               padMode);
+                               padMode, md, mgf1Md);
         if (res != 1)
             err = 1;
     }
@@ -589,12 +590,12 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode)
         PRINT_MSG("Sign with wolfengine");
         rsaSigLen = RSA_size(rsaKey);
         err = test_pkey_sign(pkey, e, buf, bufLen, rsaSig, &rsaSigLen,
-                             padMode);
+                             padMode, md, mgf1Md);
     }
     if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_pkey_verify(pkey, NULL, buf, bufLen, rsaSig, rsaSigLen,
-                               padMode);
+                               padMode, md, mgf1Md);
     }
 
     /* OpenSSL doesn't allow RSA signatures with no padding. */
@@ -643,7 +644,7 @@ int test_rsa_sign_verify_pkcs1(ENGINE *e, void *data)
 {
     (void)data;
 
-    return test_rsa_sign_verify_pad(e, RSA_PKCS1_PADDING);
+    return test_rsa_sign_verify_pad(e, RSA_PKCS1_PADDING, NULL, NULL);
 }
 
 int test_rsa_sign_verify_no_pad(ENGINE *e, void *data)
@@ -651,7 +652,7 @@ int test_rsa_sign_verify_no_pad(ENGINE *e, void *data)
     (void)data;
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-    return test_rsa_sign_verify_pad(e, RSA_NO_PADDING);
+    return test_rsa_sign_verify_pad(e, RSA_NO_PADDING, NULL, NULL);
 #else
     (void)e;
     return 0;
@@ -660,12 +661,28 @@ int test_rsa_sign_verify_no_pad(ENGINE *e, void *data)
 
 int test_rsa_sign_verify_pss(ENGINE *e, void *data)
 {
+    int err = 0;
+    
     (void)data;
 
-    return test_rsa_sign_verify_pad(e, RSA_PKCS1_PSS_PADDING);
+    /* Use SHA-1 (default) for MD and MGF1 MD. */
+    err = test_rsa_sign_verify_pad(e, RSA_PKCS1_PSS_PADDING, NULL, NULL) == 1;
+    if (err == 0) {
+        /* Use SHA-256 for MD and MGF1 MD. */
+        err = test_rsa_sign_verify_pad(e, RSA_PKCS1_PSS_PADDING, EVP_sha256(),
+                                       EVP_sha256()) == 1;
+    }
+    if (err == 0) {
+        /* Use SHA-384 for MD and SHA-512 for MGF1 MD. */
+        err = test_rsa_sign_verify_pad(e, RSA_PKCS1_PSS_PADDING, EVP_sha384(),
+                                       EVP_sha512()) == 1;
+    }
+
+    return err;
 }
 
-static int test_rsa_enc_dec(ENGINE *e, int padMode)
+static int test_rsa_enc_dec(ENGINE *e, int padMode, const EVP_MD *rsaMd,
+                            const EVP_MD *rsaMgf1Md)
 {
     int err;
     int res;
@@ -713,18 +730,18 @@ static int test_rsa_enc_dec(ENGINE *e, int padMode)
         PRINT_MSG("Test encrypt/decrypt arbitrary data");
         PRINT_MSG("Encrypt with OpenSSL");
         err = test_pkey_enc(pkey, NULL, buf, bufLen, rsaEnc, rsaEncLen,
-                            padMode);
+                            padMode, rsaMd, rsaMgf1Md);
     }
     if (err == 0) {
         PRINT_MSG("Decrypt with wolfengine");
         err = test_pkey_dec(pkey, e, buf, bufLen, rsaEnc, rsaEncLen,
-                            padMode);
+                            padMode, rsaMd, rsaMgf1Md);
     }
     if (err == 0) {
         PRINT_MSG("Decrypt bad cipher text with wolfengine");
         rsaEnc[1] ^= 0x80;
         res = test_pkey_dec(pkey, e, buf, bufLen, rsaEnc, rsaEncLen,
-                            padMode);
+                            padMode, rsaMd, rsaMgf1Md);
         if (res != 1)
             err = 1;
     }
@@ -732,12 +749,12 @@ static int test_rsa_enc_dec(ENGINE *e, int padMode)
         PRINT_MSG("Encrypt with wolfengine");
         rsaEncLen = RSA_size(rsaKey);
         err = test_pkey_enc(pkey, e, buf, bufLen, rsaEnc, rsaEncLen,
-                            padMode);
+                            padMode, rsaMd, rsaMgf1Md);
     }
     if (err == 0) {
         PRINT_MSG("Decrypt with OpenSSL");
         err = test_pkey_dec(pkey, NULL, buf, bufLen, rsaEnc, rsaEncLen,
-                            padMode);
+                            padMode, rsaMd, rsaMgf1Md);
     }
 
     EVP_PKEY_free(pkey);
@@ -754,21 +771,36 @@ int test_rsa_enc_dec_pkcs1(ENGINE *e, void *data)
 {
     (void)data;
 
-    return test_rsa_enc_dec(e, RSA_PKCS1_PADDING);
+    return test_rsa_enc_dec(e, RSA_PKCS1_PADDING, NULL, NULL);
 }
 
 int test_rsa_enc_dec_no_pad(ENGINE *e, void *data)
 {
     (void)data;
 
-    return test_rsa_enc_dec(e, RSA_NO_PADDING);
+    return test_rsa_enc_dec(e, RSA_NO_PADDING, NULL, NULL);
 }
 
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data)
 {
+    int err = 0;
+
     (void)data;
 
-    return test_rsa_enc_dec(e, RSA_PKCS1_OAEP_PADDING);
+    /* Use SHA-1 (default) for MD and MGF1 MD. */
+    err = test_rsa_enc_dec(e, RSA_PKCS1_OAEP_PADDING, NULL, NULL) == 1;
+    if (err == 0) {
+        /* Use SHA-256 for MD and MGF1 MD. */
+        err = test_rsa_enc_dec(e, RSA_PKCS1_OAEP_PADDING, EVP_sha256(),
+                               EVP_sha256()) == 1;
+    }
+    if (err == 0) {
+        /* Use SHA-384 for MD and SHA-512 for MGF1 MD. */
+        err = test_rsa_enc_dec(e, RSA_PKCS1_OAEP_PADDING, EVP_sha384(),
+                               EVP_sha512()) == 1;
+    }
+
+    return err;
 }
 
 int test_rsa_pkey_keygen(ENGINE *e, void *data)
