@@ -43,6 +43,7 @@
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
+#include <openssl/kdf.h>
 #include <openssl/tls1.h>
 
 #include <wolfssl/options.h>
@@ -181,6 +182,13 @@ int we_init_cmac_pkey_meth(void);
 int we_init_cmac_pkey_asn1_meth(void);
 
 #endif /* WE_HAVE_CMAC */
+
+/*
+ * TLS1 PRF method.
+ */
+
+extern EVP_PKEY_METHOD *we_tls1_prf_method;
+int we_init_tls1_prf_meth(void);
 
 /*
  * DH method.

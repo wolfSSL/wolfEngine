@@ -81,6 +81,9 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_CMAC
     TEST_DECL(test_cmac_create, NULL),
 #endif
+#ifdef WE_HAVE_TLS1_PRF
+    TEST_DECL(test_tls1_prf, NULL),
+#endif
 #ifdef WE_HAVE_DES3CBC
     TEST_DECL(test_des3_cbc, NULL),
     TEST_DECL(test_des3_cbc_stream, NULL),
@@ -158,6 +161,9 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_sign_verify_pkcs1, NULL),
     TEST_DECL(test_rsa_sign_verify_no_pad, NULL),
     TEST_DECL(test_rsa_sign_verify_pss, NULL),
+    TEST_DECL(test_rsa_enc_dec_pkcs1, NULL),
+    TEST_DECL(test_rsa_enc_dec_no_pad, NULL),
+    TEST_DECL(test_rsa_enc_dec_oaep, NULL),
     TEST_DECL(test_rsa_pkey_keygen, NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_EC_P192

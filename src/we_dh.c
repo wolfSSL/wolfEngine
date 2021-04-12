@@ -259,8 +259,8 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
 
     if (ret == 1) {
         if (DH_get_length(dh) != 0) {
-            /* Convert bits to bytes. */
-            privLen = (unsigned int)(DH_get_length(dh) / 8);
+            /* Convert bits to bytes - add some so buffer is big enough. */
+            privLen = (unsigned int)(DH_get_length(dh) / 8 + 8);
         }
         else {
             privLen = pubLen;
@@ -950,7 +950,7 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     }
 
     if (ret == 1) {
-        ourDh = EVP_PKEY_get0_DH(ourKey);
+        ourDh = (DH *)EVP_PKEY_get0_DH(ourKey);
         if (ourDh == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "EVP_PKEY_get0_DH", ourDh);
             ret = 0;
@@ -972,7 +972,7 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     }
 
     if (ret == 1) {
-        peerDh = EVP_PKEY_get0_DH(peerKey);
+        peerDh = (DH *)EVP_PKEY_get0_DH(peerKey);
         if (peerDh == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "EVP_PKEY_get0_DH", peerDh);
             ret = 0;

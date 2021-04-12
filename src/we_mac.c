@@ -506,7 +506,7 @@ static void we_mac_pkey_asn1_free(EVP_PKEY *pkey)
                 break;
 
             case EVP_PKEY_CMAC:
-            #if OPENSSL_VERSION_NUMBER < 0x10101000L
+            #if OPENSSL_VERSION_NUMBER < 0x10100000L
                 /* version 1.1.1 added CMAC support and setting CMAC_CTX
                  * since this function seems to be called even on default
                  * pkey's right now we are avoiding the free until a
@@ -1019,6 +1019,40 @@ static int we_hmac_pkey_asn1_size(const EVP_PKEY *pkey)
     return WC_HMAC_BLOCK_SIZE;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+/**
+ * Set the private key into EVP_PKEY object.
+ *
+ * @param  pk  [in]  EVP_PKEY object.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_hmac_set_priv_key(EVP_PKEY *pk, const unsigned char *priv,
+                                size_t len)
+{
+    int ret = 1;
+    ASN1_OCTET_STRING *asn1 = NULL;
+
+    /* Check we don't have a key set already. */
+    if (EVP_PKEY_get0(pk) != NULL) {
+        ret = 0;
+    }
+    if (ret == 1) {
+        asn1 = ASN1_OCTET_STRING_new();
+        if (asn1 == NULL) {
+            ret = 0;
+        }
+    }
+    if ((ret == 1) && (ASN1_OCTET_STRING_set(asn1, priv, len) == 0)) {
+        ASN1_OCTET_STRING_free(asn1);
+        ret = 0;
+    }
+    if ((ret == 1) && (EVP_PKEY_assign(pk, EVP_PKEY_HMAC, asn1) == 0)) {
+        ret = 0;
+    }
+
+    return ret;
+}
+#endif
 
 /**
  * Create a new method and assign the functions to use for ASN.1 HMAC
@@ -1043,6 +1077,10 @@ int we_init_hmac_pkey_asn1_meth(void)
         EVP_PKEY_asn1_set_free(we_hmac_pkey_asn1_method, we_mac_pkey_asn1_free);
         EVP_PKEY_asn1_set_public(we_hmac_pkey_asn1_method, 0, 0, 0, 0,
                 we_hmac_pkey_asn1_size, 0);
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        EVP_PKEY_asn1_set_set_priv_key(we_hmac_pkey_asn1_method,
+                we_hmac_set_priv_key);
+    #endif
     }
 
     /* add our created asn1 method to the internal list of available methods */

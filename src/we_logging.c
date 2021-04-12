@@ -285,7 +285,8 @@ void WOLFENGINE_ERROR_FUNC_LINE(int component, const char* funcName, int ret,
  * @param line      [IN] Line in source file where error is called. 
  */
 void WOLFENGINE_ERROR_FUNC_NULL_LINE(int component, const char* funcName,
-                                     void *ret, const char* file, int line)
+                                     const void *ret, const char* file,
+                                     int line)
 {
     if (loggingEnabled) {
         char buffer[WOLFENGINE_MAX_ERROR_SZ];
