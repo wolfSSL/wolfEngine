@@ -1,0 +1,1 @@
+dist_noinst_SCRIPTS += scripts/interop-tests.sh
