@@ -34,6 +34,10 @@ typedef struct we_Dh
     DhKey key;
     /* Length of prime ("p") in bits. */
     int primeLen;
+    /* Byte buffer containing the value of large prime "q". */
+    unsigned char *q;
+    /* Length of q in bytes. */
+    int qLen;
 } we_Dh;
 
 DH_METHOD *we_dh_method = NULL;
@@ -104,6 +108,10 @@ static int we_dh_finish(DH *dh)
         ret = 0;
     }
 
+    if (ret == 1 && engineDh->q != NULL) {
+        OPENSSL_free(engineDh->q);
+    }
+
     if (ret == 1) {
         wc_FreeDhKey(&engineDh->key);
         OPENSSL_free(engineDh);
@@ -131,6 +139,9 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     int pBufLen = 0;
     unsigned char *gBuf = NULL;
     int gBufLen = 0;
+    const BIGNUM *q = NULL;
+    unsigned char *qBuf = NULL;
+    int qBufLen = 0;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_set_dh_parameters");
 
@@ -165,13 +176,46 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     }
 
     if (ret == 1) {
-        rc = wc_DhSetKey(&engineDh->key, pBuf, pBufLen, gBuf, gBufLen);
+        q = DH_get0_q(dh);
+    }
+
+    /* Try to set q, if not NULL. */
+    if (ret == 1 && q != NULL) {
+        qBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(q));
+        if (qBuf == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", qBuf);
+            ret = 0;
+        }
+
+        if (ret == 1) {
+            qBufLen = BN_bn2bin(q, qBuf);
+            if (qBufLen == 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", qBufLen);
+                ret = 0;
+            }
+        }
+
+        /* Save the q byte buffer for checking with wc_DhCheckPubKey_ex. */
+        if (ret == 1) {
+            if (engineDh->q != NULL) {
+                OPENSSL_free(engineDh->q);
+            }
+            engineDh->q = qBuf;
+            engineDh->qLen = qBufLen;
+        }
+    }
+
+    if (ret == 1) {
+        rc = wc_DhSetKey_ex(&engineDh->key, pBuf, pBufLen, gBuf, gBufLen, qBuf,
+                            qBufLen);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhSetKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhSetKey_ex", rc);
             ret = 0;
         }
     }
 
+    /* Note that we don't free qBuf, because it's needed for
+       wc_DhCheckPubKey_ex. */
     if (pBuf != NULL)
         OPENSSL_free(pBuf);
     if (gBuf != NULL)
@@ -229,7 +273,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
         }
     }
 
-    /* Set parameters in engineDH. */
+    /* Set parameters in engineDh. */
     if (ret == 1) {
         rc = we_set_dh_parameters(dh, engineDh);
         if (rc != 1) {
@@ -381,6 +425,15 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
         rc = we_set_dh_parameters(dh, engineDh);
         if (rc != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_set_dh_parameters", rc);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        rc = wc_DhCheckPubKey_ex(&engineDh->key, pubBuf, pubLen, engineDh->q,
+                                 engineDh->qLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhCheckPubKey", rc);
             ret = 0;
         }
     }

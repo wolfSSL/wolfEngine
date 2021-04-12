@@ -622,6 +622,17 @@ const BIGNUM *DH_get0_g(const DH *dh)
 #endif
 }
 
+const BIGNUM *DH_get0_q(const DH *dh)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    return dh->q;
+#else
+    const BIGNUM *q;
+    DH_get0_pqg(dh, NULL, &q, NULL);
+    return q;
+#endif
+}
+
 const BIGNUM *DH_get0_priv_key(const DH *dh)
 {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
