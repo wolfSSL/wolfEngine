@@ -162,6 +162,7 @@ size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
 
 const BIGNUM *DH_get0_p(const DH *dh);
 const BIGNUM *DH_get0_g(const DH *dh);
+const BIGNUM *DH_get0_q(const DH *dh);
 const BIGNUM *DH_get0_priv_key(const DH *dh);
 const BIGNUM *DH_get0_pub_key(const DH *dh);
 
