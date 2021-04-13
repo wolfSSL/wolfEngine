@@ -1115,10 +1115,12 @@ int we_init_hmac_pkey_asn1_meth(void)
 
 /** EVP PKEY digest method - CMAC using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_cmac_pkey_method = NULL;
+EVP_PKEY_METHOD *we_cmac_we_pkey_method = NULL;
 
 
 /** EVP PKEY asn1 method - CMAC using wolfSSL for the implementation. */
 EVP_PKEY_ASN1_METHOD *we_cmac_pkey_asn1_method = NULL;
+EVP_PKEY_ASN1_METHOD *we_cmac_we_pkey_asn1_method = NULL;
 
 
 /**
@@ -1299,6 +1301,7 @@ int we_init_cmac_pkey_meth(void)
     int ret = 1;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_init_cmac_pkey_meth");
+    we_cmac_we_pkey_method = NULL;
     we_cmac_pkey_method = EVP_PKEY_meth_new(EVP_PKEY_CMAC,
             EVP_PKEY_FLAG_SIGCTX_CUSTOM);
     if (we_cmac_pkey_method == NULL) {
@@ -1318,6 +1321,20 @@ int we_init_cmac_pkey_meth(void)
         EVP_PKEY_meth_set_keygen(we_cmac_pkey_method, we_cmac_pkey_keygen_init,
                 we_mac_pkey_keygen);
     }
+
+    if (ret == 1) {
+        we_cmac_we_pkey_method = EVP_PKEY_meth_new(NID_wolfengine_cmac,
+            EVP_PKEY_FLAG_SIGCTX_CUSTOM);
+        if (we_cmac_we_pkey_method == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                       "EVP_PKEY_meth_new", we_cmac_pkey_method);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        EVP_PKEY_meth_copy(we_cmac_we_pkey_method, we_cmac_pkey_method);
+     }
 
     if (ret == 0 && we_cmac_pkey_method != NULL) {
         EVP_PKEY_meth_free(we_cmac_pkey_method);
@@ -1352,6 +1369,7 @@ int we_init_cmac_pkey_asn1_meth(void)
     int ret = 1;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_init_cmac_pkey_asn1_meth");
+    we_cmac_we_pkey_asn1_method = NULL;
     we_cmac_pkey_asn1_method = EVP_PKEY_asn1_new(EVP_PKEY_CMAC, 0,
             "CMAC", "wolfSSL ASN1 CMAC method");
     if (we_cmac_pkey_asn1_method == NULL) {
@@ -1371,6 +1389,20 @@ int we_init_cmac_pkey_asn1_meth(void)
         EVP_PKEY_asn1_add0(we_cmac_pkey_asn1_method);
         EVP_PKEY_asn1_add_alias(EVP_PKEY_CMAC, NID_wolfengine_cmac);
     }
+
+    if (ret == 1) {
+        we_cmac_we_pkey_asn1_method = EVP_PKEY_asn1_new(NID_wolfengine_cmac, 0,
+            "CMAC", "wolfSSL ASN1 CMAC method");
+        if (we_cmac_we_pkey_asn1_method == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
+                                       "EVP_PKEY_asn1_new", we_cmac_we_pkey_asn1_method);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        EVP_PKEY_asn1_copy(we_cmac_we_pkey_asn1_method, we_cmac_pkey_asn1_method);
+     }
 
     if (ret == 0 && we_cmac_pkey_asn1_method != NULL) {
         EVP_PKEY_asn1_free(we_cmac_pkey_asn1_method);

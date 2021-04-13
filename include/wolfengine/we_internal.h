@@ -180,7 +180,9 @@ int we_init_hmac_pkey_asn1_meth(void);
 
 #define NID_wolfengine_cmac 101
 extern EVP_PKEY_METHOD *we_cmac_pkey_method;
+extern EVP_PKEY_METHOD *we_cmac_we_pkey_method;
 extern EVP_PKEY_ASN1_METHOD *we_cmac_pkey_asn1_method;
+extern EVP_PKEY_ASN1_METHOD *we_cmac_we_pkey_asn1_method;
 
 int we_init_cmac_pkey_meth(void);
 int we_init_cmac_pkey_asn1_meth(void);

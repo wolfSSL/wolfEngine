@@ -565,8 +565,10 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
         case NID_cmac:
-        case NID_wolfengine_cmac:
             *pkey = we_cmac_pkey_method;
+            break;
+        case NID_wolfengine_cmac:
+            *pkey = we_cmac_we_pkey_method;
             break;
 #endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_TLS1_PRF
@@ -648,8 +650,10 @@ static int we_pkey_asn1(ENGINE *e, EVP_PKEY_ASN1_METHOD **pkey,
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
         case NID_cmac:
-        case NID_wolfengine_cmac:
             *pkey = we_cmac_pkey_asn1_method;
+            break;
+        case NID_wolfengine_cmac:
+            *pkey = we_cmac_we_pkey_asn1_method;
             break;
 #endif /* WE_HAVE_CMAC */
         default:
