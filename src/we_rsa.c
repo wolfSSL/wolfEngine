@@ -1775,6 +1775,7 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
         }
     }
 
+#ifdef WC_RSA_BLINDING
     /* Always need RNG. */
     if (ret == 1) {
         rc = wc_RsaSetRNG(&rsa->key, we_rng);
@@ -1783,6 +1784,7 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
             ret = 0;
         }
     }
+#endif
 
     if (ret == 1) {
         /* Perform decryption operation. */
