@@ -102,8 +102,7 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
     if ((ret == 1) && (iv != NULL)) {
         /* Cache IV - see ctrl func for other ways to set IV. */
-        aes->ivLen = GCM_NONCE_MID_SZ;
-        XMEMCPY(aes->iv, iv, GCM_NONCE_MID_SZ);
+        XMEMCPY(aes->iv, iv, aes->ivLen);
     }
 
     if (ret == 1) {
@@ -224,6 +223,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     if ((ret == 1) && aes->tls) {
         ret = we_aes_gcm_tls_cipher(aes, out, in, len);
     }
+    /* If out is NULL, represents AAD coming in */
     else if ((ret == 1) && (out == NULL)) {
         /* Resize stored AAD and append new data. */
         p = OPENSSL_realloc(aes->aad, aes->aadLen + (int)len);
@@ -236,14 +236,11 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             aes->aad = p;
             XMEMCPY(aes->aad + aes->aadLen, in, len);
             aes->aadLen += len;
-            ret = 0;
+            ret = len;
         }
     }
-    else if ((ret == 1) && (len == 0)) {
-        /* Final called and nothing to do - no data output. */
-        ret = 0;
-    }
-    else if ((ret == 1) && (len > 0)) {
+    /* Length may be zero for cases with AAD data only (GMAC) */
+    else if ((ret == 1) && (out != NULL) && (in != NULL || aes->aadLen > 0)) {
         if (aes->enc) {
             if (!aes->ivSet) {
                 /* Set extern IV. */
@@ -257,7 +254,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             if (ret == 1) {
                 /* Tag always full size on calculation. */
                 aes->tagLen = EVP_GCM_TLS_TAG_LEN;
-                /* Encrypt the data. */
+                /* Encrypt the data, process AAD data, generate tag */
                 rc = wc_AesGcmEncrypt_ex(&aes->aes, out, in, (word32)len,
                                          aes->iv, aes->ivLen, aes->tag,
                                          aes->tagLen, aes->aad, aes->aadLen);
@@ -273,7 +270,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             }
         }
         else {
-            /* Decrypt the data. */
+            /* Decrypt the data, use with AAD to verify tag is correct. */
             rc = wc_AesGcmDecrypt(&aes->aes, out, in, (word32)len, aes->iv,
                                   aes->ivLen, aes->tag, aes->tagLen,
                                   aes->aad, aes->aadLen);
@@ -292,6 +289,10 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         aes->aad = NULL;
         aes->aadLen = 0;
         ret = (int)len;
+    }
+    else if ((ret == 1) && (len == 0)) {
+        /* Final called and nothing to do - no data output. */
+        ret = 0;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_gcm_cipher", ret);
@@ -336,8 +337,9 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     if (ret == 1) {
         switch (type) {
             case EVP_CTRL_INIT:
+                WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_INIT");
                 /* No IV yet. */
-                aes->ivLen = 0;
+                aes->ivLen = GCM_NONCE_MID_SZ;
                 aes->ivSet = 0;
                 /* No tag set. */
                 aes->tagLen = 0;
