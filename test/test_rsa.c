@@ -432,7 +432,7 @@ static int test_rsa_direct(ENGINE *e, RsaTestType testType)
                 break;
         }
         if (err == 0) {
-            err = decryptedLen != testVectors[i].inBufLen;
+            err = (decryptedLen != testVectors[i].inBufLen);
         }
         if (err == 0) {
             err = memcmp(decryptedBuf, testVectors[i].inBuf,
@@ -485,6 +485,14 @@ int test_rsa_direct_key_gen(ENGINE *e, void *data)
     }
     if (err == 0) {
         err = BN_cmp(pubExp, pubExpFromKey) != 0;
+    }
+
+    if (pubExp != NULL) {
+        BN_free(pubExp);
+    }
+
+    if (rsaKey != NULL) {
+        RSA_free(rsaKey);
     }
 
     return err;
