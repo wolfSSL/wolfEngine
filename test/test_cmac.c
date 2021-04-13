@@ -74,6 +74,7 @@ static int test_mac_generation(ENGINE *e, const EVP_CIPHER *c,
 
     EVP_MD_CTX_free(ctx);
     EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(pctx);
 
     return err;
 }
