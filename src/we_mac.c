@@ -385,6 +385,11 @@ static int we_mac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
                 ret = 0;
         }
         EVP_PKEY_assign(pkey, algo, key);
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        if (ret == 1 && algo == EVP_PKEY_CMAC) {
+            ret = EVP_PKEY_set_alias_type(pkey, NID_wolfengine_cmac);
+        }
+    #endif
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_keygen", ret);
@@ -486,38 +491,46 @@ static we_mac* we_mac_copy(we_mac *src)
  */
 static void we_mac_pkey_asn1_free(EVP_PKEY *pkey)
 {
+    int id;
     int ret = 1;
-    ASN1_OCTET_STRING *key;
+    void *key;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_asn1_free");
 
-    key = (ASN1_OCTET_STRING*)EVP_PKEY_get0(pkey);
-    if (key == NULL) {
-        ret = 0;
-    }
-    else {
-        int id;
-        id = EVP_PKEY_id(pkey);
+    id = EVP_PKEY_id(pkey);
 
-        switch (id) {
-            case EVP_PKEY_HMAC:
-                /*always free ASN1_OCTET_STRING with HMAC (it is default type)*/
+    switch (id) {
+        case EVP_PKEY_HMAC:
+        case NID_wolfengine_cmac:
+            /* Always free ASN1_OCTET_STRING with HMAC (it is default type)
+             * and if the EVP_PKEY is aliased to our unique ID
+             */
+            key = (ASN1_OCTET_STRING*)EVP_PKEY_get0(pkey);
+            if (key == NULL) {
+                ret = 0;
+            }
+            else {
                 ASN1_OCTET_STRING_free(key);
-                break;
+            }
+            break;
 
-            case EVP_PKEY_CMAC:
-            #if OPENSSL_VERSION_NUMBER < 0x10100000L
-                /* version 1.1.1 added CMAC support and setting CMAC_CTX
-                 * since this function seems to be called even on default
-                 * pkey's right now we are avoiding the free until a
-                 * solution is found
-                 * @TODO
-                 */
-                ASN1_OCTET_STRING_free(key);
-            #endif
-                break;
-        }
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        case EVP_PKEY_CMAC:
+            key = (CMAC_CTX*)EVP_PKEY_get0(pkey);
+            if (key == NULL) {
+                ret = 0;
+            }
+            else {
+                CMAC_CTX_free(key);
+            }
+            break;
+    #endif
+
+        default:
+            WOLFENGINE_LEAVE(WE_LOG_MAC,
+                    "we_mac_pkey_asn1_free: unsupported id", id);
     }
+
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_asn1_free", ret);
     (void)ret;
 }
@@ -1339,8 +1352,8 @@ int we_init_cmac_pkey_asn1_meth(void)
     int ret = 1;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_init_cmac_pkey_asn1_meth");
-    we_cmac_pkey_asn1_method = EVP_PKEY_asn1_new(EVP_PKEY_CMAC, 0, "CMAC",
-            "wolfSSL ASN1 CMAC method");
+    we_cmac_pkey_asn1_method = EVP_PKEY_asn1_new(EVP_PKEY_CMAC, 0,
+            "CMAC", "wolfSSL ASN1 CMAC method");
     if (we_cmac_pkey_asn1_method == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "EVP_PKEY_asn1_new",
                 we_cmac_pkey_asn1_method);
@@ -1356,6 +1369,7 @@ int we_init_cmac_pkey_asn1_meth(void)
     /* add our created asn1 method to the internal list of available methods */
     if (ret == 1) {
         EVP_PKEY_asn1_add0(we_cmac_pkey_asn1_method);
+        EVP_PKEY_asn1_add_alias(EVP_PKEY_CMAC, NID_wolfengine_cmac);
     }
 
     if (ret == 0 && we_cmac_pkey_asn1_method != NULL) {

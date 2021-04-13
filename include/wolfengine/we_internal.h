@@ -45,6 +45,9 @@
 #include <openssl/ec.h>
 #include <openssl/kdf.h>
 #include <openssl/tls1.h>
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#include <openssl/cmac.h>
+#endif
 
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/hash.h>
@@ -175,6 +178,7 @@ int we_init_hmac_pkey_asn1_meth(void);
 
 #ifdef WE_HAVE_HMAC
 
+#define NID_wolfengine_cmac 101
 extern EVP_PKEY_METHOD *we_cmac_pkey_method;
 extern EVP_PKEY_ASN1_METHOD *we_cmac_pkey_asn1_method;
 

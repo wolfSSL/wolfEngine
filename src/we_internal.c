@@ -30,6 +30,7 @@ static const int we_pkey_nids[] = {
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
     NID_cmac,
+    NID_wolfengine_cmac,
 #endif /* WE_HAVE_CMAC */
 #ifdef WE_HAVE_TLS1_PRF
     NID_tls1_prf,
@@ -68,6 +69,7 @@ static const int we_pkey_asn1_nids[] = {
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
     NID_cmac,
+    NID_wolfengine_cmac,
 #endif /* WE_HAVE_CMAC */
 };
 
@@ -563,6 +565,7 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
         case NID_cmac:
+        case NID_wolfengine_cmac:
             *pkey = we_cmac_pkey_method;
             break;
 #endif /* WE_HAVE_CMAC */
@@ -645,6 +648,7 @@ static int we_pkey_asn1(ENGINE *e, EVP_PKEY_ASN1_METHOD **pkey,
 #endif /* WE_HAVE_HMAC */
 #ifdef WE_HAVE_CMAC
         case NID_cmac:
+        case NID_wolfengine_cmac:
             *pkey = we_cmac_pkey_asn1_method;
             break;
 #endif /* WE_HAVE_CMAC */
