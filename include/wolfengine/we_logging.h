@@ -133,8 +133,9 @@ void WOLFENGINE_ERROR_MSG_LINE(int type, const char* msg, const char* file,
                                int line);
 void WOLFENGINE_ERROR_FUNC_LINE(int type, const char* funcName, int ret,
                                 const char* file, int line);
-void WOLFENGINE_ERROR_FUNC_NULL_LINE(int type, const char* funcName, void *ret,
-                                     const char* file, int line);
+void WOLFENGINE_ERROR_FUNC_NULL_LINE(int type, const char* funcName,
+                                     const void *ret, const char* file,
+                                     int line);
 void WOLFENGINE_BUFFER(int type, const unsigned char* buffer,
                        unsigned int length);
 

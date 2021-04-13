@@ -225,7 +225,7 @@ static int load_static_rsa_key(ENGINE *e, RSA **weRsaKey, RSA **osslRsaKey)
         }
     }
     if (ret == 1) {
-        rsa = EVP_PKEY_get0_RSA(pkey);
+        rsa = (RSA *)EVP_PKEY_get0_RSA(pkey);
         if (rsa == NULL) {
             PRINT_MSG("load_static_rsa_key: EVP_PKEY_get0_RSA failed.");
             ret = 0;
@@ -650,7 +650,12 @@ int test_rsa_sign_verify_no_pad(ENGINE *e, void *data)
 {
     (void)data;
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     return test_rsa_sign_verify_pad(e, RSA_NO_PADDING);
+#else
+    (void)e;
+    return 0;
+#endif
 }
 
 int test_rsa_sign_verify_pss(ENGINE *e, void *data)
@@ -658,6 +663,112 @@ int test_rsa_sign_verify_pss(ENGINE *e, void *data)
     (void)data;
 
     return test_rsa_sign_verify_pad(e, RSA_PKCS1_PSS_PADDING);
+}
+
+static int test_rsa_enc_dec(ENGINE *e, int padMode)
+{
+    int err;
+    int res;
+    EVP_PKEY *pkey = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    const RSA *rsaKey = NULL;
+#else
+    RSA *rsaKey = NULL;
+#endif
+    unsigned char *rsaEnc = NULL;
+    size_t rsaEncLen = 0;
+    size_t bufLen = 20;
+    unsigned char *buf = NULL;
+    const unsigned char *p = rsa_key_der_2048;
+
+    PRINT_MSG("Load RSA key");    
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        rsaKey = EVP_PKEY_get0_RSA(pkey);
+        err = rsaKey == NULL;
+    }
+    if (err == 0) {
+        rsaEncLen = RSA_size(rsaKey);
+        rsaEnc = OPENSSL_malloc(rsaEncLen);
+        err = rsaEnc == NULL;
+    }
+    if (err == 0) {
+        if (padMode == RSA_NO_PADDING) {
+            bufLen = rsaEncLen;
+        }
+        buf = (unsigned char *)OPENSSL_malloc(bufLen);
+        err = buf == NULL;
+    }
+    if (err == 0) {
+        err = RAND_bytes(buf, (int)bufLen) == 0;
+    }
+     if (err == 0 && padMode == RSA_NO_PADDING) {
+        /* Set the MSB to 0 so there's no chance the number is too large for the
+           RSA modulus. */
+        buf[0] = 0;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Test encrypt/decrypt arbitrary data");
+        PRINT_MSG("Encrypt with OpenSSL");
+        err = test_pkey_enc(pkey, NULL, buf, bufLen, rsaEnc, rsaEncLen,
+                            padMode);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt with wolfengine");
+        err = test_pkey_dec(pkey, e, buf, bufLen, rsaEnc, rsaEncLen,
+                            padMode);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt bad cipher text with wolfengine");
+        rsaEnc[1] ^= 0x80;
+        res = test_pkey_dec(pkey, e, buf, bufLen, rsaEnc, rsaEncLen,
+                            padMode);
+        if (res != 1)
+            err = 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Encrypt with wolfengine");
+        rsaEncLen = RSA_size(rsaKey);
+        err = test_pkey_enc(pkey, e, buf, bufLen, rsaEnc, rsaEncLen,
+                            padMode);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt with OpenSSL");
+        err = test_pkey_dec(pkey, NULL, buf, bufLen, rsaEnc, rsaEncLen,
+                            padMode);
+    }
+
+    EVP_PKEY_free(pkey);
+
+    if (rsaEnc)
+        OPENSSL_free(rsaEnc);
+    if (buf)
+        OPENSSL_free(buf);
+
+    return err;
+}
+
+int test_rsa_enc_dec_pkcs1(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_enc_dec(e, RSA_PKCS1_PADDING);
+}
+
+int test_rsa_enc_dec_no_pad(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_enc_dec(e, RSA_NO_PADDING);
+}
+
+int test_rsa_enc_dec_oaep(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_enc_dec(e, RSA_PKCS1_OAEP_PADDING);
 }
 
 int test_rsa_pkey_keygen(ENGINE *e, void *data)

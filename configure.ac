@@ -42,6 +42,14 @@ fi
 AC_RUN_IFELSE([AC_LANG_PROGRAM([
     #include <openssl/opensslv.h>
     ],[
+    #if OPENSSL_VERSION_NUMBER < 0x10100000L
+    exit(1);
+    #endif
+])], [OPENSSL_110_PLUS=yes], [OPENSSL_110_PLUS=no])
+
+AC_RUN_IFELSE([AC_LANG_PROGRAM([
+    #include <openssl/opensslv.h>
+    ],[
     #if OPENSSL_VERSION_NUMBER < 0x10101000L
     exit(1);
     #endif
@@ -279,6 +287,23 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_HMAC -DWE_HAVE_EVP_PKEY"
 fi
 
+AC_ARG_ENABLE([tls1-prf],
+    [AS_HELP_STRING([--enable-tls1-prf],[Enable TLS1 PRF (default: enabled)])],
+    [ ENABLED_TLS1_PRF=$enableval ],
+    [ ENABLED_TLS1_PRF=yes ]
+    )
+
+if test "$ENABLED_TLS1_PRF" = "yes"
+then
+    if test "$OPENSSL_110_PLUS" = "no"
+    then
+        ENABLED_TLS1_PRF="no"
+        AC_MSG_WARN([--enable-tls1-prf ignored because OpenSSL doesn't have support for NID_tls1_prf.])
+    else
+        AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_TLS1_PRF -DWE_HAVE_EVP_PKEY"
+    fi
+fi
+
 # DES3-CBC
 AC_ARG_ENABLE([des3cbc],
     [AS_HELP_STRING([--enable-des3cbc],[Enable DES3-CBC (default: enabled)])],
@@ -329,9 +354,9 @@ fi
 
 # AES-GCM
 AC_ARG_ENABLE([aesgcm],
-    [AS_HELP_STRING([--enable-aesgcm],[Enable AES-GCM (default: disabled)])],
+    [AS_HELP_STRING([--enable-aesgcm],[Enable AES-GCM (default: enabled)])],
     [ ENABLED_AESGCM=$enableval ],
-    [ ENABLED_AESGCM=no ]
+    [ ENABLED_AESGCM=yes ]
     )
 
 if test "$ENABLED_AESGCM" = "yes"
@@ -341,9 +366,9 @@ fi
 
 # AES-CCM
 AC_ARG_ENABLE([aesccm],
-    [AS_HELP_STRING([--enable-aesccm],[Enable AES-CCM (default: disabled)])],
+    [AS_HELP_STRING([--enable-aesccm],[Enable AES-CCM (default: enabled)])],
     [ ENABLED_AESCCM=$enableval ],
-    [ ENABLED_AESCCM=no ]
+    [ ENABLED_AESCCM=yes ]
     )
 
 if test "$ENABLED_AESCCM" = "yes"
@@ -615,6 +640,7 @@ echo "   *  - SHA3-384:                $ENABLED_SHA3_384"
 echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
 echo "   * HMAC:                       $ENABLED_HMAC"
 echo "   * CMAC:                       $ENABLED_CMAC"
+echo "   * TLS1 PRF:                   $ENABLED_TLS1_PRF"
 echo "   * Random:                     $ENABLED_RAND"
 echo "   * RSA:                        $ENABLED_RSA"
 echo "   * DH:                         $ENABLED_DH"

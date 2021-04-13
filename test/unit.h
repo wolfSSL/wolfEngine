@@ -32,6 +32,7 @@
 #include <openssl/ec.h>
 #include <openssl/ssl.h>
 #include <openssl/aes.h>
+#include <openssl/kdf.h>
 
 #include <wolfengine/we_logging.h>
 #include <wolfengine/we_openssl_bc.h>
@@ -82,6 +83,10 @@ int test_cmac_create(ENGINE *e, void *data);
 #ifdef WE_HAVE_HMAC
 int test_hmac_create(ENGINE *e, void *data);
 #endif /* WE_HAVE_HMAC */
+
+#ifdef WE_HAVE_TLS1_PRF
+int test_tls1_prf(ENGINE *e, void *data);
+#endif
 
 #ifdef WE_HAVE_DES3CBC
 int test_des3_cbc(ENGINE *e, void *data);
@@ -147,19 +152,23 @@ int test_random(ENGINE *e, void *data);
 
 int test_digest_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,
                      size_t len, const EVP_MD *md,
-                     unsigned char *sig, size_t *sigLen, int pss);
+                     unsigned char *sig, size_t *sigLen, int padMode);
 
 int test_digest_verify(EVP_PKEY *pkey, ENGINE *e, unsigned char *data,
                        size_t len, const EVP_MD *md,
-                       unsigned char *sig, size_t sigLen, int pss);
+                       unsigned char *sig, size_t sigLen, int padMode);
 
 int test_pkey_sign(EVP_PKEY *pkey, ENGINE *e, unsigned char *hash,
                    size_t hashLen, unsigned char *sig,
-                   size_t *sigLen, int pss);
+                   size_t *sigLen, int padMode);
 int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
                      unsigned char *hash, size_t hashLen,
-                     unsigned char *sig, size_t sigLen, int pss);
+                     unsigned char *sig, size_t sigLen, int padMode);
 
+int test_pkey_enc(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
+                  unsigned char *ciphertext, size_t cipherLen, int padMode);
+int test_pkey_dec(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
+                  unsigned char *ciphertext, size_t cipherLen, int padMode);
 #endif /* WE_HAVE_EVP_PKEY */
 
 #ifdef WE_HAVE_RSA
@@ -172,6 +181,9 @@ int test_rsa_direct_pub_dec(ENGINE *e, void *data);
 int test_rsa_sign_verify_pkcs1(ENGINE *e, void *data);
 int test_rsa_sign_verify_no_pad(ENGINE *e, void *data);
 int test_rsa_sign_verify_pss(ENGINE *e, void *data);
+int test_rsa_enc_dec_pkcs1(ENGINE *e, void *data);
+int test_rsa_enc_dec_no_pad(ENGINE *e, void *data);
+int test_rsa_enc_dec_oaep(ENGINE *e, void *data);
 int test_rsa_pkey_keygen(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 

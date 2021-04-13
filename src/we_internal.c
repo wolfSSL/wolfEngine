@@ -31,6 +31,9 @@ static const int we_pkey_nids[] = {
 #ifdef WE_HAVE_CMAC
     NID_cmac,
 #endif /* WE_HAVE_CMAC */
+#ifdef WE_HAVE_TLS1_PRF
+    NID_tls1_prf,
+#endif /* WE_HAVE_TLS1_PRF */
 #ifdef WE_HAVE_RSA
     NID_rsaEncryption,
 #endif
@@ -212,6 +215,11 @@ int we_nid_to_wc_hash_type(int nid)
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_oid");
 
     switch (nid) {
+#ifndef NO_MD5
+        case NID_md5:
+            hashType = WC_HASH_TYPE_MD5;
+            break;
+#endif
 #ifdef WE_HAVE_SHA1
         case NID_sha1:
             hashType = WC_HASH_TYPE_SHA;
@@ -558,6 +566,11 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
             *pkey = we_cmac_pkey_method;
             break;
 #endif /* WE_HAVE_CMAC */
+#ifdef WE_HAVE_TLS1_PRF
+        case NID_tls1_prf:
+            *pkey = we_tls1_prf_method;
+            break;
+#endif /* WE_HAVE_TLS1_PRF */
 #ifdef WE_HAVE_RSA
         case NID_rsaEncryption:
             *pkey = we_rsa_pkey_method;
@@ -772,6 +785,13 @@ static int wolfengine_init(ENGINE *e)
         ret = we_init_cmac_pkey_asn1_meth();
     }
 #endif /* WE_HAVE_CMAC */
+#ifdef WE_HAVE_TLS1_PRF
+#ifdef WE_HAVE_EVP_PKEY
+    if (ret == 1) {
+        ret = we_init_tls1_prf_meth();
+    }
+#endif /* WE_HAVE_EVP_PKEY */
+#endif /* WE_HAVE_TLS1_PRF */
 #ifdef WE_HAVE_DH
 #ifdef WE_HAVE_EVP_PKEY
     if (ret == 1) {

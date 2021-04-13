@@ -228,4 +228,87 @@ int test_pkey_verify(EVP_PKEY *pkey, ENGINE *e,
     return err;
 }
 
+int test_pkey_enc(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
+                  unsigned char *ciphertext, size_t cipherLen, int padMode)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    size_t len;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    err = EVP_PKEY_set1_engine(pkey, e) != 1;
+    if (err == 0) {
+        err = (ctx = EVP_PKEY_CTX_new(pkey, NULL)) == NULL;
+    }
+#else
+    err = (ctx = EVP_PKEY_CTX_new(pkey, e)) == NULL;
+#endif
+    if (err == 0) {
+        err = EVP_PKEY_encrypt_init(ctx) != 1;
+    }
+    if ((err == 0) && padMode) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, padMode) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_encrypt(ctx, NULL, &len, msg, msgLen) != 1;
+    }
+    if (err == 0) {
+        err = (len != cipherLen);
+    }
+    if (err == 0) {
+        err = EVP_PKEY_encrypt(ctx, ciphertext, &cipherLen, msg, msgLen) != 1;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
+int test_pkey_dec(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
+                  unsigned char *ciphertext, size_t cipherLen, int padMode)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    size_t len = cipherLen;
+    unsigned char *buf;
+
+    buf = (unsigned char*)OPENSSL_malloc(cipherLen);
+    if (buf == NULL) {
+        err = 1;
+    }
+
+    if (err == 0) {
+    #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        err = EVP_PKEY_set1_engine(pkey, e) != 1;
+        if (err == 0) {
+            err = (ctx = EVP_PKEY_CTX_new(pkey, NULL)) == NULL;
+        }
+    #else
+        err = (ctx = EVP_PKEY_CTX_new(pkey, e)) == NULL;
+    #endif
+    }
+    if (err == 0) {
+        err = EVP_PKEY_decrypt_init(ctx) != 1;
+    }
+    if ((err == 0) && padMode) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, padMode) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_decrypt(ctx, buf, &len, ciphertext, cipherLen) != 1;
+    }
+    if (err == 0) {
+        err = (len != msgLen);
+    }
+    if (err == 0) {
+        err = memcmp(buf, msg, len) != 0;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    if (buf != NULL) {
+        OPENSSL_free(buf);
+    }
+
+    return err;
+}
+
 #endif /* WE_HAVE_EVP_PKEY */

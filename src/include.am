@@ -11,12 +11,13 @@ libwolfengine_la_SOURCES += src/we_aes_gcm.c
 libwolfengine_la_SOURCES += src/we_des3_cbc.c
 libwolfengine_la_SOURCES += src/we_dh.c
 libwolfengine_la_SOURCES += src/we_digest.c
-libwolfengine_la_SOURCES += src/we_mac.c
 libwolfengine_la_SOURCES += src/we_ecc.c
 libwolfengine_la_SOURCES += src/we_internal.c
+libwolfengine_la_SOURCES += src/we_logging.c
+libwolfengine_la_SOURCES += src/we_mac.c
 libwolfengine_la_SOURCES += src/we_openssl_bc.c
 libwolfengine_la_SOURCES += src/we_random.c
 libwolfengine_la_SOURCES += src/we_rsa.c
-libwolfengine_la_SOURCES += src/we_logging.c
+libwolfengine_la_SOURCES += src/we_tls_prf.c
 libwolfengine_la_SOURCES += src/we_wolfengine.c
 

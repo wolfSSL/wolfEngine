@@ -131,14 +131,15 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
             XMEMCPY(out, aes->iv + EVP_GCM_TLS_FIXED_IV_LEN,
                     EVP_GCM_TLS_EXPLICIT_IV_LEN);
 
+            /* Move to start of plaintext and cipher text. */
+            in += EVP_GCM_TLS_EXPLICIT_IV_LEN;
+            out += EVP_GCM_TLS_EXPLICIT_IV_LEN;
             /* Encrypt the data except explicit IV.
              * Tag goes at end of output buffer.
              */
-            rc = wc_AesGcmEncrypt(&aes->aes, out + EVP_GCM_TLS_EXPLICIT_IV_LEN,
-                                  in + EVP_GCM_TLS_EXPLICIT_IV_LEN, encLen,
-                                  aes->iv, aes->ivLen,
-                                  out + len - EVP_GCM_TLS_TAG_LEN,
-                                  EVP_GCM_TLS_TAG_LEN, aes->aad, aes->aadLen);
+            rc = wc_AesGcmEncrypt(&aes->aes, out, in, encLen, aes->iv,
+                aes->ivLen, out + encLen, EVP_GCM_TLS_TAG_LEN, aes->aad,
+                aes->aadLen);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex", rc);
                 ret = 0;
@@ -413,8 +414,8 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
             case EVP_CTRL_GET_IVLEN:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_GET_IVLEN");
-                /* Set the generated IV
-                 *   ptr [out] length of iv
+                /* Get the IV length
+                 *   ptr [out] Length of IV
                  */
                 *(int *)ptr = aes->ivLen;
                 break;
@@ -548,6 +549,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 /** Flags for AES-GCM method. */
 #define AES_GCM_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
+     EVP_CIPH_CUSTOM_IV          | \
      EVP_CIPH_CUSTOM_IV_LENGTH   | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_CTRL_INIT          | \

@@ -1,4 +1,4 @@
-/* test_aesgcm.c
+/* test_aestag.c
  *
  * Copyright (C) 2019-2021 wolfSSL Inc.
  *
@@ -566,10 +566,12 @@ int test_aes128_ccm(ENGINE *e, void *data)
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 0);
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */
     if (err == 0) {
         err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 7);
     }
+#endif
 
     return err;
 }
@@ -583,10 +585,12 @@ int test_aes192_ccm(ENGINE *e, void *data)
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 0);
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */
     if (err == 0) {
         err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 7);
     }
+#endif
 
     return err;
 }
@@ -600,10 +604,12 @@ int test_aes256_ccm(ENGINE *e, void *data)
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 0);
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */
     if (err == 0) {
         err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 7);
     }
+#endif
 
     return err;
 }

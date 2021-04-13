@@ -565,6 +565,7 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define AES_CCM_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_CUSTOM_IV_LENGTH   | \
+     EVP_CIPH_CUSTOM_IV          | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_FLAG_AEAD_CIPHER   | \
      EVP_CIPH_FLAG_DEFAULT_ASN1  | \
