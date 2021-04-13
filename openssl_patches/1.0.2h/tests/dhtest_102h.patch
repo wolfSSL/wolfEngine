@@ -1,0 +1,32 @@
+diff --git a/crypto/dh/dhtest.c b/crypto/dh/dhtest.c
+index c5d3d87ea5..36d171555d 100644
+--- a/crypto/dh/dhtest.c
++++ b/crypto/dh/dhtest.c
+@@ -70,6 +70,7 @@
+ 
+ #include "../e_os.h"
+ 
++#include <openssl/engine.h>
+ #include <openssl/crypto.h>
+ #include <openssl/bio.h>
+ #include <openssl/bn.h>
+@@ -107,6 +108,19 @@ int main(int argc, char *argv[])
+     unsigned char *abuf = NULL, *bbuf = NULL;
+     int i, alen, blen, aout, bout, ret = 1;
+     BIO *out;
++    ENGINE *e = NULL;
++
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default_DH(e);
+ 
+     CRYPTO_malloc_debug_init();
+     CRYPTO_dbg_set_options(V_CRYPTO_MDEBUG_ALL);
