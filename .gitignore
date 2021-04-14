@@ -47,5 +47,6 @@
 /test/unit.test
 /test/unit.log
 /test/unit.trs
+/scripts/*.log
 *.gcno
 *.gcda

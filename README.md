@@ -40,17 +40,6 @@ wolfEngine is a library that can be used as an Engine in OpenSSL.
 * SHA-3 support is only available with OpenSSL versions 1.1.1+.
 * EC_KEY_METHOD is only available with OpenSSL versions 1.1.1+.
 
-To get CBC cipher suites working with OpenSSL 1.1.1, another patch is needed. You can make this change using the patch openssl_patches/1.1.1b/ssl3_record_111b.patch for OpenSSL 1.1.1b. Alternatively, you can modify the source code manually in ssl/record/ssl3_record.c at line 1125:
-
-```
-
-+        if ((EVP_CIPHER_mode(enc) != EVP_CIPH_GCM_MODE) &&
-+            (EVP_CIPHER_mode(enc) != EVP_CIPH_CCM_MODE)) {
-+            EVP_CIPHER_CTX_set_padding(ds, 0);
-+        }
-         /* TODO(size_t): Convert this call */
-```
-
 ## Building
 
 ### OpenSSL

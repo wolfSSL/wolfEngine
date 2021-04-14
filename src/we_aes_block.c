@@ -123,40 +123,28 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
  *
  * Supports pad/no pad and streaming.
  *
- * @param  ctx  [in/out]  EVP cipher context of operation.
- * @param  aes  [in]      Internal AES object.
+ * @param  aes  [in,out]  Internal AES object.
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
  * @return  Number of bytes put in out on success.
  */
-static int we_aes_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
-    unsigned char *out, const unsigned char *in, size_t len)
+static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
+                              const unsigned char *in, size_t len)
 {
     int ret = 1;
     int rc;
     int outl = 0;
-    int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_encrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
-        if (noPad) {
-            if (aes->over != 0) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                     "No Pad - last encrypt block not full");
-                ret = 0;
-            }
-        }
-        else {
-            byte pad = AES_BLOCK_SIZE - aes->over;
-
-            /* Padding - fill rest of block with number of padding blocks. */
-            XMEMSET(aes->lastBlock + aes->over, pad, pad);
-            aes->over = AES_BLOCK_SIZE;
-            /* Encrypt lastBlock and return in out. */
+        if (aes->over != 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                 "No Pad - last encrypt block not full");
+            ret = 0;
         }
     }
     
@@ -216,14 +204,6 @@ static int we_aes_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
             aes->over = (int)len;
         }
     }
-    if (ret == 1) {
-        /* Return length of encrypted data. */
-        ret = outl;
-    }
-    else {
-        /* Return -ve for error. */
-        ret = -1;
-    }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_encrypt", ret);
 
@@ -235,76 +215,28 @@ static int we_aes_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
  *
  * Supports pad/no pad and streaming.
  *
- * @param  ctx  [in/out]  EVP cipher context of operation.
- * @param  aes  [in]      Internal AES object.
+ * @param  aes  [in,out]  Internal AES object.
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
  * @return  Number of bytes put in out on success.
  */
-static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
-    unsigned char *out, const unsigned char *in, size_t len)
+static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
+                              const unsigned char *in, size_t len)
 {
     int ret = 1;
     int rc;
     int outl = 0;
-    int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_decrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
-        if (noPad) {
-            if (aes->over != 0) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                     "No Pad - last decrypt block not full");
-                ret = 0;
-            }
-        }
-        else {
-            byte pad;
-            int i;
-
-            /* Must have a full block over to decrypt. */
-            if (aes->over != AES_BLOCK_SIZE) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                     "Padding - last cached decrypt block not "
-                                     "full");
-                ret = 0;
-            }
-            if (ret == 1) {
-                /* Decrypt last block - may be all padding. */
-                rc = wc_AesCbcDecrypt(&aes->aes, aes->lastBlock, aes->lastBlock,
-                                      AES_BLOCK_SIZE);
-                if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesCbcDecrypt", rc);
-                    ret = 0;
-                }
-                aes->over = 0;
-            }
-            if (ret == 1) {
-                /* Last byte is length of padding. */
-                pad = aes->lastBlock[AES_BLOCK_SIZE - 1];
-                if ((pad == 0) || (pad > AES_BLOCK_SIZE)) {
-                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Padding byte invalid");
-                    ret = 0;
-                }
-            }
-            if (ret == 1) {
-                /* Copy out non-padding bytes. */
-                outl = AES_BLOCK_SIZE - pad;
-                XMEMCPY(out, aes->lastBlock, outl);
-                /* Check padding bytes are all the same. */
-                for (i = outl; (ret == 1) && (i < AES_BLOCK_SIZE - 1); i++) {
-                   if (aes->lastBlock[i] != pad) {
-                       WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                            "Padding byte doesn't different");
-                       ret = 0;
-                   }
-                }
-            }
+        if (aes->over != 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                 "No Pad - last decrypt block not full");
+            ret = 0;
         }
     }
     if (ret == 1) {
@@ -326,7 +258,7 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 len -= l;
             }
             /* Padding and not last full block or not padding and full block. */
-            if ((noPad && aes->over == AES_BLOCK_SIZE) || len > 0) {
+            if ((aes->over == AES_BLOCK_SIZE) || len > 0) {
                 /* Decrypt block cached block. */
                 rc = wc_AesCbcDecrypt(&aes->aes, out, aes->lastBlock,
                                       AES_BLOCK_SIZE);
@@ -347,10 +279,6 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
             /* Calculate full blocks. */
             l = (int)len & (~(AES_BLOCK_SIZE - 1));
 
-            /* Not last full block when padding. */
-            if ((!noPad) && (len - l == 0)) {
-                l -= AES_BLOCK_SIZE;
-            }
             if (l > 0) {
                 rc = wc_AesCbcDecrypt(&aes->aes, out, in, l);
                 if (rc != 0) {
@@ -369,14 +297,6 @@ static int we_aes_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
             XMEMCPY(aes->lastBlock, in, len);
             aes->over = (int)len;
         }
-    }
-    if (ret == 1) {
-        /* Return length of encrypted data. */
-        ret = outl;
-    }
-    else {
-        /* Return -ve for error. */
-        ret = -1;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_decrypt", ret);
@@ -412,10 +332,10 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         ret = -1;
     }
     else if (aes->enc) {
-        ret = we_aes_cbc_encrypt(ctx, aes, out, in, len);
+        ret = we_aes_cbc_encrypt(aes, out, in, len);
     }
     else {
-        ret = we_aes_cbc_decrypt(ctx, aes, out, in, len);
+        ret = we_aes_cbc_decrypt(aes, out, in, len);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_cipher", ret);
@@ -475,8 +395,7 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
  *       wolfEngine does not need to initialize until a key is available.
  */
 #define AES_CBC_FLAGS              \
-    (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
-     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
+    (EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CBC_MODE)
 
 /** AES128-CBC EVP cipher method. */
@@ -665,40 +584,28 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
  *
  * Supports pad/no pad and streaming.
  *
- * @param  ctx  [in/out]  EVP cipher context of operation.
- * @param  aes  [in]      Internal AES object.
+ * @param  aes  [in,out]  Internal AES object.
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
  * @return  Number of bytes put in out on success.
  */
-static int we_aes_ecb_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
-    unsigned char *out, const unsigned char *in, size_t len)
+static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
+                              const unsigned char *in, size_t len)
 {
     int ret = 1;
     int rc;
     int outl = 0;
-    int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_encrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
-        if (noPad) {
-            if (aes->over != 0) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                     "No Pad - last encrypt block not full");
-                ret = 0;
-            }
-        }
-        else {
-            byte pad = AES_BLOCK_SIZE - aes->over;
-
-            /* Padding - fill rest of block with number of padding blocks. */
-            XMEMSET(aes->lastBlock + aes->over, pad, pad);
-            aes->over = AES_BLOCK_SIZE;
-            /* Encrypt lastBlock and return in out. */
+        if (aes->over != 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                 "No Pad - last encrypt block not full");
+            ret = 0;
         }
     }
     
@@ -758,14 +665,6 @@ static int we_aes_ecb_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
             aes->over = (int)len;
         }
     }
-    if (ret == 1) {
-        /* Return length of encrypted data. */
-        ret = outl;
-    }
-    else {
-        /* Return -ve for error. */
-        ret = -1;
-    }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_encrypt", ret);
 
@@ -777,76 +676,28 @@ static int we_aes_ecb_encrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
  *
  * Supports pad/no pad and streaming.
  *
- * @param  ctx  [in/out]  EVP cipher context of operation.
- * @param  aes  [in]      Internal AES object.
+ * @param  aes  [in,out]  Internal AES object.
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
  * @return  Number of bytes put in out on success.
  */
-static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
-    unsigned char *out, const unsigned char *in, size_t len)
+static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
+                              const unsigned char *in, size_t len)
 {
     int ret = 1;
     int rc;
     int outl = 0;
-    int noPad = EVP_CIPHER_CTX_test_flags(ctx, EVP_CIPH_NO_PADDING);
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_decrypt");
 
     /* Length of 0 means Final called. */
     if (len == 0) {
-        if (noPad) {
-            if (aes->over != 0) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                     "No Pad - last decrypt block not full");
-                ret = 0;
-            }
-        }
-        else {
-            byte pad;
-            int i;
-
-            /* Must have a full block over to decrypt. */
-            if (aes->over != AES_BLOCK_SIZE) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                     "Padding - last cached decrypt block not "
-                                     "full");
-                ret = 0;
-            }
-            if (ret == 1) {
-                /* Decrypt last block - may be all padding. */
-                rc = wc_AesEcbDecrypt(&aes->aes, aes->lastBlock, aes->lastBlock,
-                                      AES_BLOCK_SIZE);
-                if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesEcbDecrypt", rc);
-                    ret = 0;
-                }
-                aes->over = 0;
-            }
-            if (ret == 1) {
-                /* Last byte is length of padding. */
-                pad = aes->lastBlock[AES_BLOCK_SIZE - 1];
-                if ((pad == 0) || (pad > AES_BLOCK_SIZE)) {
-                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Padding byte invalid");
-                    ret = 0;
-                }
-            }
-            if (ret == 1) {
-                /* Copy out non-padding bytes. */
-                outl = AES_BLOCK_SIZE - pad;
-                XMEMCPY(out, aes->lastBlock, outl);
-                /* Check padding bytes are all the same. */
-                for (i = outl; (ret == 1) && (i < AES_BLOCK_SIZE - 1); i++) {
-                   if (aes->lastBlock[i] != pad) {
-                       WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                            "Padding byte doesn't different");
-                       ret = 0;
-                   }
-                }
-            }
+        if (aes->over != 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                 "No Pad - last decrypt block not full");
+            ret = 0;
         }
     }
     if (ret == 1) {
@@ -868,7 +719,7 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
                 len -= l;
             }
             /* Padding and not last full block or not padding and full block. */
-            if ((noPad && aes->over == AES_BLOCK_SIZE) || len > 0) {
+            if ((aes->over == AES_BLOCK_SIZE) || len > 0) {
                 /* Decrypt block cached block. */
                 rc = wc_AesEcbDecrypt(&aes->aes, out, aes->lastBlock,
                                       AES_BLOCK_SIZE);
@@ -889,10 +740,6 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
             /* Calculate full blocks. */
             l = (int)len & (~(AES_BLOCK_SIZE - 1));
 
-            /* Not last full block when padding. */
-            if ((!noPad) && (len - l == 0)) {
-                l -= AES_BLOCK_SIZE;
-            }
             if (l > 0) {
                 rc = wc_AesEcbDecrypt(&aes->aes, out, in, l);
                 if (rc != 0) {
@@ -911,14 +758,6 @@ static int we_aes_ecb_decrypt(EVP_CIPHER_CTX *ctx, we_AesBlock* aes,
             XMEMCPY(aes->lastBlock, in, len);
             aes->over = (int)len;
         }
-    }
-    if (ret == 1) {
-        /* Return length of encrypted data. */
-        ret = outl;
-    }
-    else {
-        /* Return -ve for error. */
-        ret = -1;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_decrypt", ret);
@@ -954,10 +793,10 @@ static int we_aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         ret = -1;
     }
     else if (aes->enc) {
-        ret = we_aes_ecb_encrypt(ctx, aes, out, in, len);
+        ret = we_aes_ecb_encrypt(aes, out, in, len);
     }
     else {
-        ret = we_aes_ecb_decrypt(ctx, aes, out, in, len);
+        ret = we_aes_ecb_decrypt(aes, out, in, len);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_cipher", ret);
@@ -1012,8 +851,7 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
 /** Flags for AES-ECB method. */
 #define AES_ECB_FLAGS              \
-    (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
-     EVP_CIPH_ALWAYS_CALL_INIT   | \
+    (EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_ECB_MODE)
 
