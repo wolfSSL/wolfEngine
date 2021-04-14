@@ -1392,7 +1392,7 @@ static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     if ((ret == 1) && (md == EVP_md5_sha1())) {
         XMEMCPY(*encodedDigest, digest, digestLen);
-        ret = digestLen;
+        ret = (int)digestLen;
     }
     else
 #endif

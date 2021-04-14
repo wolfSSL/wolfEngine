@@ -123,16 +123,18 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
          /* Calculate key.
           * Label is included in seed so pass in buffer and 0 length for label.
           */
-         rc = wc_PRF_TLSv1(key, *keySz, tls1Prf->secret, tls1Prf->secretSz,
-                           (byte*)"", 0, tls1Prf->seed, tls1Prf->seedSz, NULL,
+         rc = wc_PRF_TLSv1(key, (word32)*keySz, tls1Prf->secret,
+                           (word32)(tls1Prf->secretSz), (byte*)"", 0,
+                           tls1Prf->seed, (word32)(tls1Prf->seedSz), NULL,
                            INVALID_DEVID);
          if (rc != 0) {
              ret = 0;
          }
     }
     else if (ret == 1) {
-        rc = wc_PRF_TLS(key, *keySz, tls1Prf->secret, tls1Prf->secretSz,
-                        (byte*)"", 0, tls1Prf->seed, tls1Prf->seedSz, 1,
+        rc = wc_PRF_TLS(key, (word32)*keySz, tls1Prf->secret,
+                        (word32)(tls1Prf->secretSz), (byte*)"", 0,
+                        tls1Prf->seed, (word32)(tls1Prf->seedSz), 1,
                         tls1Prf->mdType == NID_sha256 ? sha256_mac : sha384_mac,
                         NULL, INVALID_DEVID);
          if (rc != 0) {
