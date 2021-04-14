@@ -32,7 +32,9 @@
 #include <openssl/ec.h>
 #include <openssl/ssl.h>
 #include <openssl/aes.h>
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 #include <openssl/kdf.h>
+#endif
 
 #include <wolfengine/we_logging.h>
 #include <wolfengine/we_openssl_bc.h>
