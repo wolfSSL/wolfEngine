@@ -2080,7 +2080,7 @@ static int test_ecdsa_key(ENGINE *e, const unsigned char *privKey,
         err = test_ecdsa_verify(keyOSSL, buf, sizeof(buf),
                                 ecdsaSig, ecdsaSigLen);
     }
-    EC_KEY_free(key);
+    EC_KEY_free(keyWE);
     EC_KEY_free(keyOSSL);
     PRINT_MSG("LEAVE: test_ecdsa");
 
