@@ -289,7 +289,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     }
     else if ((ret == 1) && (out == NULL) && (in == NULL)) {
         /* Don't need to cache length of plain text. Just return size. */
-        ret = len;
+        ret = (int)len;
     }
     else if ((ret == 1) && (out == NULL)) {
         /* Resize stored AAD and append new data. */
@@ -304,7 +304,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             XMEMCPY(aes->aad + aes->aadLen, in, len);
             aes->aadLen += len;
             /* Return size of AAD data added */
-            ret = len;
+            ret = (int)len;
         }
     }
     else if ((ret == 1) && (len > 0)) {
@@ -335,7 +335,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 /* Cache nonce/IV. */
                 XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
                 /* Return encrypted data length */
-                ret = len;
+                ret = (int)len;
             }
         }
         else {
@@ -351,7 +351,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 /* Cache nonce/IV. */
                 XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
                 /* Return decrypted data length */
-                ret = len;
+                ret = (int)len;
             }
         }
 

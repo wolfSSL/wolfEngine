@@ -247,8 +247,8 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
             /* PKCS 1 v1.5 padding using block type 2. */
-            rc = wc_RsaPublicEncrypt(from, fromLen, to, toLen, &rsa->key,
-                                     we_rng);
+            rc = wc_RsaPublicEncrypt(from, (word32)fromLen, to, (word32)toLen,
+                    &rsa->key, we_rng);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt", rc);
                 ret = -1;
@@ -259,8 +259,8 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
             break;
         case RSA_PKCS1_OAEP_PADDING:
             /* OAEP padding using SHA-1, MGF1. */
-            rc = wc_RsaPublicEncrypt_ex(from, fromLen, to, toLen, &rsa->key,
-                                        we_rng, WC_RSA_OAEP_PAD,
+            rc = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
+                    (word32)toLen, &rsa->key, we_rng, WC_RSA_OAEP_PAD,
                                         WC_HASH_TYPE_SHA, WC_MGF1SHA1, NULL, 0);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
@@ -272,8 +272,8 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_NO_PADDING:
-            rc = wc_RsaPublicEncrypt_ex(from, fromLen, to, toLen,
-                                        &rsa->key, we_rng, WC_RSA_NO_PAD,
+            rc = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
+                    (word32)toLen, &rsa->key, we_rng, WC_RSA_NO_PAD,
                                         WC_HASH_TYPE_NONE, 0, NULL, 0);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
@@ -365,7 +365,8 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
             /* PKCS 1 v1.5 padding using block type 2. */
-            rc = wc_RsaPrivateDecrypt(from, fromLen, to, toLen, &rsa->key);
+            rc = wc_RsaPrivateDecrypt(from, (word32)fromLen, to, (word32)toLen,
+                    &rsa->key);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt",
                                       rc);
@@ -377,8 +378,8 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
             break;
         case RSA_PKCS1_OAEP_PADDING:
             /* OAEP padding using SHA-1, MGF1. */
-            rc = wc_RsaPrivateDecrypt_ex(from, fromLen, to, toLen, &rsa->key,
-                                         WC_RSA_OAEP_PAD, WC_HASH_TYPE_SHA,
+            rc = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
+                    (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD, WC_HASH_TYPE_SHA,
                                          WC_MGF1SHA1, NULL, 0);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
@@ -390,9 +391,9 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_NO_PADDING:
-            rc = wc_RsaPrivateDecrypt_ex(from, fromLen, to, toLen, &rsa->key,
-                                         WC_RSA_NO_PAD, WC_HASH_TYPE_NONE, 0,
-                                         NULL, 0);
+            rc = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
+                    (word32)toLen, &rsa->key, WC_RSA_NO_PAD, WC_HASH_TYPE_NONE,
+                    0, NULL, 0);
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
                                       rc);
