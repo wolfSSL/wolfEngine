@@ -32,8 +32,8 @@ static int test_mac_generation(ENGINE *e, const EVP_CIPHER *c,
 {
     int err;
     EVP_MD_CTX   *ctx;
-    EVP_PKEY_CTX *pctx;
-    EVP_PKEY   *pkey = NULL;
+    EVP_PKEY_CTX *pctx = NULL;
+    EVP_PKEY     *pkey = NULL;
 
     err = (ctx = EVP_MD_CTX_new()) == NULL;
     if (err == 0) {
