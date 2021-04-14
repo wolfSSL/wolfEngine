@@ -1804,8 +1804,8 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
     }
 
     if (err == 0) {
-        sig->r = BN_bin2bn(r_bin, r_size, NULL);
-        sig->s = BN_bin2bn(s_bin, s_size, NULL);
+        sig->r = BN_bin2bn(r_bin, r_size, sig->r);
+        sig->s = BN_bin2bn(s_bin, s_size, sig->s);
         if (sig->r == NULL || sig->s == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_bin2bn", NULL);
             err = 1;
@@ -1894,6 +1894,9 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"we_ec_set_public", rc);
         return WOLFENGINE_FATAL_ERROR;
     }
+
+    mp_init(&sig_r);
+    mp_init(&sig_s);
 
     r_bin_sz = BN_num_bytes(sig->r);
     s_bin_sz = BN_num_bytes(sig->s);
