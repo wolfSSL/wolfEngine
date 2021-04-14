@@ -39,15 +39,24 @@
 #include <wolfengine/we_logging.h>
 #include <wolfengine/we_openssl_bc.h>
 
+#ifdef TEST_MULTITHREADED
+#define PRINT_MSG(str)
+#define PRINT_ERR_MSG(str)
+#else
 #define PRINT_MSG(str)         printf("MSG: %s\n", str)
 #define PRINT_ERR_MSG(str)     printf("ERR: %s\n", str)
+#endif
 #ifdef WOLFENGINE_DEBUG
 void print_buffer(const char *desc, const unsigned char *buffer, size_t len);
 #define PRINT_BUFFER(d, b, l)  print_buffer(d, b, l)
 #else
 #define PRINT_BUFFER(d, b, l)
 #endif
+#ifdef TEST_MULTITHREADED
+#define TEST_DECL(func, data)        { #func, func, data, 0, 0, 0, 0, 0, 0 }
+#else
 #define TEST_DECL(func, data)        { #func, func, data, 0, 0, 0 }
+#endif
 
 typedef int (*TEST_FUNC)(ENGINE *e, void *data);
 typedef struct TEST_CASE {
@@ -57,6 +66,11 @@ typedef struct TEST_CASE {
     int         err;
     int         run:1;
     int         done:1;
+#ifdef TEST_MULTITHREADED
+    int         attempted:1;
+    pthread_t   thread;
+    int         cnt;
+#endif
 } TEST_CASE;
 
 int test_logging(ENGINE *e, void *data);

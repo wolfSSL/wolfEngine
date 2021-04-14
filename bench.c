@@ -185,6 +185,143 @@ static int sha3_512_bench(ENGINE *e)
 
 #endif /* WE_HAVE_DIGEST */
 
+#ifdef WE_HAVE_AESCBC
+static size_t block_len[] = { 16, 64, 256, 1024, 8192, 16384 };
+#define BLOCK_LEN_SIZE    (sizeof(block_len) / sizeof(*block_len))
+
+static int block_enc_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
+{
+    int err = 0;
+    unsigned int i;
+    unsigned int max = 16384 / len;
+    unsigned char iv[16];
+    int outLen;
+    unsigned int cnt = 0;
+    double secs;
+    BENCH_DECLS;
+
+    RAND_bytes(iv, sizeof(iv));
+
+    BENCH_START();
+    do {
+        for (i = 0; i < max; i++) {
+            outLen = sizeof(data);
+            err |= EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv) != 1;
+            err |= EVP_EncryptUpdate(ctx, data, &outLen, data, (int)len) != 1;
+            err |= EVP_EncryptFinal_ex(ctx, data + outLen, &outLen) != 1;
+        }
+        cnt += i;
+    }
+    while (BENCH_COND(1));
+
+    secs = BENCH_SECS();
+    printf("%-8s enc %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, len,
+           (len * cnt) / secs / 1000.0, secs * 1000000.0 / (len * cnt));
+
+    return err;
+}
+
+static int block_dec_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
+{
+    int err = 0;
+    unsigned int i;
+    unsigned int max = 16384 / len;
+    unsigned char iv[16];
+    int outLen;
+    unsigned int cnt = 0;
+    double secs;
+    BENCH_DECLS;
+
+    RAND_bytes(iv, sizeof(iv));
+
+    BENCH_START();
+    do {
+        for (i = 0; i < max; i++) {
+            outLen = sizeof(data);
+            err  = EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, iv) != 1;
+            err |= EVP_DecryptUpdate(ctx, data, &outLen, data, (int)len) != 1;
+            err |= EVP_DecryptFinal_ex(ctx, data + outLen, &outLen);
+        }
+        cnt += i;
+    }
+    while (BENCH_COND(1));
+
+    secs = BENCH_SECS();
+    printf("%-8s dec %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, len,
+           (len * cnt) / secs / 1000.0, secs * 1000000.0 / (len * cnt));
+
+    return err;
+}
+
+static int aes128_cbc_bench(ENGINE *e)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[16] = {0,};
+    size_t i;
+
+    err = RAND_bytes(key, sizeof(key)) == 0;
+
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, EVP_aes_128_cbc(), e, key, NULL, 1) != 1;
+    }
+    if (err == 0) {
+        for (i = 0; err == 0 && i < DGST_LEN_SIZE; i++) {
+            err = block_enc_bench("AES128-CBC", ctx, block_len[i]);
+        }
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, EVP_aes_128_cbc(), e, key, NULL, 0) != 1;
+    }
+    if (err == 0) {
+        for (i = 0; err == 0 && i < DGST_LEN_SIZE; i++) {
+            err = block_dec_bench("AES128-CBC", ctx, block_len[i]);
+        }
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
+static int aes256_cbc_bench(ENGINE *e)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[32] = {0,};
+    size_t i;
+
+    err = RAND_bytes(key, sizeof(key)) == 0;
+
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, EVP_aes_256_cbc(), e, key, NULL, 1) != 1;
+    }
+    if (err == 0) {
+        for (i = 0; err == 0 && i < DGST_LEN_SIZE; i++) {
+            err = block_enc_bench("AES256-CBC", ctx, block_len[i]);
+        }
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, EVP_aes_256_cbc(), e, key, NULL, 0) != 1;
+    }
+    if (err == 0) {
+        for (i = 0; err == 0 && i < DGST_LEN_SIZE; i++) {
+            err = block_dec_bench("AES256-CBC", ctx, block_len[i]);
+        }
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+#endif
+
 #ifdef WE_HAVE_AESGCM
 static size_t aesgcm_len[] = { 2, 31, 136, 1024, 8192, 16384 };
 #define AEGCM_LEN_SIZE    (sizeof(aesgcm_len) / sizeof(*aesgcm_len))
@@ -891,6 +1028,10 @@ BENCH_ALG bench_alg[] = {
 #endif
 #ifdef WE_HAVE_SHA3_512
     BENCH_DECL("SHA3_512", sha3_512_bench),
+#endif
+#ifdef WE_HAVE_AESCBC
+    BENCH_DECL("AES128-CBC", aes128_cbc_bench),
+    BENCH_DECL("AES256-CBC", aes256_cbc_bench),
 #endif
 #ifdef WE_HAVE_AESGCM
     BENCH_DECL("AES128-GCM", aes128_gcm_bench),

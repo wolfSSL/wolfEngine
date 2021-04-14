@@ -32,6 +32,10 @@ typedef struct we_Dh
 {
     /* wolfSSL structure for holding DH key data. */
     DhKey key;
+#ifndef WE_SINGLE_THREADED
+    /* wolfSSL random number generator. */
+    WC_RNG rng;
+#endif
     /* Length of prime ("p") in bits. */
     int primeLen;
     /* Byte buffer containing the value of large prime "q". */
@@ -71,6 +75,16 @@ static int we_dh_init(DH *dh)
         engineDh->primeLen = DEFAULT_PRIME_LEN;
     }
 
+#ifndef WE_SINGLE_THREADED
+    if (ret == 1) {
+        rc = wc_InitRng(&engineDh->rng);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_InitRng", rc);
+            ret = 0;
+        }
+    }
+#endif
+
     if (ret == 1) {
         rc = DH_set_ex_data(dh, 0, engineDh);
         if (rc != 1) {
@@ -80,6 +94,9 @@ static int we_dh_init(DH *dh)
     }
 
     if (ret == 0 && engineDh != NULL) {
+#ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&engineDh->rng);
+#endif
         wc_FreeDhKey(&engineDh->key);
         OPENSSL_free(engineDh);
     }
@@ -285,8 +302,13 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         actualPrivLen = privLen;
         actualPubLen = pubLen;
+#ifndef WE_SINGLE_THREADED
+        rc = wc_DhGenerateKeyPair(&engineDh->key, &engineDh->rng, priv,
+                                  &actualPrivLen, pub, &actualPubLen);
+#else
         rc = wc_DhGenerateKeyPair(&engineDh->key, we_rng, priv, &actualPrivLen,
                                   pub, &actualPubLen);
+#endif
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateKeyPair", rc);
             ret = 0;
@@ -571,11 +593,24 @@ static int we_dh_pkey_init(EVP_PKEY_CTX *ctx)
         dh->primeLen = DEFAULT_PRIME_LEN;
     }
 
+#ifndef WE_SINGLE_THREADED
+    if (ret == 1) {
+        rc = wc_InitRng(&dh->rng);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_InitRng", rc);
+            ret = 0;
+        }
+    }
+#endif
+
     if (ret == 1) {
         EVP_PKEY_CTX_set_data(ctx, dh);
     }
 
     if (ret == 0 && dh != NULL) {
+#ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&dh->rng);
+#endif
         wc_FreeDhKey(&dh->key);
         OPENSSL_free(dh);
     }
@@ -811,7 +846,12 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 
     /* Generate the parameters. */
     if (ret == 1) {
+#ifndef WE_SINGLE_THREADED
+        rc = wc_DhGenerateParams(&engineDh->rng, engineDh->primeLen,
+                                 &engineDh->key);
+#else
         rc = wc_DhGenerateParams(we_rng, engineDh->primeLen, &engineDh->key);
+#endif
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_pkey_paramgen", rc);
             ret = 0;

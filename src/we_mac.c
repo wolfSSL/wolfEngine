@@ -32,21 +32,22 @@
  */
 typedef struct we_mac
 {
-    /* wolfSSL structure for holding HMAC state. */
     union {
+        /** wolfSSL structure for holding HMAC state. */
         Hmac hmac;
+        /** wolfSSL structure for holding CMAC state. */
         Cmac cmac;
     } state;
 
-    /* Hold on to key until init of structure */
+    /** Hold on to key until init of structure */
     unsigned char *key;
     int keySz;
 
-    /* Size of digest expected */
+    /** Size of digest expected */
     int size;
-    /* Type of digest used */
+    /** Type of digest used */
     int type;
-    /* Type of algorithm structure holds i.e HMAC, CMAC ... */
+    /** Type of algorithm structure holds i.e HMAC, CMAC ... */
     int algo;
 } we_mac;
 
@@ -81,6 +82,7 @@ static we_mac* we_mac_pkey_init(EVP_PKEY_CTX *ctx)
     }
 
     if (ret == 1) {
+        /* Allocate internal MAC object. */
         mac = (we_mac *)OPENSSL_zalloc(sizeof(we_mac));
         if (mac == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_zalloc", mac);
