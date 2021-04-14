@@ -2016,107 +2016,97 @@ static int test_ecdsa_verify(EC_KEY *key, unsigned char *hash,
 
     return err;
 }
-static int test_ecdsa_key(const unsigned char *privKey, size_t privKeyLen);
 
-int test_ecdsa(ENGINE *e, void *data)
-{
-    int err = 0;
-    EC_KEY *ecdsaWE;
-    ECDSA_METHOD *ecdsaMeth;
-    (void)data;
-
-    ecdsaWE = EC_KEY_new();
-    if (ecdsaWE == NULL) {
-        err = 1;
-    }
-    if (err == 0) {
-        ecdsaMeth = (ECDSA_METHOD *)ENGINE_get_ECDSA(e);
-        if (ecdsaMeth == NULL) {
-            err = 1;
-        }
-    }
-    if (err == 0) {
-        ENGINE_set_default_ECDSA(e);
-        ECDSA_set_method(ecdsaWE, ecdsaMeth);
-    }
-
-    if (err == 0) {
-        PRINT_MSG("ECDSA: Verify with wolfengine (DER 256)");
-        err = test_ecdsa_key(ecc_key_der_256, sizeof(ecc_key_der_256));
-        if (err != 0) {
-            PRINT_MSG("ERROR: Verify with wolfengine");
-        }
-    }
-
-    if (err == 0) {
-        PRINT_MSG("ECDSA: Verify with wolfengine (DER 384)");
-        err = test_ecdsa_key(ecc_key_der_384, sizeof(ecc_key_der_384));
-        if (err != 0) {
-            PRINT_MSG("ERROR: Verify with wolfengine");
-        }
-    }
-
-    EC_KEY_free(ecdsaWE);
-    return err;
-}
-
-static int test_ecdsa_key(const unsigned char *privKey,
-                      size_t privKeyLen)
+static int test_ecdsa_key(ENGINE *e, const unsigned char *privKey,
+                          size_t privKeyLen)
 {
     int err;
     int res;
-    EC_KEY *key = NULL;
+    EC_KEY *keyWE = NULL;
     EC_KEY *keyOSSL = NULL;
+    const ECDSA_METHOD *method = NULL;
     unsigned char ecdsaSig[140];
     size_t ecdsaSigLen;
     unsigned char buf[20];
     const unsigned char *p;
 
     PRINT_MSG("ENTER: test_ecdsa");
+
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
         p = privKey;
-        key = d2i_ECPrivateKey(&key, &p, privKeyLen);
-        err = (key == NULL);
+        keyWE = d2i_ECPrivateKey(&keyWE, &p, privKeyLen);
+        err = (keyWE == NULL);
+    }
+    if (err == 0) {
+        method = ENGINE_get_ECDSA(e);
+        err = method == NULL;
+    }
+    if (err == 0) {
+        err = ECDSA_set_method(keyWE, method) == 0;
     }
     if (err == 0) {
         p = privKey;
-        keyOSSL = d2i_ECPrivateKey(NULL, &p, privKeyLen);
+        keyOSSL = d2i_ECPrivateKey(&keyOSSL, &p, privKeyLen);
         err = (keyOSSL == NULL);
     }
     if (err == 0) {
         PRINT_MSG("ECDSA: Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_ecdsa_sign(keyOSSL, buf, sizeof(buf), ecdsaSig,
-                                     &ecdsaSigLen);
+                              &ecdsaSigLen);
     }
     if (err == 0) {
-        PRINT_MSG("ECDSA: Verify with wolfengine");
-        err = test_ecdsa_verify(keyOSSL, buf, sizeof(buf), ecdsaSig,
-                                       ecdsaSigLen);
+        PRINT_MSG("ECDSA: Verify with wolfEngine");
+        err = test_ecdsa_verify(keyWE, buf, sizeof(buf), ecdsaSig,
+                                ecdsaSigLen);
     }
     if (err == 0) {
-        PRINT_MSG("ECDSA: Verify bad signature with wolfengine");
+        PRINT_MSG("ECDSA: Verify bad signature with wolfEngine");
         ecdsaSig[1] ^= 0x80;
-        res = test_ecdsa_verify(key, buf, sizeof(buf), ecdsaSig,
-                                       ecdsaSigLen);
+        res = test_ecdsa_verify(keyWE, buf, sizeof(buf), ecdsaSig,
+                                ecdsaSigLen);
         if (res != 1)
             err = 1;
     }
     if (err == 0) {
-        PRINT_MSG("ECDSA:Sign with wolfengine");
+        PRINT_MSG("ECDSA: Sign with wolfEngine");
         ecdsaSigLen = sizeof(ecdsaSig);
-        err = test_ecdsa_sign(key, buf, sizeof(buf), ecdsaSig,
-                                     &ecdsaSigLen);
+        err = test_ecdsa_sign(keyWE, buf, sizeof(buf), ecdsaSig,
+                              &ecdsaSigLen);
     }
     if (err == 0) {
-        PRINT_MSG("ECDSA:Verify with OpenSSL");
+        PRINT_MSG("ECDSA: Verify with OpenSSL");
         err = test_ecdsa_verify(keyOSSL, buf, sizeof(buf),
-                                       ecdsaSig, ecdsaSigLen);
+                                ecdsaSig, ecdsaSigLen);
     }
     EC_KEY_free(key);
     EC_KEY_free(keyOSSL);
     PRINT_MSG("LEAVE: test_ecdsa");
+
+    return err;
+}
+
+int test_ecdsa(ENGINE *e, void *data)
+{
+    int err = 0;
+    (void)data;
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA: DER 256");
+        err = test_ecdsa_key(e, ecc_key_der_256, sizeof(ecc_key_der_256));
+        if (err != 0) {
+            PRINT_MSG("ERROR: test_ecdsa_key with DER 256 failed.");
+        }
+    }
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA: DER 384");
+        err = test_ecdsa_key(e, ecc_key_der_384, sizeof(ecc_key_der_384));
+        if (err != 0) {
+            PRINT_MSG("ERROR: test_ecdsa_key with DER 384 failed.");
+        }
+    }
 
     return err;
 }
