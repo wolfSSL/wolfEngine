@@ -104,7 +104,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                 ret = 0;
             }
         }
-        else {
+        if (ret == 1 && iv != NULL) {
             rc = wc_AesSetIV(&aes->aes, iv);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);

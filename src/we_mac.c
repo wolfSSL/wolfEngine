@@ -1042,7 +1042,7 @@ static int we_hmac_set_priv_key(EVP_PKEY *pk, const unsigned char *priv,
             ret = 0;
         }
     }
-    if ((ret == 1) && (ASN1_OCTET_STRING_set(asn1, priv, len) == 0)) {
+    if ((ret == 1) && (ASN1_OCTET_STRING_set(asn1, priv, (int)len) == 0)) {
         ASN1_OCTET_STRING_free(asn1);
         ret = 0;
     }

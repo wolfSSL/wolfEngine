@@ -236,7 +236,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             aes->aad = p;
             XMEMCPY(aes->aad + aes->aadLen, in, len);
             aes->aadLen += len;
-            ret = len;
+            ret = (int)len;
         }
     }
     /* Length may be zero for cases with AAD data only (GMAC) */

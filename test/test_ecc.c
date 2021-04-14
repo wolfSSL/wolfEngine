@@ -2056,6 +2056,7 @@ int test_ecdsa(ENGINE *e, void *data)
         }
     }
 
+    EC_KEY_free(ecdsaWE);
     return err;
 }
 
@@ -2081,7 +2082,7 @@ static int test_ecdsa_key(const unsigned char *privKey,
     if (err == 0) {
         p = privKey;
         keyOSSL = d2i_ECPrivateKey(NULL, &p, privKeyLen);
-        err = (key == NULL);
+        err = (keyOSSL == NULL);
     }
     if (err == 0) {
         PRINT_MSG("ECDSA: Sign with OpenSSL");
@@ -2113,6 +2114,8 @@ static int test_ecdsa_key(const unsigned char *privKey,
         err = test_ecdsa_verify(keyOSSL, buf, sizeof(buf),
                                        ecdsaSig, ecdsaSigLen);
     }
+    EC_KEY_free(key);
+    EC_KEY_free(keyOSSL);
     PRINT_MSG("LEAVE: test_ecdsa");
 
     return err;
