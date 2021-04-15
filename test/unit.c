@@ -19,6 +19,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#ifdef TEST_MULTITHREADED
+#include <unistd.h>
+#endif
+
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_logging.h>
 
@@ -337,10 +341,221 @@ static void usage()
     printf("  --dir <path>    Location of wolfengine shared library.\n");
     printf("                  Default: .libs\n");
     printf("  --engine <str>  Name of wolfsslengine. Default: libwolfengine\n");
+#ifdef TEST_MULTITHREADED
+    printf("  --secs <num>    Number of seconds to run for. Default: 10\n");
+#endif
     printf("  --no-debug      Disable debug logging\n");
     printf("  --list          Display all test cases\n");
     printf("  <num>           Run this test case, but not all\n");
 }
+
+#ifdef TEST_MULTITHREADED
+
+static CRYPTO_RWLOCK *testLock = NULL;
+static ENGINE *testEngine = NULL;
+static int stop = 0;
+static int secs = 10;
+
+static int LockInit()
+{
+    int err = 0;
+
+    testLock = CRYPTO_THREAD_lock_new();
+    if (testLock == NULL) {
+        err = 1;
+    }
+
+    return err;
+}
+
+static void LockFree()
+{
+    CRYPTO_THREAD_lock_free(testLock);
+}
+
+static int LockRW()
+{
+    return CRYPTO_THREAD_write_lock(testLock) != 1;
+}
+
+static int UnlockRW()
+{
+    return CRYPTO_THREAD_unlock(testLock) != 1;
+}
+
+static int LockRO()
+{
+    return CRYPTO_THREAD_read_lock(testLock) != 1;
+}
+
+static int UnlockRO()
+{
+    return CRYPTO_THREAD_unlock(testLock) != 1;
+}
+
+static void *run_test(void *args)
+{
+    TEST_CASE *testCase = (TEST_CASE *)args;
+
+    if (LockRO() != 0) {
+        fprintf(stderr, "Locking failed\n");
+    }
+    else {
+        while (!stop && !testCase->err) {
+            testCase->err = testCase->func(testEngine, testCase->data);
+            testCase->cnt++;
+        }
+        testCase->done = 1;
+
+        UnlockRO();
+    }
+
+    return NULL;
+}
+
+static int run_tests(ENGINE *e, int runAll)
+{
+    int err = 0;
+    int i;
+
+    err = LockInit();
+    if (err != 0)
+        fprintf(stderr, "Failed to initialize mutex!\n");
+    else {
+        err = LockRW();
+        if (err != 0)
+            fprintf(stderr, "Failed to lock mutex!\n");
+        else {
+            testEngine = e;
+
+            for (i = 0; i < TEST_CASE_CNT; i++) {
+                test_case[i].attempted = 0;
+
+                if (!runAll && !test_case[i].run)
+                    continue;
+
+                if (err == 0) {
+                    test_case[i].attempted = 1;
+
+                    fprintf(stderr, "%d: %s ...\n", i + 1, test_case[i].name);
+
+                    err = pthread_create(&test_case[i].thread, NULL, run_test,
+                                                                 &test_case[i]);
+                    if (err != 0)
+                        fprintf(stderr, "Failed to create thread for: %d\n", i);
+                }
+            }
+
+            UnlockRW();
+        }
+    }
+
+    fprintf(stderr, "Running test cases for %d seconds\n", secs);
+    for (i = 0; i < secs; i++) {
+        sleep(1);
+        fprintf(stderr, ".");
+    }
+    fprintf(stderr, "\n");
+
+    stop = 1;
+    for (i = 0; i < TEST_CASE_CNT; i++) {
+        if (!test_case[i].attempted)
+            continue;
+
+        pthread_join(test_case[i].thread, 0);
+        fprintf(stderr, "%d: %s ... %d ... ", i + 1, test_case[i].name,
+                                                              test_case[i].cnt);
+        if (!test_case[i].err)
+            fprintf(stderr, "PASSED\n");
+        else
+            fprintf(stderr, "FAILED\n");
+        }
+
+    LockFree();
+    stop = 0;
+
+    for (i = 0; i < TEST_CASE_CNT; i++) {
+        if (test_case[i].done && test_case[i].err != 0) {
+            err = test_case[i].err;
+            break;
+        }
+    }
+
+    if (err == 0) {
+        printf("###### TESTSUITE SUCCESS\n");
+    }
+    else {
+        for (i = 0; i < TEST_CASE_CNT; i++) {
+            if (test_case[i].err) {
+                printf("## FAIL: %d: %s\n", i + 1, test_case[i].name);
+            }
+        }
+        printf("###### TESTSUITE FAILED\n");
+    }
+
+    ENGINE_free(e);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    OPENSSL_cleanup();
+#endif
+
+    return err;
+}
+
+#else
+
+static int run_tests(ENGINE *e, int runAll)
+{
+    int err = 0;
+    int i;
+
+    printf("###### TESTSUITE START\n");
+    printf("\n");
+
+    for (i = 0; i < TEST_CASE_CNT; i++) {
+        if (!runAll && !test_case[i].run) {
+            continue;
+        }
+
+        printf("#### Start: %d - %s\n", i + 1, test_case[i].name);
+
+        test_case[i].err = test_case[i].func(e, test_case[i].data);
+        test_case[i].done = 1;
+
+        if (!test_case[i].err)
+            printf("#### SUCCESS: %d - %s\n", i + 1, test_case[i].name);
+        else
+            printf("#### FAILED: %d - %s\n", i + 1, test_case[i].name);
+        printf("\n");
+    }
+
+    for (i = 0; i < TEST_CASE_CNT; i++) {
+        if (test_case[i].done && test_case[i].err != 0) {
+            err = test_case[i].err;
+            break;
+        }
+    }
+
+    if (err == 0) {
+        printf("###### TESTSUITE SUCCESS\n");
+    }
+    else {
+        for (i = 0; i < TEST_CASE_CNT; i++) {
+            if (test_case[i].err) {
+                printf("## FAIL: %d: %s\n", i + 1, test_case[i].name);
+            }
+        }
+        printf("###### TESTSUITE FAILED\n");
+    }
+
+    ENGINE_free(e);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    OPENSSL_cleanup();
+#endif
+
+    return err;
+}
+
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -393,6 +608,21 @@ int main(int argc, char* argv[])
             name = *argv;
             printf("Engine: %s\n", name);
         }
+#ifdef TEST_MULTITHREADED
+        else if (strncmp(*argv, "--secs", 7) == 0) {
+            argc--;
+            argv++;
+            if (argc == 0) {
+                printf("\n");
+                printf("Missing seconds argument\n");
+                usage();
+                err = 1;
+                break;
+            }
+            secs = atoi(*argv);
+            printf("Running tests for %d seconds\n", secs);
+        }
+#endif
         else if (strncmp(*argv, "--no-debug", 11) == 0) {
             debug = 0;
         }
@@ -461,51 +691,7 @@ int main(int argc, char* argv[])
     }
 
     if (err == 0 && runTests) {
-        printf("###### TESTSUITE START\n");
-        printf("\n");
-
-        if (err == 0) {
-            for (i = 0; i < TEST_CASE_CNT; i++) {
-                if (!runAll && !test_case[i].run) {
-                    continue;
-                }
-
-                printf("#### Start: %d - %s\n", i + 1, test_case[i].name);
-
-                test_case[i].err = test_case[i].func(e, test_case[i].data);
-                test_case[i].done = 1;
-
-                if (!test_case[i].err)
-                    printf("#### SUCCESS: %d - %s\n", i + 1, test_case[i].name);
-                else
-                    printf("#### FAILED: %d - %s\n", i + 1, test_case[i].name);
-                printf("\n");
-            }
-
-            for (i = 0; i < TEST_CASE_CNT; i++) {
-                if (test_case[i].done && test_case[i].err != 0) {
-                    err = test_case[i].err;
-                    break;
-                }
-            }
-        }
-
-        if (err == 0) {
-            printf("###### TESTSUITE SUCCESS\n");
-        }
-        else {
-            for (i = 0; i < TEST_CASE_CNT; i++) {
-                if (test_case[i].err) {
-                    printf("## FAIL: %d: %s\n", i + 1, test_case[i].name);
-                }
-            }
-            printf("###### TESTSUITE FAILED\n");
-        }
-
-        ENGINE_free(e);
-    #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-        OPENSSL_cleanup();
-    #endif
+        err = run_tests(e, runAll);
     }
 
     return err;
