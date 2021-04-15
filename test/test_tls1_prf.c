@@ -122,7 +122,8 @@ static int test_tls1_prf_str_calc(ENGINE *e, unsigned char *key, int keyLen,
 {
     int err = 0;
     EVP_PKEY_CTX *ctx = NULL;
-    const char* secret = "Secret";
+    /* FIPS min key length is 14 */
+    const char* secret = "0123456789abcf";
     const char* label = "Label";
     const char* seed = "A seed";
     size_t len = keyLen;
