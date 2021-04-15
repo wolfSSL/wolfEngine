@@ -67,9 +67,10 @@ static ENGINE *engine_wolfengine(void)
  */
 void ENGINE_load_wolfengine(void)
 {
+    ENGINE *toadd = engine_wolfengine();
+
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "ENGINE_load_wolfengine");
 
-    ENGINE *toadd = engine_wolfengine();
     if (!toadd)
         return;
     ENGINE_add(toadd);

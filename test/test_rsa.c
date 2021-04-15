@@ -294,12 +294,16 @@ static int test_rsa_direct(ENGINE *e, RsaTestType testType)
         unsigned char *inBuf;
         int inBufLen;
     } TestVector;
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
+#define numTestVectors 3
+#else
     const int numTestVectors = 3;
+#endif
     TestVector testVectors[numTestVectors];
     int i = 0;
     int rsaSize = 0;
 
-    PRINT_MSG("Load RSA key");    
+    PRINT_MSG("Load RSA key");
     err = load_static_rsa_key(e, &weRsaKey, &osslRsaKey) != 1;
     if (err == 0) {
         rsaSize = RSA_size(weRsaKey);
@@ -327,15 +331,20 @@ static int test_rsa_direct(ENGINE *e, RsaTestType testType)
     }
 
     if (err == 0) {
-        testVectors[0] = (TestVector){RSA_PKCS1_PADDING, "RSA_PKCS1_PADDING",
-                                      buf, sizeof(buf)};
-        testVectors[1] = (TestVector){RSA_PKCS1_OAEP_PADDING,
-                                      "RSA_PKCS1_OAEP_PADDING", buf,
-                                      sizeof(buf)};
+        testVectors[0].padding = RSA_PKCS1_PADDING;
+        testVectors[0].padName = "RSA_PKCS1_PADDING";
+        testVectors[0].inBuf = buf;
+        testVectors[0].inBufLen = sizeof(buf);
+        testVectors[1].padding = RSA_PKCS1_OAEP_PADDING;
+        testVectors[1].padName = "RSA_PKCS1_OAEP_PADDING";
+        testVectors[1].inBuf = buf;
+        testVectors[1].inBufLen = sizeof(buf);
         /* OpenSSL requires the to/from buffers to be the same size when doing
            RSA encrypt/decrypt with no padding. */
-        testVectors[2] = (TestVector){RSA_NO_PADDING, "RSA_NO_PADDING",
-                                      noPaddingBuf, rsaSize};
+        testVectors[2].padding = RSA_NO_PADDING;
+        testVectors[2].padName = "RSA_NO_PADDING";
+        testVectors[2].inBuf = noPaddingBuf;
+        testVectors[2].inBufLen = rsaSize;
     }
 
     for (; err == 0 && i < numTestVectors; ++i) {

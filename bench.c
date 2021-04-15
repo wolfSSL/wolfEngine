@@ -23,6 +23,9 @@
 #include <sys/time.h>
 #include <string.h>
 
+#include <user_settings.h>
+#include <wolfssl/wolfcrypt/wc_port.h>
+
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_openssl_bc.h>
 
@@ -1056,7 +1059,9 @@ int main(int argc, char *argv[])
         printf("\n");
 
         /* Set directory where wolfsslengine library is stored */
+#if !defined(_MSC_VER) && !defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(_WIN32_WCE)
         setenv("OPENSSL_ENGINES", dir, 1);
+#endif
 
         if (staticBench == 1) {
                 printf("Running benchmarks using static engine.\n");

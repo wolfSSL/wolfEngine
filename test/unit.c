@@ -420,7 +420,9 @@ int main(int argc, char* argv[])
         printf("\n");
 
         /* Set directory where wolfsslengine library is stored */
+#if !defined(_MSC_VER) && !defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(_WIN32_WCE)
         setenv("OPENSSL_ENGINES", dir, 1);
+#endif
 
         if (staticTest == 1) {
             printf("Running tests using static engine.\n");
