@@ -27,6 +27,12 @@
 
 #include <string.h>
 
+#ifdef WOLFENGINE_USER_SETTINGS
+#include <user_settings.h>
+#endif
+#include <wolfssl/options.h>
+#include <wolfssl/wolfcrypt/wc_port.h>
+
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
