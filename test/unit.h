@@ -36,6 +36,11 @@
 #include <openssl/kdf.h>
 #endif
 
+#include <wolfssl/options.h>
+#ifdef WOLFENGINE_USER_SETTINGS
+    #include "user_settings.h"
+#endif
+
 #include <wolfengine/we_logging.h>
 #include <wolfengine/we_openssl_bc.h>
 
@@ -209,6 +214,7 @@ int test_rsa_enc_dec_pkcs1(ENGINE *e, void *data);
 int test_rsa_enc_dec_no_pad(ENGINE *e, void *data);
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data);
 int test_rsa_pkey_keygen(ENGINE *e, void *data);
+int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 
 #endif /* WE_HAVE_RSA */

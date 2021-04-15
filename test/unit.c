@@ -169,6 +169,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_enc_dec_no_pad, NULL),
     TEST_DECL(test_rsa_enc_dec_oaep, NULL),
     TEST_DECL(test_rsa_pkey_keygen, NULL),
+    TEST_DECL(test_rsa_pkey_invalid_key_size, NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_EC_P192
     #ifdef WE_HAVE_ECKEYGEN
