@@ -163,7 +163,7 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
     we_Tls1_Prf *tls1Prf;
     int ret = 1;
-    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_tls1_prf_ctrl");
 

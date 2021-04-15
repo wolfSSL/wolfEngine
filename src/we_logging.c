@@ -29,6 +29,9 @@
     #include <stdio.h>  /* for default printf/fprintf */
 #endif
 
+/* Used for variable arguments in WOLFENGINE_MSG and WOLFENGINE_MSG_VERBOSE */
+#include <stdarg.h>
+
 /* Application callback function, set with wolfEngine_SetLoggingCb() */
 static wolfEngine_Logging_cb log_function = NULL;
 
@@ -173,12 +176,43 @@ static void wolfengine_log(const int logLevel, const int component,
  * Log function for general messages.
  *
  * @param component [IN] Component type, from wolfEngine_LogComponents enum.
- * @param msg  [IN] Log message.
+ * @param fmt   [IN] Log message format string.
+ * @param vargs [IN] Variable arguments, used with format string, fmt.
  */
-void WOLFENGINE_MSG(int component, const char* msg)
+void WOLFENGINE_MSG(int component, const char* fmt, ...)
 {
+    va_list vlist;
+    char msgStr[WOLFENGINE_MAX_LOG_WIDTH];
+
     if (loggingEnabled) {
-        wolfengine_log(WE_LOG_INFO, component, msg);
+        /* format message */
+        va_start(vlist, fmt);
+        XVSNPRINTF(msgStr, sizeof(msgStr), fmt, vlist);
+        va_end(vlist);
+
+        wolfengine_log(WE_LOG_INFO, component, msgStr);
+    }
+}
+
+/**
+ * Log function for general messages, prints to WE_LOG_VERBOSE level.
+ *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
+ * @param fmt   [IN] Log message format string.
+ * @param vargs [IN] Variable arguments, used with format string, fmt.
+ */
+void WOLFENGINE_MSG_VERBOSE(int component, const char* fmt, ...)
+{
+    va_list vlist;
+    char msgStr[WOLFENGINE_MAX_LOG_WIDTH];
+
+    if (loggingEnabled) {
+        /* format message */
+        va_start(vlist, fmt);
+        XVSNPRINTF(msgStr, sizeof(msgStr), fmt, vlist);
+        va_end(vlist);
+
+        wolfengine_log(WE_LOG_VERBOSE, component, msgStr);
     }
 }
 
@@ -191,7 +225,7 @@ void WOLFENGINE_MSG(int component, const char* msg)
 void WOLFENGINE_ENTER(int component, const char* msg)
 {
     if (loggingEnabled) {
-        char buffer[WOLFENGINE_MAX_ERROR_SZ];
+        char buffer[WOLFENGINE_MAX_LOG_WIDTH];
         XSNPRINTF(buffer, sizeof(buffer), "wolfEngine Entering %s", msg);
         wolfengine_log(WE_LOG_ENTER, component, buffer);
     }
@@ -207,7 +241,7 @@ void WOLFENGINE_ENTER(int component, const char* msg)
 void WOLFENGINE_LEAVE(int component, const char* msg, int ret)
 {
     if (loggingEnabled) {
-        char buffer[WOLFENGINE_MAX_ERROR_SZ];
+        char buffer[WOLFENGINE_MAX_LOG_WIDTH];
         XSNPRINTF(buffer, sizeof(buffer), "wolfEngine Leaving %s, return %d",
                   msg, ret);
         wolfengine_log(WE_LOG_LEAVE, component, buffer);
@@ -225,7 +259,7 @@ void WOLFENGINE_LEAVE(int component, const char* msg, int ret)
 void WOLFENGINE_ERROR_LINE(int component, int error, const char* file, int line)
 {
     if (loggingEnabled) {
-        char buffer[WOLFENGINE_MAX_ERROR_SZ];
+        char buffer[WOLFENGINE_MAX_LOG_WIDTH];
         XSNPRINTF(buffer, sizeof(buffer),
                   "%s:%d - wolfEngine error occurred, error = %d", file, line,
                   error);
@@ -245,7 +279,7 @@ void WOLFENGINE_ERROR_MSG_LINE(int component, const char* msg,
                                const char* file, int line)
 {
     if (loggingEnabled) {
-        char buffer[WOLFENGINE_MAX_ERROR_SZ];
+        char buffer[WOLFENGINE_MAX_LOG_WIDTH];
         XSNPRINTF(buffer, sizeof(buffer), "%s:%d - wolfEngine Error %s",
                   file, line, msg);
         wolfengine_log(WE_LOG_ERROR, component, buffer);
@@ -266,7 +300,7 @@ void WOLFENGINE_ERROR_FUNC_LINE(int component, const char* funcName, int ret,
                                 const char* file, int line)
 {
     if (loggingEnabled) {
-        char buffer[WOLFENGINE_MAX_ERROR_SZ];
+        char buffer[WOLFENGINE_MAX_LOG_WIDTH];
         XSNPRINTF(buffer, sizeof(buffer),
                   "%s:%d - Error calling %s: ret = %d", file, line, funcName,
                   ret);
@@ -289,7 +323,7 @@ void WOLFENGINE_ERROR_FUNC_NULL_LINE(int component, const char* funcName,
                                      int line)
 {
     if (loggingEnabled) {
-        char buffer[WOLFENGINE_MAX_ERROR_SZ];
+        char buffer[WOLFENGINE_MAX_LOG_WIDTH];
         XSNPRINTF(buffer, sizeof(buffer),
                   "%s:%d - Error calling %s: ret = %p", file, line, funcName,
                   ret);

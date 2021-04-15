@@ -1049,7 +1049,7 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
                            void (*f) (void))
 {
     int ret = 1;
-    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     (void)e;
     (void)p;
