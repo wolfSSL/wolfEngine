@@ -58,6 +58,8 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     we_Des3Cbc *des3;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, "
+                           "iv = %p, enc = %d]", ctx, key, iv, enc);
 
     if ((iv == NULL) && (key == NULL)) {
         WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "iv == NULL && key == NULL");
@@ -74,6 +76,8 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if ((ret == 1) && (!des3->init)) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Initializing wolfCrypt Des3 "
+                       "structure: %p", &des3->des3);
         rc = wc_Des3Init(&des3->des3, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3Init", rc);
@@ -86,6 +90,7 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         des3->enc = enc;
 
         if (key != NULL) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting 3DES key");
             rc = wc_Des3_SetKey(&des3->des3, key, iv,
                                 enc ? DES_ENCRYPTION : DES_DECRYPTION);
             if (rc != 0) {
@@ -94,6 +99,7 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             }
         }
         else {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting 3DES IV");
             rc = wc_Des3_SetIV(&des3->des3, iv);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetIV", rc);
@@ -141,6 +147,10 @@ static int we_des3_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                   "wc_Des3_CbcEncrypt", rc);
             ret = 0;
+        } else {
+            WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %zu bytes "
+                                   "(3DES-CBC):", len);
+            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
         }
     }
 
@@ -183,6 +193,10 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                   "wc_Des3_CbcEncrypt 1", rc);
             ret = 0;
+        } else {
+            WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
+                                   "(3DES-CBC):", len);
+            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
         }
     }
 
@@ -209,6 +223,8 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     we_Des3Cbc* des3;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_cipher");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, out = %p, in = %p, "
+                           "len = %zu]", ctx, out, in, len);
 
     /* Get the DES3-CBC object to work with. */
     des3 = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
@@ -249,6 +265,8 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_ctrl");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, type = %d, "
+                           "arg = %p, ptr = %p]", ctx, type, arg, ptr);
 
     (void)arg;
     (void)ptr;
