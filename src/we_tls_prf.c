@@ -115,9 +115,7 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
 
     /* Get internal TLS1 PRF object from PKEY context. */
     tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
-    if (tls1Prf == NULL) {
-        ret = 0;
-    }
+    /* Cannot get here without initialization succeeding. */
 
     if ((ret == 1) && (tls1Prf->mdType == NID_md5_sha1)) {
          /* Calculate key.
@@ -171,70 +169,66 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 
     /* Get internal TLS1 PRF object from PKEY context. */
     tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
-    if (tls1Prf == NULL) {
-        ret = 0;
-    }
+    /* Cannot get here without initialization succeeding. */
 
-    if (ret == 1) {
-        switch (type) {
-            case EVP_PKEY_CTRL_TLS_MD:
-                /* ptr: EVP md object. */
-                tls1Prf->mdType = EVP_MD_type(ptr);
-                break;
+    switch (type) {
+        case EVP_PKEY_CTRL_TLS_MD:
+            /* ptr: EVP md object. */
+            tls1Prf->mdType = EVP_MD_type(ptr);
+            break;
 
-            case EVP_PKEY_CTRL_TLS_SECRET:
-                /* num: Number of bytes in buffer.
-                 * ptr: Buffer holding secret data. */
-                /* Number of bytes must be positive. */
-                if (num < 0) {
+        case EVP_PKEY_CTRL_TLS_SECRET:
+            /* num: Number of bytes in buffer.
+             * ptr: Buffer holding secret data. */
+            /* Number of bytes must be positive. */
+            if (num < 0) {
+                ret = 0;
+            }
+            if ((ret == 1) && (tls1Prf->secret != NULL)) {
+                /* Setting secret - dispose of old secret. */
+                OPENSSL_clear_free(tls1Prf->secret, tls1Prf->secretSz);
+            }
+            if (ret == 1) {
+                /* Clear label/seed as this is a new operation. */
+                OPENSSL_cleanse(tls1Prf->seed, tls1Prf->seedSz);
+                tls1Prf->seedSz = 0;
+                /* Copy the secret. */
+                tls1Prf->secret = OPENSSL_memdup(ptr, num);
+                if (tls1Prf->secret == NULL) {
                     ret = 0;
                 }
-                if ((ret == 1) && (tls1Prf->secret != NULL)) {
-                    /* Setting secret - dispose of old secret. */
-                    OPENSSL_clear_free(tls1Prf->secret, tls1Prf->secretSz);
+                else {
+                    /* Store size of secret. */
+                    tls1Prf->secretSz  = num;
+                }
+            }
+            break;
+
+        case EVP_PKEY_CTRL_TLS_SEED:
+            /* num: Number of bytes in buffer.
+             * ptr: Buffer holding label/seed data. */
+            /* Valid to pass in empty buffer - ignored. */
+            if ((num != 0) && (ptr != NULL)) {
+                /* Ensure valid number - not negative and can fit. */
+                if ((num < 0) ||
+                        (num > (int)(WE_MAX_SEED_SIZE - tls1Prf->seedSz))) {
+                    ret = 0;
                 }
                 if (ret == 1) {
-                    /* Clear label/seed as this is a new operation. */
-                    OPENSSL_cleanse(tls1Prf->seed, tls1Prf->seedSz);
-                    tls1Prf->seedSz = 0;
-                    /* Copy the secret. */
-                    tls1Prf->secret = OPENSSL_memdup(ptr, num);
-                    if (tls1Prf->secret == NULL) {
-                        ret = 0;
-                    }
-                    else {
-                        /* Store size of secret. */
-                        tls1Prf->secretSz  = num;
-                    }
+                    /* Append bytes. */
+                    XMEMCPY(tls1Prf->seed + tls1Prf->seedSz, ptr, num);
+                    tls1Prf->seedSz += num;
                 }
-                break;
+            }
+            break;
 
-            case EVP_PKEY_CTRL_TLS_SEED:
-                /* num: Number of bytes in buffer.
-                 * ptr: Buffer holding label/seed data. */
-                /* Valid to pass in empty buffer - ignored. */
-                if ((num != 0) && (ptr != NULL)) {
-                    /* Ensure valid number - not negative and can fit. */
-                    if ((num < 0) ||
-                            (num > (int)(WE_MAX_SEED_SIZE - tls1Prf->seedSz))) {
-                        ret = 0;
-                    }
-                    if (ret == 1) {
-                        /* Append bytes. */
-                        XMEMCPY(tls1Prf->seed + tls1Prf->seedSz, ptr, num);
-                        tls1Prf->seedSz += num;
-                    }
-                }
-                break;
-
-            default:
-                /* Unsupported type. */
-                XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
-                          type);
-                WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-                ret = 0;
-                break;
-        }
+        default:
+            /* Unsupported type. */
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
+                      type);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+            ret = 0;
+            break;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_tls1_prf_ctrl", ret);
@@ -269,12 +263,8 @@ static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     }
     else if (XSTRNCMP(type, "md", 3) == 0) {
         we_Tls1_Prf *tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
-        if (tls1Prf == NULL) {
-            ret = 0;
-        }
-        if (ret == 1) {
-            tls1Prf->mdType = EVP_MD_type(EVP_get_digestbyname(value));
-        }
+        /* Cannot get here without initialization succeeding. */
+        tls1Prf->mdType = EVP_MD_type(EVP_get_digestbyname(value));
     }
     else if (XSTRNCMP(type, "secret", 7) == 0) {
         ret = EVP_PKEY_CTX_str2ctrl(ctx, EVP_PKEY_CTRL_TLS_SECRET, value);
