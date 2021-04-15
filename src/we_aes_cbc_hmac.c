@@ -65,8 +65,11 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     we_AesCbcHmac *aes;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, iv = %p, "
+                           "enc = %d]", ctx, key, iv, enc);
 
     if ((iv == NULL) && (key == NULL)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "iv = NULL && key == NULL");
         ret = 0;
     }
 
@@ -81,6 +84,8 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 
     /* Initialize the wolfSSL AES object. */
     if ((ret == 1) && (!aes->init)) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER,
+                       "Initializing wolfCrypt Aes structure: %p", &aes->aes);
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
@@ -89,6 +94,8 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
     /* Initialize the wolfSSL HMAC. */
     if ((ret == 1) && (!aes->init)) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER,
+                       "Initializing wolfCrypt Hmac structure: %p", &aes->hmac);
         rc = wc_HmacInit(&aes->hmac, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacInit", rc);
@@ -106,6 +113,8 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 
         if (key != NULL) {
             /* Set the key into wolfSSL AES object. */
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
+                           EVP_CIPHER_CTX_key_length(ctx));
             rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
                               iv, enc ? AES_ENCRYPTION : AES_DECRYPTION);
             if (rc != 0) {
@@ -115,6 +124,7 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         }
         else {
             /* Set the IV into wolfSSL AES object. */
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV");
             rc = wc_AesSetIV(&aes->aes, iv);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
@@ -148,14 +158,19 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
     int pLen;
     int tls;
 
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_enc");
+
     /* Get payload length to get TLS. */
     pLen = aes->pLen;
     tls = (pLen != 0);
     if (!tls) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Not being called from TLS");
         pLen = (int)len;
     }
     else if (aes->tls11) {
         /* When TLS v1.1 and v1.2 the IV is at the front. */
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV, aes->tls11 = %d",
+                       aes->tls11);
         off = AES_BLOCK_SIZE;
         rc = wc_AesSetIV(&aes->aes, in);
         if (rc != 0) {
@@ -166,6 +181,8 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
     if (ret != -1) {
         /* Record layer MACed in ctrl function. */
         /* MAC the handshake message/data. */
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "MAC handshake message/data: len = %d",
+                       pLen - off);
         rc = wc_HmacUpdate(&aes->hmac, in + off, pLen - off);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
@@ -177,6 +194,8 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         XMEMCPY(out, in, pLen);
 
         /* Put the MAC after data. */
+        WOLFENGINE_MSG(WE_LOG_CIPHER,
+                       "Doing HMAC Final, putting MAC after data");
         rc = wc_HmacFinal(&aes->hmac, out + pLen);
         if (rc != 0) {
              WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacFinal", rc);
@@ -186,6 +205,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
     if ((ret != -1) && tls) {
         in = out;
         /* Put padding after MAC. */
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Adding padding after MAC");
         pLen += SHA256_DIGEST_LENGTH;
         pb = len - pLen - 1;
         for (; pLen < (int)len; pLen++) {
@@ -194,6 +214,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
     }
     if (ret != -1) {
         /* Encrypt the msg and MAC but not IV. */
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Encrypting message and MAC");
         rc = wc_AesCbcEncrypt(&aes->aes, out + off, in + off, (int)len - off);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
@@ -201,8 +222,11 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         }
         else {
             ret = (int)len;
+            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out + off, (int)(len - off));
         }
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_hmac_enc", ret);
 
     return ret;
 }
@@ -229,11 +253,15 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
     unsigned char mac[SHA256_DIGEST_LENGTH];
     int i;
 
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_dec");
+
     /* Get payload length. */
     pLen = aes->pLen;
     tls = (pLen != 0);
     if (aes->tls11) {
         /* TLS v1.1 and v1.2 have IV before message. */
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV, aes->tls11 = %d",
+                       aes->tls11);
         off = AES_BLOCK_SIZE;
         rc = wc_AesSetIV(&aes->aes, in);
         if (rc != 0) {
@@ -251,6 +279,10 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         else {
             /* Calculate decrypted data length. */
             ret = (int)len - off;
+
+            WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %d bytes "
+                                   "(AES-CBC-HMAC)", (int)len - off);
+            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out + off, (int)len - off);
         }
     }
     if ((ret != -1) && tls) {
@@ -274,6 +306,8 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         aes->tlsAAD[aes->pLen - 1] = ret;
 
         /* MAC the record header. */
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Generate MAC over record header: "
+                       "len = %d", aes->pLen);
         rc = wc_HmacUpdate(&aes->hmac, aes->tlsAAD, aes->pLen);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
@@ -283,6 +317,8 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
     /* TODO: not constant time. */
     if (ret != -1) {
         /* MAC the message/input. */
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Generate MAC over message/input, "
+                       "len = %d", ret);
         rc = wc_HmacUpdate(&aes->hmac, out + off, ret);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
@@ -298,15 +334,21 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         }
     }
     if (ret != -1) {
+        WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Generated MAC:");
+        WOLFENGINE_BUFFER(WE_LOG_CIPHER, mac, SHA256_DIGEST_LENGTH);
+
         /* Check MAC. */
         pb = 0;
         for (i = 0; i < SHA256_DIGEST_LENGTH; i++) {
             pb |= mac[i] ^ out[off + ret + i];
         }
         if (pb != 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "MAC check failed");
             ret = -1;
         }
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_hmac_dec", ret);
 
     return ret;
 }
@@ -331,6 +373,8 @@ static int we_aes_cbc_hmac_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_cipher");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, out = %p, in = %p, "
+                           "len = %zu]", ctx, out, in, len);
 
     /* Get the AES-CBC object to work with. */
     aes = (we_AesCbcHmac *)EVP_CIPHER_CTX_get_cipher_data(ctx);
@@ -354,8 +398,6 @@ static int we_aes_cbc_hmac_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 /**
  * Extra operations for AES-CBC HMAC.
  *
- * No supported operations yet.
- *
  * @param  ctx   [in]  EVP cipher context of operation.
  * @param  type  [in]  Type of operation to perform.
  * @param  arg   [in]  Integer argument.
@@ -374,6 +416,8 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_ctrl");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, type = %d, "
+                           "arg = %d, ptr = %p]", ctx, type, arg, ptr);
 
     (void)arg;
     (void)ptr;
@@ -388,6 +432,7 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     if (ret == 1) {
         switch (type) {
             case EVP_CTRL_AEAD_SET_MAC_KEY:
+                WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_SET_MAC_KEY");
                 /* Set the HMAC key. */
                 rc = wc_HmacSetKey(&aes->hmac, WC_SHA256, ptr, arg);
                 if (rc != 0) {
@@ -396,8 +441,11 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                 }
                 break;
             case EVP_CTRL_AEAD_TLS1_AAD:
+                WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_TLS1_AAD");
                 tls = (unsigned char *)ptr;
                 if (arg != EVP_AEAD_TLS1_AAD_LEN) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                         "AAD len != EVP_AEAD_TLS1_AAD_LEN");
                     ret = -1;
                 }
                 if (ret == 1) {
@@ -405,6 +453,8 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                     tlsVer = (tls[arg - 4] << 8) | tls[arg - 3];
                     /* Record whether it is TLS v1.1 or above. */
                     aes->tls11 = (tlsVer >= TLS1_1_VERSION);
+                    WOLFENGINE_MSG(WE_LOG_CIPHER, "tlsVer = %d, aes->enc = %d",
+                                   tlsVer, aes->enc);
 
                     if (aes->enc) {
                         /* Get length from record layer. */
@@ -422,9 +472,11 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                                 tls[arg - 2] = len >> 8;
                                 tls[arg - 1] = len;
                             }
-                       }
-                       if (ret == 1) {
+                        }
+                        if (ret == 1) {
                             /* MAC the record header. */
+                            WOLFENGINE_MSG(WE_LOG_CIPHER,
+                                           "Updating MAC with record header");
                             rc = wc_HmacUpdate(&aes->hmac, tls, arg);
                             if (rc != 0) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
@@ -440,6 +492,8 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                     }
                     else {
                         /* Store record header for later. */
+                        WOLFENGINE_MSG(WE_LOG_CIPHER, "Storing record header "
+                                       "for later");
                         aes->pLen = arg;
                         XMEMCPY(aes->tlsAAD, ptr, arg);
                         /* MAC size. */
