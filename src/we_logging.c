@@ -182,17 +182,12 @@ static void wolfengine_log(const int logLevel, const int component,
  * @param vargs [IN] Variable arguments, used with format string, fmt.
  */
 static void wolfengine_msg_internal(int component, int logLevel,
-                                    const char* fmt, ...)
+                                    const char* fmt, va_list vlist)
 {
-    va_list vlist;
     char msgStr[WOLFENGINE_MAX_LOG_WIDTH];
 
     if (loggingEnabled) {
-        /* format message */
-        va_start(vlist, fmt);
         XVSNPRINTF(msgStr, sizeof(msgStr), fmt, vlist);
-        va_end(vlist);
-
         wolfengine_log(logLevel, component, msgStr);
     }
 }
