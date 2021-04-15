@@ -617,6 +617,49 @@ static int ecdsa_p384_bench(ENGINE *e)
 #endif
 #endif
 
+#ifdef WE_HAVE_RSA
+static int rsa_keygen_bench(ENGINE *e, int bits)
+{
+    int err;
+    EVP_PKEY_CTX *ctx;
+    EVP_PKEY *key;
+    unsigned int cnt = 0;
+    double secs;
+    BENCH_DECLS;
+
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, e)) == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, bits) <= 0;
+    }
+    if (err == 0) {
+        BENCH_START();
+        do {
+            key = NULL;
+            err |= EVP_PKEY_keygen(ctx, &key) != 1;
+            EVP_PKEY_free(key);
+            cnt++;
+        }
+        while (BENCH_COND(1));
+
+        secs = BENCH_SECS();
+        printf("rsa keygen %4u bits %10.2f ops/sec %12.3f us/op\n", bits,
+               cnt / secs, secs / cnt * 1000000);
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
+static int rsa_4096_keygen_bench(ENGINE *e)
+{
+    return rsa_keygen_bench(e, 4096);
+}
+#endif
+
 #endif /* WE_HAVE_EVP_PKEY */
 
 #ifdef WE_HAVE_EC_KEY
@@ -922,6 +965,9 @@ BENCH_ALG bench_alg[] = {
         BENCH_DECL("ECDSA-P384", ecdsa_p384_bench),
     #endif
 #endif
+    #ifdef WE_HAVE_RSA
+        BENCH_DECL("RSA4096-keygen", rsa_4096_keygen_bench),
+    #endif
 #endif
 #ifdef WE_HAVE_EC_KEY
 #ifdef WE_HAVE_EC_P256
