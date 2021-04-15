@@ -61,6 +61,30 @@ typedef struct we_Rsa
 } we_Rsa;
 
 /**
+ * Check that the key size is allowed. For FIPS, 1024-bit keys can only be used
+ * to verify; they can't be generated or used to sign.
+ *
+ * @param  size      [in]  Key size in bits.
+ * @param  isVerify  [in]  1 if the context is a verify operation, 0 otherwise.
+ * @returns  1 if the key size is allowed, 0 if it isn't.
+ */
+static int we_check_rsa_key_size(int size, int isVerify) {
+    int ret = 0;
+
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    ret = size == 2048 || size == 3072 || size == 4096;
+    if (isVerify == 1) {
+        ret |= size == 1024;
+    }
+#else
+    (void)isVerify;
+    ret = size >= RSA_MIN_SIZE && size <= RSA_MAX_SIZE;
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return ret;
+}
+
+/**
  * Convert an OpenSSL hash NID to a wolfSSL MGF1 algorithm.
  *
  * @param  nid  [in]  OpenSSL hash NID to convert.
@@ -904,6 +928,11 @@ static int we_rsa_keygen_int(we_Rsa *rsa, RSA **osslKey, int bits, long e)
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_rsa_keygen_int: osslKey NULL");
         ret = 0;
     }
+    if (we_check_rsa_key_size(bits, 0) != 1) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in "
+            "range.");
+        ret = 0;
+    }
 
     if (ret == 1) {
         /* Generate and RSA key with wolfSSL. */
@@ -1319,10 +1348,10 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
 #endif
             case EVP_PKEY_CTRL_RSA_KEYGEN_BITS:
-                /* num  [in]  Size of the prme to generate in bits. */
-                if ((num < RSA_MIN_SIZE) || (num > RSA_MAX_SIZE)) {
-                    WOLFENGINE_ERROR_MSG(WE_LOG_PK,
-                                         "RSA key size not in range.");
+                /* num  [in]  Size of the prime to generate in bits. */
+                if (we_check_rsa_key_size(num, 0) != 1) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in "
+                        "range.");
                     ret = 0;
                 }
                 else {
@@ -1446,6 +1475,7 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     int ret = 1;
     we_Rsa *rsa = NULL;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+    int bits = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_ctrl_str");
 
@@ -1484,8 +1514,16 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         }
     }
     else if ((ret == 1) && (XSTRNCMP(type, "rsa_keygen_bits", 16) == 0)) {
+        ret = 2;
         /* Size, in bits, of RSA key to generate. */
-        rsa->bits = XATOI(value);
+        bits = XATOI(value);
+        if (we_check_rsa_key_size(bits, 0) != 1) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in range.");
+            ret = 0;
+        }
+        else {
+            rsa->bits = bits;
+        }
     }
     else if ((ret == 1) && (XSTRNCMP(type, "rsa_mgf1_md", 12) == 0)) {
         /* Digest to use with MGF in RSA-PSS. */
@@ -1588,6 +1626,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     int encodedDigestLen = 0;
     int len;
     int actualSigLen = 0;
+    int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_sign");
 
@@ -1617,7 +1656,14 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
             }
         }
         if (ret == 1) {
-            /* Always set the private key into the internal RSA key. */
+            keySize = RSA_size(rsaKey) * 8;
+            if (we_check_rsa_key_size(keySize, 0) != 1) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in range.");
+                ret = 0;
+            }
+        }
+        if (ret == 1) {
+            /* Set the private key into the internal RSA key. */
             ret = we_set_private_key(rsaKey, rsa);
             if (ret == 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_private_key", ret);
@@ -1701,6 +1747,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     unsigned char *decryptedSig = NULL;
     unsigned char *encodedDigest = NULL;
     int encodedDigestLen = 0;
+    int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify");
 
@@ -1730,7 +1777,14 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
             }
         }
         if (ret == 1) {
-            /* Always set the private key into the internal RSA key. */
+            keySize = RSA_size(rsaKey) * 8;
+            if (we_check_rsa_key_size(keySize, 1) != 1) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in range.");
+                ret = 0;
+            }
+        }
+        if (ret == 1) {
+            /* Set the public key into the internal RSA key. */
             ret = we_set_public_key(rsaKey, rsa);
             if (ret == 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", ret);
