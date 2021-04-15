@@ -38,6 +38,7 @@ static int we_sha_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     rc = wc_InitSha((wc_Sha*)EVP_MD_CTX_md_data(ctx));
     if (rc != 0) {
@@ -63,6 +64,8 @@ static int we_sha_update(EVP_MD_CTX *ctx, const void *data, size_t len)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_update");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, data = %p, "
+                           "len = %zu]", ctx, data, len);
 
     rc = wc_ShaUpdate((wc_Sha*)EVP_MD_CTX_md_data(ctx),
                          (const byte*)data, (word32)len);
@@ -88,6 +91,8 @@ static int we_sha_final(EVP_MD_CTX *ctx, unsigned char *md)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_final");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, md = %p]",
+                           ctx, md);
 
     rc = wc_ShaFinal((wc_Sha*)EVP_MD_CTX_md_data(ctx), (byte*)md);
     if (rc != 0) {
@@ -113,6 +118,7 @@ static int we_sha_final(EVP_MD_CTX *ctx, unsigned char *md)
 static int we_sha_cleanup(EVP_MD_CTX *ctx)
 {
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_cleanup");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     wc_ShaFree((wc_Sha*)EVP_MD_CTX_md_data(ctx));
 
@@ -182,6 +188,7 @@ static int we_sha224_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     rc = wc_InitSha224((wc_Sha224*)EVP_MD_CTX_md_data(ctx));
     if (rc != 0) {
@@ -207,6 +214,8 @@ static int we_sha224_update(EVP_MD_CTX *ctx, const void *data, size_t len)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_update");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, data = %p, "
+                           "len = %zu]", ctx, data, len);
 
     rc = wc_Sha224Update((wc_Sha224*)EVP_MD_CTX_md_data(ctx),
                          (const byte*)data, (word32)len);
@@ -232,6 +241,8 @@ static int we_sha224_final(EVP_MD_CTX *ctx, unsigned char *md)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_final");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, md = %p]",
+                           ctx, md);
 
     rc = wc_Sha224Final((wc_Sha224*)EVP_MD_CTX_md_data(ctx), (byte*)md);
     if (rc != 0) {
@@ -257,6 +268,7 @@ static int we_sha224_final(EVP_MD_CTX *ctx, unsigned char *md)
 static int we_sha224_cleanup(EVP_MD_CTX *ctx)
 {
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_cleanup");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     wc_Sha224Free((wc_Sha224*)EVP_MD_CTX_md_data(ctx));
 
@@ -326,6 +338,7 @@ static int we_sha256_init(EVP_MD_CTX *ctx)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     rc = wc_InitSha256((wc_Sha256*)EVP_MD_CTX_md_data(ctx));
     if (rc != 0) {
@@ -351,6 +364,8 @@ static int we_sha256_update(EVP_MD_CTX *ctx, const void *data, size_t len)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_update");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, data = %p, "
+                           "len = %zu]", ctx, data, len);
 
     rc = wc_Sha256Update((wc_Sha256*)EVP_MD_CTX_md_data(ctx),
                          (const byte*)data, (word32)len);
@@ -376,6 +391,7 @@ static int we_sha256_final(EVP_MD_CTX *ctx, unsigned char *md)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_final");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, md = %p]", ctx, md);
 
     rc = wc_Sha256Final((wc_Sha256*)EVP_MD_CTX_md_data(ctx), (byte*)md);
     if (rc != 0) {
@@ -401,6 +417,7 @@ static int we_sha256_final(EVP_MD_CTX *ctx, unsigned char *md)
 static int we_sha256_cleanup(EVP_MD_CTX *ctx)
 {
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_cleanup");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     wc_Sha256Free((wc_Sha256*)EVP_MD_CTX_md_data(ctx));
 
@@ -479,10 +496,13 @@ static int we_sha_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -508,10 +528,13 @@ static int we_sha224_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA224;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -537,10 +560,13 @@ static int we_sha256_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA256;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -566,10 +592,13 @@ static int we_sha384_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha384_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA384;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -595,10 +624,13 @@ static int we_sha512_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha512_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA512;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -624,10 +656,13 @@ static int we_sha3_224_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha3_224_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_224;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -653,10 +688,13 @@ static int we_sha3_256_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha3_256_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_256;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -682,10 +720,13 @@ static int we_sha3_384_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha3_384_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_384;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -711,10 +752,13 @@ static int we_sha3_512_init(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha3_512_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
     digest->hashType = WC_HASH_TYPE_SHA3_512;
 
+    WOLFENGINE_MSG(WE_LOG_DIGEST, "Initializing wolfCrypt wc_HashAlg "
+                   "structure: %p", &digest->hash);
     rc = wc_HashInit(&digest->hash, digest->hashType);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashInit", rc);
@@ -741,6 +785,8 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_update");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, data = %p, "
+                           "len = %zu]", ctx, data, len);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
@@ -769,6 +815,8 @@ static int we_digest_final(EVP_MD_CTX *ctx, unsigned char *md)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_final");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, md = %p]",
+                           ctx, md);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
@@ -801,6 +849,7 @@ static int we_digest_cleanup(EVP_MD_CTX *ctx)
     we_Digest *digest;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_cleanup");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p]", ctx);
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
@@ -833,6 +882,7 @@ static int we_init_digest_meth(EVP_MD *method)
     int ret;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_digest_meth");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [method = %p]", method);
 
     ret = EVP_MD_meth_set_update(method, we_digest_update);
     if (ret == 1) {
