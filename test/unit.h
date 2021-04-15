@@ -42,11 +42,6 @@
 #include <openssl/kdf.h>
 #endif
 
-#include <wolfssl/options.h>
-#ifdef WOLFENGINE_USER_SETTINGS
-    #include "user_settings.h"
-#endif
-
 #include <wolfengine/we_logging.h>
 #include <wolfengine/we_openssl_bc.h>
 
