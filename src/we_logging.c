@@ -173,13 +173,16 @@ static void wolfengine_log(const int logLevel, const int component,
 }
 
 /**
- * Log function for general messages.
+ * Internal log function for printing varg messages to a specific
+ * log level. Used by WOLFENGINE_MSG and WOLFENGINE_MSG_VERBOSE.
  *
  * @param component [IN] Component type, from wolfEngine_LogComponents enum.
+ * @param logLevel [IN] Log level, from wolfEngine_LogType enum.
  * @param fmt   [IN] Log message format string.
  * @param vargs [IN] Variable arguments, used with format string, fmt.
  */
-void WOLFENGINE_MSG(int component, const char* fmt, ...)
+static void wolfengine_msg_internal(int component, int logLevel,
+                                    const char* fmt, ...)
 {
     va_list vlist;
     char msgStr[WOLFENGINE_MAX_LOG_WIDTH];
@@ -190,8 +193,23 @@ void WOLFENGINE_MSG(int component, const char* fmt, ...)
         XVSNPRINTF(msgStr, sizeof(msgStr), fmt, vlist);
         va_end(vlist);
 
-        wolfengine_log(WE_LOG_INFO, component, msgStr);
+        wolfengine_log(logLevel, component, msgStr);
     }
+}
+
+/**
+ * Log function for general messages.
+ *
+ * @param component [IN] Component type, from wolfEngine_LogComponents enum.
+ * @param fmt   [IN] Log message format string.
+ * @param vargs [IN] Variable arguments, used with format string, fmt.
+ */
+void WOLFENGINE_MSG(int component, const char* fmt, ...)
+{
+    va_list vlist;
+    va_start(vlist, fmt);
+    wolfengine_msg_internal(component, WE_LOG_INFO, fmt, vlist);
+    va_end(vlist);
 }
 
 /**
@@ -204,16 +222,9 @@ void WOLFENGINE_MSG(int component, const char* fmt, ...)
 void WOLFENGINE_MSG_VERBOSE(int component, const char* fmt, ...)
 {
     va_list vlist;
-    char msgStr[WOLFENGINE_MAX_LOG_WIDTH];
-
-    if (loggingEnabled) {
-        /* format message */
-        va_start(vlist, fmt);
-        XVSNPRINTF(msgStr, sizeof(msgStr), fmt, vlist);
-        va_end(vlist);
-
-        wolfengine_log(WE_LOG_VERBOSE, component, msgStr);
-    }
+    va_start(vlist, fmt);
+    wolfengine_msg_internal(component, WE_LOG_VERBOSE, fmt, vlist);
+    va_end(vlist);
 }
 
 /**
