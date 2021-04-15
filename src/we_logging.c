@@ -161,7 +161,8 @@ static void wolfengine_log(const int logLevel, const int component,
 
     if (log_function) {
         log_function(logLevel, component, logMessage);
-    } else {
+    }
+    else {
 #if defined(WOLFENGINE_USER_LOG)
         WOLFENGINE_USER_LOG(logMessage);
 #elif defined(WOLFENGINE_LOG_PRINTF)

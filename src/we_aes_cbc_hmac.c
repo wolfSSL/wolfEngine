@@ -69,7 +69,7 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                            "enc = %d]", ctx, key, iv, enc);
 
     if ((iv == NULL) && (key == NULL)) {
-        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "iv = NULL && key == NULL");
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "iv == NULL && key == NULL");
         ret = 0;
     }
 

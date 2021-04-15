@@ -202,6 +202,8 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
     aes->aad = NULL;
     aes->aadLen = 0;
 
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_gcm_tls_cipher", ret);
+
     return ret;
 }
 

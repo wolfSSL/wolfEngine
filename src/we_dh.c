@@ -236,7 +236,8 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhSetKey_ex", rc);
             ret = 0;
-        } else {
+        }
+        else {
             WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "Set DH parameters");
         }
     }
@@ -477,7 +478,8 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhCheckPubKey", rc);
             ret = 0;
-        } else {
+        }
+        else {
             WOLFENGINE_MSG(WE_LOG_KE, "Validated DH public key");
         }
     }
@@ -1088,7 +1090,8 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
                                     ourDh);
         if (ret != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_compute_key_int", ret);
-        } else {
+        }
+        else {
             WOLFENGINE_MSG(WE_LOG_KE, "Generated DH shared secret");
         }
     }

@@ -147,7 +147,8 @@ static int we_des3_cbc_encrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                   "wc_Des3_CbcEncrypt", rc);
             ret = 0;
-        } else {
+        }
+        else {
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %zu bytes "
                                    "(3DES-CBC):", len);
             WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
@@ -193,7 +194,8 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                   "wc_Des3_CbcEncrypt 1", rc);
             ret = 0;
-        } else {
+        }
+        else {
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
                                    "(3DES-CBC):", len);
             WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);

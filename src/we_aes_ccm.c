@@ -459,7 +459,8 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
                                          "Invalid CCM length field");
                     ret = 0;
-                } else {
+                }
+                else {
                     WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting aes->L: %d", arg);
                     aes->L = arg;
                 }

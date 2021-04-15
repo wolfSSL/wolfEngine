@@ -93,7 +93,8 @@ static int we_sha_final(EVP_MD_CTX *ctx, unsigned char *md)
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_ShaFinal", rc);
         ret = 0;
-    } else {
+    }
+    else {
         WOLFENGINE_MSG(WE_LOG_DIGEST, "SHA-1 Digest");
         WOLFENGINE_BUFFER(WE_LOG_DIGEST, md, WC_SHA_DIGEST_SIZE);
     }
@@ -236,7 +237,8 @@ static int we_sha224_final(EVP_MD_CTX *ctx, unsigned char *md)
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha224Final", rc);
         ret = 0;
-    } else {
+    }
+    else {
         WOLFENGINE_MSG(WE_LOG_DIGEST, "SHA-224 Digest");
         WOLFENGINE_BUFFER(WE_LOG_DIGEST, md, WC_SHA224_DIGEST_SIZE);
     }
@@ -379,7 +381,8 @@ static int we_sha256_final(EVP_MD_CTX *ctx, unsigned char *md)
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha256Final", rc);
         ret = 0;
-    } else {
+    }
+    else {
         WOLFENGINE_MSG(WE_LOG_DIGEST, "SHA-256 Digest");
         WOLFENGINE_BUFFER(WE_LOG_DIGEST, md, WC_SHA256_DIGEST_SIZE);
     }
@@ -773,7 +776,8 @@ static int we_digest_final(EVP_MD_CTX *ctx, unsigned char *md)
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashFinal", rc);
         ret = 0;
-    } else {
+    }
+    else {
         WOLFENGINE_MSG(WE_LOG_DIGEST, "Message Digest");
         WOLFENGINE_BUFFER(WE_LOG_DIGEST, md,
                           wc_HashGetDigestSize(digest->hashType));
