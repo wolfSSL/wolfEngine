@@ -26,8 +26,8 @@
     #include "user_settings.h"
 #endif
 
-#ifndef WOLFENGINE_MAX_ERROR_SZ
-#define WOLFENGINE_MAX_ERROR_SZ 80
+#ifndef WOLFENGINE_MAX_LOG_WIDTH
+#define WOLFENGINE_MAX_LOG_WIDTH 120
 #endif
 
 /* wolfEngine debug logging support can be compiled in by defining
@@ -127,7 +127,8 @@ int wolfEngine_SetLogComponents(int componentMask);
 
 void WOLFENGINE_ENTER(int type, const char* msg);
 void WOLFENGINE_LEAVE(int type, const char* msg, int ret);
-void WOLFENGINE_MSG(int type, const char* msg);
+void WOLFENGINE_MSG(int type, const char* fmt, ...);
+void WOLFENGINE_MSG_VERBOSE(int type, const char* fmt, ...);
 void WOLFENGINE_ERROR_LINE(int type, int err, const char* file, int line);
 void WOLFENGINE_ERROR_MSG_LINE(int type, const char* msg, const char* file,
                                int line);
@@ -143,7 +144,8 @@ void WOLFENGINE_BUFFER(int type, const unsigned char* buffer,
 
 #define WOLFENGINE_ENTER(t, m)
 #define WOLFENGINE_LEAVE(t, m, r)
-#define WOLFENGINE_MSG(t, m)
+#define WOLFENGINE_MSG(t, m, ...)
+#define WOLFENGINE_MSG_VERBOSE(t, m, ...)
 #define WOLFENGINE_ERROR(t, e)
 #define WOLFENGINE_ERROR_MSG(t, e)
 #define WOLFENGINE_ERROR_FUNC(t, f, r)

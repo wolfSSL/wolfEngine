@@ -1233,7 +1233,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     we_Rsa *rsa = NULL;
     BIGNUM* bn = NULL;
     long e;
-    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_ctrl");
 
@@ -1445,7 +1445,7 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
 {
     int ret = 1;
     we_Rsa *rsa = NULL;
-    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_ctrl_str");
 

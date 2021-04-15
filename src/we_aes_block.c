@@ -66,6 +66,8 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     we_AesBlock *aes;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, "
+                           "iv = %p, enc = %d]", ctx, key, iv, enc);
 
     if ((iv == NULL) && (key == NULL)) {
         WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "iv == NULL && key == NULL");
@@ -82,6 +84,8 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if ((ret == 1) && (!aes->init)) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER,
+                       "Initializing wolfCrypt Aes structure: %p", &aes->aes);
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
@@ -97,6 +101,8 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         aes->enc = enc;
 
         if (key != NULL) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
+                           EVP_CIPHER_CTX_key_length(ctx));
             rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
                               iv, enc ? AES_ENCRYPTION : AES_DECRYPTION);
             if (rc != 0) {
@@ -105,6 +111,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             }
         }
         if (ret == 1 && iv != NULL) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV");
             rc = wc_AesSetIV(&aes->aes, iv);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
@@ -153,6 +160,9 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
 
         /* Check for cached data. */
         if (aes->over > 0) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Encrypting leftover cached data, "
+                           "aes->over = %d", aes->over);
+
             /* Partial block not yet encrypted. */
             l = AES_BLOCK_SIZE - aes->over;
             if (l > len) {
@@ -175,12 +185,20 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesCbcEncrypt", rc);
                     ret = 0;
+                } else {
+                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                           "Encrypted %d bytes (AES-CBC)",
+                                           AES_BLOCK_SIZE);
+                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, AES_BLOCK_SIZE);
                 }
+
                 /* Data put to output. */
                 out += AES_BLOCK_SIZE;
                 outl += AES_BLOCK_SIZE;
                 /* No more cached data. */
                 aes->over = 0;
+
+                WOLFENGINE_MSG(WE_LOG_CIPHER, "Encrypted all cached data");
             }
         }
         /* Encrypt full blocks from remaining input. */
@@ -192,6 +210,10 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
                 ret = 0;
+            } else {
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                       "Encrypted %d bytes (AES-CBC)", l);
+                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
             }
 
             outl += l;
@@ -244,6 +266,9 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
 
         /* Check for cached data. */
         if (aes->over > 0) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Decrypting leftover cached data, "
+                           "aes->over = %d", aes->over);
+
             /* Calculate amount of input that can be used. */
             l = AES_BLOCK_SIZE - aes->over;
             if (l > len) {
@@ -266,7 +291,13 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesCbcDecrypt", rc);
                     ret = 0;
+                } else {
+                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                           "Decrypted %d bytes (AES-CBC)",
+                                           AES_BLOCK_SIZE);
+                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, AES_BLOCK_SIZE);
                 }
+
                 /* Data put to output. */
                 out += AES_BLOCK_SIZE;
                 outl += AES_BLOCK_SIZE;
@@ -285,6 +316,10 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesCbcDecrypt", rc);
                     ret = 0;
+                } else {
+                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                           "Decrypted %d bytes (AES-CBC)", l);
+                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
                 }
             }
 
@@ -323,6 +358,8 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     we_AesBlock* aes;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_cipher");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, out = %p, in = %p, "
+                           "len = %zu]", ctx, out, in, len);
 
     /* Get the AES-CBC object to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
@@ -358,7 +395,7 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 {
     int ret = 1;
     we_AesBlock *aes;
-    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_ctrl");
 
@@ -539,6 +576,8 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     we_AesBlock *aes;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, iv = %p, "
+                           "enc = %d]", ctx, key, iv, enc);
 
     (void)iv;
 
@@ -550,6 +589,8 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if ((ret == 1) && ((key == NULL) || (!aes->init))) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER,
+                       "Initializing wolfCrypt Aes structure: %p", &aes->aes);
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
@@ -566,6 +607,8 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if ((ret == 1) && (key != NULL)) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
+                       EVP_CIPHER_CTX_key_length(ctx));
         rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
                           NULL, enc ? AES_ENCRYPTION : AES_DECRYPTION);
         if (rc != 0) {
@@ -614,6 +657,9 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
 
         /* Check for cached data. */
         if (aes->over > 0) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Encrypting leftover cached data, "
+                           "aes->over = %d", aes->over);
+
             /* Partial block not yet encrypted. */
             l = AES_BLOCK_SIZE - aes->over;
             if (l > len) {
@@ -636,6 +682,11 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesEcbEncrypt", rc);
                     ret = 0;
+                } else {
+                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                           "Encrypted %d bytes (AES-ECB)",
+                                           AES_BLOCK_SIZE);
+                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, AES_BLOCK_SIZE);
                 }
                 /* Data put to output. */
                 out += AES_BLOCK_SIZE;
@@ -653,6 +704,10 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesEcbEncrypt", rc);
                 ret = 0;
+            } else {
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                       "Encrypted %d bytes (AES-ECB)", l);
+                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
             }
 
             outl += l;
@@ -705,6 +760,8 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
 
         /* Check for cached data. */
         if (aes->over > 0) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Decrypting leftover cached data, "
+                           "aes->over = %d", aes->over);
             /* Calculate amount of input that can be used. */
             l = AES_BLOCK_SIZE - aes->over;
             if (l > len) {
@@ -727,6 +784,11 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesEcbDecrypt", rc);
                     ret = 0;
+                } else {
+                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                           "Decrypted %d bytes (AES-ECB)",
+                                           AES_BLOCK_SIZE);
+                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, AES_BLOCK_SIZE);
                 }
                 /* Data put to output. */
                 out += AES_BLOCK_SIZE;
@@ -746,6 +808,10 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesEcbDecrypt", rc);
                     ret = 0;
+                } else {
+                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                           "Decrypted %d bytes (AES-ECB)", l);
+                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
                 }
             }
 
@@ -784,6 +850,8 @@ static int we_aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     we_AesBlock* aes;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_cipher");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, out = %p, in = %p, "
+                           "len = %zu]", ctx, out, in, len);
 
     /* Get the AES object to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
@@ -819,7 +887,7 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 {
     int ret = 1;
     we_AesBlock *aes;
-    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_ctrl");
 

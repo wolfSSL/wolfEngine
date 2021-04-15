@@ -232,6 +232,7 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
     int ret = 1;
     we_mac *mac = NULL;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_ctrl");
     if (ctx == NULL) {
@@ -306,7 +307,9 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
 
             default:
-                WOLFENGINE_MSG(WE_LOG_MAC, "Unsupported HMAC ctrl encountered");
+                XSNPRINTF(errBuff, sizeof(errBuff),
+                          "Unsupported ctrl type %d", type);
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                 ret = 0;
         }
     }
@@ -546,7 +549,7 @@ static int we_hmac_copy(Hmac* des, Hmac* src)
     void* heap;
     int ret = 1;
     int rc = 0;
-    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_copy");
 

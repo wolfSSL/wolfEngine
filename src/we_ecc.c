@@ -946,7 +946,7 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     EVP_PKEY *peerKey;
     EC_KEY *ecPeerKey = NULL;
 #endif
-    char errBuff[WOLFENGINE_MAX_ERROR_SZ];
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     (void)num;
     (void)ptr;
