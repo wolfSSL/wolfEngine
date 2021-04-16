@@ -1,0 +1,32 @@
+diff --git a/crypto/rand/randtest.c b/crypto/rand/randtest.c
+index 91bcac9906..ee85d6ee6c 100644
+--- a/crypto/rand/randtest.c
++++ b/crypto/rand/randtest.c
+@@ -58,6 +58,7 @@
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <openssl/engine.h>
+ #include <openssl/rand.h>
+ 
+ #include "../e_os.h"
+@@ -76,6 +77,19 @@ int main(int argc, char **argv)
+      * double d;
+      */
+     long d;
++    ENGINE *e = NULL;
++
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default_RAND(e);
+ 
+     i = RAND_pseudo_bytes(buf, 2500);
+     if (i < 0) {

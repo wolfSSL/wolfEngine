@@ -400,7 +400,9 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   ptr [in] Unused
                  */
                 if (arg <= 0 || arg > GCM_NONCE_MAX_SZ) {
-                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid nonce length");
+                    XSNPRINTF(errBuff, sizeof(errBuff), "Invalid nonce length "
+                              "%d", arg);
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                     ret = 0;
                 }
                 else {
@@ -474,7 +476,9 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   ptr [in] generated IV/nonce data
                  */
                 if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ)) {
-                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid nonce length");
+                    XSNPRINTF(errBuff, sizeof(errBuff), "Invalid nonce length "
+                              "%d", arg);
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                     ret = 0;
                 }
                 else {
