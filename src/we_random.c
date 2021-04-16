@@ -59,6 +59,8 @@ static int we_rand_mix_seed(unsigned char* buf, int num,
     int j;
 
     WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_mix_seed");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d, seed = %p, "
+                           "seedLen = %d]", buf, num, seed, seedLen);
 
     rc = wc_InitSha256(&sha256);
     if (rc != 0) {
@@ -162,6 +164,7 @@ static int we_rand_seed(const void *buf, int num)
 #endif
 
     WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_seed");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d]", buf, num);
 
 #ifndef WE_SINGLE_THREADED
     /* Lock for access to globals. */
@@ -224,6 +227,7 @@ static int we_rand_bytes(unsigned char *buf, int num)
 #endif
 
     WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_bytes");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d]", buf, num);
 
 #ifdef WE_STATIC_WOLFSSL
     /* Generate true random using internal API. */
@@ -287,6 +291,8 @@ static int we_rand_add(const void *buf, int num, double entropy)
     int ret;
 
     WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_add");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d, "
+                           "entroyp = %d]", buf, num, entropy);
 
     /* Call seed implementation - entropy not used. */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -318,6 +324,8 @@ static int we_rand_pseudorand(unsigned char *buf, int num)
     int rc;
 
     WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_pseudorand");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d]",
+                           buf, num);
 
 #ifndef WE_SINGLE_THREADED
     rc = wc_LockMutex(we_rng_mutex);
