@@ -86,7 +86,7 @@ if [ -z "${WOLFSSL_INSTALL}" ]; then
     printf " Building wolfSSL..."
     cd wolfssl
     ./autogen.sh &> /dev/null
-    ./configure  --enable-cmac --enable-keygen --enable-sha --enable-des3 --enable-aesctr --enable-aesccm CPPFLAGS='-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_NO_PADDING -DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192'  --prefix=$WOLFSSL_INSTALL ${EXTRA_WOLFSSL_OPTIONS} &> $LOGFILE
+    ./configure  --enable-cmac --enable-keygen --enable-sha --enable-des3 --enable-aesctr --enable-aesccm --enable-aesgcm --enable-aesgcm-stream CPPFLAGS='-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_NO_PADDING -DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192'  --prefix=$WOLFSSL_INSTALL ${EXTRA_WOLFSSL_OPTIONS} &> $LOGFILE
     if [ $? != 0 ]; then
         printf "config failed\n"
         exit 1

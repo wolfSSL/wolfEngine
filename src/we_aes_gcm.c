@@ -94,6 +94,11 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
+    if ((key == NULL) && (iv == NULL)) {
+        XMEMSET(aes, 0, sizeof(we_AesGcm));
+        wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
+    }
+
     if ((ret == 1) && (key != NULL)) {
         /* Set the AES-GCM key. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES-GCM key (%d bytes)",
@@ -104,10 +109,16 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             ret = 0;
         }
     }
+
     if ((ret == 1) && (iv != NULL)) {
         /* Cache IV - see ctrl func for other ways to set IV. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching IV into aes->iv");
         XMEMCPY(aes->iv, iv, aes->ivLen);
+        rc = wc_AesGcmInit(&aes->aes, NULL, 0, aes->iv, aes->ivLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmInit", rc);
+            ret = 0;
+        }
     }
 
     if (ret == 1) {
@@ -118,6 +129,7 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 
     return ret;
 }
+
 
 static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                                  const unsigned char *in, size_t len)
@@ -227,7 +239,6 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     int ret = 1;
     int rc;
     we_AesGcm *aes;
-    unsigned char *p;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_cipher");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, out = %p, in = %p, "
@@ -248,16 +259,26 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     else if ((ret == 1) && (out == NULL)) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Resizing stored AAD and appending "
                        "data, len = %d", (int)len);
-        /* Resize stored AAD and append new data. */
-        p = OPENSSL_realloc(aes->aad, aes->aadLen + (int)len);
-        if (p == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
-            ret = 0;
+        if (aes->enc) {
+            rc = wc_AesGcmEncryptUpdate(&aes->aes, out, NULL, 0, in,
+                (word32)len);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                   "wc_AesGcmEncryptUpdate", rc);
+                ret = 0;
+            }
         }
         else {
-            /* Copy in new data after exisitng data. */
-            aes->aad = p;
-            XMEMCPY(aes->aad + aes->aadLen, in, len);
+            rc = wc_AesGcmDecryptUpdate(&aes->aes, out, NULL, 0, in,
+                (word32)len);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                   "wc_AesGcmDecryptUpdate", rc);
+                ret = 0;
+            }
+        }
+
+        if (ret == 1) {
             aes->aadLen += len;
             ret = (int)len;
         }
@@ -266,52 +287,69 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     else if ((ret == 1) && (out != NULL) && (in != NULL || aes->aadLen > 0)) {
         if (aes->enc) {
             if (!aes->ivSet) {
-                /* Set extern IV. */
-                WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting external IV");
-                rc = wc_AesGcmSetExtIV(&aes->aes, aes->iv, aes->ivLen);
+                rc = wc_AesGcmInit(&aes->aes, NULL, 0, aes->iv, aes->ivLen);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesGcmSetExtIV", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmInit", rc);
                     ret = 0;
                 }
             }
+            if (ret == 1) {
+                if (len > 0) {
+                    rc = wc_AesGcmEncryptUpdate(&aes->aes, out, in, (word32)len,
+                        NULL, 0);
+                    if (rc != 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesGcmEncryptUpdate", rc);
+                        ret = 0;
+                    }
+                }
+            }
+
             if (ret == 1) {
                 /* Tag always full size on calculation. */
                 aes->tagLen = EVP_GCM_TLS_TAG_LEN;
-                /* Encrypt the data, process AAD data, generate tag */
-                rc = wc_AesGcmEncrypt_ex(&aes->aes, out, in, (word32)len,
-                                         aes->iv, aes->ivLen, aes->tag,
-                                         aes->tagLen, aes->aad, aes->aadLen);
+                rc = wc_AesGcmEncryptFinal(&aes->aes, aes->tag, aes->tagLen);
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesGcmEncrypt_ex", rc);
+                                          "wc_AesGcmEncryptFinal", rc);
                     ret = 0;
                 }
             }
-            if (ret == 1) {
 
+            if (ret == 1) {
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %zu bytes "
                                        "(AES-GCM):", len);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "AES-GCM tag:");
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, aes->tag, aes->tagLen);
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching nonce/IV to aes->iv");
-
                 /* Cache nonce/IV. */
                 XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
             }
         }
         else {
-            /* Decrypt the data, use with AAD to verify tag is correct. */
-            rc = wc_AesGcmDecrypt(&aes->aes, out, in, (word32)len, aes->iv,
-                                  aes->ivLen, aes->tag, aes->tagLen,
-                                  aes->aad, aes->aadLen);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt_ex", rc);
-                ret = 0;
-            }
             if (ret == 1) {
+                if (len > 0) {
+                    rc = wc_AesGcmDecryptUpdate(&aes->aes, out, in, (word32)len,
+                        NULL, 0);
+                    if (rc != 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesGcmDecryptUpdate", rc);
+                        ret = 0;
+                    }
+                }
+            }
 
+            if (ret == 1) {
+                rc = wc_AesGcmDecryptFinal(&aes->aes, aes->tag, aes->tagLen);
+                if (rc != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                          "wc_AesGcmDecryptFinal", rc);
+                    ret = 0;
+                }
+            }
+
+            if (ret == 1) {
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
                                        "(AES-GCM):", len);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
@@ -322,10 +360,6 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             }
         }
 
-        /* Dispose of any AAD - all used now. */
-        OPENSSL_free(aes->aad);
-        aes->aad = NULL;
-        aes->aadLen = 0;
         ret = (int)len;
     }
     else if ((ret == 1) && (len == 0)) {
@@ -424,7 +458,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), ptr, aes->ivLen);
                 }
                 else {
-                    /* Set ta fixed IV and have the rest generated. */
+                    /* Set the fixed IV and have the rest generated. */
                     WOLFENGINE_MSG(WE_LOG_CIPHER, "Set fixed IV, "
                                    "generate the rest");
                     if (aes->ivLen == 0)
@@ -441,6 +475,11 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     {
                         rc = wc_AesGcmSetIV(&aes->aes, aes->ivLen, ptr, arg,
                                             we_rng);
+
+                        /* init with cached iv */
+                        if (rc == 0) {
+                            rc = wc_AesGcmInit(&aes->aes, NULL, 0, NULL, 0);
+                        }
                 #ifndef WE_SINGLE_THREADED
                         wc_UnLockMutex(we_rng_mutex);
                 #endif

@@ -996,6 +996,14 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
         }
     }
 
+    if (pkey != NULL) {
+        EVP_PKEY_free(pkey);
+    }
+
+    if (ctx != NULL) {
+        EVP_PKEY_CTX_free(ctx);
+    }
+
     BN_free(eCmd);
 
     return err;

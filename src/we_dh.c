@@ -137,6 +137,9 @@ static int we_dh_finish(DH *dh)
 
     if (ret == 1) {
         wc_FreeDhKey(&engineDh->key);
+    #ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&engineDh->rng);
+    #endif
         OPENSSL_free(engineDh);
         DH_set_ex_data(dh, 0, NULL);
     }
@@ -667,6 +670,9 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
 
     if (dh != NULL) {
         wc_FreeDhKey(&dh->key);
+    #ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&dh->rng);
+    #endif
         OPENSSL_free(dh);
         EVP_PKEY_CTX_set_data(ctx, NULL);
     }

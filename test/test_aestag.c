@@ -535,6 +535,7 @@ static int test_aes_tag_tls(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
         PRINT_MSG("Encrypt with OpenSSL - TLS");
         aad[12] = sizeof(buf) - EVP_GCM_TLS_TAG_LEN;
+        PRINT_BUFFER("AAD", aad, sizeof(aad));
         err = test_aes_tag_tls_enc(NULL, cipher, key, iv, ivLen, aad, buf,
                                    sizeof(buf), ccm);
     }

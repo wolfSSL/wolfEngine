@@ -327,6 +327,9 @@ static int we_rsa_finish(RSA *rsa)
         RSA_set_ex_data(rsa, WE_RSA_EX_DATA_IDX, NULL);
         /* Dispose of the wolfSSL RSA key and internal object on failure. */
         wc_FreeRsaKey(&engineRsa->key);
+    #ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&engineRsa->rng);
+    #endif
         OPENSSL_free(engineRsa);
     }
 
@@ -1194,6 +1197,9 @@ static void we_rsa_pkey_cleanup(EVP_PKEY_CTX *ctx)
         /* Remove reference to internal RSA object. */
         EVP_PKEY_CTX_set_data(ctx, NULL);
         /* Free the wolfSSL RSA key. */
+    #ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&rsa->rng);
+    #endif
         wc_FreeRsaKey(&rsa->key);
         OPENSSL_free(rsa);
     }

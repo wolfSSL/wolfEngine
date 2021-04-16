@@ -376,6 +376,9 @@ static int we_ec_p192_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
+        #ifndef WE_SINGLE_THREADED
+            wc_FreeRng(&ecc->rng);
+        #endif
             wc_ecc_free(&ecc->key);
             OPENSSL_free(ecc);
             ret = 0;
@@ -415,6 +418,9 @@ static int we_ec_p224_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
+        #ifndef WE_SINGLE_THREADED
+            wc_FreeRng(&ecc->rng);
+        #endif
             wc_ecc_free(&ecc->key);
             OPENSSL_free(ecc);
             ret = 0;
@@ -455,6 +461,9 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
+        #ifndef WE_SINGLE_THREADED
+            wc_FreeRng(&ecc->rng);
+        #endif
             wc_ecc_free(&ecc->key);
             OPENSSL_free(ecc);
             ret = 0;
@@ -495,6 +504,9 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
+        #ifndef WE_SINGLE_THREADED
+            wc_FreeRng(&ecc->rng);
+        #endif
             wc_ecc_free(&ecc->key);
             OPENSSL_free(ecc);
             ret = 0;
@@ -536,6 +548,9 @@ static int we_ec_p521_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
+        #ifndef WE_SINGLE_THREADED
+            wc_FreeRng(&ecc->rng);
+        #endif
             wc_ecc_free(&ecc->key);
             OPENSSL_free(ecc);
             ret = 0;
@@ -595,6 +610,9 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
 #ifdef WE_HAVE_ECDH
         OPENSSL_free(ecc->peerKey);
         ecc->peerKey = NULL;
+#endif
+#ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&ecc->rng);
 #endif
         wc_ecc_free(&ecc->key);
         OPENSSL_free(ecc);
