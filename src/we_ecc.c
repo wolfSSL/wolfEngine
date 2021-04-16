@@ -39,6 +39,8 @@ static int we_ec_get_curve_id(int curveName, int *curveId)
     int ret = 1;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_get_curve_id");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [curveName = %d, curveId = %p]",
+                           curveName, curveId);
 
     switch (curveName) {
 #ifdef WE_HAVE_EC_P192
@@ -97,6 +99,8 @@ static int we_ec_set_private(ecc_key *key, int curveId, const EC_KEY *ecKey)
     unsigned char* privBuf = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_set_private");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [key = %p, curveId = %p, "
+                           "ecKey = %p]", key, curveId, ecKey);
 
     /* Get the EC key private key as binary data. */
     privLen = EC_KEY_priv2buf(ecKey, &privBuf);
@@ -106,6 +110,7 @@ static int we_ec_set_private(ecc_key *key, int curveId, const EC_KEY *ecKey)
     }
     /* Import private key. */
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Importing EC private key into ecc_key");
         rc = wc_ecc_import_private_key_ex(privBuf, (word32)privLen, NULL, 0,
                                           key, curveId);
         if (rc != 0) {
@@ -142,6 +147,8 @@ static int we_ec_set_public(ecc_key *key, int curveId, EC_KEY *ecKey)
     unsigned char* y;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_set_public");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [key = %p, curveId = %d, "
+                           "ecKey = %p]", key, curveId, ecKey);
 
     /* Get the EC key public key as and uncompressed point. */
     pubLen = EC_KEY_key2buf(ecKey, POINT_CONVERSION_UNCOMPRESSED, &pubBuf,
@@ -153,6 +160,7 @@ static int we_ec_set_public(ecc_key *key, int curveId, EC_KEY *ecKey)
 
     /* Import public key. */
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Importing public key into ecc_key");
         /* 0x04, x, y - x and y are equal length. */
         x = pubBuf + 1;
         y = x + ((pubLen - 1) / 2);
@@ -277,11 +285,14 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
     int keyInited = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Allocate a new internal EC object. */
     ret = (ecc = (we_Ecc*)OPENSSL_zalloc(sizeof(we_Ecc))) != NULL;
     if (ret == 1) {
         /* Initialize the wolfSSL key object. */
+        WOLFENGINE_MSG(WE_LOG_PK, "Initializing wolfCrypt ecc_key "
+                       "structure: %p", &ecc->key);
         rc = wc_ecc_init(&ecc->key);
         if (rc == 0) {
             keyInited = 1;
@@ -350,6 +361,7 @@ static int we_ec_p192_init(EVP_PKEY_CTX *ctx)
     we_Ecc *ecc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p192_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Create the internal EC object in context. */
     ret = we_ec_init(ctx);
@@ -388,6 +400,7 @@ static int we_ec_p224_init(EVP_PKEY_CTX *ctx)
     we_Ecc *ecc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p224_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Create the internal EC object in context. */
     ret = we_ec_init(ctx);
@@ -427,6 +440,7 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
     we_Ecc *ecc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p256_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Create the internal EC object in context. */
     ret = we_ec_init(ctx);
@@ -466,6 +480,7 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
     we_Ecc *ecc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p384_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Create the internal EC object in context. */
     ret = we_ec_init(ctx);
@@ -506,6 +521,7 @@ static int we_ec_p521_init(EVP_PKEY_CTX *ctx)
     we_Ecc *ecc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_p521_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Create the internal EC object in context. */
     ret = we_ec_init(ctx);
@@ -568,6 +584,7 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
     we_Ecc *ecc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_cleanup");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
     
     ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
     if (ecc != NULL) {
@@ -603,6 +620,8 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
     const EC_GROUP *group;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_get_ec_key");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, ecKey = %p, ecc = %p]",
+                           ctx, ecKey, ecc);
 
     /* Get the EVP_PKEY object performing operation with. */
     ret = (pkey = EVP_PKEY_CTX_get0_pkey(ctx)) != NULL;
@@ -656,6 +675,9 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
     EC_KEY *ecKey = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_sign");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, sig = %p, sigLen = %p, "
+                           "tbs = %p, tbsLen = %zu]", ctx, sig, sigLen,
+                           tbs, tbsLen);
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -675,6 +697,7 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
     if (ret == 1 && sig == NULL) {
         /* Return signature size in bytes. */
         *sigLen = wc_ecc_sig_size(&ecc->key);
+        WOLFENGINE_MSG(WE_LOG_PK, "sig is NULL, returning size: %zu", *sigLen);
     }
     if (ret == 1 && sig != NULL) {
         /* Sign the data with wolfSSL EC key object. */
@@ -691,6 +714,8 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
             ret = 0;
         }
         if (ret == 1) {
+            WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "Signature generated:");
+            WOLFENGINE_BUFFER(WE_LOG_PK, sig, outLen);
             /* Return actual size. */
             *sigLen = outLen;
         }
@@ -721,6 +746,9 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     int res;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_verify");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, sig = %p, sigLen = %zu, "
+                           "tbs = %p, tbsLen = %zu]", ctx, sig, sigLen,
+                           tbs, tbsLen);
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -748,6 +776,13 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     if (ret == 1) {
         /* Verification result is 1 on success and 0 on failure. */
         ret = res;
+
+        if (ret == 1) {
+            WOLFENGINE_MSG(WE_LOG_PK, "Verified ECDSA signature");
+        }
+        else {
+            WOLFENGINE_MSG(WE_LOG_PK, "Failed to verify ECDSA signature");
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_verify", ret);
@@ -773,6 +808,8 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     int len = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_keygen");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, pkey = %p]",
+                           ctx, pkey);
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -823,6 +860,7 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         }
     }
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Generated EC key");
         /* Private key and public key in wolfSSL object. */
         ecc->privKeySet = 1;
         ecc->pubKeySet = 1;
@@ -856,6 +894,8 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
     ecc_key peer;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdh_derive");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, key = %p, keyLen = %p]",
+                           ctx, key, keyLen);
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
@@ -880,6 +920,8 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                                   "wc_ecc_get_curve_size_from_id", rc);
         } else {
             *keyLen = (size_t)rc;
+            WOLFENGINE_MSG(WE_LOG_PK, "key is NULL, returning secret size: %d",
+                           *keyLen);
         }
     }
     if (ret == 1 && key != NULL) {
@@ -913,6 +955,8 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
             }
             if (ret == 1) {
                 /* Return length of secret. */
+                WOLFENGINE_MSG(WE_LOG_PK, "Generated shaerd secret (%d bytes)",
+                            len);
                 *keyLen = len;
             }
 
@@ -952,6 +996,8 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     (void)ptr;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_ctrl");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, type = %d, num = %d, "
+                           "ptr = %p]", ctx, type, num, ptr);
 
     ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
     if (ecc == NULL) {
@@ -1257,6 +1303,7 @@ static int we_ec_key_keygen(EC_KEY *key)
     int len = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_keygen");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [key = %p]", key);
 
     /* Get the wolfSSL EC curve id for the group. */
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(EC_KEY_get0_group(key)),
@@ -1299,6 +1346,7 @@ static int we_ec_key_keygen(EC_KEY *key)
         }
     }
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Generated EC key");
         /* Export new key into EC_KEY object. */
         ret = we_ec_export_key(&ecc, len, key);
     }
@@ -1349,6 +1397,9 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     unsigned char* secret = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_compute_key");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [psec = %p, pseclen = %p, "
+                           "pub_key = %p, ecdh = %p]", psec, pseclen,
+                           pub_key, ecdh);
 
     /* Get wolfSSL curve id for EC group. */
     group = EC_KEY_get0_group(ecdh);
@@ -1387,6 +1438,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     if (ret == 1) {
         rc = wc_InitRng(&rng);
         if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_InitRng", rc);
             ret = 0;
         }
         else {
@@ -1439,6 +1491,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
         }
     }
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Calculated ECDH shared secret");
         *psec = secret;
         *pseclen = len;
     }
@@ -1493,7 +1546,10 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     word32 outLen;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_sign");
-
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [type = %d, dgst = %p, dLen = %d, "
+                           "sig = %p, sigLen = %p, kinv = %p, r = %p, "
+                           "ecKey = %p]", type, dgst, dLen, sig, sigLen,
+                           kinv, r, ecKey);
     (void)type;
     (void)kinv;
     (void)r;
@@ -1530,6 +1586,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     if (ret == 1 && sig == NULL) {
         /* Return signature size in bytes. */
         *sigLen = wc_ecc_sig_size(&key);
+        WOLFENGINE_MSG(WE_LOG_PK, "sig is NULL, returning size: %zu", *sigLen);
     }
     if (ret == 1 && sig != NULL) {
         /* Sign hash with wolfSSL. */
@@ -1542,6 +1599,8 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
         if (ret == 1) {
             /* Return actual size. */
             *sigLen = outLen;
+            WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "Generated ECDSA signature:");
+            WOLFENGINE_BUFFER(WE_LOG_PK, sig, *sigLen);
         }
     }
 
@@ -1577,7 +1636,9 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
     int curveId;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_verify");
-
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [type = %d, dgst = %p, dLen = %d, "
+                           "sig = %p, sigLen = %d, ecKey = %p]", type, dgst,
+                           dLen, sig, sigLen, ecKey);
     (void)type;
 
     /* Get wolfSSL curve id for EC group. */
@@ -1608,6 +1669,13 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
     if (ret == 1) {
         /* Verification result is 1 on success and 0 on failure. */
         ret = res;
+
+        if (ret == 1) {
+            WOLFENGINE_MSG(WE_LOG_PK, "Successfully verified ECDSA signature");
+        }
+        else {
+            WOLFENGINE_MSG(WE_LOG_PK, "Failed to verify ECDSA signature");
+        }
     }
 
     wc_ecc_free(pKey);
@@ -1690,6 +1758,9 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
     size_t deriveLen;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_ecdh_compute_key");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [out = %p, outlen = %zu, "
+                           "pub_key = %p, ecdh = %p]", out, outlen,
+                           pub_key, ecdh);
 
     if (out == NULL || outlen == 0 || pub_key == NULL || ecdh == NULL ) {
         WOLFENGINE_ERROR_MSG(WE_LOG_KE,
@@ -1795,6 +1866,8 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
     int err = 0, rc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_do_sign_ex");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [d = %p, dlen = %d, kinv = %p, "
+                           "rp = %p, key = %p]", d, dlen, kinv, rp, key);
 
     if (kinv != NULL || rp != NULL) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_ecdsa_do_sign_ex() does not "
@@ -1877,6 +1950,7 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
     }
 
     if (err == 0) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Generated ECDSA signature");
         r_size = mp_unsigned_bin_size(&sig_r);
         s_size = mp_unsigned_bin_size(&sig_s);
         if (r_size == 0 || s_size == 0) {
@@ -1965,6 +2039,11 @@ static int we_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx,
     (void)kinv;
     (void)r;
 
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_sign_setup");
+    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "wolfEngine does not support usage of "
+                         "'kinv' and 'r' parameters with ECDSA_METHOD");
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_sign_setup", 0);
+
     return 0;
 }
 
@@ -1991,6 +2070,8 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
     int check_sig = 0;
     
     WOLFENGINE_ENTER(WE_LOG_PK,"we_ecdsa_do_verify");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [d = %p, dlen = %d, sig = %p, "
+                           "key = %p]", d, dlen, sig, key);
 
     if (d == NULL || sig == NULL || key == NULL) {
         WOLFENGINE_MSG(WE_LOG_PK,"we_ecdsa_do_verify Bad arguments");
@@ -2082,8 +2163,10 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
 
     if (err == 0) {
         if (check_sig == 1) {
+            WOLFENGINE_MSG(WE_LOG_PK, "Successfully verify ECDSA signature");
             return 1;   /* valid signature */
         } else {
+            WOLFENGINE_MSG(WE_LOG_PK, "Failed to verify ECDSA signature");
             return 0;   /* invalid signature, no other errors */
         }
     } else {
