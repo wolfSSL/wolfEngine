@@ -219,7 +219,7 @@ int we_nid_to_wc_hash_type(int nid)
     int hashType = WC_HASH_TYPE_NONE;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
-    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_oid");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_type");
 
     switch (nid) {
 #ifndef NO_MD5
@@ -279,7 +279,7 @@ int we_nid_to_wc_hash_type(int nid)
             break;
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_nid_to_wc_hash_oid", hashType);
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_nid_to_wc_hash_type", hashType);
 
     return hashType;
 }

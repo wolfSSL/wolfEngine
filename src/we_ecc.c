@@ -955,7 +955,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
             }
             if (ret == 1) {
                 /* Return length of secret. */
-                WOLFENGINE_MSG(WE_LOG_PK, "Generated shaerd secret (%d bytes)",
+                WOLFENGINE_MSG(WE_LOG_PK, "Generated shared secret (%d bytes)",
                             len);
                 *keyLen = len;
             }
@@ -2163,7 +2163,7 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
 
     if (err == 0) {
         if (check_sig == 1) {
-            WOLFENGINE_MSG(WE_LOG_PK, "Successfully verify ECDSA signature");
+            WOLFENGINE_MSG(WE_LOG_PK, "Successfully verified ECDSA signature");
             return 1;   /* valid signature */
         } else {
             WOLFENGINE_MSG(WE_LOG_PK, "Failed to verify ECDSA signature");

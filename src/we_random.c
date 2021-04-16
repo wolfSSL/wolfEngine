@@ -292,7 +292,7 @@ static int we_rand_add(const void *buf, int num, double entropy)
 
     WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_add");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d, "
-                           "entroyp = %d]", buf, num, entropy);
+                           "entropy = %d]", buf, num, entropy);
 
     /* Call seed implementation - entropy not used. */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
