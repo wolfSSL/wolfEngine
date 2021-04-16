@@ -54,10 +54,13 @@ static int we_tls1_prf_init(EVP_PKEY_CTX *ctx)
     we_Tls1_Prf *tls1Prf;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_tls1_prf_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Allocate memory for internal TLS1 PRF object. */
     tls1Prf = OPENSSL_zalloc(sizeof(*tls1Prf));
     if (tls1Prf == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_zalloc(tls1Prf)",
+                                   tls1Prf);
         ret = 0;
     }
 
@@ -81,6 +84,7 @@ static void we_tls1_prf_cleanup(EVP_PKEY_CTX *ctx)
     we_Tls1_Prf *tls1Prf;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_tls1_prf_cleanup");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Get internal TLS1 PRF object from PKEY context. */
     tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
@@ -94,6 +98,8 @@ static void we_tls1_prf_cleanup(EVP_PKEY_CTX *ctx)
         /* Free internal TLS1 PRF object. */
         OPENSSL_free(tls1Prf);
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_tls1_prf_cleanup", 1);
 }
 
 /**
@@ -112,6 +118,8 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
     int rc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_tls1_prf_derive");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, key = %p, keySz = %p]",
+                           ctx, key, keySz);
 
     /* Get internal TLS1 PRF object from PKEY context. */
     tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
@@ -126,6 +134,7 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
                            tls1Prf->seed, (word32)(tls1Prf->seedSz), NULL,
                            INVALID_DEVID);
          if (rc != 0) {
+             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_PRF_TLSv1", rc);
              ret = 0;
          }
     }
@@ -136,6 +145,7 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
                         tls1Prf->mdType == NID_sha256 ? sha256_mac : sha384_mac,
                         NULL, INVALID_DEVID);
          if (rc != 0) {
+             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_PRF_TLS", rc);
              ret = 0;
          }
     }
@@ -166,6 +176,8 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_tls1_prf_ctrl");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, type = %d, num = %d, "
+                           "ptr = %p]", ctx, type, num, ptr);
 
     /* Get internal TLS1 PRF object from PKEY context. */
     tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
@@ -173,11 +185,13 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 
     switch (type) {
         case EVP_PKEY_CTRL_TLS_MD:
+            WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_TLS_MD");
             /* ptr: EVP md object. */
             tls1Prf->mdType = EVP_MD_type(ptr);
             break;
 
         case EVP_PKEY_CTRL_TLS_SECRET:
+            WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_TLS_SECRET");
             /* num: Number of bytes in buffer.
              * ptr: Buffer holding secret data. */
             /* Number of bytes must be positive. */
@@ -205,6 +219,7 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             break;
 
         case EVP_PKEY_CTRL_TLS_SEED:
+            WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_TLS_SEED");
             /* num: Number of bytes in buffer.
              * ptr: Buffer holding label/seed data. */
             /* Valid to pass in empty buffer - ignored. */
@@ -257,8 +272,11 @@ static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     int ret = 1;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_tls1_prf_ctrl_str");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, type = %p, value = %p]",
+                           ctx, type, value);
 
     if (value == NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "value == NULL");
         ret = 0;
     }
     else if (XSTRNCMP(type, "md", 3) == 0) {
