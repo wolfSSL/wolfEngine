@@ -75,6 +75,7 @@ static we_mac* we_mac_pkey_init(EVP_PKEY_CTX *ctx)
     we_mac *mac = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p]", ctx);
 
     if (ctx == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_pkey_init, ctx: ", ctx);
@@ -118,6 +119,7 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
     EVP_PKEY *pkey;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_do_digest_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, mac = %p]", ctx, mac);
 
     if (mac == NULL) {
         WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
@@ -165,6 +167,8 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
     if (ret == 1) {
         switch (mac->algo) {
             case WE_CMAC_ALGO:
+                WOLFENGINE_MSG(WE_LOG_MAC, "Initializing wolfCrypt Cmac "
+                               "structure: %p", &mac->state.cmac);
                 rc = wc_InitCmac(&mac->state.cmac, (const byte*)mac->key,
                     mac->keySz, WC_CMAC_AES, NULL);
                 if (rc != 0) {
@@ -174,6 +178,7 @@ static int we_do_digest_init(EVP_PKEY_CTX *ctx, we_mac *mac)
                 break;
 
             case WE_HMAC_ALGO:
+                WOLFENGINE_MSG(WE_LOG_MAC, "Setting Hmac key");
                 rc = wc_HmacSetKey(&mac->state.hmac, mac->type,
                     (const byte*)mac->key, (word32)mac->keySz);
                 if (rc != 0) {
@@ -205,6 +210,9 @@ static int we_mac_md_to_hash_type(EVP_MD *md)
     int ret;
     int wcHashType;
 
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_md_to_hash_type");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [md = %p]", md);
+
     wcHashType = we_nid_to_wc_hash_type(EVP_MD_type(md));
     if (wcHashType == WC_HASH_TYPE_NONE) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "we_nid_to_wc_hash_type", wcHashType);
@@ -213,6 +221,8 @@ static int we_mac_md_to_hash_type(EVP_MD *md)
     else {
         ret = wcHashType;
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_md_to_hash_type", ret);
 
     return ret;
 }
@@ -235,6 +245,9 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_ctrl");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, type = %d, num = %d, "
+                           "ptr = %p]", ctx, type, num, ptr);
+
     if (ctx == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_pkey_ctrl", ctx);
         ret = 0;
@@ -253,6 +266,7 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 
         switch (type) {
             case WE_CTRL_MD_TYPE: /* handle MD passed in */
+                WOLFENGINE_MSG(WE_LOG_MAC, "type: WE_CTRL_MD_TYPE");
                 if (ptr != NULL && mac->algo == WE_HMAC_ALGO) {
                     mac->type = we_mac_md_to_hash_type((EVP_MD *)ptr);
                     if (mac->type < 0) {
@@ -279,6 +293,7 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
 
             case WE_CTRL_KEY: /* handle password passed in */
+                WOLFENGINE_MSG(WE_LOG_MAC, "type: WE_CTRL_KEY");
                 if (ptr != NULL) {
                     if (mac->key != NULL) {
                         OPENSSL_clear_free(mac->key, mac->keySz);
@@ -298,11 +313,12 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
 
             case WE_CTRL_CIPHER: /* handle cipher set */
+                WOLFENGINE_MSG(WE_LOG_MAC, "type: WE_CTRL_CIPHER");
                 /* do nothing with it, we use internal AES */
                 break;
 
             case WE_CTRL_DIGEST_INIT: /* handle digest init */
-                WOLFENGINE_MSG(WE_LOG_MAC, "Doing digest init from ctrl");
+                WOLFENGINE_MSG(WE_LOG_MAC, "type: WE_CTRL_DIGEST_INIT");
                 ret = we_do_digest_init(ctx, mac);
                 break;
 
@@ -355,6 +371,8 @@ static int we_mac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     we_mac *mac;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_keygen");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, pkey = %p]", ctx, pkey);
+
     if (ctx == NULL || pkey == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_mac_pkey_keygen, ctx:  ", ctx);
@@ -415,6 +433,9 @@ static int we_mac_pkey_signctx_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mdCtx,
     int ret = 1;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "wc_mac_pkey_signctx_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, mdCtx = %p]",
+                           ctx, mdCtx);
+
     if (ctx == NULL || mdCtx == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_mac_pkey_signctx_init, ctx: ", ctx);
@@ -447,6 +468,9 @@ static we_mac* we_mac_copy(we_mac *src)
 {
     int ret = 1;
     we_mac *mac = NULL;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_copy");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [src = %p]", src);
 
     if (src == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_copy", src);
@@ -485,6 +509,8 @@ static we_mac* we_mac_copy(we_mac *src)
         mac = NULL;
     }
 
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_copy", ret);
+
     return mac;
 }
 
@@ -501,12 +527,15 @@ static void we_mac_pkey_asn1_free(EVP_PKEY *pkey)
     void *key;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_asn1_free");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [pkey = %p]", pkey);
 
     id = EVP_PKEY_id(pkey);
 
     switch (id) {
         case EVP_PKEY_HMAC:
         case NID_wolfengine_cmac:
+            WOLFENGINE_MSG(WE_LOG_MAC, "EVP_PKEY_id: EVP_PKEY_HMAC | "
+                           "NID_wolfengine_cmac");
             /* Always free ASN1_OCTET_STRING with HMAC (it is default type)
              * and if the EVP_PKEY is aliased to our unique ID
              */
@@ -521,6 +550,7 @@ static void we_mac_pkey_asn1_free(EVP_PKEY *pkey)
 
     #if OPENSSL_VERSION_NUMBER >= 0x10101000L
         case EVP_PKEY_CMAC:
+            WOLFENGINE_MSG(WE_LOG_MAC, "EVP_PKEY_id: EVP_PKEY_CMAC");
             key = (CMAC_CTX*)EVP_PKEY_get0(pkey);
             if (key == NULL) {
                 ret = 0;
@@ -533,7 +563,7 @@ static void we_mac_pkey_asn1_free(EVP_PKEY *pkey)
 
         default:
             WOLFENGINE_LEAVE(WE_LOG_MAC,
-                    "we_mac_pkey_asn1_free: unsupported id", id);
+                    "we_mac_pkey_asn1_free: Unsupported id", id);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_asn1_free", ret);
@@ -552,6 +582,8 @@ static int we_hmac_copy(Hmac* des, Hmac* src)
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_copy");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [des = %p, src = %p]",
+                           des, src);
 
 #ifndef HAVE_FIPS
     heap = src->heap;
@@ -567,56 +599,66 @@ static int we_hmac_copy(Hmac* des, Hmac* src)
         switch (src->macType) {
         #ifndef NO_MD5
             case WC_MD5:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_MD5");
                 rc = wc_Md5Copy(&src->hash.md5, &des->hash.md5);
                 break;
         #endif /* !NO_MD5 */
 
         #ifndef NO_SHA
             case WC_SHA:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA");
                 rc = wc_ShaCopy(&src->hash.sha, &des->hash.sha);
                 break;
         #endif /* !NO_SHA */
 
         #ifdef WOLFSSL_SHA224
             case WC_SHA224:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA224");
                 rc = wc_Sha224Copy(&src->hash.sha224, &des->hash.sha224);
                 break;
         #endif /* WOLFSSL_SHA224 */
 
         #ifndef NO_SHA256
             case WC_SHA256:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA256");
                 rc = wc_Sha256Copy(&src->hash.sha256, &des->hash.sha256);
                 break;
         #endif /* !NO_SHA256 */
 
         #ifdef WOLFSSL_SHA384
             case WC_SHA384:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA384");
                 rc = wc_Sha384Copy(&src->hash.sha384, &des->hash.sha384);
                 break;
         #endif /* WOLFSSL_SHA384 */
         #ifdef WOLFSSL_SHA512
             case WC_SHA512:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA512");
                 rc = wc_Sha512Copy(&src->hash.sha512, &des->hash.sha512);
                 break;
         #endif /* WOLFSSL_SHA512 */
     #ifdef WOLFSSL_SHA3
         #ifndef WOLFSSL_NOSHA3_224
             case WC_SHA3_224:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA3_224");
                 rc = wc_Sha3_224_Copy(&src->hash.sha3, &des->hash.sha3);
                 break;
         #endif /* WOLFSSL_NO_SHA3_224 */
         #ifndef WOLFSSL_NOSHA3_256
             case WC_SHA3_256:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA3_256");
                 rc = wc_Sha3_256_Copy(&src->hash.sha3, &des->hash.sha3);
                 break;
         #endif /* WOLFSSL_NO_SHA3_256 */
         #ifndef WOLFSSL_NOSHA3_384
             case WC_SHA3_384:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA3_384");
                 rc = wc_Sha3_384_Copy(&src->hash.sha3, &des->hash.sha3);
                 break;
         #endif /* WOLFSSL_NO_SHA3_384 */
         #ifndef WOLFSSL_NOSHA3_512
             case WC_SHA3_512:
+                WOLFENGINE_MSG(WE_LOG_MAC, "macType: WC_SHA3_512");
                 rc = wc_Sha3_512_Copy(&src->hash.sha3, &des->hash.sha3);
                 break;
         #endif /* WOLFSSL_NO_SHA3_512 */
@@ -665,6 +707,8 @@ static int we_cmac_copy(we_mac* mac, Cmac* des, Cmac* src)
     int ret = 1, rc;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_copy");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [mac = %p, des = %p, src = %p]",
+                           mac, des, src);
 
     rc = wc_InitCmac(des, (const byte*)mac->key, mac->keySz, WC_CMAC_AES, NULL);
     if (rc != 0) {
@@ -707,8 +751,10 @@ static int we_mac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
     int ret = 1;
     we_mac *mac;
     we_mac *dup;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_copy");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [dst = %p, src = %p]", dst, src);
 
     if (dst == NULL || src == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_mac_pkey_copy, dst: ", dst);
@@ -737,18 +783,23 @@ static int we_mac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
         switch (mac->algo) {
         #ifdef WE_HAVE_HMAC
             case WE_HMAC_ALGO:
+                WOLFENGINE_MSG(WE_LOG_MAC, "MAC algo: WE_HMAC_ALGO");
                 ret = we_hmac_copy(&dup->state.hmac, &mac->state.hmac);
                 break;
         #endif
 
         #ifdef WE_HAVE_CMAC
             case WE_CMAC_ALGO:
+                WOLFENGINE_MSG(WE_LOG_MAC, "MAC algo: WE_CMAC_ALGO");
                 ret = we_cmac_copy(mac, &dup->state.cmac, &mac->state.cmac);
                 break;
         #endif
 
             default:
                 WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "Unknown/supported MAC algo");
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unknown/supported MAC "
+                          "algo: %d", mac->algo);
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
                 ret = 0;
         }
 
@@ -797,11 +848,13 @@ static void we_mac_pkey_cleanup(EVP_PKEY_CTX *ctx)
         switch (mac->algo) {
         #ifdef WE_HAVE_HMAC
             case WE_HMAC_ALGO:
+                WOLFENGINE_MSG(WE_LOG_MAC, "MAC algo: WE_HMAC_ALGO");
                 wc_HmacFree(&mac->state.hmac);
                 break;
         #endif
         #ifdef WE_HAVE_CMAC
             case WE_CMAC_ALGO:
+                WOLFENGINE_MSG(WE_LOG_MAC, "MAC algo: WE_CMAC_ALGO");
                 break;
         #endif
             default:
@@ -840,6 +893,7 @@ static int we_hmac_pkey_init(EVP_PKEY_CTX *ctx)
     we_mac *mac = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p]", ctx);
 
     mac = we_mac_pkey_init(ctx);
     if (mac == NULL) {
@@ -878,6 +932,8 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     we_mac *mac;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_update");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, data = %p, "
+                           "dataSz = %zu]", ctx, data, dataSz);
 
     if (ctx == NULL || data == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
@@ -927,7 +983,15 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
  */
 static int we_hmac_pkey_signctx_init(EVP_PKEY_CTX *ctx, EVP_MD_CTX *mdCtx)
 {
-    return we_mac_pkey_signctx_init(ctx, mdCtx, we_hmac_pkey_update);
+    int ret;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_signctx_init");
+
+    ret = we_mac_pkey_signctx_init(ctx, mdCtx, we_hmac_pkey_update);
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_signctx_init", ret);
+
+    return ret;
 }
 
 
@@ -948,6 +1012,9 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
     we_mac *mac;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_signctx");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, sig = %p, "
+                           "siglen = %p, mdCtx = %p]", ctx, sig, siglen, mdCtx);
+
     if (ctx == NULL || siglen == NULL || mdCtx == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_hmac_pkey_signctx, ctx:    ", ctx);
@@ -1050,6 +1117,10 @@ static int we_hmac_set_priv_key(EVP_PKEY *pk, const unsigned char *priv,
     int ret = 1;
     ASN1_OCTET_STRING *asn1 = NULL;
 
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_set_priv_key");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [pk = %p, priv = %p, len = %zu]",
+                           pk, priv, len);
+
     /* Check we don't have a key set already. */
     if (EVP_PKEY_get0(pk) != NULL) {
         ret = 0;
@@ -1067,6 +1138,8 @@ static int we_hmac_set_priv_key(EVP_PKEY *pk, const unsigned char *priv,
     if ((ret == 1) && (EVP_PKEY_assign(pk, EVP_PKEY_HMAC, asn1) == 0)) {
         ret = 0;
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_set_priv_key", ret);
 
     return ret;
 }
@@ -1142,6 +1215,8 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     we_mac *mac;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_pkey_update");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, data = %p, "
+                           "dataSz = %zu]", ctx, data, dataSz);
 
     if (ctx == NULL || data == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
@@ -1212,6 +1287,9 @@ static int we_cmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
     we_mac *mac;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_pkey_signctx");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, sig = %p, "
+                           "siglen = %p, mdCtx = %p]", ctx, sig, siglen, mdCtx);
+
     if (ctx == NULL || siglen == NULL || mdCtx == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_cmac_pkey_signctx, ctx:    ", ctx);
@@ -1268,6 +1346,7 @@ static int we_cmac_pkey_init(EVP_PKEY_CTX *ctx)
     we_mac *mac = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_pkey_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p]", ctx);
 
     mac = we_mac_pkey_init(ctx);
     if (mac == NULL) {
@@ -1291,7 +1370,9 @@ static int we_cmac_pkey_init(EVP_PKEY_CTX *ctx)
  */
 static int we_cmac_pkey_keygen_init(EVP_PKEY_CTX *ctx)
 {
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_pkey_keygen_init");
     (void)ctx;
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_keygen_init", 1);
     return 1;
 }
 

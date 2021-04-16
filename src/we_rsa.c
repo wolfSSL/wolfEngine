@@ -137,6 +137,8 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
     word32 idx = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_set_public_key");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [rsaKey = %p, engineRsa = %p]",
+                           rsaKey, engineRsa);
 
     /* DER encoded public key with OpenSSL. */
     pubDerLen = i2d_RSAPublicKey(rsaKey, &pubDer);
@@ -156,6 +158,7 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
     }
 
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Imported RSA public key to RsaKey struct");
         /* Ensure this only happens once. */
         engineRsa->pubKeySet = 1;
     }
@@ -186,6 +189,8 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
     word32 idx = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_set_private_key");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS (rsaKey = %p, engineRsa = %p]",
+                           rsaKey, engineRsa);
 
     /* DER encoded private key with OpenSSL. */
     privDerLen = i2d_RSAPrivateKey(rsaKey, &privDer);
@@ -205,6 +210,8 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
     }
 
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Imported RSA private key into "
+                       "RsaKey struct");
         /* Ensure this only happens once. */
         engineRsa->privKeySet = 1;
     }
@@ -232,6 +239,7 @@ static int we_rsa_init(RSA *rsa)
     we_Rsa *engineRsa;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [rsa = %p]", rsa);
 
     /* Allocate memory for internal RSA object. */
     engineRsa = (we_Rsa *)OPENSSL_zalloc(sizeof(we_Rsa));
@@ -310,6 +318,7 @@ static int we_rsa_finish(RSA *rsa)
     we_Rsa *engineRsa;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_finish");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [rsa = %p]", rsa);
 
     /* Retrieve internal RSA object from extra data. */
     engineRsa = (we_Rsa *)RSA_get_ex_data(rsa, WE_RSA_EX_DATA_IDX);
@@ -345,11 +354,16 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
 #else
     WC_RNG *rng = we_rng;
 #endif
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_enc_int");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
+                           "toLen = %zu, to = %p, rsa = %p]", fromLen,
+                           from, toLen, to, rsa);
 
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
             /* PKCS#1 v1.5 padding using block type 2. */
             ret = wc_RsaPublicEncrypt(from, (word32)fromLen, to, (word32)toLen,
                     &rsa->key, rng);
@@ -359,6 +373,7 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_PKCS1_OAEP_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_OAEP_PADDING");
             /* OAEP padding using SHA-1, MGF1. */
             mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
             ret = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
@@ -372,6 +387,7 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_NO_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
             /* Raw public encrypt - no padding. */
             ret = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
                     (word32)toLen, &rsa->key, rng, WC_RSA_NO_PAD,
@@ -384,8 +400,9 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
             break;
         default:
             /* Unsupported padding mode for RSA encrpytion. */
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK,
-                                 "we_rsa_pub_enc: unknown padding");
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding mode:  %d",
+                      rsa->padMode);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
             ret = -1;
     }
 
@@ -412,6 +429,9 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
     we_Rsa *engineRsa = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_enc");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %d, from = %p, "
+                           "to = %p, rsa = %p, padding = %d]", fromLen,
+                           from, to, rsa, padding);
 
     /* Validate parameters. */
     if (fromLen < 0) {
@@ -447,6 +467,8 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
         }
     }
 
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pub_enc", ret);
+
     return ret;
 }
 
@@ -464,11 +486,16 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
 {
     int ret;
     const EVP_MD *mdMGF1 = NULL;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_dec_int");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
+                           "toLen = %zu, to = %p, rsa = %p]", fromLen,
+                           from, toLen, to, rsa);
 
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
             /* PKCS#1 v1.5 padding using block type 2. */
             ret = wc_RsaPrivateDecrypt(from, (word32)fromLen, to, (word32)toLen,
                     &rsa->key);
@@ -479,6 +506,7 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_PKCS1_OAEP_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_OAEP_PADDING");
             /* PKCS#1 OAEP padding. */
             mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
             ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
@@ -492,6 +520,7 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_NO_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
             /* Raw private decrypt - no padding. */
             ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
                     (word32)toLen, &rsa->key, WC_RSA_NO_PAD, WC_HASH_TYPE_NONE,
@@ -506,6 +535,9 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
             /* Unsupported padding mode for RSA decryption. */
             WOLFENGINE_ERROR_MSG(WE_LOG_PK,
                                  "we_rsa_priv_dec: unknown padding");
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding: %d",
+                      rsa->padMode);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
             ret = -1;
     }
 
@@ -532,6 +564,9 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
     we_Rsa *engineRsa = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_dec");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %d, from = %p, "
+                           "to = %p, rsa = %p, padding = %d]",
+                           fromLen, from, to, rsa, padding);
 
     /* Validate parameters. */
     if (fromLen < 0) {
@@ -595,11 +630,16 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
 #else
     WC_RNG *rng = we_rng;
 #endif
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc_int");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
+                           "toLen = %zu, to = %p, rsa = %p]", fromLen, from,
+                           toLen, to, rsa);
 
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
             /* PKCS#1 v1.5 padding using block type 1. */
             ret = wc_RsaSSL_Sign(from, (word32)fromLen, to, (word32)toLen,
                     &rsa->key, rng);
@@ -609,6 +649,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_NO_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
             /* Raw private encrypt - no padding. */
             ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to, &tLen,
                                &rsa->key, RSA_PRIVATE_ENCRYPT, rng);
@@ -618,6 +659,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_PKCS1_PSS_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PSS_PADDING");
             /* PKCS#1 PSS padding. */
             /* When MGF1 digest is not specified, use signing digest. */
             mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
@@ -634,6 +676,9 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             /* Unsupported padding mode for RSA private encryption. */
             WOLFENGINE_ERROR_MSG(WE_LOG_PK,
                                  "we_rsa_priv_enc_int: unknown padding");
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding mode: %d",
+                      rsa->padMode);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
             ret = -1;
     }
 
@@ -660,6 +705,9 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
     we_Rsa *engineRsa = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %d, from = %p, "
+                           "to = %p, rsa = %p, padding = %d]", fromLen, from,
+                           to, rsa, padding);
 
     /* Validate parameters. */
     if (fromLen < 0) {
@@ -723,11 +771,16 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
 #else
     WC_RNG *rng = we_rng;
 #endif
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec_int");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
+                           "toLen = %zu, to = %p, rsa = %p]", fromLen, from,
+                           toLen, to, rsa);
 
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
             /* PKCS #1 v1.5 padding using block type 1. */
             ret = wc_RsaSSL_Verify(from, (word32)fromLen, to, (word32)toLen,
                     &rsa->key);
@@ -737,6 +790,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_NO_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
             ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to, &tLen,
                                &rsa->key, RSA_PUBLIC_DECRYPT, rng);
             if (ret < 0) {
@@ -745,6 +799,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
             }
             break;
         case RSA_PKCS1_PSS_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PSS_PADDING");
             /* PKCS #1 PSS padding. */
             /* When MGF1 digest is not specified, use verify digest. */
             mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
@@ -759,8 +814,9 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
             break;
         default:
             /* Unsupported padding mode for RSA public decryption. */
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK,
-                                 "we_rsa_pub_dec_int: unknown padding");
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding mode: %d",
+                      rsa->padMode);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
             ret = -1;
     }
 
@@ -787,6 +843,9 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
     we_Rsa *engineRsa = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %d, from = %p, to = %p, "
+                           "rsa = %p, padding = %d]", fromLen, from, to,
+                           rsa, padding);
 
     /* Validate parameters. */
     if (fromLen < 0) {
@@ -845,6 +904,8 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA **osslKey)
     RSA *decodedRsa = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_convert_rsa");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [wolfKey = %p, osslKey = %p]",
+                           wolfKey, osslKey);
 
     /* Get the length of the DER encoded private key. */
     derLen = wc_RsaKeyToDer(wolfKey, NULL, 0);
@@ -918,6 +979,8 @@ static int we_rsa_keygen_int(we_Rsa *rsa, RSA **osslKey, int bits, long e)
 #endif
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_keygen");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [rsa = %p, osslKey = %p, "
+                           "bits = %d, e = %ld]", rsa, osslKey, bits, e);
 
     /* Validate parameters. */
     if (rsa == NULL) {
@@ -977,6 +1040,8 @@ static int we_rsa_keygen(RSA *osslKey, int bits, BIGNUM *eBn, BN_GENCB *cb)
     (void)cb; /* Callback not supported, yet. */
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_keygen");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [osslKey = %p, bits = %d, "
+                           "eBn = %p, cb = %p]", osslKey, bits, eBn, cb);
 
     /* Retrieve the internal RSA object from extra data. */
     engineRsa = (we_Rsa *)RSA_get_ex_data(osslKey, WE_RSA_EX_DATA_IDX);
@@ -1060,6 +1125,7 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
     we_Rsa *rsa;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     /* Allocate an internal RSA object. */
     rsa = (we_Rsa *)OPENSSL_zalloc(sizeof(we_Rsa));
@@ -1081,6 +1147,7 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
     if (ret == 1) {
         rc = wc_InitRng(&rsa->rng);
         if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_InitRng", rc);
             ret = 0;
         }
     }
@@ -1121,6 +1188,7 @@ static void we_rsa_pkey_cleanup(EVP_PKEY_CTX *ctx)
     we_Rsa *rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_cleanup");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
 
     if (rsa != NULL) {
         /* Remove reference to internal RSA object. */
@@ -1129,6 +1197,8 @@ static void we_rsa_pkey_cleanup(EVP_PKEY_CTX *ctx)
         wc_FreeRsaKey(&rsa->key);
         OPENSSL_free(rsa);
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_cleanup", 1);
 }
 
 /**
@@ -1150,16 +1220,20 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
     we_Rsa *rsaSrc = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_copy");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [dst = %p, src = %p]", dst, src);
 
     /* Initialize the internal RSA object. */
     rc = we_rsa_pkey_init(dst);
     if (rc != 1) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pkey_init", rc);
         ret = 0;
     }
     if (ret == 1) {
         /* Get the internal RSA object for destination context. */
         rsaDst = (we_Rsa *)EVP_PKEY_CTX_get_data(dst);
         if (rsaDst == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
+                                       "EVP_PKEY_CTX_get_data(rsaDst)", rsaDst);
             ret = 0;
         }
     }
@@ -1167,6 +1241,8 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
         /* Get the internal RSA object for source context. */
         rsaSrc = (we_Rsa *)EVP_PKEY_CTX_get_data(src);
         if (rsaSrc == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
+                                       "EVP_PKEY_CTX_get_data(rsaSrc)", rsaDst);
             ret = 0;
         }
     }
@@ -1202,6 +1278,7 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     RSA *rsa = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_keygen");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, pkey = %p]", ctx, pkey);
 
     /* Get the internal RSA object. */
     engineRsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
@@ -1265,6 +1342,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_ctrl");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, type = %d, num = %d, "
+                           "ptr = %p]", ctx, type, num, ptr);
 
     /* Get the internal RSA object. */
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
@@ -1276,6 +1355,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     if (ret == 1) {
         switch (type) {
             case EVP_PKEY_CTRL_RSA_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_RSA_PADDING");
                 /* num  [in]  RSA padding mode. */
                 /* Validate parameter - padding mode. */
                 if (num != RSA_PKCS1_PADDING &&
@@ -1298,18 +1378,23 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
             case EVP_PKEY_CTRL_GET_RSA_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_GET_RSA_PADDING");
                 /* ptr  [out]  RSA padding mode. */
                 *(int *)ptr = rsa->padMode;
                 break;
             case EVP_PKEY_CTRL_MD:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_MD");
                 /* ptr  [in]  Signing/verification digest. */
                 rsa->md = (EVP_MD*)ptr;
                 break;
             case EVP_PKEY_CTRL_GET_MD:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_GET_MD");
                 /* ptr  [out]  Signing/verification digest. */
                 *(const EVP_MD **)ptr = rsa->md;
                 break;
             case EVP_PKEY_CTRL_RSA_OAEP_MD:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_RSA_OAEP_MD");
                 /* ptr [in]  EVP digest to use in OAEP padding. */
                 if (rsa->padMode != RSA_PKCS1_OAEP_PADDING) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Can't use "
@@ -1322,6 +1407,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
             case EVP_PKEY_CTRL_GET_RSA_OAEP_MD:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_GET_RSA_OAEP_MD");
                 /* ptr [out]  EVP digest used in OAEP padding. */
                 if (rsa->padMode != RSA_PKCS1_OAEP_PADDING) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Can't use "
@@ -1334,10 +1421,13 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
             case EVP_PKEY_CTRL_DIGESTINIT:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_DIGESTINIT");
                 /* Nothing to do. */
                 break;
 #if OPENSSL_VERSION_NUMBER >= 0x1010100fL
             case EVP_PKEY_CTRL_RSA_KEYGEN_PRIMES:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_RSA_KEYGEN_PRIMES");
                 /* num  [in]  Number of primes. */
                 if (num != 2) {
                     /* wolfCrypt can only do key generation with 2 primes. */
@@ -1348,6 +1438,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
 #endif
             case EVP_PKEY_CTRL_RSA_KEYGEN_BITS:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_RSA_KEYGEN_BITS");
                 /* num  [in]  Size of the prime to generate in bits. */
                 if (we_check_rsa_key_size(num, 0) != 1) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in "
@@ -1360,6 +1452,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
             case EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP");
                 /* ptr  [in]  Big number holding public exponent. */
                 bn = (BIGNUM*)ptr;
                 /* Get the bottom word of the big number. */
@@ -1381,6 +1475,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
             case EVP_PKEY_CTRL_RSA_PSS_SALTLEN:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_RSA_PSS_SALTLEN");
                 /* num  [in]  Salt length for PSS.  */
                 /* Only useful when padding mode is PSS. */
                 if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
@@ -1392,6 +1488,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 rsa->saltLen = num;
                 break;
             case EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN");
                 /* ptr  [out]  Salt length for PSS.  */
                 /* Only useful when padding mode is PSS. */
                 if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
@@ -1405,6 +1503,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
             case EVP_PKEY_CTRL_RSA_MGF1_MD:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_RSA_MGF1_MD");
                 /* ptr  [in]  Digest to use with MGF1 in OAEP/PSS. */
                 /* Only useful when padding mode is OAEP/PSS. */
                 if (rsa->padMode != RSA_PKCS1_OAEP_PADDING &&
@@ -1419,6 +1518,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
             case EVP_PKEY_CTRL_GET_RSA_MGF1_MD:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_GET_RSA_MGF1_MD");
                 /* ptr  [out]  Digest to use with MGF1 in OAEP/PSS. */
                 /* Only useful when padding mode is OAEP/PSS. */
                 if (rsa->padMode != RSA_PKCS1_OAEP_PADDING &&
@@ -1478,6 +1579,8 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     int bits = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_ctrl_str");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, type = %p, value = %p]",
+                           ctx, type, value);
 
     /* Get the internal RSA object. */
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
@@ -1560,6 +1663,9 @@ static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
     int hashOID = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_der_encode_digest");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [md = %p, digest = %p, "
+                           "digestLen = %zu, encodedDigest = %p]", md,
+                           digest, digestLen, encodedDigest);
 
     /* Allocate a buffer if not passed in. */
     if (*encodedDigest == NULL) {
@@ -1629,6 +1735,9 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_sign");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, sig = %p, sigLen = %p, "
+                           "tbs = %p, tbsLen = %zu]", ctx, sig, sigLen, tbs,
+                           tbsLen);
 
     /* Get the internal RSA object. */
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
@@ -1750,6 +1859,9 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, sig = %p, sigLen = %zu, "
+                           "tbs = %p, tbsLen = %zu]", ctx, sig, sigLen,
+                           tbs, tbsLen);
 
     /* Get the internal RSA object. */
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
@@ -1880,6 +1992,9 @@ static int we_rsa_pkey_encrypt(EVP_PKEY_CTX *ctx, unsigned char *ciphertext,
     RSA *rsaKey = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_encrypt");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, ciphertext = %p, "
+                           "cipherLen = %p, plaintext = %p, plainLen = %zu]",
+                           ctx, ciphertext, cipherLen, plaintext, plainLen);
 
     /* Get the internal RSA object. */
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
@@ -1960,6 +2075,9 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
     RSA *rsaKey = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_decrypt");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ctx = %p, plaintext = %p, "
+                           "plainLen = %p, ciphertext = %p, cipherLen = %zu]",
+                           ctx, plaintext, plainLen, ciphertext, cipherLen);
 
     /* Get the internal RSA object. */
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);

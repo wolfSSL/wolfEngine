@@ -185,7 +185,8 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesCbcEncrypt", rc);
                     ret = 0;
-                } else {
+                }
+                else {
                     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                            "Encrypted %d bytes (AES-CBC)",
                                            AES_BLOCK_SIZE);
@@ -210,7 +211,8 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
                 ret = 0;
-            } else {
+            }
+            else {
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                        "Encrypted %d bytes (AES-CBC)", l);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
@@ -291,7 +293,8 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesCbcDecrypt", rc);
                     ret = 0;
-                } else {
+                }
+                else {
                     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                            "Decrypted %d bytes (AES-CBC)",
                                            AES_BLOCK_SIZE);
@@ -316,7 +319,8 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesCbcDecrypt", rc);
                     ret = 0;
-                } else {
+                }
+                else {
                     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                            "Decrypted %d bytes (AES-CBC)", l);
                     WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
@@ -682,7 +686,8 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesEcbEncrypt", rc);
                     ret = 0;
-                } else {
+                }
+                else {
                     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                            "Encrypted %d bytes (AES-ECB)",
                                            AES_BLOCK_SIZE);
@@ -704,7 +709,8 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesEcbEncrypt", rc);
                 ret = 0;
-            } else {
+            }
+            else {
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                        "Encrypted %d bytes (AES-ECB)", l);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
@@ -784,7 +790,8 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesEcbDecrypt", rc);
                     ret = 0;
-                } else {
+                }
+                else {
                     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                            "Decrypted %d bytes (AES-ECB)",
                                            AES_BLOCK_SIZE);
@@ -808,7 +815,8 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesEcbDecrypt", rc);
                     ret = 0;
-                } else {
+                }
+                else {
                     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                            "Decrypted %d bytes (AES-ECB)", l);
                     WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);

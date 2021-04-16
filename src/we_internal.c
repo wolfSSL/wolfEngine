@@ -161,6 +161,8 @@ static int we_init_random()
  */
 static void we_final_random()
 {
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_final_random");
+
     if (we_globalRngInited) {
     #ifndef WE_SINGLE_THREADED
         wc_FreeMutex(&we_global_rng_mutex);
@@ -168,6 +170,8 @@ static void we_final_random()
         wc_FreeRng(&we_globalRng);
         we_globalRngInited = 0;
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_final_random", 1);
 }
 
 #endif /* WE_HAVE_ECC || WE_HAVE_AESGCM || WE_HAVE_RSA */
@@ -213,8 +217,9 @@ static const int we_digest_nids[] = {
 int we_nid_to_wc_hash_type(int nid)
 {
     int hashType = WC_HASH_TYPE_NONE;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
-    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_oid");
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_type");
 
     switch (nid) {
 #ifndef NO_MD5
@@ -266,10 +271,15 @@ int we_nid_to_wc_hash_type(int nid)
         case NID_sha3_512:
             hashType = WC_HASH_TYPE_SHA3_512;
             break;
-        default:
-            break;
 #endif
+        default:
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported hash type NID: %d",
+                      nid);
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, errBuff);
+            break;
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_nid_to_wc_hash_type", hashType);
 
     return hashType;
 }
@@ -284,6 +294,8 @@ int we_nid_to_wc_hash_type(int nid)
 int we_nid_to_wc_hash_oid(int nid) {
     int hashType = we_nid_to_wc_hash_type(nid);
     int ret;
+
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_oid");
 
     ret = wc_HashGetOID(hashType);
     if (ret < 0) {
@@ -315,6 +327,9 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
                       int nid)
 {
     int ret = 1;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_digests");
 
     (void)e;
 
@@ -371,12 +386,16 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
             break;
 #endif
         default:
-            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "Unsupported digest NID");
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported digest NID: %d",
+                      nid);
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, errBuff);
             *digest = NULL;
             ret = 0;
             break;
         }
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_digests", ret);
 
     return ret;
 }
@@ -437,8 +456,11 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
                       int nid)
 {
     int ret = 1;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     (void)e;
+
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_ciphers");
 
     if (cipher == NULL) {
         /* Return a list of supported NIDs (Numerical IDentifiers) */
@@ -514,12 +536,17 @@ static int we_ciphers(ENGINE *e, const EVP_CIPHER **cipher, const int **nids,
             break;
 #endif
         default:
-            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "Unsupported cipher NID");
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported cipher NID: %d",
+                      nid);
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, errBuff);
+
             *cipher = NULL;
             ret = 0;
             break;
         }
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_ciphers", ret);
 
     return ret;
 }
@@ -549,8 +576,11 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
                          int nid)
 {
     int ret = 1;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     (void)e;
+
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_pkey");
 
     if (pkey == NULL) {
         /* Return a list of supported nids */
@@ -619,13 +649,17 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
 #endif
 #endif /* WE_HAVE_ECKEYGEN */
         default:
-            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "we_pkey: Unsupported public "
-                                                "key NID");
+            XSNPRINTF(errBuff, sizeof(errBuff), "we_pkey: Unsupported public "
+                      "key NID: %d", nid);
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, errBuff);
+
             *pkey = NULL;
             ret = 0;
             break;
         }
     }
+
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_pkey", ret);
 
     return ret;
 }
@@ -634,6 +668,7 @@ static int we_pkey_asn1(ENGINE *e, EVP_PKEY_ASN1_METHOD **pkey,
                         const int **nids, int nid)
 {
     int ret = 1;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     (void)e;
 
@@ -657,8 +692,10 @@ static int we_pkey_asn1(ENGINE *e, EVP_PKEY_ASN1_METHOD **pkey,
             break;
 #endif /* WE_HAVE_CMAC */
         default:
-            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, "we_pkey_asn1: Unsupported "
-                                                "public key NID");
+            XSNPRINTF(errBuff, sizeof(errBuff), "we_pkey: Unsupported public "
+                      "key ASN1 NID: %d", nid);
+            WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, errBuff);
+
             *pkey = NULL;
             ret = 0;
             break;

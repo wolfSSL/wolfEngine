@@ -59,6 +59,7 @@ static int we_dh_init(DH *dh)
     we_Dh *engineDh = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [dh = %p]", dh);
 
     engineDh = (we_Dh *)OPENSSL_zalloc(sizeof(we_Dh));
     if (engineDh == NULL) {
@@ -67,12 +68,16 @@ static int we_dh_init(DH *dh)
     }
 
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_KE, "Initializing wolfCrypt DhKey structure: %p",
+                       &engineDh->key);
         rc = wc_InitDhKey(&engineDh->key);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_InitDhKey", rc);
             ret = 0;
         }
         engineDh->primeLen = DEFAULT_PRIME_LEN;
+        WOLFENGINE_MSG(WE_LOG_KE, "Setting DH prime length to %d",
+                       DEFAULT_PRIME_LEN);
     }
 
 #ifndef WE_SINGLE_THREADED
@@ -118,6 +123,7 @@ static int we_dh_finish(DH *dh)
     we_Dh *engineDh = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_finish");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [dh = %p]", dh);
 
     engineDh = (we_Dh *)DH_get_ex_data(dh, 0);
     if (engineDh == NULL) {
@@ -161,17 +167,19 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     int qBufLen = 0;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_set_dh_parameters");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [dh = %p, engineDh = %p]",
+                           dh, engineDh);
 
     pBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(DH_get0_p(dh)));
     if (pBuf == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pBuf);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(pBuf)", pBuf);
         ret = 0;
     }
 
     if (ret == 1) {
         gBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(DH_get0_g(dh)));
         if (gBuf == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", gBuf);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(gBuf)", gBuf);
             ret = 0;
         }
     }
@@ -179,7 +187,7 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         pBufLen = BN_bn2bin(DH_get0_p(dh), pBuf);
         if (pBufLen == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", pBufLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin(pBufLen)", pBufLen);
             ret = 0;
         }
     }
@@ -187,7 +195,7 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         gBufLen = BN_bn2bin(DH_get0_g(dh), gBuf);
         if (gBufLen == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", gBufLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin(gBufLen)", gBufLen);
             ret = 0;
         }
     }
@@ -200,14 +208,14 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
     if (ret == 1 && q != NULL) {
         qBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(q));
         if (qBuf == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", qBuf);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(qBuf)", qBuf);
             ret = 0;
         }
 
         if (ret == 1) {
             qBufLen = BN_bn2bin(q, qBuf);
             if (qBufLen == 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", qBufLen);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin(qBufLen)", qBufLen);
                 ret = 0;
             }
         }
@@ -228,6 +236,9 @@ static int we_set_dh_parameters(const DH *dh, we_Dh *engineDh)
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhSetKey_ex", rc);
             ret = 0;
+        }
+        else {
+            WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "Set DH parameters");
         }
     }
 
@@ -266,6 +277,8 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     BIGNUM *pubBn = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_generate_key_int");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [dh = %p, engineDh = %p]",
+                           dh, engineDh);
 
     pubLen = BN_num_bytes(DH_get0_p(dh));
     pub = (unsigned char*)OPENSSL_malloc(pubLen);
@@ -316,6 +329,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     }
 
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_KE, "Generated DH key pair");
         privBn = BN_bin2bn(priv, actualPrivLen, NULL);
         if (privBn == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", privBn);
@@ -364,6 +378,7 @@ static int we_dh_generate_key(DH *dh)
     we_Dh *engineDh = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_generate_key");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [dh = %p]", dh);
 
     engineDh = (we_Dh *)DH_get_ex_data(dh, 0);
     if (engineDh == NULL) {
@@ -408,11 +423,15 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     unsigned int secLen = 0;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_compute_key_int");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [engineDh = %p, secret = %p, "
+                           "secretLen = %p, pubKey = %p, dh = %p]",
+                           engineDh, secret, secretLen, pubKey, dh);
 
     if (ret == 1) {
         pubBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(pubKey));
         if (pubBuf == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pubBuf);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(pubBuf)",
+                                       pubBuf);
             ret = 0;
         }
     }
@@ -421,7 +440,8 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
         privBuf = (unsigned char *)OPENSSL_malloc(BN_num_bytes(
                                                   DH_get0_priv_key(dh)));
         if (privBuf == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", privBuf);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(privBuf)",
+                                       privBuf);
             ret = 0;
         }
     }
@@ -429,7 +449,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     if (ret == 1) {
         pubLen = BN_bn2bin(pubKey, pubBuf);
         if (pubLen == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", pubLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin(pubLen)", pubLen);
             ret = 0;
         }
     }
@@ -437,7 +457,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     if (ret == 1) {
         privLen = BN_bn2bin(DH_get0_priv_key(dh), privBuf);
         if (privLen == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin", privLen);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "BN_bn2bin(privLen)", privLen);
             ret = 0;
         }
     }
@@ -452,11 +472,15 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     }
 
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_KE, "Set DH parameters into DH struct");
         rc = wc_DhCheckPubKey_ex(&engineDh->key, pubBuf, pubLen, engineDh->q,
                                  engineDh->qLen);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhCheckPubKey", rc);
             ret = 0;
+        }
+        else {
+            WOLFENGINE_MSG(WE_LOG_KE, "Validated DH public key");
         }
     }
 
@@ -469,6 +493,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
             ret = 0;
         }
         else {
+            WOLFENGINE_MSG(WE_LOG_KE, "Generated DH shared secret");
             *secretLen = secLen;
         }
     }
@@ -500,6 +525,8 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
     size_t secretLen = 0;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_compute_key");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [secret = %p, pubKey = %p, "
+                           "dh = %p]", secret, pubKey, dh);
 
     engineDh = (we_Dh *)DH_get_ex_data(dh, 0);
     if (engineDh == NULL) {
@@ -515,6 +542,7 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
             ret = -1;
         }
         else {
+            WOLFENGINE_MSG(WE_LOG_KE, "Generated secret, len = %d", secretLen);
             ret = (int)secretLen;
         }
     }
@@ -577,20 +605,25 @@ static int we_dh_pkey_init(EVP_PKEY_CTX *ctx)
     we_Dh *dh;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p]", ctx);
 
     dh = (we_Dh *)OPENSSL_zalloc(sizeof(we_Dh));
     if (dh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_zalloc", dh);
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_zalloc(dh)", dh);
         ret = 0;
     }
 
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_KE, "Initializing wolfCrypt DhKey "
+                       "structure: %p", &dh->key);
         rc = wc_InitDhKey(&dh->key);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_InitDhKey", rc);
             ret = 0;
         }
         dh->primeLen = DEFAULT_PRIME_LEN;
+        WOLFENGINE_MSG(WE_LOG_KE, "Setting DH prime len to %d",
+                       DEFAULT_PRIME_LEN);
     }
 
 #ifndef WE_SINGLE_THREADED
@@ -630,6 +663,7 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
     we_Dh *dh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_cleanup");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p]", ctx);
 
     if (dh != NULL) {
         wc_FreeDhKey(&dh->key);
@@ -665,6 +699,8 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     (void)ptr;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_ctrl");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p, type = %d, num = %d, "
+                           "ptr = %p", ctx, type, num, ptr);
 
     dh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
     if (dh == NULL) {
@@ -675,6 +711,7 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     if (ret == 1) {
         switch (type) {
             case EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN:
+                WOLFENGINE_MSG(WE_LOG_KE, "EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN");
                 /* These are the sizes allowed by wolfCrypt. */
                 if (num != 1024 && num != 2048 && num != 3072) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_KE,
@@ -683,13 +720,19 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 else {
                     dh->primeLen = num;
+                    WOLFENGINE_MSG(WE_LOG_KE, "Setting DH prime len: %d", num);
                 }
                 break;
             case EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR:
+                WOLFENGINE_MSG(WE_LOG_KE,
+                               "EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR");
+                WOLFENGINE_ERROR_MSG(WE_LOG_KE, "wolfCrypt does not allow "
+                        "setting the generator when generating DH params");
                 /* wolfCrypt doesn't allow setting the generator when generating
                    DH params. */
                 break;
             case EVP_PKEY_CTRL_PEER_KEY:
+                WOLFENGINE_MSG(WE_LOG_KE, "EVP_PKEY_CTRL_PEER_KEY");
                 /* No need to store peer key. We can get it from ctx in
                    we_dh_pkey_derive. Must return 1, though, so peer key does
                    get stored in the ctx. See EVP_PKEY_derive_set_peer. */
@@ -730,6 +773,8 @@ static int we_convert_dh_params(DhKey *wolfDh, DH *osslDh)
     unsigned int qLen = 0;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_convert_dh_params");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [wolfDh = %p, osslDh = %p]",
+                           wolfDh, osslDh);
 
     /* Call with NULL for the buffers to get required lengths. */
     rc = wc_DhExportParamsRaw(wolfDh, NULL, &pLen, NULL, &qLen, NULL, &gLen);
@@ -741,26 +786,27 @@ static int we_convert_dh_params(DhKey *wolfDh, DH *osslDh)
     if (ret == 1) {
         p = (unsigned char*)OPENSSL_malloc(pLen);
         if (p == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", p);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(p)", p);
             ret = 0;
         }
     }
     if (ret == 1) {
         q = (unsigned char*)OPENSSL_malloc(qLen);
         if (q == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", q);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(q)", q);
             ret = 0;
         }
     }
     if (ret == 1) {
         g = (unsigned char*)OPENSSL_malloc(pLen);
         if (g == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", g);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(g)", g);
             ret = 0;
         }
     }
     if (ret == 1) {
         /* With buffers allocated, write the parameters. */
+        WOLFENGINE_MSG(WE_LOG_KE, "Exporting raw DH params from DhKey struct");
         rc = wc_DhExportParamsRaw(wolfDh, p, &pLen, q, &qLen, g, &gLen);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhExportParamsRaw", rc);
@@ -769,24 +815,25 @@ static int we_convert_dh_params(DhKey *wolfDh, DH *osslDh)
     }
 
     /* Convert the parameter byte buffers to BIGNUMs to store in osslDh. */
+    WOLFENGINE_MSG(WE_LOG_KE, "Converting paramters to BIGNUMs");
     if (ret == 1) {
         pBn = BN_bin2bn(p, pLen, NULL);
         if (pBn == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", pBn);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn(pBn)", pBn);
             ret = 0;
         }
     }
     if (ret == 1) {
         qBn = BN_bin2bn(q, qLen, NULL);
         if (qBn == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", qBn);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn(qBn)", qBn);
             ret = 0;
         }
     }
     if (ret == 1) {
         gBn = BN_bin2bn(g, gLen, NULL);
         if (gBn == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", gBn);
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn(gBn)", gBn);
             ret = 0;
         }
     }
@@ -828,6 +875,8 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     DH *dh = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_paramgen");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p, pkey = %p]",
+                           ctx, pkey);
     
     engineDh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
     if (engineDh == NULL) {
@@ -846,6 +895,8 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 
     /* Generate the parameters. */
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_KE, "Generating DH parameters, primeLen = %d",
+                       engineDh->primeLen);
 #ifndef WE_SINGLE_THREADED
         rc = wc_DhGenerateParams(&engineDh->rng, engineDh->primeLen,
                                  &engineDh->key);
@@ -860,6 +911,7 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 
     /* Convert the parameters from wolfSSL to OpenSSL data structure. */
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_KE, "Converting DH params to OpenSSL DH");
         rc = we_convert_dh_params(&engineDh->key, dh);
         if (rc != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_convert_dh_params", rc);
@@ -893,6 +945,8 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     DH *dh;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_keygen");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p, pkey = %p]",
+                           ctx, pkey);
     
     engineDh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
     if (engineDh == NULL) {
@@ -939,6 +993,7 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 
     /* Generate the key pair. */
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_KE, "Generating DH key pair");
         rc = we_dh_generate_key_int(dh, engineDh);
         if (rc != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_generate_key_int", rc);
@@ -972,6 +1027,8 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     const BIGNUM *peerPub = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_derive");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p, secret = %p, "
+                           "secretLen = %p]", ctx, secret, secretLen);
     
     engineDh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
     if (engineDh == NULL) {
@@ -1028,10 +1085,14 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     }
 
     if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_KE, "Generating DH secret, len = %d", secretLen);
         ret = we_dh_compute_key_int(engineDh, secret, secretLen, peerPub,
                                     ourDh);
         if (ret != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_compute_key_int", ret);
+        }
+        else {
+            WOLFENGINE_MSG(WE_LOG_KE, "Generated DH shared secret");
         }
     }
 
