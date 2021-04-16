@@ -287,9 +287,10 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     else if ((ret == 1) && (out != NULL) && (in != NULL || aes->aadLen > 0)) {
         if (aes->enc) {
             if (!aes->ivSet) {
-                rc = wc_AesGcmInit(&aes->aes, NULL, 0, aes->iv, aes->ivLen);
+                rc = wc_AesGcmSetExtIV(&aes->aes, aes->iv, aes->ivLen);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmInit", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmSetExtIV",
+                        rc);
                     ret = 0;
                 }
             }
