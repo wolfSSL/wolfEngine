@@ -234,9 +234,9 @@ static const unsigned char rsa_key_der_2048[] =
 };
 
 /* Copy RSA params from a to b. Surprisingly, there's no function I can find to
-   do this with OpenSSL. There are functions to duplicate private/public keys
-   and return a corresponding RSA object, but no function duplicates BOTH
-   private and public parameters. Returns 1 on success and 0 on failure. */
+ * do this with OpenSSL. There are functions to duplicate private/public keys
+ * and return a corresponding RSA object, but no function duplicates BOTH
+ * private and public parameters. Returns 1 on success and 0 on failure. */
 static int copy_rsa(RSA *a, RSA *b)
 {
     const BIGNUM *aN = NULL, *aE = NULL, *aD = NULL, *aP = NULL, *aQ = NULL,
@@ -280,13 +280,14 @@ static int copy_rsa(RSA *a, RSA *b)
     return 1;
 }
 
-/* Load the RSA key held in buffer rsa_key_der_2048 into wolfEngine and OpenSSL
-   RSA keys for use in RSA direct tests. Returns 1 on success, 0 on failure. */
-static int load_static_rsa_key(ENGINE *e, RSA **weRsaKey, RSA **osslRsaKey)
+/* Load the RSA key held in buffer der of length derLen into wolfEngine and
+ * OpenSSL RSA keys for use in RSA direct tests. Returns 1 on success, 0 on
+ * failure. */
+static int load_static_rsa_key(ENGINE *e, const unsigned char *der,
+                               size_t derLen, RSA **weRsaKey, RSA **osslRsaKey)
 {
     int ret = 1;
     int rc = 0;
-    const unsigned char *p = rsa_key_der_2048;
     EVP_PKEY *pkey = NULL;
     RSA *rsa = NULL;
 
@@ -304,7 +305,7 @@ static int load_static_rsa_key(ENGINE *e, RSA **weRsaKey, RSA **osslRsaKey)
     }
 
     if (ret == 1) {
-        pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+        pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der, derLen);
         if (pkey == NULL) {
             PRINT_MSG("load_static_rsa_key: d2i_PrivateKey failed.");
             ret = 0;
@@ -362,8 +363,9 @@ enum RsaTestType {
 typedef enum RsaTestType RsaTestType;
 
 /* Test the RSA_METHOD API (AKA RSA direct) for a particular half of the key
-   pair (public/private) and direction (encrypt/decrypt). */
-static int test_rsa_direct(ENGINE *e, RsaTestType testType)
+ * pair (public/private) and direction (encrypt/decrypt). */
+static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
+                           RsaTestType testType)
 {
     int err = 0;
     RSA *weRsaKey = NULL;
@@ -390,7 +392,7 @@ static int test_rsa_direct(ENGINE *e, RsaTestType testType)
     int rsaSize = 0;
 
     PRINT_MSG("Load RSA key");
-    err = load_static_rsa_key(e, &weRsaKey, &osslRsaKey) != 1;
+    err = load_static_rsa_key(e, der, derLen, &weRsaKey, &osslRsaKey) != 1;
     if (err == 0) {
         rsaSize = RSA_size(weRsaKey);
         err = RAND_bytes(buf, sizeof(buf)) == 0;
@@ -412,7 +414,7 @@ static int test_rsa_direct(ENGINE *e, RsaTestType testType)
     }
     if (err == 0) {
         /* Set the MSB to 0 so there's no chance the number is too large for the
-           RSA modulus. */
+         * RSA modulus. */
         noPaddingBuf[0] = 0;
     }
 
@@ -426,7 +428,7 @@ static int test_rsa_direct(ENGINE *e, RsaTestType testType)
         testVectors[1].inBuf = buf;
         testVectors[1].inBufLen = sizeof(buf);
         /* OpenSSL requires the to/from buffers to be the same size when doing
-           RSA encrypt/decrypt with no padding. */
+         * RSA encrypt/decrypt with no padding. */
         testVectors[2].padding = RSA_NO_PADDING;
         testVectors[2].padName = "RSA_NO_PADDING";
         testVectors[2].inBuf = noPaddingBuf;
@@ -439,7 +441,7 @@ static int test_rsa_direct(ENGINE *e, RsaTestType testType)
             case PRIVATE_ENCRYPT:
                 if (testVectors[i].padding == RSA_PKCS1_OAEP_PADDING) {
                     /* OpenSSL doesn't support OAEP padding for private
-                       encrypt. */
+                     * encrypt. */
                     continue;
                 }
                 if (err == 0) {
@@ -500,7 +502,7 @@ static int test_rsa_direct(ENGINE *e, RsaTestType testType)
             case PUBLIC_DECRYPT:
                 if (testVectors[i].padding == RSA_PKCS1_OAEP_PADDING) {
                     /* OpenSSL doesn't support OAEP padding for private
-                       encrypt. */
+                     * encrypt. */
                     continue;
                 }
                 if (err == 0) {
@@ -609,30 +611,81 @@ int test_rsa_direct_key_gen(ENGINE *e, void *data)
 
 int test_rsa_direct_priv_enc(ENGINE *e, void *data)
 {
+    int err = 0;
+
     (void)data;
 
-    return test_rsa_direct(e, PRIVATE_ENCRYPT);
+    PRINT_MSG("Check that private encrypt fails with invalid key size.");
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    err = test_rsa_direct(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                           PRIVATE_ENCRYPT) != 1;
+#else
+    err = test_rsa_direct(e, rsa_key_der_256, sizeof(rsa_key_der_256),
+                           PRIVATE_ENCRYPT) != 1;
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+    if (err == 0) {
+        PRINT_MSG("Check that private encrypt works with valid key size.");
+        err = test_rsa_direct(e, rsa_key_der_2048, sizeof(rsa_key_der_2048),
+                              PRIVATE_ENCRYPT);
+    }
+
+    return err;
 }
 
 int test_rsa_direct_priv_dec(ENGINE *e, void *data)
 {
+    int err = 0;
+
     (void)data;
 
-    return test_rsa_direct(e, PRIVATE_DECRYPT);
+    PRINT_MSG("Check that private decrypt fails with invalid key size.");
+    err = test_rsa_direct(e, rsa_key_der_256, sizeof(rsa_key_der_256),
+                           PRIVATE_DECRYPT) != 1;
+    if (err == 0) {
+        PRINT_MSG("Check that private decrypt works with valid key size.");
+        err = test_rsa_direct(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                              PRIVATE_DECRYPT);
+    }
+
+    return err;
 }
 
 int test_rsa_direct_pub_enc(ENGINE *e, void *data)
 {
+    int err = 0;
+
     (void)data;
 
-    return test_rsa_direct(e, PUBLIC_ENCRYPT);
+    PRINT_MSG("Check that public encrypt fails with invalid key size.");
+    err = test_rsa_direct(e, rsa_key_der_256, sizeof(rsa_key_der_256),
+                           PUBLIC_ENCRYPT) != 1;
+    if (err == 0) {
+        PRINT_MSG("Check that public encrypt works with valid key size.");
+        err = test_rsa_direct(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                              PUBLIC_ENCRYPT);
+    }
+
+    return err;
 }
 
 int test_rsa_direct_pub_dec(ENGINE *e, void *data)
 {
     (void)data;
 
-    return test_rsa_direct(e, PUBLIC_DECRYPT);
+    int err = 0;
+
+    (void)data;
+
+    PRINT_MSG("Check that public decrypt fails with invalid key size.");
+    err = test_rsa_direct(e, rsa_key_der_256, sizeof(rsa_key_der_256),
+                           PUBLIC_DECRYPT) != 1;
+    if (err == 0) {
+        PRINT_MSG("Check that public decrypt works with valid key size.");
+        err = test_rsa_direct(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                              PUBLIC_DECRYPT);
+    }
+
+    return err;
 }
 
 #ifdef WE_HAVE_EVP_PKEY
@@ -678,12 +731,12 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
     }
      if (err == 0 && padMode == RSA_NO_PADDING) {
         /* Set the MSB to 0 so there's no chance the number is too large for the
-           RSA modulus. */
+         * RSA modulus. */
         buf[0] = 0;
     }
 
     /* Don't run these first tests in the case of PSS, which is strictly for
-       signatures and not arbitrary data. */
+     * signatures and not arbitrary data. */
     if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
         PRINT_MSG("Test signing/verifying arbitrary data");
         PRINT_MSG("Sign with OpenSSL");
@@ -798,7 +851,8 @@ int test_rsa_sign_verify_pss(ENGINE *e, void *data)
     return err;
 }
 
-static int test_rsa_enc_dec(ENGINE *e, int padMode, const EVP_MD *rsaMd,
+static int test_rsa_enc_dec(ENGINE *e, const unsigned char *der, size_t derLen,
+                            int padMode, const EVP_MD *rsaMd,
                             const EVP_MD *rsaMgf1Md)
 {
     int err;
@@ -813,10 +867,9 @@ static int test_rsa_enc_dec(ENGINE *e, int padMode, const EVP_MD *rsaMd,
     size_t rsaEncLen = 0;
     size_t bufLen = 20;
     unsigned char *buf = NULL;
-    const unsigned char *p = rsa_key_der_2048;
 
     PRINT_MSG("Load RSA key");    
-    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der, derLen);
     err = pkey == NULL;
     if (err == 0) {
         rsaKey = EVP_PKEY_get0_RSA(pkey);
@@ -839,7 +892,7 @@ static int test_rsa_enc_dec(ENGINE *e, int padMode, const EVP_MD *rsaMd,
     }
      if (err == 0 && padMode == RSA_NO_PADDING) {
         /* Set the MSB to 0 so there's no chance the number is too large for the
-           RSA modulus. */
+         * RSA modulus. */
         buf[0] = 0;
     }
 
@@ -886,16 +939,28 @@ static int test_rsa_enc_dec(ENGINE *e, int padMode, const EVP_MD *rsaMd,
 
 int test_rsa_enc_dec_pkcs1(ENGINE *e, void *data)
 {
+    int err = 0;
+
     (void)data;
 
-    return test_rsa_enc_dec(e, RSA_PKCS1_PADDING, NULL, NULL);
+    PRINT_MSG("Check that private decrypt fails with invalid key size.");
+    err = test_rsa_enc_dec(e, rsa_key_der_256, sizeof(rsa_key_der_256),
+                           RSA_PKCS1_PADDING, NULL, NULL) != 1;
+    if (err == 0) {
+        PRINT_MSG("Check that private decrypt works with valid key size.");
+        err = test_rsa_enc_dec(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                               RSA_PKCS1_PADDING, NULL, NULL);
+    }
+
+    return err;
 }
 
 int test_rsa_enc_dec_no_pad(ENGINE *e, void *data)
 {
     (void)data;
 
-    return test_rsa_enc_dec(e, RSA_NO_PADDING, NULL, NULL);
+    return test_rsa_enc_dec(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                            RSA_NO_PADDING, NULL, NULL);
 }
 
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data)
@@ -905,15 +970,18 @@ int test_rsa_enc_dec_oaep(ENGINE *e, void *data)
     (void)data;
 
     /* Use SHA-1 (default) for MD and MGF1 MD. */
-    err = test_rsa_enc_dec(e, RSA_PKCS1_OAEP_PADDING, NULL, NULL) == 1;
+    err = test_rsa_enc_dec(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                           RSA_PKCS1_OAEP_PADDING, NULL, NULL) == 1;
     if (err == 0) {
         /* Use SHA-256 for MD and MGF1 MD. */
-        err = test_rsa_enc_dec(e, RSA_PKCS1_OAEP_PADDING, EVP_sha256(),
+        err = test_rsa_enc_dec(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                               RSA_PKCS1_OAEP_PADDING, EVP_sha256(),
                                EVP_sha256()) == 1;
     }
     if (err == 0) {
         /* Use SHA-384 for MD and SHA-512 for MGF1 MD. */
-        err = test_rsa_enc_dec(e, RSA_PKCS1_OAEP_PADDING, EVP_sha384(),
+        err = test_rsa_enc_dec(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
+                               RSA_PKCS1_OAEP_PADDING, EVP_sha384(),
                                EVP_sha512()) == 1;
     }
 

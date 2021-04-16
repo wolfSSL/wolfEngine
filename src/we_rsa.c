@@ -64,22 +64,31 @@ typedef struct we_Rsa
  * Check that the key size is allowed. For FIPS, 1024-bit keys can only be used
  * to verify; they can't be generated or used to sign.
  *
- * @param  size      [in]  Key size in bits.
- * @param  isVerify  [in]  1 if the context is a verify operation, 0 otherwise.
+ * @param  size       [in]  Key size in bits.
+ * @param  allow1024  [in]  Whether to allow 1024-bit keys for this check. In
+ *                          FIPS mode, 1024-bit keys aren't allowed for signing
+ *                          (private encrypt) or key generation.
  * @returns  1 if the key size is allowed, 0 if it isn't.
  */
-static int we_check_rsa_key_size(int size, int isVerify) {
+static int we_check_rsa_key_size(int size, int allow1024) {
     int ret = 0;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
 #if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
     ret = size == 2048 || size == 3072 || size == 4096;
-    if (isVerify == 1) {
+    if (allow1024 == 1) {
         ret |= size == 1024;
     }
 #else
-    (void)isVerify;
+    (void)allow1024;
     ret = size >= RSA_MIN_SIZE && size <= RSA_MAX_SIZE;
 #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    if (ret == 0) {
+        XSNPRINTF(errBuff, sizeof(errBuff), "RSA key size %d not allowed.",
+                  size);
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+    }
 
     return ret;
 }
@@ -427,6 +436,7 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
     int ret = 1;
     int rc = 0;
     we_Rsa *engineRsa = NULL;
+    int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_enc");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %d, from = %p, "
@@ -437,6 +447,15 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
     if (fromLen < 0) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative input buffer length.");
         ret = -1;
+    }
+
+    if (ret == 1) {
+        keySize = RSA_size(rsa) * 8;
+        rc = we_check_rsa_key_size(keySize, 1);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
+            ret = -1;
+        }
     }
 
     if (ret == 1) {
@@ -562,6 +581,7 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
     int ret = 1;
     int rc = 0;
     we_Rsa *engineRsa = NULL;
+    int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_dec");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %d, from = %p, "
@@ -572,6 +592,15 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
     if (fromLen < 0) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative input buffer length.");
         ret = -1;
+    }
+
+    if (ret == 1) {
+        keySize = RSA_size(rsa) * 8;
+        rc = we_check_rsa_key_size(keySize, 1);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
+            ret = -1;
+        }
     }
 
     if (ret == 1) {
@@ -703,6 +732,7 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
     int ret = 1;
     int rc = 0;
     we_Rsa *engineRsa = NULL;
+    int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %d, from = %p, "
@@ -713,6 +743,15 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
     if (fromLen < 0) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative input buffer length.");
         ret = -1;
+    }
+
+    if (ret == 1) {
+        keySize = RSA_size(rsa) * 8;
+        rc = we_check_rsa_key_size(keySize, 0);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
+            ret = -1;
+        }
     }
 
     if (ret == 1) {
@@ -841,6 +880,7 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
     int ret = 1;
     int rc = 0;
     we_Rsa *engineRsa = NULL;
+    int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %d, from = %p, to = %p, "
@@ -851,6 +891,15 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
     if (fromLen < 0) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative input buffer length.");
         ret = -1;
+    }
+
+    if (ret == 1) {
+        keySize = RSA_size(rsa) * 8;
+        rc = we_check_rsa_key_size(keySize, 1);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
+            ret = -1;
+        }
     }
 
     if (ret == 1) {
@@ -987,14 +1036,16 @@ static int we_rsa_keygen_int(we_Rsa *rsa, RSA **osslKey, int bits, long e)
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_rsa_keygen_int: rsa NULL");
         ret = 0;
     }
-    if (osslKey == NULL) {
+    if (ret == 1 && osslKey == NULL) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_rsa_keygen_int: osslKey NULL");
         ret = 0;
     }
-    if (we_check_rsa_key_size(bits, 0) != 1) {
-        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in "
-            "range.");
-        ret = 0;
+    if (ret == 1) {
+        rc = we_check_rsa_key_size(bits, 0);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
+            ret = 0;
+        }
     }
 
     if (ret == 1) {
@@ -1441,10 +1492,10 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 WOLFENGINE_MSG(WE_LOG_PK,
                                "type: EVP_PKEY_CTRL_RSA_KEYGEN_BITS");
                 /* num  [in]  Size of the prime to generate in bits. */
-                if (we_check_rsa_key_size(num, 0) != 1) {
-                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in "
-                        "range.");
-                    ret = 0;
+                ret = we_check_rsa_key_size(num, 0);
+                if (ret != 1) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size",
+                                          ret);
                 }
                 else {
                     rsa->bits = num;
@@ -1620,9 +1671,9 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         ret = 2;
         /* Size, in bits, of RSA key to generate. */
         bits = XATOI(value);
-        if (we_check_rsa_key_size(bits, 0) != 1) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in range.");
-            ret = 0;
+        ret = we_check_rsa_key_size(bits, 0);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", ret);
         }
         else {
             rsa->bits = bits;
@@ -1766,9 +1817,9 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
         }
         if (ret == 1) {
             keySize = RSA_size(rsaKey) * 8;
-            if (we_check_rsa_key_size(keySize, 0) != 1) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in range.");
-                ret = 0;
+            ret = we_check_rsa_key_size(keySize, 0);
+            if (ret != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", ret);
             }
         }
         if (ret == 1) {
@@ -1890,8 +1941,9 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         }
         if (ret == 1) {
             keySize = RSA_size(rsaKey) * 8;
-            if (we_check_rsa_key_size(keySize, 1) != 1) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "RSA key size not in range.");
+            rc = we_check_rsa_key_size(keySize, 1);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
                 ret = 0;
             }
         }
@@ -1990,6 +2042,7 @@ static int we_rsa_pkey_encrypt(EVP_PKEY_CTX *ctx, unsigned char *ciphertext,
     we_Rsa *rsa = NULL;
     EVP_PKEY *pkey = NULL;
     RSA *rsaKey = NULL;
+    int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_encrypt");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, ciphertext = %p, "
@@ -2017,6 +2070,14 @@ static int we_rsa_pkey_encrypt(EVP_PKEY_CTX *ctx, unsigned char *ciphertext,
         rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey);
         if (rsaKey == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_get0_RSA", rsaKey);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        keySize = RSA_size(rsaKey) * 8;
+        rc = we_check_rsa_key_size(keySize, 1);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
             ret = 0;
         }
     }
@@ -2073,6 +2134,7 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
     we_Rsa *rsa = NULL;
     EVP_PKEY *pkey = NULL;
     RSA *rsaKey = NULL;
+    int keySize = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_decrypt");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ctx = %p, plaintext = %p, "
@@ -2100,6 +2162,14 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
             if (rsaKey == NULL) {
                 WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_get0_RSA",
                                            rsaKey);
+                ret = 0;
+            }
+        }
+        if (ret == 1) {
+            keySize = RSA_size(rsaKey) * 8;
+            rc = we_check_rsa_key_size(keySize, 1);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
                 ret = 0;
             }
         }
