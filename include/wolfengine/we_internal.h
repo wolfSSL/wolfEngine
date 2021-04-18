@@ -43,7 +43,7 @@
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #include <openssl/kdf.h>
 #endif
 #include <openssl/tls1.h>

@@ -22,6 +22,9 @@
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
 
+/** Engine bound to. */
+static ENGINE *bound = NULL;
+
 #if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
 /** List of public key types supported as ids. */
 static const int we_pkey_nids[] = {
@@ -902,6 +905,10 @@ static int wolfengine_destroy(ENGINE *e)
 
     (void)e;
 
+#ifdef WE_HAVE_DH
+    DH_meth_free(we_dh_method);
+    we_dh_method = NULL;
+#endif
 #ifdef WE_HAVE_RSA
     RSA_meth_free(we_rsa_method);
     we_rsa_method = NULL;
@@ -1001,6 +1008,8 @@ static int wolfengine_destroy(ENGINE *e)
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     we_final_random();
 #endif
+
+    bound = NULL;
 
     WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_destroy", 1);
 
@@ -1203,6 +1212,11 @@ int wolfengine_bind(ENGINE *e, const char *id)
         ret = 0;
     }
 
+    if ((ret == 1) && (bound != NULL)) {
+        /* Don't add methods a second time. */
+        ret = 0;
+    }
+
     if (ret == 1) {
         ret = ENGINE_set_id(e, wolfengine_id);
     }
@@ -1268,6 +1282,11 @@ int wolfengine_bind(ENGINE *e, const char *id)
     }
     if (ret == 1 && ENGINE_set_ctrl_function(e, wolfengine_ctrl) == 0) {
         ret = 0;
+    }
+
+    if (ret == 1) {
+        /* Successfully bound the methods to the engine. */
+        bound = e;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_bind", ret);

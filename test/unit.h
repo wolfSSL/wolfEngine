@@ -38,7 +38,7 @@
 #include <openssl/ec.h>
 #include <openssl/ssl.h>
 #include <openssl/aes.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #include <openssl/kdf.h>
 #endif
 

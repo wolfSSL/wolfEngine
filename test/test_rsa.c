@@ -1065,6 +1065,8 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
     }
 
     BN_free(eCmd);
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
 
     return err;
 }
