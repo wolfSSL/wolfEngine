@@ -175,9 +175,11 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     /* Bug in older versions has tag_set cleared and causes failure. */
     if (err == 0) {
+#else
+    if ((err == 0) && (len == 0)) {
+#endif
         err = EVP_DecryptFinal_ex(ctx, dec + decLen, &decLen) != 1;
     }
-#endif
 
     if (err == 0) {
         PRINT_BUFFER("Decrypted", dec, len);

@@ -119,6 +119,40 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     return ret;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+/**
+ * Cleanup the internal AES-GCM object. Does not free object.
+ *
+ * AAD will be left allocated only if encrypt/decrypt operations is not
+ * completed.
+ *
+ * @param  ctx  [in]  EVP cipher context.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
+{
+    int ret = 1;
+    we_AesGcm *aes;
+
+    /* Get the AES-GCM data to work with. */
+    aes = (we_AesGcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+    if (aes == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        /* Dispose of the AAD if not freed in encrypt/decrypt operation. */
+        if (aes->aad != NULL) {
+            OPENSSL_free(aes->aad);
+        }
+    }
+
+    return ret;
+}
+#endif
+
 static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                                  const unsigned char *in, size_t len)
 {
@@ -244,8 +278,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     if ((ret == 1) && aes->tls) {
         ret = we_aes_gcm_tls_cipher(aes, out, in, len);
     }
-    /* If out is NULL, represents AAD coming in */
-    else if ((ret == 1) && (out == NULL)) {
+    else if ((ret == 1) && (out == NULL) & (len != 0)) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Resizing stored AAD and appending "
                        "data, len = %d", (int)len);
         /* Resize stored AAD and append new data. */
@@ -263,7 +296,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         }
     }
     /* Length may be zero for cases with AAD data only (GMAC) */
-    else if ((ret == 1) && (out != NULL) && (in != NULL || aes->aadLen > 0)) {
+    else if ((ret == 1) && (in != NULL || aes->aadLen > 0)) {
         if (aes->enc) {
             if (!aes->ivSet) {
                 /* Set extern IV. */
@@ -630,6 +663,11 @@ static int we_init_aesgcm_meth(EVP_CIPHER *cipher)
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_aes_gcm_init);
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (ret == 1) {
+        ret = EVP_CIPHER_meth_set_cleanup(cipher, we_aes_gcm_cleanup);
+    }
+#endif
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_aes_gcm_cipher);
     }

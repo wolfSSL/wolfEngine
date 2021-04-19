@@ -136,6 +136,9 @@ static int we_dh_finish(DH *dh)
     }
 
     if (ret == 1) {
+#ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&engineDh->rng);
+#endif
         wc_FreeDhKey(&engineDh->key);
         OPENSSL_free(engineDh);
         DH_set_ex_data(dh, 0, NULL);
@@ -666,6 +669,9 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p]", ctx);
 
     if (dh != NULL) {
+#ifndef WE_SINGLE_THREADED
+        wc_FreeRng(&dh->rng);
+#endif
         wc_FreeDhKey(&dh->key);
         OPENSSL_free(dh);
         EVP_PKEY_CTX_set_data(ctx, NULL);
