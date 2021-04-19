@@ -40,6 +40,13 @@
 #define WE_RSA_EX_DATA_IDX 0
 #endif
 
+/* Index into extra data of DH object to use for wolfEngine DH object.
+ * Customer can define this to avoid clashes with application usages.
+ */
+#ifndef WE_DH_EX_DATA_IDX
+#define WE_DH_EX_DATA_IDX 0
+#endif
+
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>

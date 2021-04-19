@@ -226,8 +226,10 @@ int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data);
 #endif /* WE_HAVE_RSA */
 
 #ifdef WE_HAVE_DH
+int test_dh_pgen(ENGINE *e, void *data);
 int test_dh(ENGINE *e, void *data);
 #ifdef WE_HAVE_EVP_PKEY
+int test_dh_pgen_pkey(ENGINE *e, void *data);
 int test_dh_pkey(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_DH */

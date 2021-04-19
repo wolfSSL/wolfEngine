@@ -548,9 +548,29 @@ int DH_meth_set_compute_key(DH_METHOD *dhm,
     return 1;
 }
 
+int DH_meth_set_generate_params(DH_METHOD *dhm,
+        int (*generate_params) (DH *, int, int, BN_GENCB *))
+{
+    dhm->generate_params = generate_params;
+    return 1;
+}
+
 long DH_get_length(const DH *dh)
 {
     return dh->length;
+}
+
+void DH_get0_pqg(DH *dh, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g)
+{
+    if (p != NULL) {
+        *p = dh->p;
+    }
+    if (q != NULL) {
+        *q = dh->q;
+    }
+    if (g != NULL) {
+        *g = dh->g;
+    }
 }
 
 int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g)
