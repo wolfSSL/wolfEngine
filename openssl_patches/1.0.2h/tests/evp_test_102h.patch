@@ -1,0 +1,58 @@
+diff --git a/crypto/evp/evp_test.c b/crypto/evp/evp_test.c
+index d7441ec7b7..1ff3609444 100644
+--- a/crypto/evp/evp_test.c
++++ b/crypto/evp/evp_test.c
+@@ -60,6 +60,8 @@
+ #include <openssl/err.h>
+ #include <openssl/conf.h>
+ 
++#define GCM_NONCE_MAX_SZ 16
++
+ static void hexdump(FILE *f, const char *title, const unsigned char *s, int l)
+ {
+     int n = 0;
+@@ -387,6 +389,15 @@ static int test_cipher(const char *cipher, const unsigned char *key, int kn,
+     if (!c)
+         return 0;
+ 
++    if ((c->nid == NID_aes_128_gcm ||
++         c->nid == NID_aes_192_gcm ||
++         c->nid == NID_aes_256_gcm) &&
++         in > GCM_NONCE_MAX_SZ) {
++        printf("IV size %d is greater than wolfEngine GCM_NONCE_MAX_SZ (%d), "
++               "skipping test.\n", in, GCM_NONCE_MAX_SZ);
++        return 1;
++    }
++
+     test1(c, key, kn, iv, in, plaintext, pn, ciphertext, cn, aad, an, tag, tn,
+           encdec);
+ 
+@@ -452,6 +463,7 @@ int main(int argc, char **argv)
+ {
+     const char *szTestFile;
+     FILE *f;
++    ENGINE *e = NULL;
+ 
+     if (argc != 2) {
+         fprintf(stderr, "%s <test file>\n", argv[0]);
+@@ -473,8 +485,18 @@ int main(int argc, char **argv)
+     OpenSSL_add_all_ciphers();
+     OpenSSL_add_all_digests();
+ #ifndef OPENSSL_NO_ENGINE
+-    /* Load all compiled-in ENGINEs */
+-    ENGINE_load_builtin_engines();
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default_ciphers(e);
++    ENGINE_set_default_digests(e);
+ #endif
+ #if 0
+     OPENSSL_config();

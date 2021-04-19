@@ -37,6 +37,7 @@
 static int we_ec_get_curve_id(int curveName, int *curveId)
 {
     int ret = 1;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_get_curve_id");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [curveName = %d, curveId = %p]",
@@ -74,7 +75,9 @@ static int we_ec_get_curve_id(int curveName, int *curveId)
             break;
 #endif
         default:
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unsupported ECC curve name");
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ECC curve name: "
+                      "%d.", curveName);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
             ret = 0;
             break;
     }
@@ -1773,7 +1776,6 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
 
     unsigned char* secret = NULL;
     size_t secretLen = 0;
-    size_t deriveLen;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_ecdh_compute_key");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [out = %p, outlen = %zu, "
@@ -1797,9 +1799,8 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
     }
     if (ret != -1) {
         if (KDF) {
-            deriveLen= 0;
-            if (KDF(secret, secretLen, out, &deriveLen)) {
-                ret = (int)deriveLen;
+            if (KDF(secret, secretLen, out, &outlen)) {
+                ret = (int)outlen;
             }
             else {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "KDF", ret);

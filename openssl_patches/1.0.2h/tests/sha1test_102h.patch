@@ -1,0 +1,39 @@
+diff --git a/crypto/sha/sha1test.c b/crypto/sha/sha1test.c
+index 551a348df3..a956084445 100644
+--- a/crypto/sha/sha1test.c
++++ b/crypto/sha/sha1test.c
+@@ -62,6 +62,8 @@
+ 
+ #include "../e_os.h"
+ 
++#include <openssl/engine.h>
++
+ #ifdef OPENSSL_NO_SHA
+ int main(int argc, char *argv[])
+ {
+@@ -111,12 +113,25 @@ int main(int argc, char *argv[])
+     char *p, *r;
+     EVP_MD_CTX c;
+     unsigned char md[SHA_DIGEST_LENGTH];
++    ENGINE *e = NULL;
+ 
+ # ifdef CHARSET_EBCDIC
+     ebcdic2ascii(test[0], test[0], strlen(test[0]));
+     ebcdic2ascii(test[1], test[1], strlen(test[1]));
+ # endif
+ 
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default_digests(e);
++
+     EVP_MD_CTX_init(&c);
+     P = test;
+     R = ret;

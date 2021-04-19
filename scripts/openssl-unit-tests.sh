@@ -85,6 +85,11 @@ do
     # Construct the test executable name by stripping the _102.patch suffix off
     # the patch file name.
     TEST="$(basename $p _102h.patch)"
+    # evp_test takes the file evptests.txt as input.
+    if [ "$TEST" == "evp_test" ]; then
+        TEST="$TEST evptests.txt"
+    fi
+
     printf "\t$TEST..."
     ./$TEST &> $LOGFILE
     if [ $? != 0 ]; then
