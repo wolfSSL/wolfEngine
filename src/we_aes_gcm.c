@@ -457,7 +457,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), ptr, aes->ivLen);
                 }
                 else {
-                    /* Set ta fixed IV and have the rest generated. */
+                    /* Set the fixed IV and have the rest generated. */
                     WOLFENGINE_MSG(WE_LOG_CIPHER, "Set fixed IV, "
                                    "generate the rest");
                     if (aes->ivLen == 0)
