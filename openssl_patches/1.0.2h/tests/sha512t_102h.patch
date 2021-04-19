@@ -1,0 +1,32 @@
+diff --git a/crypto/sha/sha512t.c b/crypto/sha/sha512t.c
+index 178882fc76..31ce49240d 100644
+--- a/crypto/sha/sha512t.c
++++ b/crypto/sha/sha512t.c
+@@ -7,6 +7,7 @@
+ #include <string.h>
+ #include <stdlib.h>
+ 
++#include <openssl/engine.h>
+ #include <openssl/sha.h>
+ #include <openssl/evp.h>
+ #include <openssl/crypto.h>
+@@ -84,6 +85,19 @@ int main(int argc, char **argv)
+     unsigned char md[SHA512_DIGEST_LENGTH];
+     int i;
+     EVP_MD_CTX evp;
++    ENGINE *e = NULL;
++
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default_digests(e);
+ 
+ # ifdef OPENSSL_IA32_SSE2
+     /*
