@@ -1,5 +1,5 @@
 diff --git a/crypto/dh/dhtest.c b/crypto/dh/dhtest.c
-index c5d3d87ea5..36d171555d 100644
+index c5d3d87ea5..342422269a 100644
 --- a/crypto/dh/dhtest.c
 +++ b/crypto/dh/dhtest.c
 @@ -70,6 +70,7 @@
@@ -30,3 +30,12 @@ index c5d3d87ea5..36d171555d 100644
  
      CRYPTO_malloc_debug_init();
      CRYPTO_dbg_set_options(V_CRYPTO_MDEBUG_ALL);
+@@ -124,7 +138,7 @@ int main(int argc, char *argv[])
+     BIO_set_fp(out, stdout, BIO_NOCLOSE);
+ 
+     BN_GENCB_set(&_cb, &cb, out);
+-    if (((a = DH_new()) == NULL) || !DH_generate_parameters_ex(a, 64,
++    if (((a = DH_new()) == NULL) || !DH_generate_parameters_ex(a, 1024,
+                                                                DH_GENERATOR_5,
+                                                                &_cb))
+         goto err;

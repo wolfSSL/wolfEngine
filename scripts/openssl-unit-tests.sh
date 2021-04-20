@@ -9,15 +9,18 @@ if [ "$MAKE_JOBS" = "" ]; then
   MAKE_JOBS=4
 fi
 
-if [ -z ${LOGILE} ]; then
+if [ -z ${LOGFILE} ]; then
     LOGFILE=${SCRIPT_DIR}/openssl-unit-tests.log
 fi
+
+# Clear log file.
+>$LOGFILE
 
 FAILED=0
 
 run_test() {
-    printf "\t$1..."
-    ./$* 2>&1 | tee $LOGFILE
+    printf "\t$1..." | tee -a $LOGFILE
+    ./$* &>> $LOGFILE
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
@@ -29,8 +32,8 @@ run_test() {
 printf "Setting up OpenSSL 1.0.2h.\n"
 if [ -z "${OPENSSL_1_0_2_SOURCE}" ]; then
     printf "\tCloning OpenSSL and checking out version 1.0.2h.\n"
-    git clone --depth=1 -b OpenSSL_1_0_2h https://github.com/openssl/openssl.git openssl-1_0_2h 2>&1 | tee $LOGFILE
-    if [ $? != 0 ]; then
+    git clone --depth=1 -b OpenSSL_1_0_2h https://github.com/openssl/openssl.git openssl-1_0_2h 2>&1 | tee -a $LOGFILE
+    if [ "${PIPESTATUS[0]}" != 0 ]; then
         printf "clone failed\n"
         exit 1
     fi
@@ -53,15 +56,15 @@ if [ -z "${OPENSSL_1_0_2_SOURCE}" ]; then
     if [ -z "${OPENSSL_NO_BUILD}" ]; then
         printf "\tConfiguring.\n"
         # Configure for debug.
-        ./config shared no-asm -g3 -O0 -fno-omit-frame-pointer -fno-inline-functions 2>&1 | tee $LOGFILE
-        if [ $? != 0 ]; then
+        ./config shared no-asm -g3 -O0 -fno-omit-frame-pointer -fno-inline-functions 2>&1 | tee -a $LOGFILE
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
             printf "config failed\n"
             exit 1
         fi
 
         printf "\tBuilding.\n"
-        make -j$MAKE_JOBS 2>&1 | tee $LOGFILE
-        if [ $? != 0 ]; then
+        make -j$MAKE_JOBS 2>&1 | tee -a $LOGFILE
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
             printf "make failed\n"
             exit 1
         fi
@@ -80,15 +83,15 @@ if [ -z "${WOLFENGINE_NO_BUILD}" ]; then
     printf "Setting up wolfEngine to use OpenSSL 1.0.2h.\n"
     printf "\tConfiguring.\n"
     # Tests have been patched to use debug logging - must enable debug
-    ./configure LDFLAGS="-L$OPENSSL_1_0_2_SOURCE" --with-openssl=$OPENSSL_1_0_2_SOURCE --enable-debug 2>&1 | tee $LOGFILE
-    if [ $? != 0 ]; then
+    ./configure LDFLAGS="-L$OPENSSL_1_0_2_SOURCE" --with-openssl=$OPENSSL_1_0_2_SOURCE --enable-debug 2>&1 | tee -a $LOGFILE
+    if [ "${PIPESTATUS[0]}" != 0 ]; then
         printf "config failed\n"
         exit 1
     fi
 
     printf "\tBuilding.\n"
     make -j$MAKE_JOBS 2>&1 | tee $LOGFILE
-    if [ $? != 0 ]; then
+    if [ "${PIPESTATUS[0]}" != 0 ]; then
         printf "make failed\n"
         exit 1
     fi

@@ -1,5 +1,5 @@
 diff --git a/crypto/rsa/rsa_test.c b/crypto/rsa/rsa_test.c
-index 85c7440b8c..0d0fede508 100644
+index 85c7440b8c..3111e535bf 100644
 --- a/crypto/rsa/rsa_test.c
 +++ b/crypto/rsa/rsa_test.c
 @@ -5,6 +5,7 @@
@@ -10,11 +10,12 @@ index 85c7440b8c..0d0fede508 100644
  #include <openssl/crypto.h>
  #include <openssl/err.h>
  #include <openssl/rand.h>
-@@ -221,6 +222,19 @@ int main(int argc, char *argv[])
+@@ -221,6 +222,20 @@ int main(int argc, char *argv[])
      int clen = 0;
      int num;
      int n;
 +    ENGINE *e = NULL;
++    int keySize = 0;
 +
 +    ENGINE_load_dynamic();
 +    e = ENGINE_by_id("wolfengine");
@@ -30,3 +31,18 @@ index 85c7440b8c..0d0fede508 100644
  
      CRYPTO_malloc_debug_init();
      CRYPTO_dbg_set_options(V_CRYPTO_MDEBUG_ALL);
+@@ -246,6 +261,14 @@ int main(int argc, char *argv[])
+         if (v / 3 >= 1)
+             key->flags |= RSA_FLAG_NO_CONSTTIME;
+ 
++        keySize = BN_num_bytes(key->n) * 8;
++        /* Limit the key sizes tested to those allowed by wolfCrypt FIPS. */
++        if (keySize < 1024 || keySize > 4096) {
++            printf("Skipping test because key size %d is too small for "
++                   "wolfEngine.\n", keySize);
++            continue;
++        }
++
+         num = RSA_public_encrypt(plen, ptext_ex, ctext, key,
+                                  RSA_PKCS1_PADDING);
+         if (num != clen) {
