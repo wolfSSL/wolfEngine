@@ -146,9 +146,12 @@ void DH_meth_free(DH_METHOD *dhm);
 int DH_meth_set_generate_key(DH_METHOD *dhm, int (*generate_key) (DH *));
 int DH_meth_set_compute_key(DH_METHOD *dhm,
         int (*compute_key) (unsigned char *key, const BIGNUM *pub_key, DH *dh));
+int DH_meth_set_generate_params(DH_METHOD *dhm,
+        int (*generate_params) (DH *, int, int, BN_GENCB *));
 int DH_meth_set_init(DH_METHOD *dhm, int (*init)(DH *));
 int DH_meth_set_finish(DH_METHOD *dhm, int (*finish) (DH *));
 long DH_get_length(const DH *dh);
+void DH_get0_pqg(DH *dh, const BIGNUM **p, const BIGNUM **q, const BIGNUM **g);
 int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g);
 int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key);
 DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey);

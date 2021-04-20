@@ -139,8 +139,10 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_direct_pub_dec, NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_DH
+    TEST_DECL(test_dh_pgen, NULL),
     TEST_DECL(test_dh, NULL),
 #ifdef WE_HAVE_EVP_PKEY
+    TEST_DECL(test_dh_pgen_pkey, NULL),
     TEST_DECL(test_dh_pkey, NULL),
 #endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_DH */

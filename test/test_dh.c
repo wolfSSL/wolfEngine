@@ -45,62 +45,19 @@ static const unsigned char dh_g[] =
   0x02,
 };
 
-int test_dh(ENGINE *e, void *data)
+static int test_dh_keygen(DH *dhOpenSSL, DH *dhWolfEngine)
 {
-    const DH_METHOD *method = NULL;
     int err = 0;
-    DH *dhWolfEngine = NULL;
-    DH *dhOpenSSL = NULL;
-    BIGNUM *p = NULL;
-    BIGNUM *g = NULL;
     unsigned char *secretOpenSSL = NULL;
     int secretLenOpenSSL = 0;
     unsigned char *secretWolfEngine = NULL;
     int secretLenWolfEngine = 0;
 
-    (void)data;
-
     PRINT_MSG("Generate a DH key pair with OpenSSL");
-    dhOpenSSL = DH_new();
-    err = dhOpenSSL == NULL;
-    if (err == 0) {
-        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
-        err = p == NULL;
-    }
-    if (err == 0) {
-        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
-        err = g == NULL;
-    }
-    if (err == 0) {
-        err = DH_set0_pqg(dhOpenSSL, p, NULL, g) == 0;
-    }
     if (err == 0) {
         err = DH_generate_key(dhOpenSSL) == 0;
     }
-
-    if (err == 0) {
-        PRINT_MSG("Generate a DH key pair with wolfEngine");
-        dhWolfEngine = DH_new();
-        err = dhWolfEngine == NULL;
-    }
-    if (err == 0) {
-        method = ENGINE_get_DH(e);
-        err = method == NULL;
-    }
-    if (err == 0) {
-        DH_set_method(dhWolfEngine, method);
-    }
-    if (err == 0) {
-        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
-        err = p == NULL;
-    }
-    if (err == 0) {
-        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
-        err = g == NULL;
-    }
-    if (err == 0) {
-        err = DH_set0_pqg(dhWolfEngine, p, NULL, g) == 0;
-    }
+    PRINT_MSG("Generate a DH key pair with wolfEngine");
     if (err == 0) {
         err = DH_generate_key(dhWolfEngine) == 0;
     }
@@ -142,6 +99,110 @@ int test_dh(ENGINE *e, void *data)
 
     OPENSSL_free(secretOpenSSL);
     OPENSSL_free(secretWolfEngine);
+
+    return err;
+}
+
+int test_dh_pgen(ENGINE *e, void *data)
+{
+    int err;
+    DH *dhWolfEngine;
+    DH *dhOpenSSL = NULL;
+    const DH_METHOD *method = NULL;
+    const BIGNUM *p;
+    const BIGNUM *q;
+    const BIGNUM *g;
+
+    (void)data;
+
+    PRINT_MSG("Generate DH parameters with wolfEngine");
+
+    dhWolfEngine = DH_new();
+    err = dhWolfEngine == NULL;
+    if (err == 0) {
+        method = ENGINE_get_DH(e);
+        err = method == NULL;
+    }
+    if (err == 0) {
+        DH_set_method(dhWolfEngine, method);
+    }
+    if (err == 0) {
+        /* Generator and callback (last param) ignored by wolfEngine. */
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_5,
+                                        NULL) != 1;
+    }
+
+    if (err == 0) {
+        DH_get0_pqg(dhWolfEngine, &p, &q, &g);
+
+        dhOpenSSL = DH_new();
+        err = (dhOpenSSL == NULL);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhOpenSSL, BN_dup(p), BN_dup(q), BN_dup(g)) != 1;
+    }
+
+    if (err == 0) {
+        err = test_dh_keygen(dhOpenSSL, dhWolfEngine);
+    }
+
+    DH_free(dhOpenSSL);
+    DH_free(dhWolfEngine);
+
+    return err;
+}
+
+int test_dh(ENGINE *e, void *data)
+{
+    int err;
+    DH *dhOpenSSL;
+    DH *dhWolfEngine = NULL;
+    const DH_METHOD *method = NULL;
+    BIGNUM *p = NULL;
+    BIGNUM *g = NULL;
+
+    (void)data;
+
+    dhOpenSSL = DH_new();
+    err = (dhOpenSSL == NULL);
+    if (err == 0) {
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        err = p == NULL;
+    }
+    if (err == 0) {
+        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
+        err = g == NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhOpenSSL, p, NULL, g) == 0;
+    }
+    if (err == 0) {
+        dhWolfEngine = DH_new();
+        err = (dhWolfEngine == NULL);
+    }
+    if (err == 0) {
+        method = ENGINE_get_DH(e);
+        err = method == NULL;
+    }
+    if (err == 0) {
+        DH_set_method(dhWolfEngine, method);
+    }
+    if (err == 0) {
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        err = p == NULL;
+    }
+    if (err == 0) {
+        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
+        err = g == NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWolfEngine, p, NULL, g) == 0;
+    }
+
+    if (err == 0) {
+        err = test_dh_keygen(dhOpenSSL, dhWolfEngine);
+    }
+
     DH_free(dhOpenSSL);
     DH_free(dhWolfEngine);
 
@@ -150,11 +211,10 @@ int test_dh(ENGINE *e, void *data)
 
 #ifdef WE_HAVE_EVP_PKEY
 
-int test_dh_pkey(ENGINE *e, void *data)
+static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
 {
     int err;
     EVP_PKEY_CTX *ctx = NULL;
-    EVP_PKEY *params = NULL;
     EVP_PKEY *keyOpenSSL = NULL;
     EVP_PKEY *keyWolfEngine = NULL;
     unsigned char *secretOpenSSL = NULL;
@@ -162,23 +222,8 @@ int test_dh_pkey(ENGINE *e, void *data)
     unsigned char *secretWolfEngine = NULL;
     size_t secretLenWolfEngine = 0;
 
-    (void)data;
-
-    /* TODO: Test key gen with setting params explicitly via ctrl commands. */
-
-    PRINT_MSG("Generate DH parameters and key pair with wolfEngine");
-    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, e)) == NULL;
-    if (err == 0) {
-        err = EVP_PKEY_paramgen_init(ctx) != 1;
-    }
-    if (err == 0) {
-        err = EVP_PKEY_paramgen(ctx, &params) != 1;
-    }
-    if (err == 0) {
-        EVP_PKEY_CTX_free(ctx);
-        ctx = EVP_PKEY_CTX_new(params, e);
-        err = ctx == NULL;
-    }
+    ctx = EVP_PKEY_CTX_new(params, e);
+    err = ctx == NULL;
     if (err == 0) {
         err = EVP_PKEY_keygen_init(ctx) != 1;
     }
@@ -257,7 +302,6 @@ int test_dh_pkey(ENGINE *e, void *data)
     }
 
     EVP_PKEY_CTX_free(ctx);
-    EVP_PKEY_free(params);
     EVP_PKEY_free(keyOpenSSL);
     EVP_PKEY_free(keyWolfEngine);
 
@@ -265,6 +309,81 @@ int test_dh_pkey(ENGINE *e, void *data)
         OPENSSL_free(secretWolfEngine);
     if (secretOpenSSL != NULL)
         OPENSSL_free(secretOpenSSL);
+
+    return err;
+}
+
+int test_dh_pgen_pkey(ENGINE *e, void *data)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *params = NULL;
+
+    (void)data;
+
+    PRINT_MSG("Generate DH parameters and key pair with wolfEngine");
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, e)) == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_paramgen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_paramgen(ctx, &params) != 1;
+    }
+
+    if (err == 0) {
+        err = test_dh_pkey_keygen(e, params);
+    }
+
+    EVP_PKEY_free(params);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
+int test_dh_pkey(ENGINE *e, void *data)
+{
+    int err;
+    DH *dh;
+    const DH_METHOD *method = NULL;
+    EVP_PKEY *params = NULL;
+    BIGNUM *p;
+    BIGNUM *g;
+
+    (void)data;
+
+    dh = DH_new();
+    err = (dh == NULL);
+    if (err == 0) {
+        method = ENGINE_get_DH(e);
+        err = method == NULL;
+    }
+    if (err == 0) {
+        DH_set_method(dh, method);
+    }
+    if (err == 0) {
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        err = p == NULL;
+    }
+    if (err == 0) {
+        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
+        err = g == NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dh, p, NULL, g) == 0;
+    }
+    if (err == 0) {
+        err = (params = EVP_PKEY_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_set1_DH(params, dh) != 1;
+    }
+
+    if (err == 0) {
+        err = test_dh_pkey_keygen(e, params);
+    }
+
+    EVP_PKEY_free(params);
+    DH_free(dh);
 
     return err;
 }
