@@ -770,7 +770,7 @@ static int we_dh_paramgen_int(DH *dh, we_Dh *engineDh)
     /* Generate the parameters. */
     rc = wc_DhGenerateParams(pRng, engineDh->primeLen, &engineDh->key);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_pkey_paramgen", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateParams", rc);
         ret = 0;
     }
 
