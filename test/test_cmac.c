@@ -26,9 +26,9 @@
 
 #ifdef WE_HAVE_CMAC
 
-static int test_mac_generation(ENGINE *e, const EVP_CIPHER *c,
-                           unsigned char *key, int keySz, unsigned char *msg,
-                           int len, unsigned char *out, int *outLen)
+static int test_cmac_generation(ENGINE *e, const EVP_CIPHER *c,
+    unsigned char *key, int keySz, unsigned char *msg, int len,
+    unsigned char *out, int *outLen)
 {
     int err;
     EVP_MD_CTX   *ctx;
@@ -95,14 +95,14 @@ static int test_cmac_create_helper(ENGINE *e, unsigned char *in,
     expLen = sizeof(exp);
 
     /* generate mac using OpenSSL */
-    ret = test_mac_generation(NULL, c, key, keySz, in, inSz, exp, &expLen);
+    ret = test_cmac_generation(NULL, c, key, keySz, in, inSz, exp, &expLen);
     if (ret != 0) {
         PRINT_MSG("Generate MAC using OpenSSL failed");
     }
 
     if (ret == 0) {
         memset(mac, 0, sizeof(mac));
-        ret = test_mac_generation(e, c, key, keySz, in, inSz, mac, &macLen);
+        ret = test_cmac_generation(e, c, key, keySz, in, inSz, mac, &macLen);
         if (ret != 0) {
             PRINT_MSG("Generate MAC using wolfSSL failed");
         }
