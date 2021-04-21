@@ -108,8 +108,13 @@ if [ -z "${WOLFENGINE_NO_BUILD}" ]; then
         ./autogen.sh
     fi
     printf "\tConfiguring.\n"
-    # Tests have been patched to use debug logging - must enable debug
-    ./configure LDFLAGS="-L$OPENSSL_1_0_2_SOURCE" --with-openssl=$OPENSSL_1_0_2_SOURCE --enable-debug 2>&1 | tee -a $LOGFILE
+    # Tests have been patched to use debug logging - must enable debug.
+    # User can set WOLFENGINE_EXTRA_LDFLAGS to provide extra LDFLAGS and
+    # WOLFENGINE_EXTRA_CPPFLAGS to provide extra CPPFLAGS.
+    ./configure LDFLAGS="-L$OPENSSL_1_0_2_SOURCE $WOLFENGINE_EXTRA_LDFLAGS" \
+                CPPFLAGS="$WOLFENGINE_EXTRA_CPPFLAGS" \
+                --with-openssl=$OPENSSL_1_0_2_SOURCE \
+                --enable-debug 2>&1 | tee -a $LOGFILE
     if [ "${PIPESTATUS[0]}" != 0 ]; then
         printf "config failed\n"
         exit 1
