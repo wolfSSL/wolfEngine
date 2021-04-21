@@ -837,9 +837,8 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         ctxPkey = EVP_PKEY_CTX_get0_pkey(ctx);
         if (ecc->group == NULL) {
-
             /* If both the group stored and the pkey is null then the curve
-             * group is unknown*/
+             * group is unknown */
             if (ctxPkey == NULL) {
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Keygen with no group set");
                 ret = 0;
