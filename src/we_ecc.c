@@ -1266,8 +1266,7 @@ int we_init_ecc_meths(void)
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
         /* used in TLS 1.3 connections */
-        EVP_PKEY_meth_set_paramgen(we_ec_method, we_ec_paramgen_init,
-                wc_ec_paramgen);
+        EVP_PKEY_meth_set_paramgen(we_ec_method, NULL, wc_ec_paramgen);
 #endif
 #ifdef WE_HAVE_ECDSA
         EVP_PKEY_meth_set_sign(we_ec_method, NULL, we_pkey_ecdsa_sign);
