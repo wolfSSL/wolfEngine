@@ -835,14 +835,62 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
     if (ret == 1) {
+        ctxPkey = EVP_PKEY_CTX_get0_pkey(ctx);
+        if (ecc->group == NULL) {
+            /* If both the group stored and the pkey is null then the curve
+             * group is unknown */
+            if (ctxPkey == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Keygen with no group set");
+                ret = 0;
+
+            }
+        }
+    }
+
+    if (ret == 1 && ecc->group == NULL) {
+        const EC_GROUP *group;
+        EC_KEY *tmp;
+
+        /* set group from the ctx pkey */
+        tmp = EVP_PKEY_get0_EC_KEY(ctxPkey);
+        if (tmp == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_get0_EC_KEY", tmp);
+            ret = 0;
+        }
+
+        if (ret == 1) {
+            group = EC_KEY_get0_group(tmp);
+            if (group == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_KEY_get0_group",
+                        group);
+                ret = 0;
+            }
+        }
+
+        if (ret == 1) {
+            ecc->group = EC_GROUP_dup(group);
+            if (ecc->group == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_dup",
+                        ecc->group);
+                ret = 0;
+            }
+        }
+
+        if (ret == 1) {
+            ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group),
+                             &ecc->curveId);
+            if (ret != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_get_curve_id", ret);
+            }
+        }
+    }
+
+    if (ret == 1) {
         len = wc_ecc_get_curve_size_from_id(ecc->curveId);
         if (len < 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                   "wc_ecc_get_curve_size_from_id", len);
         }
-
-        ctxPkey = EVP_PKEY_CTX_get0_pkey(ctx);
-        /* May be NULL */
 
         /* New OpenSSL EC_KEY object to hold new key. */
         ret = (ecKey = EC_KEY_new()) != NULL;
@@ -992,6 +1040,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
 }
 #endif /* WE_HAVE_ECDH */
 
+
 /**
  * Extra operations for working with ECC.
  * Supported operations include:
@@ -1100,6 +1149,70 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     return ret;
 }
 
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+/**
+ * Used to set the group
+ *
+ * @param  ctx   [in]  Public key context of operation.
+ * @param  pkey  [in]  Key to set parameters in
+ * @returns  1 on success and 0 on failure.
+ */
+static int wc_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
+{
+    EC_KEY *key = NULL;
+    we_Ecc *ecc = NULL;
+    int ret = 1;
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_paramgen");
+
+    ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+    if (ecc == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", ecc);
+        ret = 0;
+    }
+
+    if (ecc->group == NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "group not set!");
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(ecc->group),
+                             &ecc->curveId);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_get_curve_id", ret);
+        }
+    }
+
+    if (ret == 1) {
+        key = EC_KEY_new();
+        if (key == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_KEY_new", key);
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        ret = EC_KEY_set_group(key, ecc->group);
+        if (ret == 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EC_KEY_set_group", ret);
+            EC_KEY_free(key);
+        }
+    }
+
+    if (ret == 1) {
+        ret = EVP_PKEY_assign_EC_KEY(pkey, key);
+        if (ret == 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EVP_PKEY_assign_EC_KEY", ret);
+            EC_KEY_free(key);
+        }
+    }
+
+    return ret;
+}
+#endif
+
+
 /** EVP public key method - EC using wolfSSL for the implementation. */
 EVP_PKEY_METHOD *we_ec_method = NULL;
 #ifdef WE_HAVE_ECKEYGEN
@@ -1146,6 +1259,10 @@ int we_init_ecc_meths(void)
         EVP_PKEY_meth_set_copy(we_ec_method, we_ec_copy);
         EVP_PKEY_meth_set_cleanup(we_ec_method, we_ec_cleanup);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        /* used in TLS 1.3 connections */
+        EVP_PKEY_meth_set_paramgen(we_ec_method, NULL, wc_ec_paramgen);
+#endif
 #ifdef WE_HAVE_ECDSA
         EVP_PKEY_meth_set_sign(we_ec_method, NULL, we_pkey_ecdsa_sign);
         EVP_PKEY_meth_set_verify(we_ec_method, NULL, we_pkey_ecdsa_verify);

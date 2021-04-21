@@ -25,6 +25,11 @@ PWD=`pwd`
 if [ -z ${LOGILE} ]; then
     LOGFILE=${PWD}/log.txt
 fi
+OPENSSL_1_0_2_RES=${PWD}/openssl_1_0_2.res
+OPENSSL_1_1_1_RES=${PWD}/openssl_1_1_1.res
+
+
+
 printf "Setting up ...\n"
 if [ -z "${OPENSSL_1_1_1_INSTALL}" ]; then
     printf "\tOPENSSL_1_1_1_INSTALL not set, cloning it..."
@@ -187,12 +192,13 @@ else
     if [ $? != 0 ]; then
         printf "engine not available\n"
     else
-        ./scripts/openssl.test &> $PWD/openssl_1_1_1.res
-        grep "Success\!" $PWD/openssl_1_1_1.res &> /dev/null
+        ./scripts/openssl.test &> ${OPENSSL_1_1_1_RES}
+        grep "Success\!" ${OPENSSL_1_1_1_RES} &> /dev/null
         if [ $? == 0 ]; then
             printf "ok\n"
         else
             printf "failed\n"
+            cat ${OPENSSL_1_1_1_RES}
             FAILED=1
         fi
     fi
@@ -215,20 +221,21 @@ else
     if [ $? != 0 ]; then
         printf "engine not available\n"
     else
-        ./scripts/openssl.test &> ${PWD}/openssl_1_0_2.res
-        grep "Success\!" ${PWD}/openssl_1_0_2.res &> /dev/null
+        ./scripts/openssl.test &> ${OPENSSL_1_0_2_RES}
+        grep "Success\!" ${OPENSSL_1_0_2_RES} &> /dev/null
         if [ $? == 0 ]; then
             printf "ok\n"
         else
             printf "failed\n"
+            cat ${OPENSSL_1_0_2_RES}
             FAILED=1
         fi
     fi
 fi
 
 printf "Finished\n"
-printf "Results stored in the files:\n\t${PWD}/openssl_1_1_1.res\n"
-printf "\t${PWD}/openssl_1_0_2.res\n"
+printf "Results stored in the files:\n\t${OPENSL_1_1_1_RES}\n"
+printf "\t${OPENSSL_1_0_2_RES}\n"
 
 
 if [ $FAILED == 1 ]; then
