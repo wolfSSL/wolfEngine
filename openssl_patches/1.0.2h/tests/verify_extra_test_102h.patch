@@ -1,0 +1,51 @@
+diff --git a/crypto/x509/verify_extra_test.c b/crypto/x509/verify_extra_test.c
+index 08509f0..8cd5a99 100644
+--- a/crypto/x509/verify_extra_test.c
++++ b/crypto/x509/verify_extra_test.c
+@@ -61,6 +61,7 @@
+ #include <openssl/x509.h>
+ #include <openssl/pem.h>
+ #include <openssl/err.h>
++#include <openssl/engine.h>
+ 
+ static STACK_OF(X509) *load_certs_from_file(const char *filename)
+ {
+@@ -185,6 +186,8 @@ static int test_alt_chains_cert_forgery(void)
+ 
+ int main(void)
+ {
++    ENGINE* e = NULL;
++
+     CRYPTO_malloc_debug_init();
+     CRYPTO_set_mem_debug_options(V_CRYPTO_MDEBUG_ALL);
+     CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
+@@ -192,6 +195,18 @@ int main(void)
+     ERR_load_crypto_strings();
+     OpenSSL_add_all_digests();
+ 
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default(e, ENGINE_METHOD_ALL);
++
+     if (!test_alt_chains_cert_forgery()) {
+         fprintf(stderr, "Test alt chains cert forgery failed\n");
+         return 1;
+@@ -201,6 +216,10 @@ int main(void)
+     CRYPTO_cleanup_all_ex_data();
+     ERR_remove_thread_state(NULL);
+     ERR_free_strings();
++
++    ENGINE_finish(e);
++    ENGINE_cleanup();
++
+     CRYPTO_mem_leaks_fp(stderr);
+ 
+     printf("PASS\n");
