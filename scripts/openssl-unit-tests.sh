@@ -4,6 +4,7 @@ printf "Running OpenSSL 1.0.2h unit tests using wolfEngine.\n\n"
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 WOLFENGINE_ROOT="$SCRIPT_DIR/.."
+CERT_DIR="$WOLFENGINE_ROOT/certs"
 TEST_PATCH_DIR="$WOLFENGINE_ROOT/openssl_patches/1.0.2h/tests/"
 if [ "$MAKE_JOBS" = "" ]; then
   MAKE_JOBS=4
@@ -18,6 +19,22 @@ fi
 
 FAILED=0
 
+run_testssl() {
+    KEY=$CERT_DIR/server-key.pem
+    CERT=$CERT_DIR/server-cert.pem
+    CA=$CERT_DIR/ca-cert.pem
+    printf "\ttestssl RSA..." | tee -a $LOGFILE
+    sh ./testssl $KEY $CERT $CA &>> $LOGFILE
+    if [ $? != 0 ]; then
+        printf "failed\n"
+        FAILED=$((FAILED+1))
+    else
+        printf "passed\n"
+    fi
+
+    # Using ECC keys doesn't work as SSLv3 doesn't have any ciphers
+}
+
 run_test() {
     printf "\t$1..." | tee -a $LOGFILE
     ./$* &>> $LOGFILE
@@ -31,11 +48,13 @@ run_test() {
 
 printf "Setting up OpenSSL 1.0.2h.\n"
 if [ -z "${OPENSSL_1_0_2_SOURCE}" ]; then
-    printf "\tCloning OpenSSL and checking out version 1.0.2h.\n"
-    git clone --depth=1 -b OpenSSL_1_0_2h https://github.com/openssl/openssl.git openssl-1_0_2h 2>&1 | tee -a $LOGFILE
-    if [ "${PIPESTATUS[0]}" != 0 ]; then
-        printf "clone failed\n"
-        exit 1
+    if [ ! -d "openssl-1_0_2h" ]; then
+        printf "\tCloning OpenSSL and checking out version 1.0.2h.\n"
+        git clone --depth=1 -b OpenSSL_1_0_2h https://github.com/openssl/openssl.git openssl-1_0_2h 2>&1 | tee -a $LOGFILE
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
+            printf "clone failed\n"
+            exit 1
+        fi
     fi
 
     cd openssl-1_0_2h
@@ -53,7 +72,7 @@ if [ -z "${OPENSSL_1_0_2_SOURCE}" ]; then
         fi
     done
 
-    if [ -z "${OPENSSL_NO_BUILD}" ]; then
+    if [ -z "${OPENSSL_NO_CONFIG}" ]; then
         printf "\tConfiguring.\n"
         # Configure for debug.
         ./config shared no-asm -g3 -O0 -fno-omit-frame-pointer -fno-inline-functions 2>&1 | tee -a $LOGFILE
@@ -61,13 +80,16 @@ if [ -z "${OPENSSL_1_0_2_SOURCE}" ]; then
             printf "config failed\n"
             exit 1
         fi
+    fi
 
+    if [ -z "${OPENSSL_NO_BUILD}" ]; then
         printf "\tBuilding.\n"
         make -j$MAKE_JOBS 2>&1 | tee -a $LOGFILE
         if [ "${PIPESTATUS[0]}" != 0 ]; then
             printf "make failed\n"
             exit 1
         fi
+
     fi
 
     OPENSSL_1_0_2_SOURCE=`pwd`
@@ -81,6 +103,10 @@ export OPENSSL_ENGINES="$WOLFENGINE_ROOT/.libs/"
 
 if [ -z "${WOLFENGINE_NO_BUILD}" ]; then
     printf "Setting up wolfEngine to use OpenSSL 1.0.2h.\n"
+    if [ ! -f "./configure" ]; then
+        printf "\tAutogen.\n"
+        ./autogen.sh
+    fi
     printf "\tConfiguring.\n"
     # Tests have been patched to use debug logging - must enable debug
     ./configure LDFLAGS="-L$OPENSSL_1_0_2_SOURCE" --with-openssl=$OPENSSL_1_0_2_SOURCE --enable-debug 2>&1 | tee -a $LOGFILE
@@ -132,7 +158,11 @@ enable_debug = 1
 EOF
 export OPENSSL_CONF=$SCRIPT_DIR/tmp.conf
 
+if [ ! -x testenc ]; then
+    chmod 755 testenc
+fi
 run_test testenc
+run_testssl
 
 # Remove the temporary config file used for testenc.
 rm $SCRIPT_DIR/tmp.conf
@@ -144,3 +174,4 @@ else
     printf "$FAILED tests failed.\n\n"
     exit 1
 fi
+
