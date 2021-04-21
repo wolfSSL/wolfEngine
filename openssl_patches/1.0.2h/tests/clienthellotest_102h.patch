@@ -1,0 +1,34 @@
+diff --git a/ssl/clienthellotest.c b/ssl/clienthellotest.c
+index 77517c6..32d09c9 100644
+--- a/ssl/clienthellotest.c
++++ b/ssl/clienthellotest.c
+@@ -61,6 +61,8 @@
+ #include <openssl/ssl.h>
+ #include <openssl/err.h>
+ 
++#include <openssl/engine.h>
++
+ 
+ #define CLIENT_VERSION_LEN      2
+ #define SESSION_ID_LEN_LEN      1
+@@ -101,6 +103,20 @@ int main(int argc, char *argv[])
+     unsigned int size;
+     int testresult = 0;
+     int currtest = 0;
++    ENGINE *e = NULL;
++
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default(e, ENGINE_METHOD_ALL);
++
+ 
+     SSL_library_init();
+     SSL_load_error_strings();

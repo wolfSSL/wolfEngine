@@ -1,0 +1,27 @@
+diff --git a/ssl/ssltest.c b/ssl/ssltest.c
+index 1db84ad..ba68a5e 100644
+--- a/ssl/ssltest.c
++++ b/ssl/ssltest.c
+@@ -991,6 +991,19 @@ int main(int argc, char *argv[])
+     int fips_mode = 0;
+ #endif
+     int no_protocol = 0;
++    ENGINE *e = NULL;
++
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default(e, ENGINE_METHOD_ALL);
+ 
+     verbose = 0;
+     debug = 0;
+diff --git a/test/testenc b/test/testenc
+old mode 100644
+new mode 100755
