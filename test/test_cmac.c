@@ -153,6 +153,13 @@ int test_cmac_create(ENGINE *e, void *data)
                 EVP_aes_128_cbc());
     }
 
+    if (ret == 0) {
+        PRINT_MSG("Testing with a 192 bit KEY");
+        keySz = 24;
+        ret = test_cmac_create_helper(e, in, inSz, key, keySz,
+                EVP_aes_192_cbc());
+    }
+
     return ret;
 }
 
