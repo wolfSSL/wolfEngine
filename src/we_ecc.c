@@ -878,11 +878,10 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         }
 
         if (ret == 1) {
-            rc = we_ec_get_curve_id(EC_GROUP_get_curve_name(group),
+            ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group),
                              &ecc->curveId);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_get_curve_id", rc);
-                ret = 0;
+            if (ret != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_get_curve_id", ret);
             }
         }
     }
@@ -1179,13 +1178,10 @@ static int wc_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     }
 
     if (ret == 1) {
-        int rc;
-
-        rc = we_ec_get_curve_id(EC_GROUP_get_curve_name(ecc->group),
+        ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(ecc->group),
                              &ecc->curveId);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_get_curve_id", rc);
-            ret = 0;
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_get_curve_id", ret);
         }
     }
 
