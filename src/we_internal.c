@@ -588,6 +588,8 @@ static int we_pkey(ENGINE *e, EVP_PKEY_METHOD **pkey, const int **nids,
     if (pkey == NULL) {
         /* Return a list of supported nids */
         ret = we_pkey_get_nids(nids);
+        WOLFENGINE_MSG(WE_LOG_ENGINE, "Returning %d supported public key NIDs",
+                       ret);
     }
     else {
         switch (nid) {
