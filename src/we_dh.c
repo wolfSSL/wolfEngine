@@ -583,7 +583,7 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
     we_Dh *engineDh = NULL;
     size_t secretLen = 0;
 
-    WOLFENGINE_ENTER(WE_LOG_KE, "we_compute_key");
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_compute_key");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [secret = %p, pubKey = %p, "
                            "dh = %p]", secret, pubKey, dh);
 
@@ -610,7 +610,7 @@ static int we_dh_compute_key(unsigned char *secret, const BIGNUM *pubKey,
         }
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_KE, "we_compute_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_compute_key", ret);
     (void)ret;
 
     return ret;
