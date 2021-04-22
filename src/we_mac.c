@@ -1303,7 +1303,10 @@ static void we_cmac_pkey_free(EVP_PKEY *pkey)
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [pkey = %p]", pkey);
 
     /* Can be either local alias or CMAC with OpenSSL data. */
-    if (EVP_PKEY_id(pkey) == NID_wolfengine_cmac) {
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    if (EVP_PKEY_id(pkey) == NID_wolfengine_cmac)
+#endif
+    {
         ASN1_OCTET_STRING *key;
 
         WOLFENGINE_MSG(WE_LOG_MAC, "EVP_PKEY_id: NID_wolfengine_cmac");
@@ -1318,7 +1321,7 @@ static void we_cmac_pkey_free(EVP_PKEY *pkey)
             ret = 0;
         }
     }
-    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     else {
         CMAC_CTX *cmac;
 
@@ -1334,7 +1337,7 @@ static void we_cmac_pkey_free(EVP_PKEY *pkey)
             ret = 0;
         }
     }
-    #endif
+#endif
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_free", ret);
 

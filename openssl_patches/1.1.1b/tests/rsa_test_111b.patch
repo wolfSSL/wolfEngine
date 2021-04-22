@@ -1,0 +1,44 @@
+diff --git a/test/rsa_test.c b/test/rsa_test.c
+index 2ad4de47..c675ad1f 100644
+--- a/test/rsa_test.c
++++ b/test/rsa_test.c
+@@ -249,10 +249,19 @@ static int test_rsa_pkcs1(int idx)
+     int plen;
+     int clen = 0;
+     int num;
++    int keySize;
+ 
+     plen = sizeof(ptext_ex) - 1;
+     clen = rsa_setkey(&key, ctext_ex, idx);
+ 
++    keySize = clen * 8;
++    /* Limit the key sizes tested to those allowed by wolfCrypt FIPS. */
++    if (keySize < 1024 || keySize > 4096) {
++        printf("Skipping test because key size %d is too small for "
++               "wolfEngine.\n", keySize);
++        return 1;
++    }
++
+     num = RSA_public_encrypt(plen, ptext_ex, ctext, key,
+                              RSA_PKCS1_PADDING);
+     if (!TEST_int_eq(num, clen))
+@@ -280,10 +289,19 @@ static int test_rsa_oaep(int idx)
+     int clen = 0;
+     int num;
+     int n;
++    int keySize;
+ 
+     plen = sizeof(ptext_ex) - 1;
+     clen = rsa_setkey(&key, ctext_ex, idx);
+ 
++    keySize = clen * 8;
++    /* Limit the key sizes tested to those allowed by wolfCrypt FIPS. */
++    if (keySize < 1024 || keySize > 4096) {
++        printf("Skipping test because key size %d is too small for "
++               "wolfEngine.\n", keySize);
++        return 1;
++    }
++
+     num = RSA_public_encrypt(plen, ptext_ex, ctext, key,
+                              RSA_PKCS1_OAEP_PADDING);
+     if (num == -1 && pad_unknown()) {

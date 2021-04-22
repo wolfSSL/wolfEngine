@@ -125,6 +125,16 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
     tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
     /* Cannot get here without initialization succeeding. */
 
+    /* Check a digest was set - no default. */
+    if ((ret == 1) && (tls1Prf->mdType == 0)) {
+        WOLFENGINE_MSG(WE_LOG_PK, "No digest from app.");
+        ret = 0;
+    }
+    /* Check a secret was set - no point otherwise! */
+    if ((ret == 1) && (tls1Prf->secretSz == 0)) {
+        WOLFENGINE_MSG(WE_LOG_PK, "No secret from app.");
+        ret = 0;
+    }
     if ((ret == 1) && (tls1Prf->mdType == NID_md5_sha1)) {
          /* Calculate key.
           * Label is included in seed so pass in buffer and 0 length for label.

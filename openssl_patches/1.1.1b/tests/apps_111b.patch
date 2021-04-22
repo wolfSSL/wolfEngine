@@ -1,0 +1,12 @@
+diff --git a/apps/apps.c b/apps/apps.c
+index 36cb0b27..4b016814 100644
+--- a/apps/apps.c
++++ b/apps/apps.c
+@@ -1282,6 +1282,7 @@ static ENGINE *try_load_engine(const char *engine)
+ ENGINE *setup_engine(const char *engine, int debug)
+ {
+     ENGINE *e = NULL;
++    debug = 1;
+ 
+ #ifndef OPENSSL_NO_ENGINE
+     if (engine != NULL) {

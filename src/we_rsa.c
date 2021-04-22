@@ -258,6 +258,12 @@ static int we_rsa_init(RSA *rsa)
     }
 
     if (ret == 1) {
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        engineRsa->saltLen = RSA_PSS_SALTLEN_AUTO;
+    #else
+        engineRsa->saltLen = RSA_PSS_SALT_LEN_DEFAULT;
+    #endif
+
         /* Initialize wolfSSL RSA key. */
         rc = wc_InitRsaKey(&engineRsa->key, NULL);
         if (rc != 0) {
@@ -387,15 +393,21 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
         case RSA_PKCS1_OAEP_PADDING:
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_OAEP_PADDING");
             /* OAEP padding using SHA-1, MGF1. */
-            mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
-            ret = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
-                (word32)toLen, &rsa->key, rng, WC_RSA_OAEP_PAD,
-                we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
-            if (ret < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
-                                      ret);
+            if (rsa->md == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not set");
                 ret = -1;
+            }
+            else {
+                mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                ret = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
+                    (word32)toLen, &rsa->key, rng, WC_RSA_OAEP_PAD,
+                    we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                if (ret < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
+                                          ret);
+                    ret = -1;
+                }
             }
             break;
         case RSA_NO_PADDING:
@@ -518,27 +530,41 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
-            /* PKCS#1 v1.5 padding using block type 2. */
-            ret = wc_RsaPrivateDecrypt(from, (word32)fromLen, to, (word32)toLen,
-                    &rsa->key);
-            if (ret < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt",
-                                      ret);
-                ret = -1;
+            if (to == NULL) {
+                ret = (int)fromLen;
+            }
+            else {
+                /* PKCS#1 v1.5 padding using block type 2. */
+                ret = wc_RsaPrivateDecrypt(from, (word32)fromLen, to,
+                        (word32)toLen, &rsa->key);
+                if (ret < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt",
+                                          ret);
+                    ret = -1;
+                }
             }
             break;
         case RSA_PKCS1_OAEP_PADDING:
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_OAEP_PADDING");
             /* PKCS#1 OAEP padding. */
-            mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
-            ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
-                (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD,
-                we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
-            if (ret < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
-                                      ret);
+            if (rsa->md == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not set");
                 ret = -1;
+            }
+            else if (to == NULL) {
+                ret = (int)fromLen;
+            }
+            else {
+                mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
+                    (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD,
+                    we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                if (ret < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
+                                          ret);
+                    ret = -1;
+                }
             }
             break;
         case RSA_NO_PADDING:
@@ -693,15 +719,21 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
         case RSA_PKCS1_PSS_PADDING:
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PSS_PADDING");
             /* PKCS#1 PSS padding. */
-            /* When MGF1 digest is not specified, use signing digest. */
-            mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
-            ret = wc_RsaPSS_Sign_ex(from, (word32)fromLen, to, (word32)toLen,
-                we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
-                &rsa->key, rng);
-            if (ret < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Sign_ex", ret);
+            if (rsa->md == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not set");
                 ret = -1;
+            }
+            else {
+                /* When MGF1 digest is not specified, use signing digest. */
+                mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                ret = wc_RsaPSS_Sign_ex(from, (word32)fromLen, to,
+                    (word32)toLen, we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
+                    &rsa->key, rng);
+                if (ret < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Sign_ex", ret);
+                    ret = -1;
+                }
             }
             break;
         default:
@@ -779,6 +811,15 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
         /* Store the padding mode (PKEY variant has it set) and private
          * encrypt. */
         engineRsa->padMode = padding;
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        if ((padding == RSA_PKCS1_PADDING) &&
+                                      (EVP_MD_size(engineRsa->md) != fromLen)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
+            ret = -1;
+        }
+    #endif
+    }
+    if (ret == 1) {
         /* Output size is always the length of the prime. */
         ret = we_rsa_priv_enc_int(fromLen, from, RSA_size(rsa), to, engineRsa);
         if (ret == -1) {
@@ -843,15 +884,22 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
         case RSA_PKCS1_PSS_PADDING:
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PSS_PADDING");
             /* PKCS #1 PSS padding. */
-            /* When MGF1 digest is not specified, use verify digest. */
-            mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
-            ret = wc_RsaPSS_Verify_ex((byte*)from, (word32)fromLen, to,
-                (word32)toLen, we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
-                &rsa->key);
-            if (ret < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Verify_ex", ret);
+            if (rsa->md == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not set");
                 ret = -1;
+            }
+            else {
+                /* When MGF1 digest is not specified, use verify digest. */
+                mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                ret = wc_RsaPSS_Verify_ex((byte*)from, (word32)fromLen, to,
+                    (word32)toLen, we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
+                    &rsa->key);
+                if (ret < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Verify_ex",
+                                          ret);
+                    ret = -1;
+                }
             }
             break;
         default:
@@ -1189,6 +1237,12 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
     }
 
     if (ret == 1) {
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        rsa->saltLen = RSA_PSS_SALTLEN_AUTO;
+    #else
+        rsa->saltLen = RSA_PSS_SALT_LEN_DEFAULT;
+    #endif
+
         /* Initialize the wolfSSL RSA key. */
         rc = wc_InitRsaKey(&rsa->key, NULL);
         if (rc != 0) {
@@ -1663,12 +1717,30 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         else {
             ret = 0;
         }
+        if ((ret == 1) && (rsa->md == NULL) &&
+            ((rsa->padMode == RSA_PKCS1_OAEP_PADDING) ||
+             (rsa->padMode == RSA_PKCS1_PSS_PADDING))) {
+           /* Default to SHA-1 as the message digest for OAEP and PSS padding.
+            */
+           rsa->md = EVP_sha1();
+        }
     }
     else if ((ret == 1) && (XSTRNCMP(type, "rsa_pss_saltlen", 16) == 0)) {
         /* RSA-PSS salt length. */
         if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
             ret = 0;
         }
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        else if (XSTRNCMP(value, "digest", 7) == 0) {
+            rsa->saltLen = RSA_PSS_SALTLEN_DIGEST;
+        }
+        else if (XSTRNCMP(value, "max", 4) == 0) {
+            rsa->saltLen = RSA_PSS_SALTLEN_MAX;
+        }
+        else if (XSTRNCMP(value, "auto", 5) == 0) {
+            rsa->saltLen = RSA_PSS_SALTLEN_AUTO;
+        }
+    #endif
         else {
             rsa->saltLen = XATOI(value);
         }
@@ -1679,16 +1751,24 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         ret = we_check_rsa_key_size(bits, 0);
         if (ret != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", ret);
+            ret = -2;
         }
         else {
             rsa->bits = bits;
         }
     }
     else if ((ret == 1) && (XSTRNCMP(type, "rsa_mgf1_md", 12) == 0)) {
-        /* Digest to use with MGF in RSA-PSS. */
-        rsa->mdMGF1 = EVP_get_digestbyname(value);
-        if (rsa->mdMGF1 == NULL) {
-            ret = 0;
+        if ((rsa->padMode != RSA_PKCS1_OAEP_PADDING) &&
+            (rsa->padMode != RSA_PKCS1_PSS_PADDING)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Setting MGF1 and not PSS or OAEP");
+            ret = -2;
+        }
+        if (ret == 1) {
+            /* Digest to use with MGF in RSA-PSS. */
+            rsa->mdMGF1 = EVP_get_digestbyname(value);
+            if (rsa->mdMGF1 == NULL) {
+                ret = 0;
+            }
         }
     }
     else {
@@ -1850,7 +1930,15 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     }
 
     if ((ret == 1) && (sig != NULL)) {
-        if ((rsa->md != NULL) && (rsa->padMode == RSA_PKCS1_PADDING)) {
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+        if ((rsa->md != NULL) && (rsa->padMode == RSA_PKCS1_PADDING) &&
+                                     ((size_t)EVP_MD_size(rsa->md) != tbsLen)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
+            ret = -1;
+        }
+    #endif
+        if ((ret == 1) && (rsa->md != NULL) &&
+                                          (rsa->padMode == RSA_PKCS1_PADDING)) {
             /* In this case, OpenSSL expects a proper PKCS #1 v1.5
              * signature. */
             encodedDigestLen = we_der_encode_digest(rsa->md, tbs, tbsLen,
@@ -1970,6 +2058,12 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
             ret = 0;
         }
     }
+    if ((ret == 1) && (rsa->md != NULL) &&
+                                     (rsa->padMode == RSA_PKCS1_PADDING) &&
+                                     ((size_t)EVP_MD_size(rsa->md) != tbsLen)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
+        ret = -1;
+    }
 
     if (ret == 1) {
         /* Unpad and public decrypt. */
@@ -2007,6 +2101,10 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                 tbs = encodedDigest;
                 tbsLen = encodedDigestLen;
             }
+        }
+        if ((ret == 1) && (tbsLen != (size_t)rc)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Encoding different size");
+            ret = 0;
         }
         if (ret == 1) {
             /* Compare encoded with encoded to avoid parsing issues. */
