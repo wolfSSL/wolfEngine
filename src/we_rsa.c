@@ -1674,7 +1674,6 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         }
     }
     else if ((ret == 1) && (XSTRNCMP(type, "rsa_keygen_bits", 16) == 0)) {
-        ret = 2;
         /* Size, in bits, of RSA key to generate. */
         bits = XATOI(value);
         ret = we_check_rsa_key_size(bits, 0);
