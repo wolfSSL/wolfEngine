@@ -1171,7 +1171,7 @@ static int wc_ec_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         ret = 0;
     }
 
-    if (ecc->group == NULL) {
+    if (ret == 1 && ecc->group == NULL) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "group not set!");
         ret = 0;
     }

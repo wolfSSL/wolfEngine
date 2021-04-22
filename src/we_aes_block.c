@@ -135,14 +135,13 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
- * @return  Number of bytes put in out on success.
+ * @return  1 on success.
  */
 static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
                               const unsigned char *in, size_t len)
 {
     int ret = 1;
     int rc;
-    int outl = 0;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_encrypt");
 
@@ -195,7 +194,6 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
 
                 /* Data put to output. */
                 out += AES_BLOCK_SIZE;
-                outl += AES_BLOCK_SIZE;
                 /* No more cached data. */
                 aes->over = 0;
 
@@ -218,7 +216,6 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
             }
 
-            outl += l;
             in += l;
             len -= l;
         }
@@ -251,7 +248,6 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
 {
     int ret = 1;
     int rc;
-    int outl = 0;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_decrypt");
 
@@ -303,7 +299,6 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
 
                 /* Data put to output. */
                 out += AES_BLOCK_SIZE;
-                outl += AES_BLOCK_SIZE;
                 /* No more cached data. */
                 aes->over = 0;
             }
@@ -327,7 +322,6 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
                 }
             }
 
-            outl += l;
             in += l;
             len -= l;
         }
@@ -636,14 +630,13 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
- * @return  Number of bytes put in out on success.
+ * @return  1 on success.
  */
 static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
                               const unsigned char *in, size_t len)
 {
     int ret = 1;
     int rc;
-    int outl = 0;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_encrypt");
 
@@ -695,7 +688,6 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
                 }
                 /* Data put to output. */
                 out += AES_BLOCK_SIZE;
-                outl += AES_BLOCK_SIZE;
                 /* No more cached data. */
                 aes->over = 0;
             }
@@ -716,7 +708,6 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
             }
 
-            outl += l;
             in += l;
             len -= l;
         }
@@ -742,14 +733,13 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
- * @return  Number of bytes put in out on success.
+ * @return  1 on success.
  */
 static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                               const unsigned char *in, size_t len)
 {
     int ret = 1;
     int rc;
-    int outl = 0;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ecb_decrypt");
 
@@ -799,7 +789,6 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                 }
                 /* Data put to output. */
                 out += AES_BLOCK_SIZE;
-                outl += AES_BLOCK_SIZE;
                 /* No more cached data. */
                 aes->over = 0;
             }
@@ -823,7 +812,6 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                 }
             }
 
-            outl += l;
             in += l;
             len -= l;
         }
@@ -849,7 +837,7 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
- * @return  Number of bytes put in out on success.
+ * @return  1 on success.
  */
 static int we_aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                              const unsigned char *in, size_t len)

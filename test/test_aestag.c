@@ -181,7 +181,7 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
         err = EVP_DecryptFinal_ex(ctx, dec + decLen, &decLen) != 1;
     }
 
-    if (err == 0) {
+    if (err == 0 && dec != NULL && msg != NULL) {
         PRINT_BUFFER("Decrypted", dec, len);
 
         if (memcmp(dec, msg, len) != 0) {
