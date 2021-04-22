@@ -24,3 +24,5 @@ test_unit_test_SOURCES = \
 	test/test_tls1_prf.c \
 	test/unit.c
 test_unit_test_LDADD = libwolfengine.la
+noinst_HEADERS += test/unit.h
+

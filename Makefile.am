@@ -2,6 +2,7 @@
 SUFFIXES = 
 TESTS =
 noinst_PROGRAMS =
+noinst_HEADERS =
 check_PROGRAMS =
 dist_noinst_SCRIPTS =
 DISTCLEANFILES =
