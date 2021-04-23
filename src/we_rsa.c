@@ -31,6 +31,13 @@
 /* The default RSA public exponent, e. */
 #define DEFAULT_PUB_EXP WC_RSA_EXPONENT
 
+/* wolfCrypt FIPS does not have these defined */
+#ifdef HAVE_FIPS
+    #ifndef RSA_PSS_SALT_LEN_DEFAULT
+        #define RSA_PSS_SALT_LEN_DEFAULT -1
+    #endif
+#endif
+
 /**
  * Data required to complete an RSA operation.
  */
