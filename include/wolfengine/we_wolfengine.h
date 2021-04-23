@@ -29,8 +29,6 @@
 #define WOLFENGINE_FAILURE      0
 #define WOLFENGINE_FATAL_ERROR -1
 
-/* This is the ID expected by OpenSSL when loading wolfEngine dynamically. */
-extern const char *wolfengine_lib;
 /* Engine id - implementation uses wolfSSL */
 extern const char *wolfengine_id;
 /* Engine name ... or description.  */

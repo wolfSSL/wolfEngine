@@ -1164,7 +1164,7 @@ int main(int argc, char *argv[])
     const char *name = wolfengine_id;
 #else
     int staticBench = 0;
-    const char *name = wolfengine_lib;
+    const char *name = wolfengine_id;
 #endif /* WE_NO_DYNAMIC_ENGINE */
     const char *dir = ".libs";
     int i;
