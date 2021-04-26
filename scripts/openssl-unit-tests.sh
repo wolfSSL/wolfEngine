@@ -67,7 +67,7 @@ run_111testssl() {
 
 # used to regenerate ssl-test/ files that have the .in changed
 run_111testssl_generate() {
-    TOP=.. perl -I ../util/perl generate_ssl_tests.pl ssl-tests/$1.in default > ssl-tests/$1
+    eval "TOP=.. perl -I ../util/perl generate_ssl_tests.pl ./ssl-tests/$1.in default > ./ssl-tests/$1"
 }
 
 run_openssl() {
@@ -269,6 +269,9 @@ run_patched_tests() {
         if [ "$TEST" == "main" -o "$TEST" == "apps" ]; then
             continue
         fi
+        if [[ "$TEST" == *".conf.in"* ]]; then
+            continue
+        fi
         if [[ "$TEST" == *".txt"* ]]; then
             continue
         fi
@@ -343,21 +346,20 @@ test_openssl_111b() {
     # verify_extra_test - test/recipes/70-test_verify_extra.t
     run_test "verify_extra_test ./certs/roots.pem ./certs/untrusted.pem ./certs/bad.pem"
 
-#failing "15-certstatus.conf"
-#failing "16-certstatus.conf"
-#failing "20-cert-select.conf"
 #failing "22-compression.conf"
 #failing "26-tls13_client_auth.conf"
 #failing "29-dtls-sctp-label-bug.conf"
     run_111testssl_generate "14-curves.conf"
+    run_111testssl_generate "20-cert-select.conf"
     for SSL_TEST in "01-simple.conf" "02-protocol-version.conf" \
         "03-custom_verify.conf" "04-client_auth.conf" "05-sni.conf" \
         "06-sni-ticket.conf" "07-dtls-protocol-version.conf" \
         "08-npn.conf" "09-alpn.conf" "10-resumption.conf" \
         "11-dtls_resumption.conf" "12-ct.conf" "13-fragmentation.conf" \
-        "14-curves.conf" "16-dtls-certstatus.conf" "17-renegotiate.conf" \
+        "14-curves.conf" "15-certstatus.conf" \
+        "16-dtls-certstatus.conf" "17-renegotiate.conf" \
         "18-dtls-renegotiate.conf" "19-mac-then-encrypt.conf" \
-        "21-key-update.conf" \
+        "20-cert-select.conf" "21-key-update.conf" \
         "23-srp.conf" "24-padding.conf" "25-cipher.conf" \
         "27-ticket-appdata.conf" \
         "28-seclevel.conf"
