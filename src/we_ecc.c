@@ -603,7 +603,7 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_cleanup");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
-    
+
     ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
     if (ecc != NULL) {
 #ifdef WE_HAVE_ECKEYGEN
@@ -1973,8 +1973,8 @@ int we_init_ecdh_meth(void)
 #ifdef WE_HAVE_ECDSA
 #if OPENSSL_VERSION_NUMBER <= 0x100020ffL
 
-/** ECDSA Sign  
- * 
+/** ECDSA Sign
+ *
  * @param  d        [in]   Pointer to digest buffer
  * @param  dlen     [in]   Digest length.
  * @param  kinv     [in]   Precomputed kinv (Not supported)
@@ -2156,7 +2156,7 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         }
         sig = NULL;
     }
-    
+
     return sig;
 }
 
@@ -2184,7 +2184,7 @@ static int we_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx,
 }
 
 /** ECDSA Verify signature
- * 
+ *
  * @param  d        [in]   Pointer to digest buffer
  * @param  dlen     [in]   Digest length.
  * @param  sig      [in]   pointer to the signature to verify
@@ -2204,7 +2204,7 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
 
     /* start out with invalid signature (0) */
     int check_sig = 0;
-    
+
     WOLFENGINE_ENTER(WE_LOG_PK,"we_ecdsa_do_verify");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [d = %p, dlen = %d, sig = %p, "
                            "key = %p]", d, dlen, sig, key);
@@ -2218,7 +2218,7 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
         EC_GROUP_get_curve_name(EC_KEY_get0_group(key)), &curveId)) != 1) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"we_ec_get_curve_id", rc);
         return WOLFENGINE_FATAL_ERROR;
-    } 
+    }
     if ((rc = wc_ecc_init(&we_key)) != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"wc_ecc_init", rc);
         return WOLFENGINE_FATAL_ERROR;
