@@ -53,6 +53,18 @@ run_testssl() {
     # Using ECC keys doesn't work as SSLv3 doesn't have any ciphers
 }
 
+# assuming is running from OpenSSL-1.1.1/test directory
+run_111testssl() {
+    printf "\t$1..." | tee -a $LOGFILE
+    eval "CTLOG_FILE=ct/log_list.conf TEST_CERTS_DIR=certs ./$* &>> $LOGFILE"
+    if [ $? != 0 ]; then
+        printf "failed\n"
+        FAILED=$((FAILED+1))
+    else
+        printf "passed\n"
+    fi
+}
+
 run_openssl() {
     printf "\t$1 $2..." | tee -a $LOGFILE
     (LD_LIBRARY_PATH="$WOLFENGINE_LIBS:$LD_LIBRARY_PATH" \
@@ -325,6 +337,28 @@ test_openssl_111b() {
 
     # verify_extra_test - test/recipes/70-test_verify_extra.t
     run_test "verify_extra_test ./certs/roots.pem ./certs/untrusted.pem ./certs/bad.pem"
+
+#failing "14-curves.conf"
+#failing "15-certstatus.conf"
+#failing "16-certstatus.conf"
+#failing "20-cert-select.conf"
+#failing "22-compression.conf"
+#failing "26-tls13_client_auth.conf"
+#failing "29-dtls-sctp-label-bug.conf"
+    for SSL_TEST in "01-simple.conf" "02-protocol-version.conf" \
+        "03-custom_verify.conf" "04-client_auth.conf" "05-sni.conf" \
+        "06-sni-ticket.conf" "07-dtls-protocol-version.conf" \
+        "08-npn.conf" "09-alpn.conf" "10-resumption.conf" \
+        "11-dtls_resumption.conf" "12-ct.conf" "13-fragmentation.conf" \
+        "16-dtls-certstatus.conf" "17-renegotiate.conf" \
+        "18-dtls-renegotiate.conf" "19-mac-then-encrypt.conf" \
+        "21-key-update.conf" \
+        "23-srp.conf" "24-padding.conf" "25-cipher.conf" \
+        "27-ticket-appdata.conf" \
+        "28-seclevel.conf"
+    do
+        run_111testssl "ssl_test ssl-tests/$SSL_TEST"
+    done
 
     cd $WOLFENGINE_ROOT
 }
