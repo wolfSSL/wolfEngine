@@ -1,0 +1,15 @@
+diff --git a/test/evp_extra_test.c b/test/evp_extra_test.c
+index 918c3205..b83e8e15 100644
+--- a/test/evp_extra_test.c
++++ b/test/evp_extra_test.c
+@@ -22,6 +22,10 @@
+ #include "internal/nelem.h"
+ #include "internal/evp_int.h"
+ 
++//@TODO for now running without SM2 tests
++#undef  OPENSSL_NO_SM2
++#define OPENSSL_NO_SM2
++
+ /*
+  * kExampleRSAKeyDER is an RSA private key in ASN.1, DER format. Of course, you
+  * should never use this key anywhere but in an example.
