@@ -296,7 +296,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         }
     }
     /* Length may be zero for cases with AAD data only (GMAC) */
-    else if ((ret == 1) && (in != NULL || aes->aadLen > 0)) {
+    else if ((ret == 1) && (out != NULL) && (in != NULL || aes->aadLen > 0)) {
         if (aes->enc) {
             if (!aes->ivSet) {
                 /* Set extern IV. */
@@ -364,6 +364,11 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     else if ((ret == 1) && (len == 0)) {
         /* Final called and nothing to do - no data output. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Final called, nothing to do");
+        if (aes->aad != NULL) {
+            OPENSSL_free(aes->aad);
+            aes->aad = NULL;
+            aes->aadLen = 0;
+        }
         ret = 0;
     }
 

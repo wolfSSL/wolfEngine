@@ -1,0 +1,47 @@
+diff --git a/test/testutil/main.c b/test/testutil/main.c
+index d3ccdda3..f2d7591d 100644
+--- a/test/testutil/main.c
++++ b/test/testutil/main.c
+@@ -13,6 +13,7 @@
+ #include "tu_local.h"
+ 
+ #include <string.h>
++#include <openssl/engine.h>
+ 
+ static size_t arg_count;
+ static char **args;
+@@ -31,10 +32,24 @@ static void check_arg_usage(void)
+         test_printf_stderr("Warning arguments %zu and later unchecked\n", i);
+ }
+ 
++ENGINE *e = NULL;
++
+ int main(int argc, char *argv[])
+ {
+     int ret = EXIT_FAILURE;
+ 
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("libwolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default(e, ENGINE_METHOD_ALL);
++
+     test_open_streams();
+ 
+     if (!global_init()) {
+@@ -54,6 +69,9 @@ int main(int argc, char *argv[])
+ 
+     ret = pulldown_test_framework(ret);
+     test_close_streams();
++
++    ENGINE_finish(e);
++    ENGINE_cleanup();
+     return ret;
+ }
+ 

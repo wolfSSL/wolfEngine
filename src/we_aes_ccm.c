@@ -221,7 +221,7 @@ static int we_aes_ccm_tls_cipher(we_AesCcm *aes, unsigned char *out,
             WOLFENGINE_BUFFER(WE_LOG_CIPHER, out + EVP_CCM_TLS_EXPLICIT_IV_LEN,
                               encLen);
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "AES-CCM auth tag:");
-            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out + len + EVP_CCM_TLS_TAG_LEN,
+            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out + len - EVP_CCM_TLS_TAG_LEN,
                               EVP_CCM_TLS_TAG_LEN);
             ret = (int)len;
         }

@@ -1,0 +1,24 @@
+diff --git a/test/drbgtest.c b/test/drbgtest.c
+index 0782a7c0..d6c78c0b 100644
+--- a/test/drbgtest.c
++++ b/test/drbgtest.c
+@@ -968,13 +968,18 @@ static int test_rand_add(void)
+     return 1;
+ }
+ 
++extern ENGINE *e;
++
+ int setup_tests(void)
+ {
+     app_data_index = RAND_DRBG_get_ex_new_index(0L, NULL, NULL, NULL, NULL);
+ 
+     ADD_ALL_TESTS(test_kats, OSSL_NELEM(drbg_test));
+     ADD_ALL_TESTS(test_error_checks, OSSL_NELEM(drbg_test));
+-    ADD_TEST(test_rand_drbg_reseed);
++    if (e == NULL) {
++        /* RAND_OpenSSL() specific test. */
++        ADD_TEST(test_rand_drbg_reseed);
++    }
+     ADD_TEST(test_rand_seed);
+     ADD_TEST(test_rand_add);
+ #if defined(OPENSSL_THREADS)

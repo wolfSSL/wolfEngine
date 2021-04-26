@@ -1,0 +1,22 @@
+diff --git a/test/recipes/30-test_evp_data/evpmac.txt b/test/recipes/30-test_evp_data/evpmac.txt
+index 2bcb3c33..69c86fe6 100644
+--- a/test/recipes/30-test_evp_data/evpmac.txt
++++ b/test/recipes/30-test_evp_data/evpmac.txt
+@@ -167,11 +167,12 @@ Key = 0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b
+ Input = "Hi There"
+ Output = 9294727a3638bb1c13f48ef8158bfc9d
+ 
+-MAC = HMAC
+-Algorithm = MD5
+-Key = "Jefe"
+-Input = "what do ya want for nothing?"
+-Output = 750c783e6ab0b503eaa86e310a5db738
++# Key length too small for wolfCrypt FIPSv2
++# MAC = HMAC
++# Algorithm = MD5
++# Key = "Jefe"
++# Input = "what do ya want for nothing?"
++# Output = 750c783e6ab0b503eaa86e310a5db738
+ 
+ MAC = HMAC
+ Algorithm = MD5

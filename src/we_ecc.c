@@ -273,6 +273,10 @@ typedef struct we_Ecc
     int            privKeySet:1;
     /** Indicates public key has been set into wolfSSL structure. */
     int            pubKeySet:1;
+#ifdef WE_HAVE_ECDH
+    /** Use co-factor with ECDH operation. */
+    int            coFactor:1;
+#endif
 } we_Ecc;
 
 /**
@@ -1081,7 +1085,17 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             /* Keep a copy of the digest object. */
             case EVP_PKEY_CTRL_MD:
                 WOLFENGINE_MSG(WE_LOG_PK, "received type: EVP_PKEY_CTRL_MD");
-                ecc->md = (EVP_MD*)ptr;
+                if ((EVP_MD_type((const EVP_MD *)ptr) != NID_sha1) &&
+                    (EVP_MD_type((const EVP_MD *)ptr) != NID_ecdsa_with_SHA1) &&
+                    (EVP_MD_type((const EVP_MD *)ptr) != NID_sha224) &&
+                    (EVP_MD_type((const EVP_MD *)ptr) != NID_sha256) &&
+                    (EVP_MD_type((const EVP_MD *)ptr) != NID_sha384) &&
+                    (EVP_MD_type((const EVP_MD *)ptr) != NID_sha512)) {
+                    ret = 0;
+                }
+                else {
+                    ecc->md = (EVP_MD*)ptr;
+                }
                 break;
 
             /* Initialize digest. */
@@ -1149,6 +1163,42 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     return ret;
 }
 
+/**
+ * Extra operations for working with ECC.
+ * Supported operations include:
+ *  - "ecdh_cofactor_mode": whether to perform ECDH with cofactor.
+ *
+ * @param  ctx   [in]  Public key context of operation.
+ * @param  type  [in]  String representation of value.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                          const char *value)
+{
+    int ret = 1;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+    we_Ecc *ecc;
+
+    ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
+    if (ecc == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", ecc);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        if (XSTRNCMP(type, "ecdh_cofactor_mode", 19) == 0) {
+            ecc->coFactor = (XATOI(value) == 1);
+        }
+        else {
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl string %s",
+                      type);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+            ret = 0;
+        }
+    }
+
+    return ret;
+}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 /**
@@ -1274,7 +1324,7 @@ int we_init_ecc_meths(void)
         EVP_PKEY_meth_set_derive(we_ec_method, NULL, we_ecdh_derive);
 #endif
 
-        EVP_PKEY_meth_set_ctrl(we_ec_method, we_ec_ctrl, NULL);
+        EVP_PKEY_meth_set_ctrl(we_ec_method, we_ec_ctrl, we_ec_ctrl_str);
     }
 
 #ifdef WE_HAVE_ECKEYGEN
@@ -1292,7 +1342,8 @@ int we_init_ecc_meths(void)
 
             EVP_PKEY_meth_set_keygen(we_ec_p192_method, NULL, we_ec_keygen);
 
-            EVP_PKEY_meth_set_ctrl(we_ec_p192_method, we_ec_ctrl, NULL);
+            EVP_PKEY_meth_set_ctrl(we_ec_p192_method, we_ec_ctrl,
+                                   we_ec_ctrl_str);
         }
     }
 #endif
@@ -1310,7 +1361,8 @@ int we_init_ecc_meths(void)
 
             EVP_PKEY_meth_set_keygen(we_ec_p224_method, NULL, we_ec_keygen);
 
-            EVP_PKEY_meth_set_ctrl(we_ec_p224_method, we_ec_ctrl, NULL);
+            EVP_PKEY_meth_set_ctrl(we_ec_p224_method, we_ec_ctrl,
+                                   we_ec_ctrl_str);
         }
     }
 #endif
@@ -1328,7 +1380,8 @@ int we_init_ecc_meths(void)
 
             EVP_PKEY_meth_set_keygen(we_ec_p256_method, NULL, we_ec_keygen);
 
-            EVP_PKEY_meth_set_ctrl(we_ec_p256_method, we_ec_ctrl, NULL);
+            EVP_PKEY_meth_set_ctrl(we_ec_p256_method, we_ec_ctrl,
+                                   we_ec_ctrl_str);
         }
     }
 #endif
@@ -1346,7 +1399,8 @@ int we_init_ecc_meths(void)
 
             EVP_PKEY_meth_set_keygen(we_ec_p384_method, NULL, we_ec_keygen);
 
-            EVP_PKEY_meth_set_ctrl(we_ec_p384_method, we_ec_ctrl, NULL);
+            EVP_PKEY_meth_set_ctrl(we_ec_p384_method, we_ec_ctrl,
+                                   we_ec_ctrl_str);
         }
     }
 #endif
@@ -1364,7 +1418,8 @@ int we_init_ecc_meths(void)
 
             EVP_PKEY_meth_set_keygen(we_ec_p521_method, NULL, we_ec_keygen);
 
-            EVP_PKEY_meth_set_ctrl(we_ec_p521_method, we_ec_ctrl, NULL);
+            EVP_PKEY_meth_set_ctrl(we_ec_p521_method, we_ec_ctrl,
+                                   we_ec_ctrl_str);
         }
     }
 #endif

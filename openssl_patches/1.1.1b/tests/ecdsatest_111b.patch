@@ -1,0 +1,34 @@
+diff --git a/test/ecdsatest.c b/test/ecdsatest.c
+index 531562ed..cee1fb33 100644
+--- a/test/ecdsatest.c
++++ b/test/ecdsatest.c
+@@ -245,6 +245,11 @@ static int test_builtin(void)
+         nid = curves[n].nid;
+         if (nid == NID_ipsec4 || nid == NID_ipsec3)
+             continue;
++        /* Only test the P-256, P-384, P-521 for FIPS. */
++        if (nid != NID_X9_62_prime256v1 && nid != NID_secp384r1 &&
++            nid != NID_secp521r1) {
++            continue;
++        }
+         /* create new ecdsa key (== EC_KEY) */
+         if (!TEST_ptr(eckey = EC_KEY_new())
+                 || !TEST_ptr(group = EC_GROUP_new_by_curve_name(nid))
+@@ -397,12 +402,16 @@ static int test_builtin(void)
+ }
+ #endif
+ 
++extern ENGINE* e;
+ int setup_tests(void)
+ {
+ #ifdef OPENSSL_NO_EC
+     TEST_note("Elliptic curves are disabled.");
+ #else
+-    ADD_TEST(x9_62_tests);
++    if (e == NULL) {
++        /* Non-FIPS curves. */
++        ADD_TEST(x9_62_tests);
++    }
+     ADD_TEST(test_builtin);
+ #endif
+     return 1;

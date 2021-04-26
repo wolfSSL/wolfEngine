@@ -23,6 +23,10 @@
 
 #ifdef WE_HAVE_DH
 
+#ifndef EVP_PKEY_CTRL_DH_PAD
+#define EVP_PKEY_CTRL_DH_PAD   (EVP_PKEY_ALG_CTRL + 16)
+#endif
+
 #define DEFAULT_PRIME_LEN 1024
 
 /**
@@ -42,6 +46,8 @@ typedef struct we_Dh
     unsigned char *q;
     /** Length of "q" in bytes. */
     int qLen;
+    /** Pad the secret output. */
+    int pad;
 } we_Dh;
 
 /** DH key method - DH using wolfSSL for the implementation. */
@@ -383,16 +389,37 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     }
 
     if (ret == 1) {
-        /* Generate public/private key pair with wolfSSL. */
-        rc = wc_DhGenerateKeyPair(&engineDh->key, pRng, priv, &privLen, pub,
-                                  &pubLen);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateKeyPair", rc);
-            ret = 0;
+        /* Check if private key already set. */
+        if ((privBn = (BIGNUM *)DH_get0_priv_key(dh)) != NULL) {
+            unsigned char *gBuf;
+            int gBufLen;
+
+            /* Get private key into buffer. */
+            privLen = BN_bn2bin(privBn, priv);
+            /* Get generator into buffer. */
+            ret = we_dh_bignum_to_bin(DH_get0_g(dh), &gBuf, &gBufLen);
+            if (ret == 1) {
+                /* Perform key agree: y^x but y == g therefore g^x. */
+                rc = wc_DhAgree(&engineDh->key, pub, &pubLen, priv, privLen,
+                                gBuf, gBufLen);
+                if (rc != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhAgree", rc);
+                    ret = 0;
+                }
+            }
+        }
+        else {
+            /* Generate public/private key pair with wolfSSL. */
+            rc = wc_DhGenerateKeyPair(&engineDh->key, pRng, priv, &privLen, pub,
+                                      &pubLen);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateKeyPair", rc);
+                ret = 0;
+            }
         }
     }
 
-    if (ret == 1) {
+    if ((ret == 1) && (privBn == NULL)) {
         WOLFENGINE_MSG(WE_LOG_KE, "Generated DH key pair");
         /* Convert private key byte array into a new OpenSSL big number. */
         privBn = BN_bin2bn(priv, privLen, NULL);
@@ -400,6 +427,11 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "BN_bin2bn", privBn);
             ret = 0;
         }
+    }
+    else {
+        /* privBN can only be set to the internal DH private key.
+         * Don't free it. */
+        privBn = NULL;
     }
 
     if (ret == 1) {
@@ -923,6 +955,7 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
  *  - EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR: intended to set the generator, "g",
  *    but doesn't actually do this, as wolfCrypt doesn't allow you to specify
  *    the generator used in DH key creation.
+ *  - EVP_PKEY_CTRL_DH_PAD: pad out secret to input length.
  *  - EVP_PKEY_CTRL_PEER_KEY: intended to set the peer key, but doesn't actually
  *    do this, as we can get the peer key directly from the ctx when needed.
  *
@@ -977,6 +1010,9 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 /* wolfCrypt doesn't allow setting the generator when generating
                  * DH params. */
                 break;
+            case EVP_PKEY_CTRL_DH_PAD:
+                dh->pad = num;
+                break;
             case EVP_PKEY_CTRL_PEER_KEY:
                 WOLFENGINE_MSG(WE_LOG_KE, "EVP_PKEY_CTRL_PEER_KEY");
                 /* No need to store peer key. We can get it from ctx in
@@ -994,6 +1030,90 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     }
 
     WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_pkey_ctrl", ret);
+
+    return ret;
+}
+
+/**
+ * Extra operations for working with DH.
+ * Supported operations include:
+ *  - "dh_param": set the named parameters.
+ *  - "pad": pad out secret to input length.
+ *
+ * @param  ctx    [in]  Public key context of operation.
+ * @param  type   [in]  Type of operation to perform.
+ * @param  value  [in]  String representing value.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
+                               const char* value) {
+    int ret = 1;
+    int rc;
+    we_Dh *dh = NULL;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+
+    WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_ctrl_str");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p, type = %s, value = %s",
+                           ctx, type, value);
+
+    /* Retrieve internal DH object. */
+    dh = (we_Dh *)EVP_PKEY_CTX_get_data(ctx);
+    if (dh == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "EVP_PKEY_CTX_get_data", dh);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        if (XSTRNCMP(type, "dh_param", 9)) {
+            const DhParams *params;
+
+            if (XSTRNCMP(value, "ffdhe2048", 10)) {
+                params = wc_Dh_ffdhe2048_Get();
+            }
+        #ifdef HAVE_FFDHE_3072
+            else if (XSTRNCMP(value, "ffdhe3072", 10)) {
+                params = wc_Dh_ffdhe3072_Get();
+            }
+        #endif
+        #ifdef HAVE_FFDHE_4096
+            else if (XSTRNCMP(value, "ffdhe4096", 10)) {
+                params = wc_Dh_ffdhe4096_Get();
+            }
+        #endif
+            else {
+                /* Unsupported parameters. */
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported DH params: %s",
+                          value);
+                WOLFENGINE_ERROR_MSG(WE_LOG_KE, errBuff);
+                ret = 0;
+            }
+
+            if (ret == 1) {
+                rc = wc_DhSetKey_ex(&dh->key, params->p, params->p_len,
+                                              params->g, params->g_len,
+            #ifdef HAVE_FFDHE_Q
+                                              params->q, params->q_len
+            #else
+                                              NULL, 0
+            #endif
+                                    );
+                if (rc != 0) {
+                     WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Failed set parameters");
+                     ret = 0;
+                }
+            }
+        }
+        else if (XSTRNCMP(type, "pad", 4)) {
+            dh->pad = XATOI(value);
+        }
+        else {
+            /* Unsupported control type. */
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl string %s",
+                      type);
+            WOLFENGINE_ERROR_MSG(WE_LOG_KE, errBuff);
+            ret = 0;
+        }
+    }
 
     return ret;
 }
@@ -1145,6 +1265,7 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     EVP_PKEY *peerKey = NULL;
     DH *peerDh = NULL;
     const BIGNUM *peerPub = NULL;
+    size_t totalLen = *secretLen;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_derive");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p, secret = %p, "
@@ -1222,6 +1343,11 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
                 WOLFENGINE_MSG(WE_LOG_KE, "Generated DH shared secret");
             }
         }
+
+        if ((ret == 1) && (engineDh->pad) && (totalLen != *secretLen)) {
+            XMEMMOVE(secret + totalLen - *secretLen, secret, *secretLen);
+            XMEMSET(secret, 0, totalLen - *secretLen);
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_pkey_derive", ret);
@@ -1252,7 +1378,8 @@ int we_init_dh_pkey_meth(void)
         /* Set all the methods we want to support. */
         EVP_PKEY_meth_set_init(we_dh_pkey_method, we_dh_pkey_init);
         EVP_PKEY_meth_set_cleanup(we_dh_pkey_method, we_dh_pkey_cleanup);
-        EVP_PKEY_meth_set_ctrl(we_dh_pkey_method, we_dh_pkey_ctrl, NULL);
+        EVP_PKEY_meth_set_ctrl(we_dh_pkey_method, we_dh_pkey_ctrl,
+                               we_dh_pkey_ctrl_str);
         EVP_PKEY_meth_set_paramgen(we_dh_pkey_method, NULL,
                                    we_dh_pkey_paramgen);
         EVP_PKEY_meth_set_keygen(we_dh_pkey_method, NULL, we_dh_pkey_keygen);

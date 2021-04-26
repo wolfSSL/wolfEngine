@@ -58,7 +58,7 @@ sudo make install
 git clone https://github.com/wolfssl/wolfssl.git
 cd wolfssl
 ./autogen.sh
-./configure --enable-cmac --enable-keygen --enable-sha --enable-des3 --enable-aesctr --enable-aesccm CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_NO_PADDING -DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192"
+./configure --enable-cmac --enable-keygen --enable-sha --enable-des3 --enable-aesctr --enable-aesccm CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_NO_PADDING -DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192 -DWOLFSSL_PSS_LONG_SALT -DWOLFSSL_PSS_SALT_LEN_DISCOVER"
 make
 sudo make install
 ```
