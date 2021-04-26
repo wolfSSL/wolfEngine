@@ -325,7 +325,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %zu bytes "
                                        "(AES-GCM):", len);
-                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
+                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "AES-GCM tag:");
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, aes->tag, aes->tagLen);
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching nonce/IV to aes->iv");
@@ -347,7 +347,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
                                        "(AES-GCM):", len);
-                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
+                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching nonce/IV to aes->iv");
 
                 /* Cache nonce/IV. */
