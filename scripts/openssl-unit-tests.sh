@@ -312,7 +312,7 @@ test_openssl_111b() {
     run_test "clienthellotest session.pem"
 
     # test/recipes/15-test_genrsa.t
-    for BITS in 1024 2048 3072 4096
+    for BITS in 2048 3072 4096
     do
         run_openssl "genrsa" "$BITS"
     done
@@ -322,6 +322,9 @@ test_openssl_111b() {
     do
         run_test "evp_test recipes/30-test_evp_data/$EVP_KATS"
     done
+
+    # verify_extra_test - test/recipes/70-test_verify_extra.t
+    run_test "verify_extra_test ./certs/roots.pem ./certs/untrusted.pem ./certs/bad.pem"
 
     cd $WOLFENGINE_ROOT
 }
