@@ -67,6 +67,11 @@ typedef struct we_Rsa
     int pubKeySet:1;
 } we_Rsa;
 
+
+/** RSA direct method - RSA using wolfSSL for the implementation. */
+RSA_METHOD *we_rsa_method = NULL;
+
+
 /**
  * Check that the key size is allowed. For FIPS, 1024-bit keys can only be used
  * to verify; they can't be generated or used to sign.
@@ -134,8 +139,39 @@ static int we_mgf_from_hash(int nid)
     return mgf;
 }
 
-/** RSA direct method - RSA using wolfSSL for the implementation. */
-RSA_METHOD *we_rsa_method = NULL;
+/**
+ * Convert the PSS salt length from OpenSSL value to a wolfSSL value.
+ *
+ * @param  saltLen   [in]  Salt length.
+ * @param  md        [in]  Digest to use with PSS.
+ * @return  Salt length for wolfSSL.
+ */
+static int we_pss_salt_len_to_wc(int saltLen, const EVP_MD *md)
+{
+    (void)md;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    if (saltLen < 0) {
+        if (saltLen == RSA_PSS_SALTLEN_DIGEST) {
+        #ifdef RSA_PSS_SALT_LEN_DEFAULT
+            saltLen = RSA_PSS_SALT_LEN_DEFAULT;
+        #else
+            saltLen = -1;
+        #endif
+        }
+        if ((saltLen == RSA_PSS_SALTLEN_MAX) ||
+            (saltLen == RSA_PSS_SALTLEN_AUTO)) {
+        #ifndef RSA_PSS_SALT_LEN_DISCOVER
+            saltLen = EVP_MD_size(md);
+        #else
+            saltLen = RSA_PSS_SALT_LEN_DISCOVER;
+        #endif
+        }
+    }
+#endif
+
+    return saltLen;
+}
 
 /**
  * Set the public key in a we_Rsa structure.
@@ -144,7 +180,7 @@ RSA_METHOD *we_rsa_method = NULL;
  * @param  rsa     [in]  RSA structure to hold public key.
  * @returns  1 on success and 0 on failure.
  */
-static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
+static int we_rsa_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
 {
     int ret = 1;
     int rc = 0;
@@ -152,7 +188,7 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
     int pubDerLen = 0;
     word32 idx = 0;
 
-    WOLFENGINE_ENTER(WE_LOG_PK, "we_set_public_key");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_set_public_key");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [rsaKey = %p, engineRsa = %p]",
                            rsaKey, engineRsa);
 
@@ -184,7 +220,7 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
         OPENSSL_free(pubDer);
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_PK, "we_set_public_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_set_public_key", ret);
 
     return ret;
 }
@@ -196,7 +232,7 @@ static int we_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
  * @param  rsa     [in]  RSA structure to hold private key.
  * @returns  1 on success and 0 on failure.
  */
-static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
+static int we_rsa_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
 {
     int ret = 1;
     int rc = 0;
@@ -204,7 +240,7 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
     int privDerLen = 0;
     word32 idx = 0;
 
-    WOLFENGINE_ENTER(WE_LOG_PK, "we_set_private_key");
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_set_private_key");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS (rsaKey = %p, engineRsa = %p]",
                            rsaKey, engineRsa);
 
@@ -237,7 +273,7 @@ static int we_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
         OPENSSL_clear_free(privDer, privDerLen);
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_PK, "we_set_private_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_set_private_key", ret);
 
     return ret;
 }
@@ -491,9 +527,9 @@ static int we_rsa_pub_enc(int fromLen, const unsigned char *from,
 
     /* Set public key into wolfSSL RSA key if not done already. */
     if ((ret == 1) && (!engineRsa->pubKeySet)) {
-        rc = we_set_public_key(rsa, engineRsa);
+        rc = we_rsa_set_public_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_public_key", rc);
             ret = -1;
         }
     }
@@ -650,9 +686,9 @@ static int we_rsa_priv_dec(int fromLen, const unsigned char *from,
 
     /* Set private key into wolfSSL RSA key if not done already. */
     if ((ret == 1) && (!engineRsa->privKeySet)) {
-        rc = we_set_private_key(rsa, engineRsa);
+        rc = we_rsa_set_private_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_private_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_private_key", rc);
             ret = -1;
         }
     }
@@ -731,11 +767,13 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                 ret = -1;
             }
             else {
+                /* Convert salt length into wolfCrypt value. */
+                int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md);
                 /* When MGF1 digest is not specified, use signing digest. */
                 mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
                 ret = wc_RsaPSS_Sign_ex(from, (word32)fromLen, to,
                     (word32)toLen, we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
+                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), wc_saltLen,
                     &rsa->key, rng);
                 if (ret < 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Sign_ex", ret);
@@ -807,9 +845,9 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
 
     /* Set private key into wolfSSL RSA key if not done already. */
     if ((ret == 1) && (!engineRsa->privKeySet)) {
-        rc = we_set_private_key(rsa, engineRsa);
+        rc = we_rsa_set_private_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_private_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_private_key", rc);
             ret = -1;
         }
     }
@@ -868,53 +906,68 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                            "toLen = %zu, to = %p, rsa = %p]", fromLen, from,
                            toLen, to, rsa);
 
-    switch (rsa->padMode) {
-        case RSA_PKCS1_PADDING:
-            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
-            /* PKCS #1 v1.5 padding using block type 1. */
-            ret = wc_RsaSSL_Verify(from, (word32)fromLen, to, (word32)toLen,
-                    &rsa->key);
-            if (ret < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaSSL_Verify", ret);
-                ret = -1;
-            }
-            break;
-        case RSA_NO_PADDING:
-            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
-            ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to, &tLen,
-                               &rsa->key, RSA_PUBLIC_DECRYPT, rng);
-            if (ret < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
-                ret = -1;
-            }
-            break;
-        case RSA_PKCS1_PSS_PADDING:
-            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PSS_PADDING");
-            /* PKCS #1 PSS padding. */
-            if (rsa->md == NULL) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not set");
-                ret = -1;
-            }
-            else {
-                /* When MGF1 digest is not specified, use verify digest. */
-                mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
-                ret = wc_RsaPSS_Verify_ex((byte*)from, (word32)fromLen, to,
-                    (word32)toLen, we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->saltLen,
-                    &rsa->key);
+    /* Check input length doesn't exceed the prime length. */
+    if (fromLen > (size_t)wc_RsaEncryptSize(&rsa->key)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Decrypt buffer too big");
+        ret = -1;
+    }
+
+    if (ret == 1) {
+        switch (rsa->padMode) {
+            case RSA_PKCS1_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
+                /* PKCS #1 v1.5 padding using block type 1. */
+                ret = wc_RsaSSL_Verify(from, (word32)fromLen, to, (word32)toLen,
+                        &rsa->key);
                 if (ret < 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Verify_ex",
-                                          ret);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaSSL_Verify", ret);
                     ret = -1;
                 }
-            }
-            break;
-        default:
-            /* Unsupported padding mode for RSA public decryption. */
-            XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding mode: %d",
-                      rsa->padMode);
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-            ret = -1;
+                break;
+            case RSA_NO_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
+                ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
+                    &tLen, &rsa->key, RSA_PUBLIC_DECRYPT, rng);
+                if (ret < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
+                    ret = -1;
+                }
+                break;
+            case RSA_PKCS1_PSS_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PSS_PADDING");
+                /* PKCS #1 PSS padding. */
+                if (rsa->md == NULL) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not set");
+                    ret = -1;
+                }
+                else {
+                    int hash;
+                    int mgf1;
+                    int wc_saltLen;
+
+                    hash = we_nid_to_wc_hash_type(EVP_MD_type(rsa->md));
+                    /* When MGF1 digest is not specified, use verify digest. */
+                    mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                    mgf1 = we_mgf_from_hash(EVP_MD_type(mdMGF1));
+                    /* Convert salt length into wolfCrypt value. */
+                    wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md);
+
+                    ret = wc_RsaPSS_Verify_ex((byte*)from, (word32)fromLen, to,
+                        (word32)toLen, hash, mgf1, wc_saltLen, &rsa->key);
+                    if (ret < 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Verify_ex",
+                                              ret);
+                        ret = -1;
+                    }
+                }
+                break;
+            default:
+                /* Unsupported padding mode for RSA public decryption. */
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding mode: %d",
+                          rsa->padMode);
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+                ret = -1;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pub_dec_int", ret);
@@ -971,9 +1024,9 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
 
     /* Set public key into wolfSSL RSA key if not done already. */
     if ((ret == 1) && (!engineRsa->pubKeySet)) {
-        rc = we_set_public_key(rsa, engineRsa);
+        rc = we_rsa_set_public_key(rsa, engineRsa);
         if (rc == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_public_key", rc);
             ret = -1;
         }
     }
@@ -1745,7 +1798,11 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             rsa->saltLen = RSA_PSS_SALTLEN_MAX;
         }
         else if (XSTRNCMP(value, "auto", 5) == 0) {
+        #if OPENSSL_VERSION_NUMBER >= 0x10101000L
             rsa->saltLen = RSA_PSS_SALTLEN_AUTO;
+        #else
+            rsa->saltLen = RSA_PSS_SALT_LEN_DEFAULT;
+        #endif
         }
     #endif
         else {
@@ -1916,9 +1973,9 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
         }
         if (ret == 1) {
             /* Set the private key into the internal RSA key. */
-            ret = we_set_private_key(rsaKey, rsa);
+            ret = we_rsa_set_private_key(rsaKey, rsa);
             if (ret == 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_private_key", ret);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_private_key", ret);
             }
         }
     }
@@ -2049,9 +2106,9 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         }
         if (ret == 1) {
             /* Set the public key into the internal RSA key. */
-            ret = we_set_public_key(rsaKey, rsa);
+            ret = we_rsa_set_public_key(rsaKey, rsa);
             if (ret == 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", ret);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_public_key", ret);
             }
         }
     }
@@ -2082,10 +2139,12 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     }
 
     if ((ret == 1) && (rsa->padMode == RSA_PKCS1_PSS_PADDING)) {
+        /* Convert salt length into wolfCrypt value. */
+        int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md);
         /* Verify call in we_rsa_pub_dec_int only decrypts - this actually
            checks padding. */
         rc = wc_RsaPSS_CheckPadding_ex(tbs, (word32)tbsLen, decryptedSig, rc,
-            we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)), rsa->saltLen, 0);
+            we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)), wc_saltLen, 0);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_CheckPadding_ex", rc);
             ret = 0;
@@ -2199,9 +2258,9 @@ static int we_rsa_pkey_encrypt(EVP_PKEY_CTX *ctx, unsigned char *ciphertext,
     else if (ret == 1) {
         /* Set up public key */
         if (!rsa->pubKeySet) {
-            ret = we_set_public_key(rsaKey, rsa);
+            ret = we_rsa_set_public_key(rsaKey, rsa);
             if (ret == 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_public_key", ret);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_public_key", ret);
             }
         }
 
@@ -2285,9 +2344,9 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
         }
         if (ret == 1) {
             /* Set up private key */
-            ret = we_set_private_key(rsaKey, rsa);
+            ret = we_rsa_set_private_key(rsaKey, rsa);
             if (ret == 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_set_private_key", ret);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_private_key", ret);
             }
         }
     }

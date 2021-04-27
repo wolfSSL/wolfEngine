@@ -47,7 +47,9 @@ typedef struct we_Dh
     /** Length of "q" in bytes. */
     int qLen;
     /** Pad the secret output. */
-    int pad;
+    int pad:1;
+    /** Named group set. */
+    int named:1;
 } we_Dh;
 
 /** DH key method - DH using wolfSSL for the implementation. */
@@ -356,28 +358,29 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
 
     /* Public key is no larger than the prime. */
     pubLen = BN_num_bytes(DH_get0_p(dh));
-    if (DH_get_length(dh) != 0) {
-        /* Convert bits to bytes - add some so buffer is big enough. */
-        privLen = (unsigned int)(DH_get_length(dh) / 8 + 8);
+    /* 'q' parameter is the size for private key - use it if available. */
+    if (DH_get0_q(dh) != NULL) {
+        privLen = BN_num_bytes(DH_get0_q(dh));
     }
+    /* Otherwise use the length of the DH key. */
+    else if (DH_get_length(dh) != 0) {
+        /* Convert bits to bytes. */
+        privLen = (unsigned int)((DH_get_length(dh) + 7) / 8);
+    }
+    /* Or use the public key length. */
     else {
         privLen = pubLen;
     }
-
-    /* Set parameters in engineDh. */
-    rc = we_dh_set_parameters(dh, engineDh);
-    if (rc != 1) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_set_parameters", rc);
-        ret = 0;
+    if (privLen != pubLen) {
+        /* Add some for non-FIPS case (only buffer size not required length). */
+        privLen += 8;
     }
 
-    if (ret == 1) {
-        /* Allocate memory for public key when generated. */
-        pub = (unsigned char*)OPENSSL_malloc(pubLen);
-        if (pub == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pub);
-            ret = 0;
-        }
+    /* Allocate memory for public key when generated. */
+    pub = (unsigned char*)OPENSSL_malloc(pubLen);
+    if (pub == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pub);
+        ret = 0;
     }
     if (ret == 1) {
         /* Allocate memory for private key when generated. */
@@ -486,6 +489,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
 static int we_dh_generate_key(DH *dh)
 {
     int ret = 1;
+    int rc;
     we_Dh *engineDh = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_generate_key");
@@ -496,6 +500,15 @@ static int we_dh_generate_key(DH *dh)
     if (engineDh == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get_ex_data", engineDh);
         ret = 0;
+    }
+
+    if (ret == 1) {
+        /* Set parameters in engineDh. */
+        rc = we_dh_set_parameters(dh, engineDh);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_set_parameters", rc);
+            ret = 0;
+        }
     }
 
     if (ret == 1) {
@@ -689,8 +702,9 @@ static int we_dh_convert_params(DhKey *wolfDh, DH *osslDh)
         }
     }
     if (ret == 1) {
-        /* Allocate buffer for group prime. */
-        q = (unsigned char*)OPENSSL_malloc(qLen);
+        /* Allocate buffer for group prime.
+         * When group prime not set ensure there is a buffer anyway. */
+        q = (unsigned char*)OPENSSL_malloc(qLen == 0 ? 1 : qLen);
         if (q == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(q)", q);
             ret = 0;
@@ -1064,19 +1078,26 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     }
 
     if (ret == 1) {
-        if (XSTRNCMP(type, "dh_param", 9)) {
+        /* Set named DH parameters. */
+        if (XSTRNCMP(type, "dh_param", 9) == 0) {
             const DhParams *params;
 
-            if (XSTRNCMP(value, "ffdhe2048", 10)) {
+            if (XSTRNCMP(value, "ffdhe2048", 10) == 0) {
+                WOLFENGINE_MSG(WE_LOG_KE,
+                               "Setting named parameters: ffdhe2048");
                 params = wc_Dh_ffdhe2048_Get();
             }
         #ifdef HAVE_FFDHE_3072
-            else if (XSTRNCMP(value, "ffdhe3072", 10)) {
+            else if (XSTRNCMP(value, "ffdhe3072", 10) == 0) {
+                WOLFENGINE_MSG(WE_LOG_KE,
+                               "Setting named parameters: ffdhe3072");
                 params = wc_Dh_ffdhe3072_Get();
             }
         #endif
         #ifdef HAVE_FFDHE_4096
-            else if (XSTRNCMP(value, "ffdhe4096", 10)) {
+            else if (XSTRNCMP(value, "ffdhe4096", 10) == 0) {
+                WOLFENGINE_MSG(WE_LOG_KE,
+                               "Setting named parameters: ffdhe4096");
                 params = wc_Dh_ffdhe4096_Get();
             }
         #endif
@@ -1102,8 +1123,12 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                      ret = 0;
                 }
             }
+            if (ret == 1) {
+                dh->named = 1;
+            }
         }
-        else if (XSTRNCMP(type, "pad", 4)) {
+        /* Set padding requirement for secret output. */
+        else if (XSTRNCMP(type, "dh_pad", 7) == 0) {
             dh->pad = XATOI(value);
         }
         else {
@@ -1212,22 +1237,36 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         }
     }
 
-    /* The ctx holds the EVP_PKEY which holds the DH params. */
-    if (ret == 1) {
+    if ((ret == 1) && engineDh->named) {
+        /* Named parameters are copied from the internal DH. */
+        ret = we_dh_convert_params(&engineDh->key, dh);
+    }
+    if ((ret == 1) && (!engineDh->named)) {
+        /* The ctx holds the EVP_PKEY which holds the DH params. */
         paramsKey = EVP_PKEY_CTX_get0_pkey(ctx);
         if (paramsKey == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
                                        "EVP_PKEY_CTX_get0_pkey", paramsKey);
             ret = 0;
         }
-    }
 
-    /* Copy the parameters from the ctx EVP_PKEY to pkey. */
-    if (ret == 1) {
-        rc = EVP_PKEY_copy_parameters(pkey, paramsKey);
-        if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "EVP_PKEY_copy_parameters", rc);
-            ret = 0;
+        /* Copy the parameters from the ctx EVP_PKEY to pkey. */
+        if (ret == 1) {
+            rc = EVP_PKEY_copy_parameters(pkey, paramsKey);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "EVP_PKEY_copy_parameters",
+                                      rc);
+                ret = 0;
+            }
+        }
+
+        if (ret == 1) {
+            /* Set parameters in engineDh. */
+            rc = we_dh_set_parameters(dh, engineDh);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_set_parameters", rc);
+                ret = 0;
+            }
         }
     }
 
@@ -1344,9 +1383,13 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
             }
         }
 
-        if ((ret == 1) && (engineDh->pad) && (totalLen != *secretLen)) {
+        /* When padding required and total buffer size is bigger than secret
+         * generated, ensure the buffer is zero padded at the front. */
+        if ((ret == 1) && engineDh->pad && (totalLen != *secretLen)) {
             XMEMMOVE(secret + totalLen - *secretLen, secret, *secretLen);
             XMEMSET(secret, 0, totalLen - *secretLen);
+            /* Return the original length. */
+            *secretLen = (int)totalLen;
         }
     }
 

@@ -789,6 +789,36 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
             ecc->pubKeySet = 1;
         }
     }
+    /* wolfSSL FIPS is not checking SEQUENCE length. */
+    if ((ret == 1) && (sig[0] == 0x30)) {
+        size_t len;
+        int o = 1;
+
+        /* Check for indefinite length - length not specified. */
+        if (sig[o] == 0x80) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature has indefinite length");
+            ret = 0;
+        }
+        /* Check for multi-byte length. */
+        else if (sig[o] > 0x80) {
+            byte cnt = (sig[o++]) & 0x7f;
+            len = 0;
+            while ((cnt--) > 0) {
+                len <<= 8;
+                len += sig[o++];
+            }
+        }
+        /* Length in byte. */
+        else {
+            len = sig[o++];
+        }
+        /* Check signature length is:
+         *     SEQUENCE header length + SQUENCE data length */
+        if ((ret == 1) && (o + len != sigLen)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature length invalid");
+            ret = 0;
+        }
+    }
     if (ret == 1) {
         /* Verify the signature with the data using wolfSSL. */
         rc = wc_ecc_verify_hash(sig, (word32)sigLen, tbs, (word32)tbsLen, &res,
