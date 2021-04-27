@@ -363,7 +363,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %zu bytes "
                                        "(AES-CCM):", len);
-                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
+                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching nonce/IV in aes->iv");
 
                 /* Cache nonce/IV. */
@@ -385,7 +385,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
                                        "(AES-CCM):", len);
-                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, len);
+                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching nonce/IV in aes->iv");
 
                 /* Cache nonce/IV. */
