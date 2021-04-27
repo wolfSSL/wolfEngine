@@ -182,7 +182,7 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                 aes->aadLen);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex", rc);
-                ret = 0;
+                ret = -1;
             }
         }
         if (ret == 1) {
@@ -215,7 +215,7 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                                   EVP_GCM_TLS_TAG_LEN, aes->aad, aes->aadLen);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt", rc);
-                ret = 0;
+                ret = -1;
             }
         }
         if (ret == 1) {
@@ -250,9 +250,9 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
  *                        NULL indicates AAD in.
  * @param  in   [in]      AAD or data to encrypt/decrypt.
  * @param  len  [in]      Length of AAD or data to encrypt/decrypt.
- * @return  When out is NULL, length of input data on success and 0 on failure.
+ * @return  When out is NULL, length of input data on success and -1 on failure.
  *          <br>
- *          When out is not NULL, length of output data on success and 0 on
+ *          When out is not NULL, length of output data on success and -1 on
  *          failure.
  */
 static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
@@ -272,7 +272,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     if (aes == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
-        ret = 0;
+        ret = -1;
     }
 
     if ((ret == 1) && aes->tls) {
@@ -285,7 +285,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         p = OPENSSL_realloc(aes->aad, aes->aadLen + (int)len);
         if (p == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
-            ret = 0;
+            ret = -1;
         }
         else {
             /* Copy in new data after exisitng data. */
@@ -305,7 +305,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesGcmSetExtIV", rc);
-                    ret = 0;
+                    ret = -1;
                 }
             }
             if (ret == 1) {
@@ -318,7 +318,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesGcmEncrypt_ex", rc);
-                    ret = 0;
+                    ret = -1;
                 }
             }
             if (ret == 1) {
@@ -341,7 +341,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                   aes->aad, aes->aadLen);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt_ex", rc);
-                ret = 0;
+                ret = -1;
             }
             if (ret == 1) {
 
