@@ -73,6 +73,7 @@ int EVP_MD_meth_set_app_datasize(EVP_MD *md, int datasize);
 EVP_MD *EVP_MD_meth_new(int md_type, int pkey_type);
 int EVP_MD_meth_set_init(EVP_MD *md, int (*init)(EVP_MD_CTX *ctx));
 int EVP_MD_meth_set_result_size(EVP_MD *md, int resultsize);
+int EVP_MD_meth_set_input_blocksize(EVP_MD *md, int blocksize);
 void EVP_MD_meth_free(EVP_MD *md);
 
 const unsigned char *EVP_CIPHER_CTX_iv(const EVP_CIPHER_CTX *ctx);
