@@ -185,7 +185,8 @@ static int we_rand_seed(const void *buf, int num)
         }
 #else
         /* Mix the seed into the global seed. */
-        (void)we_rand_mix_seed(we_seed, sizeof(we_seed), buf, num);
+        (void)we_rand_mix_seed(we_seed, sizeof(we_seed),
+                (const unsigned char*)buf, num);
         haveSeed = 1;
 #endif
     #ifndef WE_SINGLE_THREADED

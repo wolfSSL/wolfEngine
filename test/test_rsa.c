@@ -398,15 +398,15 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
         err = RAND_bytes(buf, sizeof(buf)) == 0;
     }
     if (err == 0) {
-        encryptedBuf = OPENSSL_malloc(rsaSize);
+        encryptedBuf = (unsigned char*)OPENSSL_malloc(rsaSize);
         err = encryptedBuf == NULL;
     }
     if (err == 0) {
-        decryptedBuf = OPENSSL_malloc(rsaSize);
+        decryptedBuf = (unsigned char*)OPENSSL_malloc(rsaSize);
         err = decryptedBuf == NULL;
     }
     if (err == 0) {
-        noPaddingBuf = OPENSSL_malloc(rsaSize);
+        noPaddingBuf = (unsigned char*)OPENSSL_malloc(rsaSize);
         err = noPaddingBuf == NULL;
     }
     if (err == 0) {
@@ -707,7 +707,7 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
     unsigned char *buf = NULL;
     const unsigned char *p = rsa_key_der_2048;
 
-    PRINT_MSG("Load RSA key");    
+    PRINT_MSG("Load RSA key");
     pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
     err = pkey == NULL;
     if (err == 0) {
@@ -716,7 +716,7 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
     }
     if (err == 0) {
         rsaSigLen = RSA_size(rsaKey);
-        rsaSig = OPENSSL_malloc(rsaSigLen);
+        rsaSig = (unsigned char*)OPENSSL_malloc(rsaSigLen);
         err = rsaSig == NULL;
     }
     if (err == 0) {
@@ -868,7 +868,7 @@ static int test_rsa_enc_dec(ENGINE *e, const unsigned char *der, size_t derLen,
     size_t bufLen = 20;
     unsigned char *buf = NULL;
 
-    PRINT_MSG("Load RSA key");    
+    PRINT_MSG("Load RSA key");
     pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der, derLen);
     err = pkey == NULL;
     if (err == 0) {
@@ -877,7 +877,7 @@ static int test_rsa_enc_dec(ENGINE *e, const unsigned char *der, size_t derLen,
     }
     if (err == 0) {
         rsaEncLen = RSA_size(rsaKey);
-        rsaEnc = OPENSSL_malloc(rsaEncLen);
+        rsaEnc = (unsigned char*)OPENSSL_malloc(rsaEncLen);
         err = rsaEnc == NULL;
     }
     if (err == 0) {
@@ -1102,7 +1102,7 @@ int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data) {
     }
     if (err == 0) {
         rsaSigLen = RSA_size(rsa);
-        rsaSig = OPENSSL_malloc(rsaSigLen);
+        rsaSig = (unsigned char*)OPENSSL_malloc(rsaSigLen);
         err = rsaSig == NULL;
     }
     if (err == 0) {
