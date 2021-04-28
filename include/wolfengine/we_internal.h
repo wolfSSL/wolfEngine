@@ -121,7 +121,7 @@ int we_init_sha3_384_meth(void);
 extern EVP_MD *we_sha3_512_md;
 int we_init_sha3_512_meth(void);
 
-int we_nid_to_wc_hash_type(int nid);
+enum wc_HashType we_nid_to_wc_hash_type(int nid);
 int we_nid_to_wc_hash_oid(int nid);
 
 /*

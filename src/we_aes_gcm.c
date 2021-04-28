@@ -282,7 +282,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Resizing stored AAD and appending "
                        "data, len = %d", (int)len);
         /* Resize stored AAD and append new data. */
-        p = OPENSSL_realloc(aes->aad, aes->aadLen + (int)len);
+        p = (unsigned char*)OPENSSL_realloc(aes->aad, aes->aadLen + (int)len);
         if (p == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
             ret = -1;
@@ -479,8 +479,8 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     if (ret == 1)
                 #endif
                     {
-                        rc = wc_AesGcmSetIV(&aes->aes, aes->ivLen, ptr, arg,
-                                            we_rng);
+                        rc = wc_AesGcmSetIV(&aes->aes, aes->ivLen,
+                                (const byte*)ptr, arg, we_rng);
                 #ifndef WE_SINGLE_THREADED
                         wc_UnLockMutex(we_rng_mutex);
                 #endif
@@ -583,7 +583,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     if (aes->aad != NULL) {
                         OPENSSL_free(aes->aad);
                     }
-                    aes->aad = OPENSSL_malloc(arg);
+                    aes->aad = (unsigned char*)OPENSSL_malloc(arg);
                     if (aes->aad == NULL) {
                         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                                    "OPENSSL_malloc", aes->aad);

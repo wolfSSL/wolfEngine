@@ -217,9 +217,9 @@ static const int we_digest_nids[] = {
  * @returns  Hash type corresponding to the NID or WC_HASH_TYPE_NONE
  *           when not supported.
  */
-int we_nid_to_wc_hash_type(int nid)
+enum wc_HashType we_nid_to_wc_hash_type(int nid)
 {
-    int hashType = WC_HASH_TYPE_NONE;
+    enum wc_HashType hashType = WC_HASH_TYPE_NONE;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_type");
@@ -295,7 +295,7 @@ int we_nid_to_wc_hash_type(int nid)
  *          if it doesn't.
  */
 int we_nid_to_wc_hash_oid(int nid) {
-    int hashType = we_nid_to_wc_hash_type(nid);
+    enum wc_HashType hashType = we_nid_to_wc_hash_type(nid);
     int ret;
 
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_nid_to_wc_hash_oid");

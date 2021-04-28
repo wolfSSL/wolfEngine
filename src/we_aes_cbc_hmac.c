@@ -434,7 +434,8 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
             case EVP_CTRL_AEAD_SET_MAC_KEY:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_SET_MAC_KEY");
                 /* Set the HMAC key. */
-                rc = wc_HmacSetKey(&aes->hmac, WC_SHA256, ptr, arg);
+                rc = wc_HmacSetKey(&aes->hmac, WC_SHA256, (const byte*)ptr,
+                        arg);
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacSetKey", rc);
                     ret = 0;
