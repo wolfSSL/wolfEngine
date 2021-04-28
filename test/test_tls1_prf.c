@@ -110,7 +110,7 @@ static int test_tls1_prf_md(ENGINE *e, const EVP_MD *md)
 
     if ((err == 0) && (memcmp(oKey, wKey, sizeof(oKey)) != 0)) {
         PRINT_BUFFER("OpenSSL key", oKey, sizeof(oKey));
-       PRINT_BUFFER("wolfSSL key", wKey, sizeof(wKey));
+        PRINT_BUFFER("wolfSSL key", wKey, sizeof(wKey));
         err = 1;
     }
 

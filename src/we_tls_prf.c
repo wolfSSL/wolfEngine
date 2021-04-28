@@ -105,9 +105,10 @@ static void we_tls1_prf_cleanup(EVP_PKEY_CTX *ctx)
 /**
  * Derive the key from the secret and label/seed.
  *
- * @param  ctx    [in]  PKEY context.
- * @param  key    [in]  Calculated key data.
- * @param  keySz  [in]  Size of key data to calculate in bytes.
+ * @param  ctx    [in]      PKEY context.
+ * @param  key    [in]      Calculated key data.
+ * @param  keySz  [in,out]  On in, size of key data to calculate in bytes.
+ *                          On out, size of key data in bytes.
  * @returns  1 on success and 0 on failure.
  */
 static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
@@ -127,12 +128,12 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
 
     /* Check a digest was set - no default. */
     if ((ret == 1) && (tls1Prf->mdType == 0)) {
-        WOLFENGINE_MSG(WE_LOG_PK, "No digest from app.");
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No digest from app.");
         ret = 0;
     }
     /* Check a secret was set - no point otherwise! */
     if ((ret == 1) && (tls1Prf->secretSz == 0)) {
-        WOLFENGINE_MSG(WE_LOG_PK, "No secret from app.");
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No secret from app.");
         ret = 0;
     }
     if ((ret == 1) && (tls1Prf->mdType == NID_md5_sha1)) {
@@ -206,6 +207,7 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
              * ptr: Buffer holding secret data. */
             /* Number of bytes must be positive. */
             if (num < 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Secret size must be positive");
                 ret = 0;
             }
             if ((ret == 1) && (tls1Prf->secret != NULL)) {
@@ -219,6 +221,8 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 /* Copy the secret. */
                 tls1Prf->secret = OPENSSL_memdup(ptr, num);
                 if (tls1Prf->secret == NULL) {
+                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
+                        "OPENSSL_memdup(secret)", tls1Prf->secret);
                     ret = 0;
                 }
                 else {
@@ -237,6 +241,7 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 /* Ensure valid number - not negative and can fit. */
                 if ((num < 0) ||
                         (num > (int)(WE_MAX_SEED_SIZE - tls1Prf->seedSz))) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Seed length invalid");
                     ret = 0;
                 }
                 if (ret == 1) {
@@ -280,6 +285,7 @@ static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                                 const char *value)
 {
     int ret = 1;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_tls1_prf_ctrl_str");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, type = %p, value = %p]",
@@ -307,6 +313,9 @@ static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         ret = EVP_PKEY_CTX_hex2ctrl(ctx, EVP_PKEY_CTRL_TLS_SEED, value);
     }
     else {
+        /* Unsupported type. */
+        XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %s", type);
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
         ret = 0;
     }
 

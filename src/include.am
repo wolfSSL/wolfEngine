@@ -12,6 +12,7 @@ libwolfengine_la_SOURCES += src/we_des3_cbc.c
 libwolfengine_la_SOURCES += src/we_dh.c
 libwolfengine_la_SOURCES += src/we_digest.c
 libwolfengine_la_SOURCES += src/we_ecc.c
+libwolfengine_la_SOURCES += src/we_hkdf.c
 libwolfengine_la_SOURCES += src/we_internal.c
 libwolfengine_la_SOURCES += src/we_logging.c
 libwolfengine_la_SOURCES += src/we_mac.c

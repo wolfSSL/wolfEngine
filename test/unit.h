@@ -115,6 +115,10 @@ int test_hmac_create(ENGINE *e, void *data);
 int test_tls1_prf(ENGINE *e, void *data);
 #endif
 
+#ifdef WE_HAVE_HKDF
+int test_hkdf(ENGINE *e, void *data);
+#endif
+
 #ifdef WE_HAVE_DES3CBC
 int test_des3_cbc(ENGINE *e, void *data);
 int test_des3_cbc_stream(ENGINE *e, void *data);

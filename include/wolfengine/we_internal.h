@@ -206,6 +206,13 @@ extern EVP_PKEY_METHOD *we_tls1_prf_method;
 int we_init_tls1_prf_meth(void);
 
 /*
+ * HKDF method.
+ */
+
+extern EVP_PKEY_METHOD *we_hkdf_method;
+int we_init_hkdf_meth(void);
+
+/*
  * DH method.
  */
 

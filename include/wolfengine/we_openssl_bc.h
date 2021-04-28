@@ -163,6 +163,16 @@ size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
 
 #if OPENSSL_VERSION_NUMBER < 0x10101000L
 
+#ifndef EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND
+#define EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND      0
+#endif
+#ifndef EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY
+#define EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY            1
+#endif
+#ifndef EVP_PKEY_HKDEF_MODE_EXPAND_ONLY
+#define EVP_PKEY_HKDEF_MODE_EXPAND_ONLY             2
+#endif
+
 const BIGNUM *DH_get0_p(const DH *dh);
 const BIGNUM *DH_get0_g(const DH *dh);
 const BIGNUM *DH_get0_q(const DH *dh);
