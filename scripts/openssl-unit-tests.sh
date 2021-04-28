@@ -53,6 +53,35 @@ run_testssl() {
     # Using ECC keys doesn't work as SSLv3 doesn't have any ciphers
 }
 
+# Used to run individual ssl-test if wanted, recipes are preferred.
+# assuming is running from OpenSSL-1.1.1/test directory
+run_individual_111testssl() {
+    printf "\t$1..." | tee -a $LOGFILE
+    eval "CTLOG_FILE=ct/log_list.conf TEST_CERTS_DIR=certs ./$* &>> $LOGFILE"
+    if [ $? != 0 ]; then
+        printf "failed\n"
+        FAILED=$((FAILED+1))
+    else
+        printf "passed\n"
+    fi
+}
+
+run_111recipe() {
+    printf "\t$1..." | tee -a $LOGFILE
+    eval "SRCTOP=../. BLDTOP=../. RESULT_D=test-runs PERL="/usr/bin/perl" EXE_EXT= OPENSSL_ENGINES=`cd ../../.libs 2>/dev/null && pwd` OPENSSL_DEBUG_MEMORY=on perl run_tests.pl $1 &>> $LOGFILE"
+    if [ $? != 0 ]; then
+        printf "failed\n"
+        FAILED=$((FAILED+1))
+    else
+        printf "passed\n"
+    fi
+}
+
+# used to regenerate ssl-test/ files that have the .in changed
+run_111testssl_generate() {
+    eval "TOP=.. perl -I ../util/perl generate_ssl_tests.pl ./ssl-tests/$1.in default > ./ssl-tests/$1"
+}
+
 run_openssl() {
     printf "\t$1 $2..." | tee -a $LOGFILE
     (LD_LIBRARY_PATH="$WOLFENGINE_LIBS:$LD_LIBRARY_PATH" \
@@ -252,6 +281,9 @@ run_patched_tests() {
         if [ "$TEST" == "main" -o "$TEST" == "apps" ]; then
             continue
         fi
+        if [[ "$TEST" == *".conf.in"* ]]; then
+            continue
+        fi
         if [[ "$TEST" == *".txt"* ]]; then
             continue
         fi
@@ -325,6 +357,32 @@ test_openssl_111b() {
 
     # verify_extra_test - test/recipes/70-test_verify_extra.t
     run_test "verify_extra_test ./certs/roots.pem ./certs/untrusted.pem ./certs/bad.pem"
+
+    printf "\n\tTesting Recipes:\n"
+    run_111testssl_generate "12-ct.conf"
+    run_111testssl_generate "14-curves.conf"
+    run_111testssl_generate "20-cert-select.conf"
+    run_111recipe "test_ssl_new"
+    run_111recipe "test_ssl_old"
+    run_111recipe "test_ssl_test_ctx"
+    run_111recipe "test_sslcorrupt"
+
+# individual test runs (recipe is preferred)
+#    for SSL_TEST in "01-simple.conf" "02-protocol-version.conf" \
+#        "03-custom_verify.conf" "04-client_auth.conf" "05-sni.conf" \
+#        "06-sni-ticket.conf" "07-dtls-protocol-version.conf" \
+#        "08-npn.conf" "09-alpn.conf" "10-resumption.conf" \
+#        "11-dtls_resumption.conf" "12-ct.conf" "13-fragmentation.conf" \
+#        "14-curves.conf" "15-certstatus.conf" \
+#        "16-dtls-certstatus.conf" "17-renegotiate.conf" \
+#        "18-dtls-renegotiate.conf" "19-mac-then-encrypt.conf" \
+#        "20-cert-select.conf" "21-key-update.conf" \
+#        "23-srp.conf" "24-padding.conf" "25-cipher.conf" \
+#        "26-tls13_client_auth.conf" "27-ticket-appdata.conf" \
+#        "28-seclevel.conf"
+#    do
+#        run_individual_111testssl "ssl_test ssl-tests/$SSL_TEST"
+#    done
 
     cd $WOLFENGINE_ROOT
 }
