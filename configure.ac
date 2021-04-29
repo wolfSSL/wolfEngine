@@ -300,6 +300,7 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_HMAC -DWE_HAVE_EVP_PKEY"
 fi
 
+# TLS1 PRF
 AC_ARG_ENABLE([tls1-prf],
     [AS_HELP_STRING([--enable-tls1-prf],[Enable TLS1 PRF (default: enabled)])],
     [ ENABLED_TLS1_PRF=$enableval ],
@@ -314,6 +315,24 @@ then
         AC_MSG_WARN([--enable-tls1-prf ignored because OpenSSL doesn't have support for NID_tls1_prf.])
     else
         AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_TLS1_PRF -DWE_HAVE_EVP_PKEY"
+    fi
+fi
+
+# HKDF (used in TLS 1.3)
+AC_ARG_ENABLE([hkdf],
+    [AS_HELP_STRING([--enable-hkdf],[Enable HKDF (default: enabled)])],
+    [ ENABLED_HKDF=$enableval ],
+    [ ENABLED_HKDF=yes ]
+    )
+
+if test "$ENABLED_HKDF" = "yes"
+then
+    if test "$OPENSSL_110_PLUS" = "no"
+    then
+        ENABLED_HKDF="no"
+        AC_MSG_WARN([--enable-hkdf ignored because OpenSSL doesn't have support for NID_hkdf.])
+    else
+        AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_HKDF -DWE_HAVE_EVP_PKEY"
     fi
 fi
 
@@ -654,6 +673,7 @@ echo "   *  - SHA3-512:                $ENABLED_SHA3_512"
 echo "   * HMAC:                       $ENABLED_HMAC"
 echo "   * CMAC:                       $ENABLED_CMAC"
 echo "   * TLS1 PRF:                   $ENABLED_TLS1_PRF"
+echo "   * HKDF:                       $ENABLED_HKDF"
 echo "   * Random:                     $ENABLED_RAND"
 echo "   * RSA:                        $ENABLED_RSA"
 echo "   * DH:                         $ENABLED_DH"

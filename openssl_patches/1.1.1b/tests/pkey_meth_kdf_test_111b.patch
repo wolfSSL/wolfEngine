@@ -1,0 +1,47 @@
+diff --git a/test/pkey_meth_kdf_test.c b/test/pkey_meth_kdf_test.c
+index f2abcf3e..2b24b00e 100644
+--- a/test/pkey_meth_kdf_test.c
++++ b/test/pkey_meth_kdf_test.c
+@@ -31,7 +31,7 @@ static int test_kdf_tls1_prf(void)
+         TEST_error("EVP_PKEY_CTX_set_tls1_prf_md");
+         return 0;
+     }
+-    if (EVP_PKEY_CTX_set1_tls1_prf_secret(pctx, "secret", 6) <= 0) {
++    if (EVP_PKEY_CTX_set1_tls1_prf_secret(pctx, "secret of min 14", 16) <= 0) {
+         TEST_error("EVP_PKEY_CTX_set1_tls1_prf_secret");
+         return 0;
+     }
+@@ -46,8 +46,8 @@ static int test_kdf_tls1_prf(void)
+ 
+     {
+         const unsigned char expected[sizeof(out)] = {
+-            0x8e, 0x4d, 0x93, 0x25, 0x30, 0xd7, 0x65, 0xa0,
+-            0xaa, 0xe9, 0x74, 0xc3, 0x04, 0x73, 0x5e, 0xcc
++            0xb4, 0x19, 0x01, 0x10, 0x06, 0x49, 0x06, 0x23,
++            0xbe, 0x42, 0x98, 0xfe, 0x33, 0xb0, 0x76, 0xbb
+         };
+         if (!TEST_mem_eq(out, sizeof(out), expected, sizeof(expected))) {
+             return 0;
+@@ -72,11 +72,11 @@ static int test_kdf_hkdf(void)
+         TEST_error("EVP_PKEY_CTX_set_hkdf_md");
+         return 0;
+     }
+-    if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, "salt", 4) <= 0) {
++    if (EVP_PKEY_CTX_set1_hkdf_salt(pctx, "salt of at least 14", 19) <= 0) {
+         TEST_error("EVP_PKEY_CTX_set1_hkdf_salt");
+         return 0;
+     }
+-    if (EVP_PKEY_CTX_set1_hkdf_key(pctx, "secret", 6) <= 0) {
++    if (EVP_PKEY_CTX_set1_hkdf_key(pctx, "secret of at least 14", 20) <= 0) {
+         TEST_error("EVP_PKEY_CTX_set1_hkdf_key");
+         return 0;
+     }
+@@ -91,7 +91,7 @@ static int test_kdf_hkdf(void)
+ 
+     {
+         const unsigned char expected[sizeof(out)] = {
+-            0x2a, 0xc4, 0x36, 0x9f, 0x52, 0x59, 0x96, 0xf8, 0xde, 0x13
++            0x73, 0xd2, 0xc0, 0x50, 0xe8, 0x88, 0xef, 0xd9, 0x05, 0xb5
+         };
+         if (!TEST_mem_eq(out, sizeof(out), expected, sizeof(expected))) {
+             return 0;

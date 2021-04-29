@@ -864,6 +864,7 @@ static int we_digest_cleanup(EVP_MD_CTX *ctx)
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
+    /* Free the digest unless no hash initialized. */
     if (digest != NULL) {
         rc = wc_HashFree(&digest->hash, digest->hashType);
         if (rc != 0) {
