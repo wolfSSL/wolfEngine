@@ -1,0 +1,157 @@
+diff --git a/crypto/ecdsa/ecdsatest.c b/crypto/ecdsa/ecdsatest.c
+index 0f301f8..abf26e1 100644
+--- a/crypto/ecdsa/ecdsatest.c
++++ b/crypto/ecdsa/ecdsatest.c
+@@ -75,6 +75,9 @@
+ 
+ #include <openssl/opensslconf.h> /* To see if OPENSSL_NO_ECDSA is defined */
+ 
++#undef  OPENSSL_NO_EC2M
++#define OPENSSL_NO_EC2M
++
+ #ifdef OPENSSL_NO_ECDSA
+ int main(int argc, char *argv[])
+ {
+@@ -98,8 +101,9 @@ static const char rnd_seed[] = "string to make the random number generator "
+     "think it has entropy";
+ 
+ /* declaration of the test functions */
+-int x9_62_tests(BIO *);
+-int x9_62_test_internal(BIO *out, int nid, const char *r, const char *s);
++int x9_62_tests(BIO *, ENGINE *);
++int x9_62_test_internal(BIO *out, int nid, const char *r, const char *s,
++        ENGINE *e);
+ int test_builtin(BIO *);
+ 
+ /* functions to change the RAND_METHOD */
+@@ -178,7 +182,8 @@ int fbytes(unsigned char *buf, int num)
+ }
+ 
+ /* some tests from the X9.62 draft */
+-int x9_62_test_internal(BIO *out, int nid, const char *r_in, const char *s_in)
++int x9_62_test_internal(BIO *out, int nid, const char *r_in, const char *s_in,
++        ENGINE *e)
+ {
+     int ret = 0;
+     const char message[] = "abc";
+@@ -191,7 +196,7 @@ int x9_62_test_internal(BIO *out, int nid, const char *r_in, const char *s_in)
+ 
+     EVP_MD_CTX_init(&md_ctx);
+     /* get the message digest */
+-    EVP_DigestInit(&md_ctx, EVP_ecdsa());
++    EVP_DigestInit_ex(&md_ctx, EVP_ecdsa(), e);
+     EVP_DigestUpdate(&md_ctx, (const void *)message, 3);
+     EVP_DigestFinal(&md_ctx, digest, &dgst_len);
+ 
+@@ -214,8 +219,12 @@ int x9_62_test_internal(BIO *out, int nid, const char *r_in, const char *s_in)
+         goto x962_int_err;
+     if (!BN_dec2bn(&r, r_in) || !BN_dec2bn(&s, s_in))
+         goto x962_int_err;
+-    if (BN_cmp(signature->r, r) || BN_cmp(signature->s, s))
+-        goto x962_int_err;
++
++    /* compare to deterministic r and s is always going to fail when using FIPs
++     * RNG internally in wolfSSL. Just test verify here */
++    //if (BN_cmp(signature->r, r) || BN_cmp(signature->s, s))
++    //    goto x962_int_err;
++
+     BIO_printf(out, ".");
+     (void)BIO_flush(out);
+     /* verify the signature */
+@@ -241,7 +250,7 @@ int x9_62_test_internal(BIO *out, int nid, const char *r_in, const char *s_in)
+     return ret;
+ }
+ 
+-int x9_62_tests(BIO *out)
++int x9_62_tests(BIO *out, ENGINE *e)
+ {
+     int ret = 0;
+ 
+@@ -253,24 +262,21 @@ int x9_62_tests(BIO *out)
+ 
+     if (!x9_62_test_internal(out, NID_X9_62_prime192v1,
+                              "3342403536405981729393488334694600415596881826869351677613",
+-                             "5735822328888155254683894997897571951568553642892029982342"))
+-        goto x962_err;
+-    if (!x9_62_test_internal(out, NID_X9_62_prime239v1,
+-                             "3086361431751678114926225473006680188549593787585317781474"
+-                             "62058306432176",
+-                             "3238135532097973577080787768312505059318910517550078427819"
+-                             "78505179448783"))
++                             "5735822328888155254683894997897571951568553642892029982342",
++                             e))
+         goto x962_err;
+ # ifndef OPENSSL_NO_EC2M
+     if (!x9_62_test_internal(out, NID_X9_62_c2tnb191v1,
+                              "87194383164871543355722284926904419997237591535066528048",
+-                             "308992691965804947361541664549085895292153777025772063598"))
++                             "308992691965804947361541664549085895292153777025772063598",
++                             e))
+         goto x962_err;
+     if (!x9_62_test_internal(out, NID_X9_62_c2tnb239v1,
+                              "2159633321041961198501834003903461262881815148684178964245"
+                              "5876922391552",
+                              "1970303740007316867383349976549972270528498040721988191026"
+-                             "49413465737174"))
++                             "49413465737174",
++                             e))
+         goto x962_err;
+ # endif
+     ret = 1;
+@@ -330,6 +336,11 @@ int test_builtin(BIO *out)
+         nid = curves[n].nid;
+         if (nid == NID_ipsec4)
+             continue;
++
++        /* Only testing supported curves for FIPS mode */
++        if (nid != NID_X9_62_prime192v1 && nid != NID_X9_62_prime256v1)
++            continue;
++
+         /* create new ecdsa key (== EC_KEY) */
+         if ((eckey = EC_KEY_new()) == NULL)
+             goto builtin_err;
+@@ -512,6 +523,7 @@ int main(void)
+ {
+     int ret = 1;
+     BIO *out;
++    ENGINE *e = NULL;
+ 
+     out = BIO_new_fp(stdout, BIO_NOCLOSE);
+ 
+@@ -526,13 +538,26 @@ int main(void)
+     }
+     CRYPTO_mem_ctrl(CRYPTO_MEM_CHECK_ON);
+ 
++    ENGINE_load_dynamic();
++    e = ENGINE_by_id("wolfengine");
++    if (e == NULL) {
++        printf("Failed to find wolfEngine.\n");
++        return 1;
++    }
++    if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++        printf("Failed to enable wolfEngine debug logging.\n");
++        return 1;
++    }
++    ENGINE_set_default_RAND(e);
++    ENGINE_set_default_ECDH(e);
++    ENGINE_set_default_ECDSA(e);
+     ERR_load_crypto_strings();
+ 
+     /* initialize the prng */
+     RAND_seed(rnd_seed, sizeof(rnd_seed));
+ 
+     /* the tests */
+-    if (!x9_62_tests(out))
++    if (!x9_62_tests(out, e))
+         goto err;
+     if (!test_builtin(out))
+         goto err;
+@@ -545,6 +570,8 @@ int main(void)
+         BIO_printf(out, "\nECDSA test passed\n");
+     if (ret)
+         ERR_print_errors(out);
++    if (e)
++        ENGINE_free(e);
+     CRYPTO_cleanup_all_ex_data();
+     ERR_remove_thread_state(NULL);
+     ERR_free_strings();

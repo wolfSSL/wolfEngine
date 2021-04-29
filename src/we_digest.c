@@ -21,6 +21,7 @@
 
 #include <wolfengine/we_internal.h>
 
+
 #if defined(WE_HAVE_SHA1) && defined(WE_SHA1_DIRECT)
 
 /*
@@ -524,7 +525,7 @@ static int we_sha_init(EVP_MD_CTX *ctx)
 
     return ret;
 }
-#endif
+#endif /* WE_HAVE_SHA1 */
 
 #ifdef WE_HAVE_SHA224
 /**
@@ -962,6 +963,48 @@ int we_init_sha_meth()
 
     return ret;
 };
+
+#if defined(WE_HAVE_ECDSA)
+
+/*
+ * ECDSA with SHA-1
+ */
+
+/** EVP digest method - ECDSA with SHA-1 using wolfSSL for the implementation. */
+EVP_MD *we_ecdsa_sha1_md = NULL;
+
+/**
+ * Initialize the global ECDSA with SHA-1 EVP digest method.
+ *
+ * @return  1 on success else failure.
+ */
+int we_init_ecdsa_sha1_meth()
+{
+    int ret;
+
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_ecdsa_sha1_meth");
+
+    ret = (we_ecdsa_sha1_md =
+        EVP_MD_meth_new(NID_ecdsa_with_SHA1, EVP_PKEY_NONE)) != NULL;
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_init(we_ecdsa_sha1_md, we_sha_init);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_result_size(we_ecdsa_sha1_md, WC_SHA_DIGEST_SIZE);
+    }
+    if (ret == 1) {
+        ret = we_init_digest_meth(we_ecdsa_sha1_md);
+    }
+
+    if ((ret != 1) && (we_ecdsa_sha1_md != NULL)) {
+        EVP_MD_meth_free(we_ecdsa_sha1_md);
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_ecdsa_sha1_meth", ret);
+
+    return ret;
+};
+#endif /* WE_HAVE_ECDSA */
 #endif
 
 #ifdef WE_HAVE_SHA224
