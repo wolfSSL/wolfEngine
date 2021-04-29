@@ -97,6 +97,9 @@ int we_pkey_asn1_get_nids(const int** nids);
 extern EVP_MD *we_sha1_md;
 int we_init_sha_meth(void);
 
+extern EVP_MD *we_ecdsa_sha1_md;
+int we_init_ecdsa_sha1_meth(void);
+
 extern EVP_MD *we_sha224_md;
 int we_init_sha224_meth(void);
 

@@ -208,6 +208,9 @@ static const int we_digest_nids[] = {
 #ifdef WE_HAVE_SHA3_512
     NID_sha3_512,
 #endif
+#if defined(WE_HAVE_ECC) && defined(WE_HAVE_SHA1)
+    NID_ecdsa_with_SHA1,
+#endif
 };
 
 /**
@@ -386,6 +389,11 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
 #ifdef WE_HAVE_SHA3_512
         case NID_sha3_512:
             *digest = we_sha3_512_md;
+            break;
+#endif
+#if defined(WE_HAVE_ECC) && defined(WE_HAVE_SHA1)
+        case NID_ecdsa_with_SHA1:
+            *digest = we_ecdsa_sha1_md;
             break;
 #endif
         default:
@@ -745,6 +753,11 @@ static int wolfengine_init(ENGINE *e)
     if (ret == 1) {
         ret = we_init_sha_meth();
     }
+    #ifdef WE_HAVE_ECDSA
+    if (ret == 1) {
+        we_init_ecdsa_sha1_meth();
+    }
+    #endif
 #endif
 #ifdef WE_HAVE_SHA224
     if (ret == 1) {
@@ -1006,6 +1019,10 @@ static int wolfengine_destroy(ENGINE *e)
 #ifdef WE_HAVE_SHA3_512
     EVP_MD_meth_free(we_sha3_512_md);
     we_sha3_512_md = NULL;
+#endif
+#if defined(WE_HAVE_ECC) && defined(WE_HAVE_SHA1)
+    EVP_MD_meth_free(we_ecdsa_sha1_md);
+    we_ecdsa_sha1_md = NULL;
 #endif
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
     we_final_random();
