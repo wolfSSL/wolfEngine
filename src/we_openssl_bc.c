@@ -95,6 +95,12 @@ int EVP_MD_meth_set_result_size(EVP_MD *md, int resultsize)
     return 1;
 }
 
+int EVP_MD_meth_set_input_blocksize(EVP_MD *md, int blocksize)
+{
+    md->block_size = blocksize;
+    return 1;
+}
+
 void EVP_MD_meth_free(EVP_MD *md)
 {
     OPENSSL_free(md);

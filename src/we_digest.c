@@ -157,6 +157,9 @@ int we_init_sha_meth()
         ret = EVP_MD_meth_set_result_size(we_sha1_md, WC_SHA_DIGEST_SIZE);
     }
     if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha1_md, WC_SHA_BLOCK_SIZE);
+    }
+    if (ret == 1) {
         ret = EVP_MD_meth_set_app_datasize(we_sha1_md, sizeof(wc_Sha));
     }
 
@@ -307,6 +310,10 @@ int we_init_sha224_meth()
         ret = EVP_MD_meth_set_result_size(we_sha224_md, WC_SHA224_DIGEST_SIZE);
     }
     if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha224_md,
+                                              WC_SHA224_BLOCK_SIZE);
+    }
+    if (ret == 1) {
         ret = EVP_MD_meth_set_app_datasize(we_sha224_md, sizeof(wc_Sha224));
     }
 
@@ -454,6 +461,10 @@ int we_init_sha256_meth()
     }
     if (ret == 1) {
         ret = EVP_MD_meth_set_result_size(we_sha256_md, WC_SHA256_DIGEST_SIZE);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha256_md,
+                                              WC_SHA256_BLOCK_SIZE);
     }
     if (ret == 1) {
         ret = EVP_MD_meth_set_app_datasize(we_sha256_md, sizeof(wc_Sha256));
@@ -936,6 +947,9 @@ int we_init_sha_meth()
         ret = EVP_MD_meth_set_result_size(we_sha1_md, WC_SHA_DIGEST_SIZE);
     }
     if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha1_md, WC_SHA_BLOCK_SIZE);
+    }
+    if (ret == 1) {
         ret = we_init_digest_meth(we_sha1_md);
     }
 
@@ -970,6 +984,10 @@ int we_init_sha224_meth()
     }
     if (ret == 1) {
         ret = EVP_MD_meth_set_result_size(we_sha224_md, WC_SHA224_DIGEST_SIZE);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha224_md,
+                                              WC_SHA224_BLOCK_SIZE);
     }
     if (ret == 1) {
         ret = we_init_digest_meth(we_sha224_md);
@@ -1008,6 +1026,10 @@ int we_init_sha256_meth()
         ret = EVP_MD_meth_set_result_size(we_sha256_md, WC_SHA256_DIGEST_SIZE);
     }
     if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha256_md,
+                                              WC_SHA256_BLOCK_SIZE);
+    }
+    if (ret == 1) {
         ret = we_init_digest_meth(we_sha256_md);
     }
 
@@ -1044,6 +1066,10 @@ int we_init_sha384_meth()
         ret = EVP_MD_meth_set_result_size(we_sha384_md, WC_SHA384_DIGEST_SIZE);
     }
     if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha384_md,
+                                              WC_SHA384_BLOCK_SIZE);
+    }
+    if (ret == 1) {
         ret = we_init_digest_meth(we_sha384_md);
     }
 
@@ -1078,6 +1104,10 @@ int we_init_sha512_meth()
     }
     if (ret == 1) {
         ret = EVP_MD_meth_set_result_size(we_sha512_md, WC_SHA512_DIGEST_SIZE);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha512_md,
+                                              WC_SHA512_BLOCK_SIZE);
     }
     if (ret == 1) {
         ret = we_init_digest_meth(we_sha512_md);
@@ -1118,6 +1148,10 @@ int we_init_sha3_224_meth()
                                           WC_SHA3_224_DIGEST_SIZE);
     }
     if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha3_224_md,
+                                              WC_SHA3_224_BLOCK_SIZE);
+    }
+    if (ret == 1) {
         ret = we_init_digest_meth(we_sha3_224_md);
     }
 
@@ -1154,6 +1188,10 @@ int we_init_sha3_256_meth()
     if (ret == 1) {
         ret = EVP_MD_meth_set_result_size(we_sha3_256_md,
                                           WC_SHA3_256_DIGEST_SIZE);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha3_256_md,
+                                              WC_SHA3_256_BLOCK_SIZE);
     }
     if (ret == 1) {
         ret = we_init_digest_meth(we_sha3_256_md);
@@ -1194,6 +1232,10 @@ int we_init_sha3_384_meth()
                                           WC_SHA3_384_DIGEST_SIZE);
     }
     if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha3_384_md,
+                                              WC_SHA3_384_BLOCK_SIZE);
+    }
+    if (ret == 1) {
         ret = we_init_digest_meth(we_sha3_384_md);
     }
 
@@ -1230,6 +1272,10 @@ int we_init_sha3_512_meth()
     if (ret == 1) {
         ret = EVP_MD_meth_set_result_size(we_sha3_512_md,
                                           WC_SHA3_512_DIGEST_SIZE);
+    }
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_sha3_512_md,
+                                              WC_SHA3_512_BLOCK_SIZE);
     }
     if (ret == 1) {
         ret = we_init_digest_meth(we_sha3_512_md);
