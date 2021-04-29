@@ -1,0 +1,15 @@
+diff --git a/test/recipes/80-test_ssl_old.t b/test/recipes/80-test_ssl_old.t
+index 377bf090ba..ec10448c55 100644
+--- a/test/recipes/80-test_ssl_old.t
++++ b/test/recipes/80-test_ssl_old.t
+@@ -32,8 +32,8 @@ my $no_anydtls = alldisabled(available_protocols("dtls"));
+ plan skip_all => "No SSL/TLS/DTLS protocol is support by this OpenSSL build"
+     if $no_anytls && $no_anydtls;
+ 
+-my $digest = "-sha1";
+-my @reqcmd = ("openssl", "req");
++my $digest = "-sha256";
++my @reqcmd = ("openssl", "req", $digest);
+ my @x509cmd = ("openssl", "x509", $digest);
+ my @verifycmd = ("openssl", "verify");
+ my @gendsacmd = ("openssl", "gendsa");

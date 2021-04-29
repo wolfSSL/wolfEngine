@@ -124,9 +124,7 @@ EOF
     export OPENSSL_CONF=$TMP_CONF
 }
 
-patch_openssl() {
-    printf "\tPatching unit tests to use wolfEngine.\n"
-    PATCHES=`find $TEST_PATCH_DIR -name "*.patch"`
+apply_patches() {
     for PATCH in $PATCHES
     do
         # Try to patch. If doesn't work, check whether it has already been
@@ -138,6 +136,32 @@ patch_openssl() {
             exit 1
         fi
     done
+}
+
+patch_openssl_fips() {
+    if [ "$WOLFSSL_FIPS" == 1 ]; then
+        cd $OPENSSL_SOURCE
+        printf "Patching unit tests to support wolfCrypt FIPS.\n"
+        if [ -d "$TEST_PATCH_DIR/fips" ]; then
+            PATCHES=`find $TEST_PATCH_DIR/fips -name "*.patch"`
+            apply_patches
+        fi
+        printf "\tRebuilding patched tests.\n"
+        make -j$MAKE_JOBS 2>&1 | tee -a $LOGFILE
+        if [ "${PIPESTATUS[0]}" != 0 ]; then
+            printf "make failed\n"
+            do_cleanup
+            exit 1
+        fi
+    else
+        printf "Skipping unit test FIPS patches.\n"
+    fi
+}
+
+patch_openssl() {
+    printf "\tPatching unit tests to use wolfEngine.\n"
+    PATCHES=`find $TEST_PATCH_DIR -maxdepth 1 -name "*.patch"`
+    apply_patches
 }
 
 setup_openssl_102h() {
@@ -230,6 +254,28 @@ setup_openssl_111b() {
     fi
 }
 
+check_fips() {
+    printf "Checking if libwolfssl is FIPS.\n"
+    local LIBWOLFENGINE="$WOLFENGINE_LIBS/libwolfengine.so"
+    if [ ! -f $LIBWOLFENGINE ]; then
+        printf "\tlibwolfengine.so not built yet, can't do FIPS check.\n"
+    else
+        local LIBWOLFSSL=$(ldd $LIBWOLFENGINE | grep -oP "(?<!=>)+\/.*(libwolfssl\.so(\.[0-9]+)*)")
+        if [ -z "$LIBWOLFSSL" ]; then
+            printf "\tUnable to find libwolfssl.\n"
+        else
+            nm $LIBWOLFSSL | grep -q "fipsEntry"
+            if [ $? == 0 ]; then
+                printf "\tlibwolfssl is FIPS.\n"
+                WOLFSSL_FIPS=1
+            else
+                printf "\tlibwolfssl is not FIPS.\n"
+                WOLFSSL_FIPS=0
+            fi
+        fi
+    fi
+}
+
 build_wolfssl() {
     if [ -z "${WOLFENGINE_NO_BUILD}" ]; then
         printf "Setting up wolfEngine to use $OPENSSL_VERS_STR.\n"
@@ -259,6 +305,9 @@ build_wolfssl() {
             exit 1
         fi
     fi
+
+    check_fips
+    patch_openssl_fips
 }
 
 run_patched_tests() {

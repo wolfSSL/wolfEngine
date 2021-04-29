@@ -63,7 +63,7 @@ make
 sudo make install
 ```
 
-Add `--enable-fips=v2` to the configure command above if building from a FIPS bundle and not the git repository.
+Remove `-DWOLFSSL_PSS_LONG_SALT -DWOLFSSL_PSS_SALT_LEN_DISCOVER` and add `--enable-fips=v2` to the configure command above if building from a FIPS bundle and not the git repository.
 
 ### wolfEngine
 

@@ -108,6 +108,32 @@ static int we_check_rsa_key_size(int size, int allow1024) {
 }
 
 /**
+ * Check that the digest used for signing is allowed. For FIPS, SHA-1 isn't
+ * allowed for signing, only verifying.
+ *
+ * @param  nid  [in]  The OpenSSL numerical ID of the digest.
+ * @returns  1 if the digest is allowed, 0 if it isn't.
+ */
+static int we_check_rsa_signing_md(int nid) {
+    int ret = 1;
+
+    (void) nid;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_check_rsa_md");
+
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    if (fipsChecks == 1 && nid == NID_sha1) {
+        ret = 0;
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "SHA-1 isn't allowed in FIPS mode.");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_check_rsa_md", ret);
+
+    return ret;
+}
+
+/**
  * Convert an OpenSSL hash NID to a wolfSSL MGF1 algorithm.
  *
  * @param  nid  [in]  OpenSSL hash NID to convert.
@@ -2020,6 +2046,11 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
     if (rsa == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", rsa);
+        ret = 0;
+    }
+
+    if (rsa->md != NULL &&
+        we_check_rsa_signing_md(EVP_MD_type(rsa->md)) != 1) {
         ret = 0;
     }
 
