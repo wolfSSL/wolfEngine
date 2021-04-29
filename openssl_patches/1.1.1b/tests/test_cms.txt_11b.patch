@@ -1,0 +1,129 @@
+diff --git a/test/recipes/80-test_cms.t b/test/recipes/80-test_cms.t
+index f038bea3..dc8574ed 100644
+--- a/test/recipes/80-test_cms.t
++++ b/test/recipes/80-test_cms.t
+@@ -137,9 +137,9 @@ my @smime_pkcs7_tests = (
+ 	"-CAfile", catfile($smdir, "smroot.pem"), "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, DES, 3 recipients",
++    [ "enveloped content test streaming S/MIME format, AES-128, 3 recipients",
+       [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
++	"-aes128", "-stream", "-out", "test.cms",
+ 	catfile($smdir, "smrsa1.pem"),
+ 	catfile($smdir, "smrsa2.pem"),
+ 	catfile($smdir, "smrsa3.pem") ],
+@@ -147,9 +147,9 @@ my @smime_pkcs7_tests = (
+ 	"-in", "test.cms", "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, DES, 3 recipients, 3rd used",
++    [ "enveloped content test streaming S/MIME format, AES-128, 3 recipients, 3rd used",
+       [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
++	"-aes128", "-stream", "-out", "test.cms",
+ 	catfile($smdir, "smrsa1.pem"),
+ 	catfile($smdir, "smrsa2.pem"),
+ 	catfile($smdir, "smrsa3.pem") ],
+@@ -157,9 +157,9 @@ my @smime_pkcs7_tests = (
+ 	"-in", "test.cms", "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, DES, 3 recipients, key only used",
++    [ "enveloped content test streaming S/MIME format, AES-128, 3 recipients, key only used",
+       [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
++	"-aes128", "-stream", "-out", "test.cms",
+ 	catfile($smdir, "smrsa1.pem"),
+ 	catfile($smdir, "smrsa2.pem"),
+ 	catfile($smdir, "smrsa3.pem") ],
+@@ -219,9 +219,9 @@ my @smime_cms_tests = (
+ 	"-CAfile", catfile($smdir, "smroot.pem") ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, DES, 3 recipients, keyid",
++    [ "enveloped content test streaming S/MIME format, AES-128, 3 recipients, keyid",
+       [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms", "-keyid",
++	"-aes128", "-stream", "-out", "test.cms", "-keyid",
+ 	catfile($smdir, "smrsa1.pem"),
+ 	catfile($smdir, "smrsa2.pem"),
+ 	catfile($smdir, "smrsa3.pem") ],
+@@ -324,43 +324,43 @@ my @smime_cms_param_tests = (
+ 	"-CAfile", catfile($smdir, "smroot.pem"), "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, DES, OAEP default parameters",
++    [ "enveloped content test streaming S/MIME format, AES-128, OAEP default parameters",
+       [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
++	"-aes128", "-stream", "-out", "test.cms",
+ 	"-recip", catfile($smdir, "smrsa1.pem"), "-keyopt", "rsa_padding_mode:oaep" ],
+       [ "-decrypt", "-recip", catfile($smdir, "smrsa1.pem"),
+ 	"-in", "test.cms", "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, DES, OAEP SHA256",
++    [ "enveloped content test streaming S/MIME format, AES-128, OAEP SHA256",
+       [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
++	"-aes128", "-stream", "-out", "test.cms",
+ 	"-recip", catfile($smdir, "smrsa1.pem"), "-keyopt", "rsa_padding_mode:oaep",
+ 	"-keyopt", "rsa_oaep_md:sha256" ],
+       [ "-decrypt", "-recip", catfile($smdir, "smrsa1.pem"),
+ 	"-in", "test.cms", "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, DES, ECDH",
++    [ "enveloped content test streaming S/MIME format, AES-128, ECDH",
+       [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
++	"-aes128", "-stream", "-out", "test.cms",
+ 	"-recip", catfile($smdir, "smec1.pem") ],
+       [ "-decrypt", "-recip", catfile($smdir, "smec1.pem"),
+ 	"-in", "test.cms", "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, DES, ECDH, 2 recipients, key only used",
++    [ "enveloped content test streaming S/MIME format, AES-128, ECDH, 2 recipients, key only used",
+       [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
++	"-aes128", "-stream", "-out", "test.cms",
+ 	catfile($smdir, "smec1.pem"),
+ 	catfile($smdir, "smec3.pem") ],
+       [ "-decrypt", "-inkey", catfile($smdir, "smec3.pem"),
+ 	"-in", "test.cms", "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, ECDH, DES, key identifier",
++    [ "enveloped content test streaming S/MIME format, ECDH, AES-128, key identifier",
+       [ "-encrypt", "-keyid", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
++	"-aes128", "-stream", "-out", "test.cms",
+ 	"-recip", catfile($smdir, "smec1.pem") ],
+       [ "-decrypt", "-recip", catfile($smdir, "smec1.pem"),
+ 	"-in", "test.cms", "-out", "smtst.txt" ]
+@@ -374,14 +374,14 @@ my @smime_cms_param_tests = (
+ 	"-in", "test.cms", "-out", "smtst.txt" ]
+     ],
+ 
+-    [ "enveloped content test streaming S/MIME format, ECDH, K-283, cofactor DH",
+-      [ "-encrypt", "-in", $smcont,
+-	"-stream", "-out", "test.cms",
+-	"-recip", catfile($smdir, "smec2.pem"), "-aes128",
+-	"-keyopt", "ecdh_kdf_md:sha256", "-keyopt", "ecdh_cofactor_mode:1" ],
+-      [ "-decrypt", "-recip", catfile($smdir, "smec2.pem"),
+-	"-in", "test.cms", "-out", "smtst.txt" ]
+-    ],
++#    [ "enveloped content test streaming S/MIME format, ECDH, K-283, cofactor DH",
++#      [ "-encrypt", "-in", $smcont,
++#	"-stream", "-out", "test.cms",
++#	"-recip", catfile($smdir, "smec2.pem"), "-aes128",
++#	"-keyopt", "ecdh_kdf_md:sha256", "-keyopt", "ecdh_cofactor_mode:1" ],
++#      [ "-decrypt", "-recip", catfile($smdir, "smec2.pem"),
++#	"-in", "test.cms", "-out", "smtst.txt" ]
++#    ],
+ 
+     [ "enveloped content test streaming S/MIME format, X9.42 DH",
+       [ "-encrypt", "-in", $smcont,

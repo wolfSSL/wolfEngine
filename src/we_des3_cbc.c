@@ -39,6 +39,8 @@ typedef struct we_Des3Cbc
     unsigned int   init:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
+    /** Flag to indicate whether IV has been set. */
+    unsigned int   ivSet:1;
 } we_Des3Cbc;
 
 /**
@@ -105,6 +107,7 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetIV", rc);
                 ret = 0;
             }
+            des3->ivSet = (ret == 1);
         }
     }
 
@@ -222,6 +225,7 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                              const unsigned char *in, size_t len)
 {
     int ret = 1;
+    int rc;
     we_Des3Cbc* des3;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_cipher");
@@ -234,6 +238,15 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", des3);
         ret = 0;
+    }
+    if ((ret == 1) && (!des3->ivSet)) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting 3DES IV");
+        rc = wc_Des3_SetIV(&des3->des3, EVP_CIPHER_CTX_iv_noconst(ctx));
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetIV", rc);
+            ret = 0;
+        }
+        des3->ivSet = (ret == 1); 
     }
     if (ret == 1) {
         if (des3->enc) {

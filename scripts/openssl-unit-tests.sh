@@ -274,7 +274,7 @@ run_patched_tests() {
             TEST="$TEST evptests.txt"
         fi
         # main is the common file for 1.1.1b tests
-        if [ "$TEST" == "main" -o "$TEST" == "apps" ]; then
+        if [ "$TEST" == "main" -o "$TEST" == "apps" -o "$TEST" == "openssl" ]; then
             continue
         fi
         if [[ "$TEST" == *".conf.in"* ]]; then
@@ -338,6 +338,7 @@ test_openssl_111b() {
     run_patched_tests
 
     run_test "clienthellotest session.pem"
+    run_test "x509_dup_cert_test certs/leaf.pem"
 
     # test/recipes/15-test_genrsa.t
     for BITS in 2048 3072 4096
@@ -361,6 +362,9 @@ test_openssl_111b() {
     run_111recipe "test_ssl_old"
     run_111recipe "test_ssl_test_ctx"
     run_111recipe "test_sslcorrupt"
+    run_111recipe "test_x509_store"
+    run_111recipe "test_cms"
+    run_111recipe "test_cmsapi"
 
 # individual test runs (recipe is preferred)
 #    for SSL_TEST in "01-simple.conf" "02-protocol-version.conf" \
