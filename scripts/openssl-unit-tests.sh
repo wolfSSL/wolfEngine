@@ -241,10 +241,6 @@ build_wolfssl() {
         # Tests have been patched to use debug logging - must enable debug.
         # User can set WOLFENGINE_EXTRA_LDFLAGS to provide extra LDFLAGS and
         # WOLFENGINE_EXTRA_CPPFLAGS to provide extra CPPFLAGS.
-echo "./configure LDFLAGS="-L$OPENSSL_SOURCE $WOLFENGINE_EXTRA_LDFLAGS" \
-                    CPPFLAGS="$WOLFENGINE_EXTRA_CPPFLAGS" \
-                    --with-openssl=$OPENSSL_SOURCE \
-                    --enable-debug"
         ./configure LDFLAGS="-L$OPENSSL_SOURCE $WOLFENGINE_EXTRA_LDFLAGS" \
                     CPPFLAGS="$WOLFENGINE_EXTRA_CPPFLAGS" \
                     --with-openssl=$OPENSSL_SOURCE \
@@ -349,8 +345,7 @@ test_openssl_111b() {
         run_openssl "genrsa" "$BITS"
     done
 
-    # "evppkey.txt" - only one left
-    for EVP_KATS in "evpciph.txt" "evpdigest.txt" "evpencod.txt" "evpkdf.txt" "evpmac.txt" "evppbe.txt" "evppkey_ecc.txt" "evpcase.txt" 
+    for EVP_KATS in "evpciph.txt" "evpdigest.txt" "evpencod.txt" "evpkdf.txt" "evpmac.txt" "evppbe.txt" "evppkey.txt" "evppkey_ecc.txt" "evpcase.txt"
     do
         run_test "evp_test recipes/30-test_evp_data/$EVP_KATS"
     done
