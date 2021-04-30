@@ -32,10 +32,8 @@
 #define DEFAULT_PUB_EXP WC_RSA_EXPONENT
 
 /* wolfCrypt FIPS does not have these defined */
-#ifdef HAVE_FIPS
-    #ifndef RSA_PSS_SALT_LEN_DEFAULT
-        #define RSA_PSS_SALT_LEN_DEFAULT -1
-    #endif
+#ifndef RSA_PSS_SALT_LEN_DEFAULT
+    #define RSA_PSS_SALT_LEN_DEFAULT -1
 #endif
 
 /**
@@ -144,27 +142,39 @@ static int we_mgf_from_hash(int nid)
  *
  * @param  saltLen   [in]  Salt length.
  * @param  md        [in]  Digest to use with PSS.
+ * @param  key       [in]  RSA key to use with PSS.
+ * @param  signing   [in]  Whether operation is for signing.
  * @return  Salt length for wolfSSL.
  */
-static int we_pss_salt_len_to_wc(int saltLen, const EVP_MD *md)
+static int we_pss_salt_len_to_wc(int saltLen, const EVP_MD *md, RsaKey *key,
+                                 int signing)
 {
     (void)md;
+    (void)key;
+    (void)signing;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     if (saltLen < 0) {
         if (saltLen == RSA_PSS_SALTLEN_DIGEST) {
-        #ifdef RSA_PSS_SALT_LEN_DEFAULT
             saltLen = RSA_PSS_SALT_LEN_DEFAULT;
-        #else
-            saltLen = -1;
-        #endif
         }
-        if ((saltLen == RSA_PSS_SALTLEN_MAX) ||
-            (saltLen == RSA_PSS_SALTLEN_AUTO)) {
-        #ifndef RSA_PSS_SALT_LEN_DISCOVER
+        if (saltLen == RSA_PSS_SALTLEN_MAX) {
+        #ifndef WOLFSSL_PSS_SALT_LEN_DISCOVER
             saltLen = EVP_MD_size(md);
         #else
             saltLen = RSA_PSS_SALT_LEN_DISCOVER;
+        #endif
+        }
+        if (saltLen == RSA_PSS_SALTLEN_AUTO) {
+        #ifndef WOLFSSL_PSS_LONG_SALT
+            saltLen = EVP_MD_size(md);
+        #else
+            if (signing) {
+                saltLen = wc_RsaEncryptSize(key) - EVP_MD_size(md) - 2;
+            }
+            else {
+                saltLen = RSA_PSS_SALT_LEN_DISCOVER;
+            }
         #endif
         }
     }
@@ -768,7 +778,11 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             }
             else {
                 /* Convert salt length into wolfCrypt value. */
-                int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md);
+                int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md,
+                    &rsa->key, 1);
+                if (wc_saltLen >= 0) {
+                    rsa->saltLen = wc_saltLen;
+                }
                 /* When MGF1 digest is not specified, use signing digest. */
                 mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
                 ret = wc_RsaPSS_Sign_ex(from, (word32)fromLen, to,
@@ -950,7 +964,8 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                     mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
                     mgf1 = we_mgf_from_hash(EVP_MD_type(mdMGF1));
                     /* Convert salt length into wolfCrypt value. */
-                    wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md);
+                    wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md,
+                        &rsa->key, 0);
 
                     ret = wc_RsaPSS_Verify_ex((byte*)from, (word32)fromLen, to,
                         (word32)toLen, hash, mgf1, wc_saltLen, &rsa->key);
@@ -1591,10 +1606,6 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     *(const EVP_MD **)ptr = rsa->md;
                 }
                 break;
-            case EVP_PKEY_CTRL_DIGESTINIT:
-                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_DIGESTINIT");
-                /* Nothing to do. */
-                break;
 #if OPENSSL_VERSION_NUMBER >= 0x1010100fL
             case EVP_PKEY_CTRL_RSA_KEYGEN_PRIMES:
                 WOLFENGINE_MSG(WE_LOG_PK,
@@ -1670,7 +1681,21 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 if (ret == 1) {
                     /* Get the salt length to use with RSA-PSS. */
-                    *(int *)ptr = rsa->saltLen;
+            #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+                #ifndef WOLFSSL_PSS_LONG_SALT
+                    /* rsa_ameth.c:rsa_ctx_to_pss() defaults to max size when
+                     * RSA_PSS_SALTLEN_AUTO. No long salt means maximum salt
+                     * size is the digest size.
+                     */
+                    if (rsa->saltLen == RSA_PSS_SALTLEN_AUTO) {
+                        *(int *)ptr = EVP_MD_size(rsa->md);
+                    }
+                    else
+                #endif
+            #endif
+                    {
+                        *(int *)ptr = rsa->saltLen;
+                    }
                 }
                 break;
             case EVP_PKEY_CTRL_RSA_MGF1_MD:
@@ -1712,6 +1737,41 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     }
                 }
                 break;
+
+            case EVP_PKEY_CTRL_DIGESTINIT:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_DIGESTINIT");
+                /* Nothing to do. */
+                break;
+            case EVP_PKEY_CTRL_PKCS7_SIGN:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_PKCS7_SIGN");
+                /* Nothing to do. */
+                break;
+            case EVP_PKEY_CTRL_CMS_SIGN:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_CMS_SIGN");
+                /* Nothing to do. */
+                break;
+
+            case EVP_PKEY_CTRL_PKCS7_ENCRYPT:
+            case EVP_PKEY_CTRL_PKCS7_DECRYPT:
+            case EVP_PKEY_CTRL_CMS_DECRYPT:
+            case EVP_PKEY_CTRL_CMS_ENCRYPT:
+                if (rsa->padMode == RSA_PKCS1_PSS_PADDING) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "PKCS7/CMS not with PSS");
+                    ret = 0;
+                }
+                break;
+            case EVP_PKEY_CTRL_RSA_OAEP_LABEL:
+                WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_RSA_OAEP_LABEL");
+                /* Not needed - seed created internally. */
+                break;
+            case EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL:
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "type: EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL");
+                /* Not needed - seed created internally. */
+                *(unsigned char **)ptr = NULL;
+                ret = 0;
+                break;
+
             default:
                 /* Unsupported control type. */
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
@@ -1831,6 +1891,19 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             /* Digest to use with MGF in RSA-PSS. */
             rsa->mdMGF1 = EVP_get_digestbyname(value);
             if (rsa->mdMGF1 == NULL) {
+                ret = 0;
+            }
+        }
+    }
+    else if ((ret == 1) && (XSTRNCMP(type, "rsa_oaep_md", 12) == 0)) {
+        if (rsa->padMode != RSA_PKCS1_OAEP_PADDING) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Setting MD and not OAEP");
+            ret = -2;
+        }
+        if (ret == 1) {
+            /* Digest to use in RSA-OAEP. */
+            rsa->md = EVP_get_digestbyname(value);
+            if (rsa->md == NULL) {
                 ret = 0;
             }
         }
@@ -2140,7 +2213,8 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
 
     if ((ret == 1) && (rsa->padMode == RSA_PKCS1_PSS_PADDING)) {
         /* Convert salt length into wolfCrypt value. */
-        int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md);
+        int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md,
+            &rsa->key, 0);
         /* Verify call in we_rsa_pub_dec_int only decrypts - this actually
            checks padding. */
         rc = wc_RsaPSS_CheckPadding_ex(tbs, (word32)tbsLen, decryptedSig, rc,

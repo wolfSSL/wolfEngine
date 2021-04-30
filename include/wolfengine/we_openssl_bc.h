@@ -173,6 +173,9 @@ size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
 #ifndef EVP_PKEY_HKDEF_MODE_EXPAND_ONLY
 #define EVP_PKEY_HKDEF_MODE_EXPAND_ONLY             2
 #endif
+#ifndef EVP_PKEY_ECDH_KDF_X9_63
+#define EVP_PKEY_ECDH_KDF_X9_63     EVP_PKEY_ECDH_KDF_X9_62
+#endif
 
 const BIGNUM *DH_get0_p(const DH *dh);
 const BIGNUM *DH_get0_g(const DH *dh);

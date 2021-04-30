@@ -38,6 +38,8 @@ typedef struct we_AesBlock
     unsigned int   init:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
+    /** Flag to indicate whether iv has been set. */
+    unsigned int   ivSet:1;
 } we_AesBlock;
 
 #endif
@@ -117,6 +119,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
                 ret = 0;
             }
+            aes->ivSet = (ret == 1);
         }
     }
 
@@ -352,7 +355,8 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
 static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                              const unsigned char *in, size_t len)
 {
-    int ret;
+    int ret = 1;
+    int rc;
     we_AesBlock* aes;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_cipher");
@@ -366,11 +370,22 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
-    else if (aes->enc) {
-        ret = we_aes_cbc_encrypt(aes, out, in, len);
+    if ((ret == 1) && (!aes->ivSet)) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV");
+        rc = wc_AesSetIV(&aes->aes, EVP_CIPHER_CTX_iv_noconst(ctx));
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
+            ret = 0;
+        }
+        aes->ivSet = (ret == 1);
     }
-    else {
-        ret = we_aes_cbc_decrypt(aes, out, in, len);
+    if (ret == 1) {
+        if (aes->enc) {
+            ret = we_aes_cbc_encrypt(aes, out, in, len);
+        }
+        else {
+            ret = we_aes_cbc_decrypt(aes, out, in, len);
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_cipher", ret);
