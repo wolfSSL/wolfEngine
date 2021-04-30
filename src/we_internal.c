@@ -22,6 +22,10 @@
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
 
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+int fipsChecks = 1;
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
 /** Engine bound to. */
 static ENGINE *bound = NULL;
 
@@ -1054,6 +1058,7 @@ static int wolfengine_destroy(ENGINE *e)
 #define WOLFENGINE_CMD_SET_LOG_LEVEL         (ENGINE_CMD_BASE + 1)
 #define WOLFENGINE_CMD_SET_LOG_COMPONENTS    (ENGINE_CMD_BASE + 2)
 #define WOLFENGINE_CMD_SET_LOGGING_CB        (ENGINE_CMD_BASE + 3)
+#define WOLFENGINE_CMD_ENABLE_FIPS_CHECKS    (ENGINE_CMD_BASE + 4)
 
 /**
  * wolfEngine control command list.
@@ -1105,6 +1110,10 @@ static ENGINE_CMD_DEFN wolfengine_cmd_defns[] = {
       "set_logging_cb",
       "Set wolfEngine logging callback",
       ENGINE_CMD_FLAG_INTERNAL },
+    { WOLFENGINE_CMD_ENABLE_FIPS_CHECKS,
+      "enable_fips_checks",
+      "Enable wolfEngine FIPS checks (1=enable, 0=disable)",
+      ENGINE_CMD_FLAG_NUMERIC },
 
     /* last element MUST be NULL/0 entry, do not remove */
     {0, NULL, NULL, 0}
@@ -1147,7 +1156,8 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
                 if (wolfEngine_Debugging_ON() < 0) {
                     ret = 0;
                 }
-            } else {
+            }
+            else {
                 wolfEngine_Debugging_OFF();
             }
             break;
@@ -1171,10 +1181,25 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
                 WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, 
                         "Error registering wolfEngine logging callback");
                 ret = 0;
-            } else {
+            }
+            else {
                 WOLFENGINE_MSG(WE_LOG_ENGINE,
                                "wolfEngine user logging callback registered");
             }
+            break;
+        case WOLFENGINE_CMD_ENABLE_FIPS_CHECKS:
+        #if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+            if (i > 0) {
+                fipsChecks = 1;
+            }
+            else {
+                fipsChecks = 0;
+            }
+        #else
+            WOLFENGINE_MSG(WE_LOG_ENGINE, "Control command "
+                "WOLFENGINE_CMD_ENABLE_FIPS_CHECKS has no effect when "
+                "wolfCrypt isn't FIPS.");
+        #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
             break;
         default:
             XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",

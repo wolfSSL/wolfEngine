@@ -85,19 +85,23 @@ static int we_check_rsa_key_size(int size, int allow1024) {
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
 #if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
-    ret = size == 2048 || size == 3072 || size == 4096;
-    if (allow1024 == 1) {
-        ret |= size == 1024;
+    if (fipsChecks == 1) {
+        ret = size == 2048 || size == 3072 || size == 4096;
+        if (allow1024 == 1) {
+            ret |= size == 1024;
+        }
     }
-#else
-    (void)allow1024;
-    ret = size >= RSA_MIN_SIZE && size <= RSA_MAX_SIZE;
+    else 
 #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+    {
+        (void)allow1024;
+        ret = size >= RSA_MIN_SIZE && size <= RSA_MAX_SIZE;
 
-    if (ret == 0) {
-        XSNPRINTF(errBuff, sizeof(errBuff), "RSA key size %d not allowed.",
-                  size);
-        WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+        if (ret == 0) {
+            XSNPRINTF(errBuff, sizeof(errBuff), "RSA key size %d not allowed.",
+                      size);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+        }
     }
 
     return ret;

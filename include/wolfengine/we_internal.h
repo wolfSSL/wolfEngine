@@ -78,6 +78,13 @@
 
 #include <wolfengine/we_logging.h>
 
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+/*
+ * Global FIPS checks flag.
+ */
+extern int fipsChecks;
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
 /*
  * Global random
  */
