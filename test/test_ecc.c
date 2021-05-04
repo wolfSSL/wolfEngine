@@ -285,6 +285,16 @@ int test_eckeygen_p192_by_nid(ENGINE *e, void *data)
     if (err == 0) {
         PRINT_MSG("Generate key");
         err = EVP_PKEY_keygen(ctx, &key) != 1;
+    #if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+        err = err != 1;
+        if (err == 0) {
+            PRINT_MSG("Key gen failed, expected (P-192 not allowed w/ FIPS)");
+        }
+        else {
+            PRINT_MSG("Key gen succeeded, unexpected (P-192 not allowed w/ "
+                "FIPS)");
+        }
+    #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
     }
 
     EVP_PKEY_free(key);
@@ -315,6 +325,16 @@ int test_eckeygen_p192(ENGINE *e, void *data)
     if (err == 0) {
         PRINT_MSG("Generate key");
         err = EVP_PKEY_keygen(ctx, &key) != 1;
+    #if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+        err = err != 1;
+        if (err == 0) {
+            PRINT_MSG("Key gen failed, expected (P-192 not allowed w/ FIPS)");
+        }
+        else {
+            PRINT_MSG("Key gen succeeded, unexpected (P-192 not allowed w/  "
+                "FIPS)");
+        }
+    #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
     }
 
     EVP_PKEY_free(key);
@@ -651,9 +671,22 @@ int test_ecdh_keygen(ENGINE *e, int nid, int len)
 #ifdef WE_HAVE_EC_P192
 int test_ecdh_p192_keygen(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
 
-    return test_ecdh_keygen(e, NID_X9_62_prime192v1, 24);
+    err = test_ecdh_keygen(e, NID_X9_62_prime192v1, 24);
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    err = err != 1;
+    if (err == 0) {
+        PRINT_MSG("ECDH failed, expected (P-192 not allowed w/ FIPS)");
+    }
+    else {
+        PRINT_MSG("ECDH succeeded, unexpected (P-192 not allowed w/ FIPS)");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return err;
 }
 #endif /* WE_HAVE_EC_P192 */
 
@@ -750,10 +783,24 @@ int test_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
 #ifdef WE_HAVE_EC_P192
 int test_ecdh_p192(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
-    return test_ecdh(e, ecc_key_der_192, sizeof(ecc_key_der_192),
-                     ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
-                     ecc_derived_192, sizeof(ecc_derived_192));
+
+    err = test_ecdh(e, ecc_key_der_192, sizeof(ecc_key_der_192),
+                    ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
+                    ecc_derived_192, sizeof(ecc_derived_192));
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    err = err != 1;
+    if (err == 0) {
+        PRINT_MSG("ECDH failed, expected (P-192 not allowed w/ FIPS)");
+    }
+    else {
+        PRINT_MSG("ECDH succeeded, unexpected (P-192 not allowed w/ FIPS)");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return err;
 }
 #endif /* WE_HAVE_EC_P192 */
 
@@ -861,12 +908,24 @@ int test_ecdsa_p192_pkey(ENGINE *e, void *data)
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_pkey_sign_ecc(pkey, e, buf, sizeof(buf), ecdsaSig,
                                  &ecdsaSigLen);
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+        err = err != 1;
+        if (err == 0) {
+            PRINT_MSG("ECDSA failed, expected (P-192 not allowed w/ FIPS)");
+        }
+        else {
+            PRINT_MSG("ECDSA succeeded, unexpected (P-192 not allowed w/ "
+                "FIPS)");
+        }
+    }
+#else
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_pkey_verify_ecc(pkey, NULL, buf, sizeof(buf), ecdsaSig,
                                    ecdsaSigLen);
     }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 
     EVP_PKEY_free(pkey);
 
@@ -1131,17 +1190,30 @@ int test_ecdsa_p192(ENGINE *e, void *data)
         if (res != 1)
             err = 1;
     }
+
     if (err == 0) {
         PRINT_MSG("Sign with wolfengine");
         ecdsaSigLen = sizeof(ecdsaSig);
         err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha224(),
                               ecdsaSig, &ecdsaSigLen, 0);
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+        err = err != 1;
+        if (err == 0) {
+            PRINT_MSG("ECDSA failed, expected (P-192 not allowed w/ FIPS)");
+        }
+        else {
+            PRINT_MSG("ECDSA succeeded, unexpected (P-192 not allowed w/ "
+                "FIPS)");
+        }
+    }
+#else
     }
     if (err == 0) {
         PRINT_MSG("Verify with OpenSSL");
         err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha224(),
                                 ecdsaSig, ecdsaSigLen, 0);
     }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 
     EVP_PKEY_free(pkey);
 
@@ -1407,8 +1479,22 @@ int test_ec_key_keygen_by_nid(ENGINE *e, int nid)
 #ifdef WE_HAVE_EC_P192
 int test_ec_key_keygen_p192_by_nid(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
-    return test_ec_key_keygen_by_nid(e, NID_X9_62_prime192v1);
+
+    err = test_ec_key_keygen_by_nid(e, NID_X9_62_prime192v1);
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    err = err != 1;
+    if (err == 0) {
+        PRINT_MSG("Key gen failed, expected (P-192 not allowed w/ FIPS)");
+    }
+    else {
+        PRINT_MSG("Key gen succeeded, unexpected (P-192 not allowed w/ FIPS)");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return err;
 }
 #endif /* WE_HAVE_EC_P192 */
 
@@ -1512,9 +1598,22 @@ int test_ec_key_ecdh_keygen(ENGINE *e, int nid, int len)
 #ifdef WE_HAVE_EC_P192
 int test_ec_key_ecdh_p192_keygen(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
 
-    return test_ec_key_ecdh_keygen(e, NID_X9_62_prime192v1, 24);
+    err = test_ec_key_ecdh_keygen(e, NID_X9_62_prime192v1, 24);
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    err = err != 1;
+    if (err == 0) {
+        PRINT_MSG("ECDH failed, expected (P-192 not allowed w/ FIPS)");
+    }
+    else {
+        PRINT_MSG("ECDH succeeded, unexpected (P-192 not allowed w/ FIPS)");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return err;
 }
 #endif /* WE_HAVE_EC_P192 */
 
@@ -1618,10 +1717,24 @@ int test_ec_key_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
 #ifdef WE_HAVE_EC_P192
 int test_ec_key_ecdh_p192(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
-    return test_ec_key_ecdh(e, ecc_key_der_192, sizeof(ecc_key_der_192),
-                            ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
-                            ecc_derived_192, sizeof(ecc_derived_192));
+
+    err = test_ec_key_ecdh(e, ecc_key_der_192, sizeof(ecc_key_der_192),
+                           ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
+                           ecc_derived_192, sizeof(ecc_derived_192));
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    err = err != 1;
+    if (err == 0) {
+        PRINT_MSG("ECDH failed, expected (P-192 not allowed w/ FIPS)");
+    }
+    else {
+        PRINT_MSG("ECDH succeeded, unexpected (P-192 not allowed w/ FIPS)");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return err;
 }
 #endif /* WE_HAVE_EC_P192 */
 
@@ -1787,8 +1900,22 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
 #ifdef WE_HAVE_EC_P192
 int test_ec_key_ecdsa_p192(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
-    return test_ec_key_ecdsa(e, ecc_key_der_192, sizeof(ecc_key_der_192));
+
+    err = test_ec_key_ecdsa(e, ecc_key_der_192, sizeof(ecc_key_der_192));
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    err = err != 1;
+    if (err == 0) {
+        PRINT_MSG("ECDSA failed, expected (P-192 not allowed w/ FIPS)");
+    }
+    else {
+        PRINT_MSG("ECDSA succeeded, unexpected (P-192 not allowed w/ FIPS)");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return err; 
 }
 #endif /* WE_HAVE_EC_P192 */
 
@@ -1949,11 +2076,26 @@ static int test_ecdh_direct(ENGINE* e, const unsigned char* keyDer,
 #if defined(WE_HAVE_EC_P192)
 int test_ecdh_direct_p192(ENGINE* e, void* data)
 {
-    (void)data;
+    int err;
+
     PRINT_MSG("test_ecdh_direct_p192");
-    return test_ecdh_direct(e, ecc_key_der_192, sizeof(ecc_key_der_192),
-                            ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
-                            ecc_derived_192, sizeof(ecc_derived_192));
+
+    (void)data;
+
+    err = test_ecdh_direct(e, ecc_key_der_192, sizeof(ecc_key_der_192),
+                           ecc_peerkey_der_192, sizeof(ecc_peerkey_der_192),
+                           ecc_derived_192, sizeof(ecc_derived_192));
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    err = err != 1;
+    if (err == 0) {
+        PRINT_MSG("ECDH failed, expected (P-192 not allowed w/ FIPS)");
+    }
+    else {
+        PRINT_MSG("ECDH succeeded, unexpected (P-192 not allowed w/ FIPS)");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return err;
 }
 #endif /* WE_HAVE_EC_P256 */
 

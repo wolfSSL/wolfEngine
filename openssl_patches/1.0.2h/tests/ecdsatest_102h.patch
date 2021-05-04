@@ -103,7 +103,7 @@ index 0f301f8..abf26e1 100644
          if (nid == NID_ipsec4)
              continue;
 +
-+        /* Only testing supported curves for FIPS mode */
++        /* Only testing curves supported by wolfEngine */
 +        if (nid != NID_X9_62_prime192v1 && nid != NID_X9_62_prime256v1)
 +            continue;
 +

@@ -1,0 +1,13 @@
+diff --git a/crypto/ecdh/ecdhtest.c b/crypto/ecdh/ecdhtest.c
+index 2fe2c66443..b1a8bab26f 100644
+--- a/crypto/ecdh/ecdhtest.c
++++ b/crypto/ecdh/ecdhtest.c
+@@ -501,7 +501,7 @@ int main(int argc, char *argv[])
+         goto err;
+ 
+     /* NIST PRIME CURVES TESTS */
+-    if (!test_ecdh_curve
++    if (test_ecdh_curve
+         (NID_X9_62_prime192v1, "NIST Prime-Curve P-192", ctx, out))
+         goto err;
+     if (!test_ecdh_curve(NID_secp224r1, "NIST Prime-Curve P-224", ctx, out))
