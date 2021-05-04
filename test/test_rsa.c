@@ -827,6 +827,68 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
     return err;
 }
 
+int test_rsa_sign_sha1(ENGINE *e, void *data)
+{
+    int err = 0;
+
+    (void)data;
+    (void)e;
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    /* Signing with wolfEngine should fail, but verifying with wolfEngine should
+     * succeed. In FIPS mode, we can only verify RSA signatures using SHA-1, not
+     * generate them. */
+    EVP_PKEY *pkey = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    const RSA *rsaKey = NULL;
+#else
+    RSA *rsaKey = NULL;
+#endif
+    unsigned char *rsaSig = NULL;
+    size_t rsaSigLen = 0;
+    unsigned char buf[20];
+    const unsigned char *p = rsa_key_der_2048;
+
+    PRINT_MSG("Load RSA key");
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        rsaKey = EVP_PKEY_get0_RSA(pkey);
+        err = rsaKey == NULL;
+    }
+    if (err == 0) {
+        rsaSigLen = RSA_size(rsaKey);
+        rsaSig = (unsigned char*)OPENSSL_malloc(rsaSigLen);
+        err = rsaSig == NULL;
+    }
+    if (err == 0) {
+        err = RAND_bytes(buf, sizeof(buf)) == 0;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Sign with OpenSSL");
+        err = test_digest_sign(pkey, NULL, buf, sizeof(buf), EVP_sha1(),
+                               rsaSig, &rsaSigLen, 0);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify with wolfengine");
+        err = test_digest_verify(pkey, e, buf, sizeof(buf), EVP_sha1(),
+                                 rsaSig, rsaSigLen, 0);
+    }
+    if (err == 0) {
+        PRINT_MSG("Sign with wolfengine");
+        rsaSigLen = RSA_size(rsaKey);
+        err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha1(),
+                              rsaSig, &rsaSigLen, 0) != 1;
+    }
+    EVP_PKEY_free(pkey);
+
+    if (rsaSig)
+        OPENSSL_free(rsaSig);
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    return err;
+}
+
 int test_rsa_sign_verify_pkcs1(ENGINE *e, void *data)
 {
     (void)data;

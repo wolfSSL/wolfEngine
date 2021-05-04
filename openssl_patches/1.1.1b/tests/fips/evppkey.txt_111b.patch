@@ -1,0 +1,45 @@
+diff --git a/test/recipes/30-test_evp_data/evppkey.txt b/test/recipes/30-test_evp_data/evppkey.txt
+index 736e0ce4d3..4ebbc27d50 100644
+--- a/test/recipes/30-test_evp_data/evppkey.txt
++++ b/test/recipes/30-test_evp_data/evppkey.txt
+@@ -134,6 +134,7 @@ Sign = RSA-2048
+ Ctrl = digest:SHA1
+ Input = "0123456789ABCDEF1234"
+ Output = c09d402423cbf233d26cae21f954547bc43fe80fd41360a0336cfdbe9aedad05bef6fd2eaee6cd60089a52482d4809a238149520df3bdde4cb9e23d9307b05c0a6f327052325a29adf2cc95b66523be7024e2a585c3d4db15dfbe146efe0ecdc0402e33fe5d40324ee96c5c3edd374a15cdc0f5d84aa243c0f07e188c6518fbfceae158a9943be398e31097da81b62074f626eff738be6160741d5a26957a482b3251fd85d8df78b98148459de10aa93305dbb4a5230aa1da291a9b0e481918f99b7638d72bb687f97661d304ae145d64a474437a4ef39d7b8059332ddeb07e92bf6e0e3acaf8afedc93795e4511737ec1e7aab6d5bc9466afc950c1c17b48ad
++Result = KEYOP_LENGTH_ERROR
+ 
+ Verify = RSA-2048
+ Ctrl = digest:SHA1
+@@ -162,14 +163,14 @@ Sign = RSA-2048
+ Ctrl = digest:SHA1
+ Input = "0123456789ABCDEF12345"
+ Output = 00
+-Result = KEYOP_ERROR
++Result = KEYOP_LENGTH_ERROR
+ 
+ # Digest too short
+ Sign = RSA-2048
+ Ctrl = digest:SHA1
+ Input = "0123456789ABCDEF12345"
+ Output = 00
+-Result = KEYOP_ERROR
++Result = KEYOP_LENGTH_ERROR
+ 
+ # Mismatched digest
+ Verify = RSA-2048
+@@ -17402,6 +17403,7 @@ DigestSign = SHA1
+ Key = RSA-2048
+ Input = "Hello World"
+ Output = 3da3ca2bdd1b23a231b0e3c49d95d5959f9398c27a1e534c7e6baf1d2682304d3b6b229385b1edf483f5ef6f9b35bf10c519a302bb2f79c564e1a59ba71aa2fa36df96c942c43e8d9bd4702b5f61c12a078ae2b34d0de221fc8f9f936b79a67c89d11ba5da8c63a1370d0e824c6b661123e9b58b143ff533cf362cbdad70e65b419a6d45723bf22db3c76bb8f5337c5c5c93cb6f38b30d0c835b54c23405ca4217dd0b755f3712ebad285d9e0c02655f6ce5ce6fed78f3c81843de325f628055eef57f280dee0c3170050137ee599b9ab7f2b5d3c5f831777ea05a5eb097c70bad1a7214dadae12d7960bb9425390c7d25a79985e1e3c28ad422ff93c808f4b5
++Result = DIGESTSIGNFINAL_LENGTH_ERROR
+ 
+ DigestSign = SHA256
+ Key = RSA-2048
+@@ -17455,6 +17457,7 @@ OneShotDigestSign = SHA1
+ Key = RSA-2048
+ Input = "Hello World"
+ Output = 3da3ca2bdd1b23a231b0e3c49d95d5959f9398c27a1e534c7e6baf1d2682304d3b6b229385b1edf483f5ef6f9b35bf10c519a302bb2f79c564e1a59ba71aa2fa36df96c942c43e8d9bd4702b5f61c12a078ae2b34d0de221fc8f9f936b79a67c89d11ba5da8c63a1370d0e824c6b661123e9b58b143ff533cf362cbdad70e65b419a6d45723bf22db3c76bb8f5337c5c5c93cb6f38b30d0c835b54c23405ca4217dd0b755f3712ebad285d9e0c02655f6ce5ce6fed78f3c81843de325f628055eef57f280dee0c3170050137ee599b9ab7f2b5d3c5f831777ea05a5eb097c70bad1a7214dadae12d7960bb9425390c7d25a79985e1e3c28ad422ff93c808f4b5
++Result = DIGESTSIGN_LENGTH_ERROR
+ 
+ Title = ED25519 tests from RFC8032
+ 

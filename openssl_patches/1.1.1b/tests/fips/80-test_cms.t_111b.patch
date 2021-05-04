@@ -1,0 +1,13 @@
+diff --git a/test/recipes/80-test_cms.t b/test/recipes/80-test_cms.t
+index f038bea31d..e81a34d4d4 100644
+--- a/test/recipes/80-test_cms.t
++++ b/test/recipes/80-test_cms.t
+@@ -108,7 +108,7 @@ my @smime_pkcs7_tests = (
+     ],
+ 
+     [ "signed content S/MIME format, RSA key SHA1",
+-      [ "-sign", "-in", $smcont, "-md", "sha1",
++      [ "-sign", "-in", $smcont, "-md", "sha256",
+ 	"-certfile", catfile($smdir, "smroot.pem"),
+ 	"-signer", catfile($smdir, "smrsa1.pem"), "-out", "test.cms" ],
+       [ "-verify", "-in", "test.cms",

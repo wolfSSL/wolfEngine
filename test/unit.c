@@ -167,6 +167,7 @@ TEST_CASE test_case[] = {
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 #ifdef WE_HAVE_EVP_PKEY
 #ifdef WE_HAVE_RSA
+    TEST_DECL(test_rsa_sign_sha1, NULL),
     TEST_DECL(test_rsa_sign_verify_pkcs1, NULL),
     TEST_DECL(test_rsa_sign_verify_no_pad, NULL),
     TEST_DECL(test_rsa_sign_verify_pss, NULL),

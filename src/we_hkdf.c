@@ -116,7 +116,7 @@ static void we_hkdf_cleanup(EVP_PKEY_CTX *ctx)
  * Derive the key from the key and info.
  *
  * @param  ctx    [in]      PKEY context.
- * @param  key    [in]      Calculated key data.
+ * @param  key    [out]     Calculated key data.
  * @param  keySz  [in,out]  On in, size of key data to calculate in bytes.
  *                          On out, size of key data in bytes. When extracting
  *                          only this will be the size of the digest.

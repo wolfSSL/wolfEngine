@@ -217,6 +217,7 @@ int test_pkey_enc_rsa(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgL
 int test_pkey_dec_rsa(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
                   unsigned char *ciphertext, size_t cipherLen, int padMode,
                   const EVP_MD *rsaMd, const EVP_MD *rsaMgf1Md);
+int test_rsa_sign_sha1(ENGINE *e, void *data);
 int test_rsa_sign_verify_pkcs1(ENGINE *e, void *data);
 int test_rsa_sign_verify_no_pad(ENGINE *e, void *data);
 int test_rsa_sign_verify_pss(ENGINE *e, void *data);
