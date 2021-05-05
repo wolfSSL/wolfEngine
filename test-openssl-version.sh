@@ -95,7 +95,8 @@ do_config() {
 
     echo -n "  Configure ... "
     # Using development version of OpenSSL not install - set LDFLAGS
-    ./configure LDFLAGS="-L$OPENSSL_DIR" $EXTRA_OPTS \
+    ./configure LDFLAGS="-L$OPENSSL_DIR $WOLFENGINE_EXTRA_LDFLAGS" $EXTRA_OPTS \
+            CPPFLAGS="$WOLFENGINE_EXTRA_CPPFLAGS" \
             --with-openssl=$OPENSSL_DIR >$TMP_FILE 2>&1
     if [ $? != 0 ]; then
         cat $TMP_FILE
@@ -171,11 +172,8 @@ do
             echo "Disabling hash in wolfengine"
             EXTRA_OPTS="$EXTRA_OPTS --disable-hash"
             ;;
-        --gcm)
-            EXTRA_OPTS="$EXTRA_OPTS --enable-aesgcm"
-            ;;
-        --ccm)
-            EXTRA_OPTS="$EXTRA_OPTS --enable-aesccm"
+        --pbe)
+            EXTRA_OPTS="$EXTRA_OPTS --enable-pbe"
             ;;
         --clang)
             EXTRA_OPTS="$EXTRA_OPTS CC=clang"

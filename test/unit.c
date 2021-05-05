@@ -333,9 +333,13 @@ TEST_CASE test_case[] = {
 
 #ifdef WE_HAVE_ECDSA
 #if OPENSSL_VERSION_NUMBER <= 0x100020ffL
-    TEST_DECL(test_ecdsa, NULL)
+    TEST_DECL(test_ecdsa, NULL),
 #endif
 #endif /* WE_HAVE_ECDSA */
+
+#ifdef WE_HAVE_PBE
+    TEST_DECL(test_pbe, NULL),
+#endif
 };
 #define TEST_CASE_CNT   (int)(sizeof(test_case) / sizeof(*test_case))
 
@@ -698,6 +702,10 @@ int main(int argc, char* argv[])
             err = 1;
         }
     }
+
+#if defined(WE_HAVE_PBE) && (OPENSSL_VERSION_NUMBER < 0x10100000L)
+    OpenSSL_add_all_algorithms();
+#endif
 
     if (err == 0 && runTests) {
         err = run_tests(e, runAll);

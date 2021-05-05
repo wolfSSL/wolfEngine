@@ -475,4 +475,8 @@ int test_ecdsa(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_ECC */
 
+#ifdef WE_HAVE_PBE
+int test_pbe(ENGINE *e, void *data);
+#endif /* WE_HAVE_PBE */
+
 #endif /* UNIT_H */
