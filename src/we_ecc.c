@@ -28,6 +28,32 @@
  */
 
 /**
+ * Check that the curve is allowed. For FIPS, P-192 isn't allowed for ECDH, key
+ * gen or signing, only verifying.
+ *
+ * @param  curveId  [in]  The wolfSSL curve ID.
+ * @returns  1 if the curve is allowed, 0 if it isn't.
+ */
+static int we_ecc_check_curve_usage(int curveId) {
+    int ret = 1;
+
+    (void) curveId;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecc_check_curve_usage");
+
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    if (fipsChecks == 1 && curveId == ECC_SECP192R1) {
+        ret = 0;
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "P-192 isn't allowed in FIPS mode.");
+    }
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecc_check_curve_usage", ret);
+
+    return ret;
+}
+
+/**
  * Get the curve id for the curve name (NID).
  *
  * @param  curveNme  [in]   OpenSSL curve name.
@@ -695,6 +721,7 @@ static int we_ec_get_ec_key(EVP_PKEY_CTX *ctx, EC_KEY **ecKey, we_Ecc *ecc)
 #endif
 
 #ifdef WE_HAVE_ECDSA
+
 /**
  * Sign data with a private EC key.
  *
@@ -732,6 +759,11 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
             /* Only do this once as private will not change. */
             ecc->privKeySet = 1;
         }
+    }
+
+    if (ret == 1 && (rc = we_ecc_check_curve_usage(ecc->curveId)) != 1) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", rc);
+        ret = 0;
     }
 
     if (ret == 1 && sig == NULL) {
@@ -935,6 +967,13 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     }
 
     if (ret == 1) {
+        ret = we_ecc_check_curve_usage(ecc->curveId);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", ret);
+        }
+    }
+
+    if (ret == 1) {
         len = wc_ecc_get_curve_size_from_id(ecc->curveId);
         if (len < 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
@@ -1017,6 +1056,14 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
 
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
+
+    if (ret == 1) {
+        ret = we_ecc_check_curve_usage(ecc->curveId);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", ret);
+        }
+    }
+
     if ((ret == 1) && (!ecc->privKeySet)) {
         /* Get the OpenSSL EC_KEY object and set curve id. */
         ret = we_ec_get_ec_key(ctx, &ecKey, ecc);
@@ -1657,6 +1704,12 @@ static int we_ec_key_keygen(EC_KEY *key)
     /* Get the wolfSSL EC curve id for the group. */
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(EC_KEY_get0_group(key)),
                              &curveId);
+
+    if (ret == 1 && (rc = we_ecc_check_curve_usage(curveId)) != 1) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", rc);
+        ret = 0;
+    }
+
     if (ret == 1) {
         len = wc_ecc_get_curve_size_from_id(curveId);
         if (len < 0) {
@@ -1721,6 +1774,7 @@ static int we_ec_key_keygen(EC_KEY *key)
  * @param  pseclen  [out]  Pointer to length of secret.
  * @param  pub_key  [in]   Public EC point from peer.
  * @param  ecdh     [in]   EC KEY with private key.
+ * @returns  1 on success, 0 on failure.
  */
 static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
                                  const EC_POINT *pub_key, const EC_KEY *ecdh)
@@ -1754,6 +1808,10 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     /* Get wolfSSL curve id for EC group. */
     group = EC_KEY_get0_group(ecdh);
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
+    if (ret == 1 && (rc = we_ecc_check_curve_usage(curveId)) != 1) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", rc);
+        ret = 0;
+    }
     if (ret == 1) {
         peerKeyLen = (int)EC_POINT_point2buf(group, pub_key,
                                              POINT_CONVERSION_UNCOMPRESSED,
@@ -1908,6 +1966,10 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     /* Get wolfSSL curve id for EC group. */
     group = EC_KEY_get0_group(ecKey);
     ret = we_ec_get_curve_id(EC_GROUP_get_curve_name(group), &curveId);
+    if (ret == 1 && (rc = we_ecc_check_curve_usage(curveId)) != 1) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", rc);
+        ret = 0;
+    }
     if (ret == 1) {
         /* Initialize a wolfSSL key object. */
         rc = wc_ecc_init(&key);
@@ -2233,8 +2295,12 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
 
     if ((rc = we_ec_get_curve_id(EC_GROUP_get_curve_name(
                                  EC_KEY_get0_group(key)), &curveId)) == 0) {
-
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_get_curve_id", rc);
+        return NULL;
+    }
+
+    if ((rc = we_ecc_check_curve_usage(curveId)) == 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", rc);
         return NULL;
     }
 

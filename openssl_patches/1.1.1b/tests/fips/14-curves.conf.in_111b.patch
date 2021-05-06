@@ -1,0 +1,13 @@
+diff --git a/test/ssl-tests/14-curves.conf.in b/test/ssl-tests/14-curves.conf.in
+index 6f656affd7..5b4518d56c 100644
+--- a/test/ssl-tests/14-curves.conf.in
++++ b/test/ssl-tests/14-curves.conf.in
+@@ -10,7 +10,7 @@ use warnings;
+ use OpenSSL::Test;
+ use OpenSSL::Test::Utils qw(anydisabled);
+ 
+-my @curves = ( "prime192v1", "prime256v1", "secp384r1", "secp521r1");
++my @curves = ( "prime256v1", "secp384r1", "secp521r1");
+ 
+ our @tests = ();
+ 

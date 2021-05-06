@@ -1,5 +1,5 @@
 diff --git a/test/recipes/30-test_evp_data/evppkey.txt b/test/recipes/30-test_evp_data/evppkey.txt
-index 736e0ce4d3..4ebbc27d50 100644
+index 736e0ce4d3..9afffd0187 100644
 --- a/test/recipes/30-test_evp_data/evppkey.txt
 +++ b/test/recipes/30-test_evp_data/evppkey.txt
 @@ -134,6 +134,7 @@ Sign = RSA-2048
@@ -27,7 +27,220 @@ index 736e0ce4d3..4ebbc27d50 100644
  
  # Mismatched digest
  Verify = RSA-2048
-@@ -17402,6 +17403,7 @@ DigestSign = SHA1
+@@ -5444,10 +5445,12 @@ PrivPubKeyPair = PRIME192V1_RFC5114-Peer:PRIME192V1_RFC5114-Peer-PUBLIC
+ Derive=PRIME192V1_RFC5114
+ PeerKey=PRIME192V1_RFC5114-Peer-PUBLIC
+ SharedSecret=AD420182633F8526BFE954ACDA376F05E5FF4F837F54FEBE
++Result = DERIVE_ERROR
+ 
+ Derive=PRIME192V1_RFC5114-Peer
+ PeerKey=PRIME192V1_RFC5114-PUBLIC
+ SharedSecret=AD420182633F8526BFE954ACDA376F05E5FF4F837F54FEBE
++Result = DERIVE_ERROR
+ 
+ PrivateKey=SECP224R1_RFC5114
+ -----BEGIN PRIVATE KEY-----
+@@ -5934,6 +5937,7 @@ Derive=KAS-ECC-CDH_P-192_C0
+ PeerKey=KAS-ECC-CDH_P-192_C0-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=803d8ab2e5b6e6fca715737c3a82f7ce3c783124f6d51cd0
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C1
+ -----BEGIN PRIVATE KEY-----
+@@ -5962,6 +5966,7 @@ Derive=KAS-ECC-CDH_P-192_C1
+ PeerKey=KAS-ECC-CDH_P-192_C1-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=c208847568b98835d7312cef1f97f7aa298283152313c29d
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C2
+ -----BEGIN PRIVATE KEY-----
+@@ -5990,6 +5995,7 @@ Derive=KAS-ECC-CDH_P-192_C2
+ PeerKey=KAS-ECC-CDH_P-192_C2-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=87229107047a3b611920d6e3b2c0c89bea4f49412260b8dd
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C3
+ -----BEGIN PRIVATE KEY-----
+@@ -6018,6 +6024,7 @@ Derive=KAS-ECC-CDH_P-192_C3
+ PeerKey=KAS-ECC-CDH_P-192_C3-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=eec0bed8fc55e1feddc82158fd6dc0d48a4d796aaf47d46c
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C4
+ -----BEGIN PRIVATE KEY-----
+@@ -6046,6 +6053,7 @@ Derive=KAS-ECC-CDH_P-192_C4
+ PeerKey=KAS-ECC-CDH_P-192_C4-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=716e743b1b37a2cd8479f0a3d5a74c10ba2599be18d7e2f4
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C5
+ -----BEGIN PRIVATE KEY-----
+@@ -6074,6 +6082,7 @@ Derive=KAS-ECC-CDH_P-192_C5
+ PeerKey=KAS-ECC-CDH_P-192_C5-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=f67053b934459985a315cb017bf0302891798d45d0e19508
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C6
+ -----BEGIN PRIVATE KEY-----
+@@ -6102,6 +6111,7 @@ Derive=KAS-ECC-CDH_P-192_C6
+ PeerKey=KAS-ECC-CDH_P-192_C6-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=75822971193edd472bf30151a782619c55ad0b279c9303dd
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C7
+ -----BEGIN PRIVATE KEY-----
+@@ -6130,6 +6140,7 @@ Derive=KAS-ECC-CDH_P-192_C7
+ PeerKey=KAS-ECC-CDH_P-192_C7-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=67cba2cbb69ee78bf1abafb0e6fbe33fa2094c128d59652d
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C8
+ -----BEGIN PRIVATE KEY-----
+@@ -6158,6 +6169,7 @@ Derive=KAS-ECC-CDH_P-192_C8
+ PeerKey=KAS-ECC-CDH_P-192_C8-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=cf99a2770a386ca0137d1eca0a226e484297ac3c513f3631
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C9
+ -----BEGIN PRIVATE KEY-----
+@@ -6186,6 +6198,7 @@ Derive=KAS-ECC-CDH_P-192_C9
+ PeerKey=KAS-ECC-CDH_P-192_C9-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=576331e2b4fb38a112810e1529834de8307fb0a0d2756877
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C10
+ -----BEGIN PRIVATE KEY-----
+@@ -6214,6 +6227,7 @@ Derive=KAS-ECC-CDH_P-192_C10
+ PeerKey=KAS-ECC-CDH_P-192_C10-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=902f4501916a0dd945554c3a37b3d780d375a6da713197c4
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C11
+ -----BEGIN PRIVATE KEY-----
+@@ -6242,6 +6256,7 @@ Derive=KAS-ECC-CDH_P-192_C11
+ PeerKey=KAS-ECC-CDH_P-192_C11-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=46e4de335054d429863218ae33636fc9b89c628b64b506c7
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C12
+ -----BEGIN PRIVATE KEY-----
+@@ -6270,6 +6285,7 @@ Derive=KAS-ECC-CDH_P-192_C12
+ PeerKey=KAS-ECC-CDH_P-192_C12-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=1bfe9e5a20ac7a38d8f605b425bb9030be31ef97c101c76c
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C13
+ -----BEGIN PRIVATE KEY-----
+@@ -6298,6 +6314,7 @@ Derive=KAS-ECC-CDH_P-192_C13
+ PeerKey=KAS-ECC-CDH_P-192_C13-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=0e8c493a4adc445dc9288a3b9b272599224054592d7265b3
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C14
+ -----BEGIN PRIVATE KEY-----
+@@ -6326,6 +6343,7 @@ Derive=KAS-ECC-CDH_P-192_C14
+ PeerKey=KAS-ECC-CDH_P-192_C14-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=0f1991086b455ded6a1c4146f7bf59fe9b495de566ebc6bf
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C15
+ -----BEGIN PRIVATE KEY-----
+@@ -6354,6 +6372,7 @@ Derive=KAS-ECC-CDH_P-192_C15
+ PeerKey=KAS-ECC-CDH_P-192_C15-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=b30f2127c34df35aaa91dbf0bbe15798e799a03ed11698c1
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C16
+ -----BEGIN PRIVATE KEY-----
+@@ -6382,6 +6401,7 @@ Derive=KAS-ECC-CDH_P-192_C16
+ PeerKey=KAS-ECC-CDH_P-192_C16-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=64a5c246599d3e8177a2402a1110eb81e6c456ab4edb5127
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C17
+ -----BEGIN PRIVATE KEY-----
+@@ -6410,6 +6430,7 @@ Derive=KAS-ECC-CDH_P-192_C17
+ PeerKey=KAS-ECC-CDH_P-192_C17-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=017b8ca53c82fab163da2ab783966a39e061b32c8cfa334d
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C18
+ -----BEGIN PRIVATE KEY-----
+@@ -6438,6 +6459,7 @@ Derive=KAS-ECC-CDH_P-192_C18
+ PeerKey=KAS-ECC-CDH_P-192_C18-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=340ef3db3dbebdd91c62c3d4e1a3da2c7c52a3338b865259
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C19
+ -----BEGIN PRIVATE KEY-----
+@@ -6466,6 +6488,7 @@ Derive=KAS-ECC-CDH_P-192_C19
+ PeerKey=KAS-ECC-CDH_P-192_C19-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=2162144921df5103d0e6a650fb13fd246f4738d0896ce92f
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C20
+ -----BEGIN PRIVATE KEY-----
+@@ -6494,6 +6517,7 @@ Derive=KAS-ECC-CDH_P-192_C20
+ PeerKey=KAS-ECC-CDH_P-192_C20-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=4c69e7feed4b11159adfc16a6047a92572ea44e0740b23af
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C21
+ -----BEGIN PRIVATE KEY-----
+@@ -6522,6 +6546,7 @@ Derive=KAS-ECC-CDH_P-192_C21
+ PeerKey=KAS-ECC-CDH_P-192_C21-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=46072acefd67bff50de355ca7a31fa6be59f26e467587259
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C22
+ -----BEGIN PRIVATE KEY-----
+@@ -6550,6 +6575,7 @@ Derive=KAS-ECC-CDH_P-192_C22
+ PeerKey=KAS-ECC-CDH_P-192_C22-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=ec5580eabca9f3389d2b427ddf6e49e26d629afd03fa766e
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C23
+ -----BEGIN PRIVATE KEY-----
+@@ -6578,6 +6604,7 @@ Derive=KAS-ECC-CDH_P-192_C23
+ PeerKey=KAS-ECC-CDH_P-192_C23-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=7f3929dd3cbf7673bc30d859d90b880307475f800660ea32
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-192_C24
+ -----BEGIN PRIVATE KEY-----
+@@ -6606,6 +6633,7 @@ Derive=KAS-ECC-CDH_P-192_C24
+ PeerKey=KAS-ECC-CDH_P-192_C24-Peer-PUBLIC
+ Ctrl=ecdh_cofactor_mode:1
+ SharedSecret=72e88f3ea67d46d46dbf83926e7e2a6b85b54536741e6d2c
++Result=DERIVE_ERROR
+ 
+ PrivateKey=KAS-ECC-CDH_P-224_C0
+ -----BEGIN PRIVATE KEY-----
+@@ -17402,6 +17430,7 @@ DigestSign = SHA1
  Key = RSA-2048
  Input = "Hello World"
  Output = 3da3ca2bdd1b23a231b0e3c49d95d5959f9398c27a1e534c7e6baf1d2682304d3b6b229385b1edf483f5ef6f9b35bf10c519a302bb2f79c564e1a59ba71aa2fa36df96c942c43e8d9bd4702b5f61c12a078ae2b34d0de221fc8f9f936b79a67c89d11ba5da8c63a1370d0e824c6b661123e9b58b143ff533cf362cbdad70e65b419a6d45723bf22db3c76bb8f5337c5c5c93cb6f38b30d0c835b54c23405ca4217dd0b755f3712ebad285d9e0c02655f6ce5ce6fed78f3c81843de325f628055eef57f280dee0c3170050137ee599b9ab7f2b5d3c5f831777ea05a5eb097c70bad1a7214dadae12d7960bb9425390c7d25a79985e1e3c28ad422ff93c808f4b5
@@ -35,7 +248,7 @@ index 736e0ce4d3..4ebbc27d50 100644
  
  DigestSign = SHA256
  Key = RSA-2048
-@@ -17455,6 +17457,7 @@ OneShotDigestSign = SHA1
+@@ -17455,6 +17484,7 @@ OneShotDigestSign = SHA1
  Key = RSA-2048
  Input = "Hello World"
  Output = 3da3ca2bdd1b23a231b0e3c49d95d5959f9398c27a1e534c7e6baf1d2682304d3b6b229385b1edf483f5ef6f9b35bf10c519a302bb2f79c564e1a59ba71aa2fa36df96c942c43e8d9bd4702b5f61c12a078ae2b34d0de221fc8f9f936b79a67c89d11ba5da8c63a1370d0e824c6b661123e9b58b143ff533cf362cbdad70e65b419a6d45723bf22db3c76bb8f5337c5c5c93cb6f38b30d0c835b54c23405ca4217dd0b755f3712ebad285d9e0c02655f6ce5ce6fed78f3c81843de325f628055eef57f280dee0c3170050137ee599b9ab7f2b5d3c5f831777ea05a5eb097c70bad1a7214dadae12d7960bb9425390c7d25a79985e1e3c28ad422ff93c808f4b5
