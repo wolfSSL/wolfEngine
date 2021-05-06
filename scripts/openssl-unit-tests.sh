@@ -323,7 +323,15 @@ run_patched_tests() {
             TEST="$TEST evptests.txt"
         fi
         # main is the common file for 1.1.1b tests
-        if [ "$TEST" == "main" -o "$TEST" == "apps" -o "$TEST" == "openssl" ]; then
+        if [ "$TEST" == "main" ]; then
+            continue
+        fi
+        # apps and openssl are common files for openssl superapp in 1.1.1b tests
+        if [ "$TEST" == "apps" -o "$TEST" == "openssl" ]; then
+            continue
+        fi
+        # ocspapitest is a 1.1.1b tests that needs setup with a recipe
+        if [ "$TEST" == "ocspapitest" ]; then
             continue
         fi
         if [[ "$TEST" == *".conf.in"* ]]; then
@@ -412,8 +420,18 @@ test_openssl_111b() {
     run_111recipe "test_ssl_test_ctx"
     run_111recipe "test_sslcorrupt"
     run_111recipe "test_x509_store"
+    run_111recipe "test_pkcs7"
     run_111recipe "test_cms"
     run_111recipe "test_cmsapi"
+    run_111recipe "test_crl"
+    run_111recipe "test_rsa"
+    if [ $WOLFSSL_FIPS = "0" ]; then
+        # Uses a 512-bit RSA key to check using SHA512 and full salt length.
+        run_111recipe "test_rsapss"
+    fi
+    run_111recipe "test_x509_check_cert_pkey"
+    run_111recipe "test_ocsp"
+    run_111recipe "test_sslapi"
 
 # individual test runs (recipe is preferred)
 #    for SSL_TEST in "01-simple.conf" "02-protocol-version.conf" \

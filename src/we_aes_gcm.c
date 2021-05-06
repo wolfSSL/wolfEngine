@@ -359,7 +359,9 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         OPENSSL_free(aes->aad);
         aes->aad = NULL;
         aes->aadLen = 0;
-        ret = (int)len;
+        if (ret == 1) {
+            ret = (int)len;
+        }
     }
     else if ((ret == 1) && (len == 0)) {
         /* Final called and nothing to do - no data output. */
