@@ -38,43 +38,54 @@ do_trap() {
 trap do_trap INT TERM
 
 run_testssl() {
+    # Using ECC keys doesn't work as SSLv3 doesn't have any ciphers
     KEY=$CERT_DIR/server-key.pem
     CERT=$CERT_DIR/server-cert.pem
     CA=$CERT_DIR/ca-cert.pem
     printf "\ttestssl RSA..." | tee -a $LOGFILE
-    sh ./testssl $KEY $CERT $CA &>> $LOGFILE
+    echo "" >> $LOGFILE # add a newline to make failure logs easier to read
+    local TMP_LOG=$(mktemp ./log.XXXXX)
+    sh ./testssl $KEY $CERT $CA &>> $TMP_LOG
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
+        cat $TMP_LOG >> $LOGFILE
     else
         printf "passed\n"
     fi
-
-    # Using ECC keys doesn't work as SSLv3 doesn't have any ciphers
+    rm $TMP_LOG
 }
 
 # Used to run individual ssl-test if wanted, recipes are preferred.
 # assuming is running from OpenSSL-1.1.1/test directory
 run_individual_111testssl() {
     printf "\t$1..." | tee -a $LOGFILE
-    eval "CTLOG_FILE=ct/log_list.conf TEST_CERTS_DIR=certs ./$* &>> $LOGFILE"
+    echo "" >> $LOGFILE
+    local TMP_LOG=$(mktemp ./log.XXXXX)
+    eval "CTLOG_FILE=ct/log_list.conf TEST_CERTS_DIR=certs ./$* &>> $TMP_LOG"
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
+        cat $TMP_LOG >> $LOGFILE
     else
         printf "passed\n"
     fi
+    rm $TMP_LOG
 }
 
 run_111recipe() {
     printf "\t$1..." | tee -a $LOGFILE
-    eval "SRCTOP=../. BLDTOP=../. RESULT_D=test-runs PERL="/usr/bin/perl" EXE_EXT= OPENSSL_ENGINES=`cd ../../.libs 2>/dev/null && pwd` OPENSSL_DEBUG_MEMORY=on perl run_tests.pl $1 &>> $LOGFILE"
+    echo "" >> $LOGFILE
+    local TMP_LOG=$(mktemp ./log.XXXXX)
+    eval "SRCTOP=../. BLDTOP=../. RESULT_D=test-runs PERL="/usr/bin/perl" EXE_EXT= OPENSSL_ENGINES=`cd ../../.libs 2>/dev/null && pwd` OPENSSL_DEBUG_MEMORY=on perl run_tests.pl $1 &>> $TMP_LOG"
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
+        cat $TMP_LOG >> $LOGFILE
     else
         printf "passed\n"
     fi
+    rm $TMP_LOG
 }
 
 # used to regenerate ssl-test/ files that have the .in changed
@@ -84,25 +95,33 @@ run_111testssl_generate() {
 
 run_openssl() {
     printf "\t$1 $2..." | tee -a $LOGFILE
+    echo "" >> $LOGFILE
+    local TMP_LOG=$(mktemp ./log.XXXXX)
     (LD_LIBRARY_PATH="$WOLFENGINE_LIBS:$LD_LIBRARY_PATH" \
-    eval "../apps/openssl $1 -engine wolfengine $2" &>> $LOGFILE)
+    eval "../apps/openssl $1 -engine wolfengine $2" &>> $TMP_LOG)
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
+        cat $TMP_LOG >> $LOGFILE
     else
         printf "passed\n"
     fi
+    rm $TMP_LOG
 }
 
 run_test() {
     printf "\t$1..." | tee -a $LOGFILE
-    ./$* &>> $LOGFILE
+    echo "" >> $LOGFILE
+    local TMP_LOG=$(mktemp ./log.XXXXX)
+    ./$* &>> $TMP_LOG
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
+        cat $TMP_LOG >> $LOGFILE
     else
         printf "passed\n"
     fi
+    rm $TMP_LOG
 }
 
 create_tmp_conf() {
