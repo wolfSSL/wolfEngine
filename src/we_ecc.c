@@ -1922,6 +1922,345 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     return ret;
 }
 #endif /* WE_HAVE_EC_KEY || WE_HAVE_ECDH */
+
+#if defined(WE_HAVE_ECDSA) || defined(WE_HAVE_EC_KEY)
+
+/** ECDSA Sign
+ *
+ * This function is set as a callback in both:
+ *     EC_KEY_METHOD_set_sign() - used by OpenSSL 1.1.1 for ECDSA_do_sign_ex()
+ *     ECDSA_METHOD_set_sign()  - used by OpenSSL 1.0.2 for ECDSA_do_sign()
+ *
+ * @param  d        [in]   Pointer to digest buffer
+ * @param  dlen     [in]   Digest length.
+ * @param  kinv     [in]   Precomputed kinv (Not supported)
+ * @param  rp       [in]   Precomputed r    (Not supported)
+ * @param  key      [in]   EC Key
+ * @return  pointer to allocated ECDSA_SIG
+ * @return  NULL on failure.
+ */
+static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
+                    const BIGNUM *kinv, const BIGNUM *rp, EC_KEY *key)
+{
+    ECDSA_SIG *sig = NULL;
+    ecc_key we_key;
+#ifndef WE_SINGLE_THREADED
+    WC_RNG rng;
+    WC_RNG *pRng = NULL;
+#else
+    WC_RNG *pRng = we_rng;
+#endif
+    int curveId = 0;
+    mp_int sig_r, sig_s;
+    int r_size, s_size;
+    unsigned char *r_bin = NULL, *s_bin = NULL;
+    BIGNUM* rBN = NULL;
+    BIGNUM* sBN = NULL;
+    int err = 0, rc;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_do_sign_ex");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [d = %p, dlen = %d, kinv = %p, "
+                           "rp = %p, key = %p]", d, dlen, kinv, rp, key);
+
+    if (kinv != NULL || rp != NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_ecdsa_do_sign_ex() does not "
+                             "support kinv or rp BIGNUM arguments, must be "
+                             "passed as NULL");
+        return NULL;
+    }
+
+    if (d == NULL || key == NULL) {
+        WOLFENGINE_MSG(WE_LOG_PK, "we_ecdsa_do_sign_ex Bad arguments");
+        return NULL;
+    }
+
+    if ((rc = we_ec_get_curve_id(EC_GROUP_get_curve_name(
+                                 EC_KEY_get0_group(key)), &curveId)) == 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_get_curve_id", rc);
+        return NULL;
+    }
+
+    if ((rc = we_ecc_check_curve_usage(curveId)) == 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", rc);
+        return NULL;
+    }
+
+#ifndef WE_SINGLE_THREADED
+    rc = wc_InitRng(&rng);
+    if (rc != 0) {
+        err = 1;
+    }
+    else {
+        pRng = &rng;
+    }
+
+    if (err == 0)
+#endif
+    {
+        rc = mp_init(&sig_r);
+        if (rc != MP_OKAY) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init(sig_r)", rc);
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        rc = mp_init(&sig_s);
+        if (rc != MP_OKAY) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init(sig_s)", rc);
+            err = 1;
+        }
+    }
+
+    /* Initialize a wolfSSL key object. */
+    if (err == 0) {
+        rc = wc_ecc_init(&we_key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
+            err = 1;
+        }
+    }
+
+    /* Set private key from EC_KEY into ecc_key */
+    if (err == 0) {
+        rc = we_ec_set_private(&we_key, curveId, key);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_set_private", rc);
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        rc = mp_init_multi(&sig_r, &sig_s, NULL, NULL, NULL, NULL);
+        if (rc != MP_OKAY) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init_multi", rc);
+            err = 1;
+        }
+    }
+
+    /* Sign hash with ECDSA */
+    if (err == 0) {
+        rc = wc_ecc_sign_hash_ex(d, dlen, pRng, &we_key, &sig_r, &sig_s);
+        if (rc != MP_OKAY) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash_ex", rc);
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        WOLFENGINE_MSG(WE_LOG_PK, "Generated ECDSA signature");
+        r_size = mp_unsigned_bin_size(&sig_r);
+        s_size = mp_unsigned_bin_size(&sig_s);
+        if (r_size == 0 || s_size == 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid r/s parameter size");
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        r_bin = OPENSSL_malloc(r_size);
+        s_bin = OPENSSL_malloc(s_size);
+        if (r_bin == NULL || s_bin == NULL) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                 "OPENSSL_malloc error during r/s conversion");
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        sig = ECDSA_SIG_new();
+        if (sig == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "ECDSA_SIG_new", sig);
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        rc = mp_to_unsigned_bin(&sig_r, r_bin);
+        if (rc != MP_OKAY) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_to_unsigned_bin(r_bin)", rc);
+            err = 1;
+        }
+        rc = mp_to_unsigned_bin(&sig_s, s_bin);
+        if (rc != MP_OKAY) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_to_unsigned_bin(s_bin)", rc);
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        rBN = BN_bin2bn(r_bin, r_size, rBN);
+        sBN = BN_bin2bn(s_bin, s_size, sBN);
+        if (rBN == NULL || sBN == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_bin2bn", NULL);
+            err = 1;
+        } else {
+            rc = ECDSA_SIG_set0(sig, rBN, sBN);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "ECDSA_SIG_set0", rc);
+                err = 1;
+            }
+        }
+    }
+
+    if (r_bin != NULL) {
+        OPENSSL_free(r_bin);
+    }
+    if (s_bin != NULL) {
+        OPENSSL_free(s_bin);
+    }
+
+    mp_free(&sig_r);
+    mp_free(&sig_s);
+    wc_ecc_free(&we_key);
+#ifndef WE_SINGLE_THREADED
+    wc_FreeRng(pRng);
+#endif
+
+    if (err != 0) {
+        /* in error state, free ECDSA_SIG before returning */
+        if (sig != NULL) {
+            ECDSA_SIG_free(sig);
+        }
+        sig = NULL;
+    }
+
+    return sig;
+}
+
+/** Setup parameters for ECDSA_sign
+ *
+ * This function is intentionally a stub, as wolfEngine does not support
+ * usage of "kinv" and "r" parameters with ECDSA_METHOD.
+ *
+ * @return 0 for Error
+ */
+static int we_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx,
+                               BIGNUM **kinv, BIGNUM **r)
+{
+    (void)eckey;
+    (void)ctx;
+    (void)kinv;
+    (void)r;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_sign_setup");
+    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "wolfEngine does not support usage of "
+                         "'kinv' and 'r' parameters with ECDSA_METHOD");
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_sign_setup", 0);
+
+    return 0;
+}
+
+/** ECDSA Verify signature
+ *
+ * This function is set as a callback in both:
+ *     EC_KEY_METHOD_set_verify() - used by OpenSSL 1.1.1 for ECDSA_do_verify()
+ *     ECDSA_METHOD_set_verify()  - used by OpenSSL 1.0.2 for ECDSA_do_verify()
+ *
+ * @param  d        [in]   Pointer to digest buffer
+ * @param  dlen     [in]   Digest length.
+ * @param  sig      [in]   pointer to the signature to verify
+ * @param  key      [in]   EC Key
+ * @return  1 for a valid signature, 0 for an invalid signature and -1 on error.
+ */
+static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
+                            const ECDSA_SIG *sig, EC_KEY *key)
+{
+    ecc_key we_key;
+    int curveId = 0;
+    int ret = 1, rc;
+
+    int sigDerSz = 0;
+    unsigned char* sigDer = NULL;
+    unsigned char* sigDerPtr = NULL;
+
+    /* start out with invalid signature (0) */
+    int check_sig = 0;
+
+    WOLFENGINE_ENTER(WE_LOG_PK,"we_ecdsa_do_verify");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [d = %p, dlen = %d, sig = %p, "
+                           "key = %p]", d, dlen, sig, key);
+
+    if (d == NULL || sig == NULL || key == NULL) {
+        WOLFENGINE_MSG(WE_LOG_PK,"we_ecdsa_do_verify Bad arguments");
+        return WOLFENGINE_FATAL_ERROR;
+    }
+
+    if ((rc = we_ec_get_curve_id(
+        EC_GROUP_get_curve_name(EC_KEY_get0_group(key)), &curveId)) != 1) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"we_ec_get_curve_id", rc);
+        ret = -1;
+    }
+    if (ret == 1) {
+        rc = wc_ecc_init(&we_key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"wc_ecc_init", rc);
+            ret = -1;
+        }
+    }
+    if (ret == 1) {
+        rc = we_ec_set_public(&we_key, curveId, key);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"we_ec_set_public", rc);
+            ret = -1;
+        }
+    }
+
+    if (ret == 1) {
+        /* get expected DER sig size, allocate space for DER */
+        sigDerSz = i2d_ECDSA_SIG(sig, NULL);
+        if (sigDerSz == 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_ECDSA_SIG(NULL)", sigDerSz);
+            ret = -1;
+        } else {
+            sigDer = (unsigned char*)OPENSSL_malloc(sigDerSz);
+            if (sigDer == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc", sigDer);
+                ret = -1;
+            }
+        }
+    }
+
+    if (ret == 1) {
+        /* convert sig from ECDSA_SIG to DER */
+        sigDerPtr = sigDer; /* i2d_ECDSA_SIG advances sigDerPtr */
+        sigDerSz = i2d_ECDSA_SIG(sig, &sigDerPtr);
+        if (sigDerSz == 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_ECDSA_SIG", sigDerSz);
+            ret = -1;
+        }
+    }
+
+    if (ret == 1) {
+        rc = wc_ecc_verify_hash(sigDer, sigDerSz, d, dlen, &check_sig, &we_key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
+            ret = -1;
+        }
+    }
+
+    if (ret == 1) {
+        /* Verification result is 1 on success and 0 on failure */
+        if (check_sig == 0) {
+            WOLFENGINE_MSG(WE_LOG_PK, "Failed to verify ECDSA signature");
+            ret = 0;   /* invalid signature, no other errors */
+        }
+        else {
+            WOLFENGINE_MSG(WE_LOG_PK, "Successfully verified ECDSA signature");
+        }
+    }
+
+    wc_ecc_free(&we_key);
+    if (sigDer != NULL) {
+        OPENSSL_free(sigDer);
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_do_verify", ret);
+
+    return ret;
+}
+
+#endif /* WE_HAVE_ECDSA | WE_HAVE_EC_KEY */
+
 #ifdef WE_HAVE_EC_KEY
 /**
  * Sign data with a private EC key.
@@ -2118,8 +2457,10 @@ int we_init_ec_key_meths(void)
     else {
         EC_KEY_METHOD_set_keygen(we_ec_key_method, we_ec_key_keygen);
         EC_KEY_METHOD_set_compute_key(we_ec_key_method, we_ec_key_compute_key);
-        EC_KEY_METHOD_set_sign(we_ec_key_method, we_ec_key_sign, NULL, NULL);
-        EC_KEY_METHOD_set_verify(we_ec_key_method, we_ec_key_verify, NULL);
+        EC_KEY_METHOD_set_sign(we_ec_key_method, we_ec_key_sign,
+                               we_ecdsa_sign_setup, we_ecdsa_do_sign_ex);
+        EC_KEY_METHOD_set_verify(we_ec_key_method, we_ec_key_verify,
+                                 we_ecdsa_do_verify);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_init_ec_key_meths", ret);
@@ -2248,352 +2589,6 @@ int we_init_ecdh_meth(void)
 
 #ifdef WE_HAVE_ECDSA
 #if OPENSSL_VERSION_NUMBER <= 0x100020ffL
-
-/** ECDSA Sign
- *
- * @param  d        [in]   Pointer to digest buffer
- * @param  dlen     [in]   Digest length.
- * @param  kinv     [in]   Precomputed kinv (Not supported)
- * @param  rp       [in]   Precomputed r    (Not supported)
- * @param  key      [in]   EC Key
- * @return  pointer to allocated ECDSA_SIG
- * @return  NULL on failure.
- */
-
-static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen, 
-                    const BIGNUM *kinv, const BIGNUM *rp, EC_KEY *key)
-{
-    ECDSA_SIG *sig = NULL;
-    ecc_key we_key;
-#ifndef WE_SINGLE_THREADED
-    WC_RNG rng;
-    WC_RNG *pRng = NULL;
-#else
-    WC_RNG *pRng = we_rng;
-#endif
-    int curveId = 0;
-    mp_int sig_r, sig_s;
-    int r_size, s_size;
-    unsigned char *r_bin = NULL, *s_bin = NULL;
-    int err = 0, rc;
-
-    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_do_sign_ex");
-    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [d = %p, dlen = %d, kinv = %p, "
-                           "rp = %p, key = %p]", d, dlen, kinv, rp, key);
-
-    if (kinv != NULL || rp != NULL) {
-        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_ecdsa_do_sign_ex() does not "
-                             "support kinv or rp BIGNUM arguments, must be "
-                             "passed as NULL");
-        return NULL;
-    }
-
-    if (d == NULL || key == NULL) {
-        WOLFENGINE_MSG(WE_LOG_PK, "we_ecdsa_do_sign_ex Bad arguments");
-        return NULL;
-    }
-
-    if ((rc = we_ec_get_curve_id(EC_GROUP_get_curve_name(
-                                 EC_KEY_get0_group(key)), &curveId)) == 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_get_curve_id", rc);
-        return NULL;
-    }
-
-    if ((rc = we_ecc_check_curve_usage(curveId)) == 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ecc_check_curve_usage", rc);
-        return NULL;
-    }
-
-#ifndef WE_SINGLE_THREADED
-    rc = wc_InitRng(&rng);
-    if (rc != 0) {
-        err = 1;
-    }
-    else {
-        pRng = &rng;
-    }
-
-    if (err == 0)
-#endif
-    {
-        rc = mp_init(&sig_r);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init(sig_r)", rc);
-            err = 1;
-        }
-    }
-    if (err == 0) {
-        rc = mp_init(&sig_s);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init(sig_s)", rc);
-            err = 1;
-        }
-    }
-
-    /* Initialize a wolfSSL key object. */
-    if (err == 0) {
-        rc = wc_ecc_init(&we_key);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
-            err = 1;
-        }
-    }
-
-    /* Set private key from EC_KEY into ecc_key */
-    if (err == 0) {
-        rc = we_ec_set_private(&we_key, curveId, key);
-        if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_set_private", rc);
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        rc = mp_init_multi(&sig_r, &sig_s, NULL, NULL, NULL, NULL);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init_multi", rc);
-            err = 1;
-        }
-    }
-
-    /* Sign hash with ECDSA */
-    if (err == 0) {
-        rc = wc_ecc_sign_hash_ex(d, dlen, pRng, &we_key, &sig_r, &sig_s);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash_ex", rc);
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        WOLFENGINE_MSG(WE_LOG_PK, "Generated ECDSA signature");
-        r_size = mp_unsigned_bin_size(&sig_r);
-        s_size = mp_unsigned_bin_size(&sig_s);
-        if (r_size == 0 || s_size == 0) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid r/s parameter size");
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        r_bin = OPENSSL_malloc(r_size);
-        s_bin = OPENSSL_malloc(s_size);
-        if (r_bin == NULL || s_bin == NULL) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK,
-                                 "OPENSSL_malloc error during r/s conversion");
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        sig = ECDSA_SIG_new();
-        if (sig == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "ECDSA_SIG_new", sig);
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        rc = mp_to_unsigned_bin(&sig_r, r_bin);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_to_unsigned_bin(r_bin)", rc);
-            err = 1;
-        }
-        rc = mp_to_unsigned_bin(&sig_s, s_bin);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_to_unsigned_bin(s_bin)", rc);
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        sig->r = BN_bin2bn(r_bin, r_size, sig->r);
-        sig->s = BN_bin2bn(s_bin, s_size, sig->s);
-        if (sig->r == NULL || sig->s == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_bin2bn", NULL);
-            err = 1;
-        }
-    }
-
-    if (r_bin != NULL) {
-        OPENSSL_free(r_bin);
-    }
-    if (s_bin != NULL) {
-        OPENSSL_free(s_bin);
-    }
-
-    mp_free(&sig_r);
-    mp_free(&sig_s);
-    wc_ecc_free(&we_key);
-#ifndef WE_SINGLE_THREADED
-    wc_FreeRng(pRng);
-#endif
-
-    if (err != 0) {
-        /* in error state, free ECDSA_SIG before returning */
-        if (sig != NULL) {
-            ECDSA_SIG_free(sig);
-        }
-        sig = NULL;
-    }
-
-    return sig;
-}
-
-/** Setup parameters for ECDSA_sign
- *
- * This function is intentionally a stub, as wolfEngine does not support
- * usage of "kinv" and "r" parameters with ECDSA_METHOD.
- *
- * @return 0 for Error
- */
-static int we_ecdsa_sign_setup(EC_KEY *eckey, BN_CTX *ctx, 
-                               BIGNUM **kinv, BIGNUM **r)
-{
-    (void)eckey;
-    (void)ctx;
-    (void)kinv;
-    (void)r;
-
-    WOLFENGINE_ENTER(WE_LOG_PK, "we_ecdsa_sign_setup");
-    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "wolfEngine does not support usage of "
-                         "'kinv' and 'r' parameters with ECDSA_METHOD");
-    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecdsa_sign_setup", 0);
-
-    return 0;
-}
-
-/** ECDSA Verify signature
- *
- * @param  d        [in]   Pointer to digest buffer
- * @param  dlen     [in]   Digest length.
- * @param  sig      [in]   pointer to the signature to verify
- * @param  key      [in]   EC Key
- * @return  1 for a valid signature, 0 for an invalid signature and -1 on error.
- */
-static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
-                            const ECDSA_SIG *sig, EC_KEY *key)
-{
-    ecc_key we_key;
-    int curveId = 0;
-    mp_int sig_r, sig_s;
-    int err = 0, rc;
-
-    int r_bin_sz, s_bin_sz;
-    unsigned char *r_bin = NULL, *s_bin = NULL;
-
-    /* start out with invalid signature (0) */
-    int check_sig = 0;
-
-    WOLFENGINE_ENTER(WE_LOG_PK,"we_ecdsa_do_verify");
-    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [d = %p, dlen = %d, sig = %p, "
-                           "key = %p]", d, dlen, sig, key);
-
-    if (d == NULL || sig == NULL || key == NULL) {
-        WOLFENGINE_MSG(WE_LOG_PK,"we_ecdsa_do_verify Bad arguments");
-        return WOLFENGINE_FATAL_ERROR;
-    }
-
-    if ((rc = we_ec_get_curve_id(
-        EC_GROUP_get_curve_name(EC_KEY_get0_group(key)), &curveId)) != 1) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"we_ec_get_curve_id", rc);
-        return WOLFENGINE_FATAL_ERROR;
-    }
-    if ((rc = wc_ecc_init(&we_key)) != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"wc_ecc_init", rc);
-        return WOLFENGINE_FATAL_ERROR;
-    }
-    if ((rc = we_ec_set_public(&we_key, curveId, key)) != 1) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"we_ec_set_public", rc);
-        return WOLFENGINE_FATAL_ERROR;
-    }
-
-    mp_init(&sig_r);
-    mp_init(&sig_s);
-
-    r_bin_sz = BN_num_bytes(sig->r);
-    s_bin_sz = BN_num_bytes(sig->s);
-    if (r_bin_sz == 0 || s_bin_sz == 0) {
-        WOLFENGINE_MSG(WE_LOG_PK,"ECDSA_SIG r or s parameter bin size is zero");
-        err = 1;
-    }
-
-    if (err == 0) {
-        r_bin = OPENSSL_malloc(r_bin_sz);
-        s_bin = OPENSSL_malloc(s_bin_sz);
-        if (r_bin == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
-                                       "OPENSSL_malloc(r_bin)", r_bin);
-            err = 1;
-        }
-        if (s_bin == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
-                                       "OPENSSL_malloc(s_bin)", s_bin);
-            err = 1;
-        }
-        BN_bn2bin(sig->r, r_bin);
-        BN_bn2bin(sig->s, s_bin);
-    }
-
-    if (err == 0) {
-        rc = mp_read_unsigned_bin(&sig_r, r_bin, r_bin_sz);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_read_unsigned_bin(r_bin)", rc);
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        rc = mp_read_unsigned_bin(&sig_s, s_bin, s_bin_sz);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_read_unsigned_bin(s_bin)", rc);
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        rc = wc_ecc_verify_hash_ex(&sig_r, &sig_s, d, dlen, &check_sig,
-                                   &we_key);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash_ex", rc);
-            err = 1;
-        }
-        else if (check_sig == 0) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK,
-                        "wc_ecc_verify_hash_ex() incorrect signature detected");
-            err = 1;
-        }
-        else {
-            WOLFENGINE_MSG(WE_LOG_PK,
-                           "wc_ecc_verify_hash() signature verified");
-        }
-    }
-
-    if (r_bin != NULL) {
-        OPENSSL_free(r_bin);
-    }
-    if (s_bin != NULL) {
-        OPENSSL_free(s_bin);
-    }
-    mp_free(&sig_r);
-    mp_free(&sig_s);
-    wc_ecc_free(&we_key);
-
-    if (err == 0) {
-        if (check_sig == 1) {
-            WOLFENGINE_MSG(WE_LOG_PK, "Successfully verified ECDSA signature");
-            return 1;   /* valid signature */
-        }
-        else {
-            WOLFENGINE_MSG(WE_LOG_PK, "Failed to verify ECDSA signature");
-            return 0;   /* invalid signature, no other errors */
-        }
-    }
-    else {
-        return -1;
-    }
-}
-
 
 /** ECDSA method - ECDSA using wolfSSL for the implementation. */
 ECDSA_METHOD *we_ecdsa_method = NULL;
