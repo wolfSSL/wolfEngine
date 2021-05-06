@@ -1370,8 +1370,6 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
         }
 
         if (ret == 1) {
-            WOLFENGINE_MSG(WE_LOG_KE, "Generating DH secret, len = %d",
-                           secretLen);
             /* Compute the secret from the peer's public key and our key. */
             ret = we_dh_compute_key_int(engineDh, secret, secretLen, peerPub,
                                         ourDh);
@@ -1379,7 +1377,8 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
                 WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_compute_key_int", ret);
             }
             else {
-                WOLFENGINE_MSG(WE_LOG_KE, "Generated DH shared secret");
+                WOLFENGINE_MSG(WE_LOG_KE, "Generated DH shared secret, "
+                    "len = %zu", *secretLen);
             }
         }
 

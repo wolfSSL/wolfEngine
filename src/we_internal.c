@@ -1272,7 +1272,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_bind");
 
     if ((id != NULL) &&
-                 (XSTRNCMP(id, wolfengine_lib, XSTRLEN(wolfengine_lib)) != 0)) {
+                 (XSTRNCMP(id, wolfengine_id, XSTRLEN(wolfengine_id)) != 0)) {
         ret = 0;
     }
 

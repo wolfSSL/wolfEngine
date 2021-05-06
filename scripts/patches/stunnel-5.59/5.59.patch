@@ -1,0 +1,38 @@
+diff --git a/./src/options_new.c b/./src/options.c
+index 15c82bb..1281298 100644
+--- a/./src/options_new.c
++++ b/./src/options.c
+@@ -4585,6 +4585,15 @@ NOEXPORT char *engine_auto(void) {
+     return NULL; /* OK */
+ }
+ 
++static void stunnel_wolfengine_log(const int logLevel, const int component,
++                           const char *const logMessage)
++{
++    (void)logLevel;
++    (void)component;
++
++    s_log(LOG_INFO, "%s", logMessage);
++}
++
+ NOEXPORT char *engine_open(const char *name) {
+     engine_init(); /* initialize the previous engine (if any) */
+     if(++current_engine>=MAX_ENGINES)
+@@ -4605,6 +4614,19 @@ NOEXPORT char *engine_open(const char *name) {
+         s_log(LOG_INFO, "UI not supported by engine #%d (%s)",
+             current_engine+1, ENGINE_get_id(engines[current_engine]));
+     }
++
++    if (ENGINE_ctrl_cmd(engines[current_engine], "set_logging_cb", 0, NULL,
++                        (void(*)(void))stunnel_wolfengine_log, 0)) {
++        s_log(LOG_NOTICE, "wolfEngine logging callback set for engine #%d (%s)",
++            current_engine+1, ENGINE_get_id(engines[current_engine]));
++    }
++    else {
++        ERR_clear_error();
++        s_log(LOG_INFO, "wolfEngine logging callback not supported by engine "
++              "#%d (%s)", current_engine+1,
++              ENGINE_get_id(engines[current_engine]));
++    }
++
+     return NULL; /* OK */

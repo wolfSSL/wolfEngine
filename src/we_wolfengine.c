@@ -23,13 +23,11 @@
 #include <wolfengine/we_internal.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-/* This is the ID expected by OpenSSL when loading wolfEngine dynamically. */
-const char *wolfengine_lib = "libwolfengine";
-#else
-const char *wolfengine_lib = "wolfengine";
-#endif
 /* Engine id - implementation uses wolfSSL */
-const char *wolfengine_id = "wolfSSL";
+const char *wolfengine_id = "libwolfengine";
+#else
+const char *wolfengine_id = "wolfengine";
+#endif
 /* Engine name ... or description.  */
 const char *wolfengine_name = "An engine using wolfSSL";
 
@@ -50,7 +48,7 @@ static ENGINE *engine_wolfengine(void)
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_ENGINE, "ENGINE_new", ret);
         return NULL;
     }
-    rc = wolfengine_bind(ret, wolfengine_lib);
+    rc = wolfengine_bind(ret, wolfengine_id);
     if (rc == 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wolfengine_bind", rc);
         ENGINE_free(ret);
