@@ -1843,6 +1843,7 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
     EC_KEY *keyOSSL = NULL;
     unsigned char ecdsaSig[140];
     size_t ecdsaSigLen;
+    ECDSA_SIG *eccSig;
     unsigned char buf[20];
     const unsigned char *p;
 
@@ -1860,6 +1861,8 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
         keyOSSL = d2i_ECPrivateKey(NULL, &p, privKeyLen);
         err = (key == NULL);
     }
+
+    /* Test ECDSA_sign/ECDSA_verify */
     if (err == 0) {
         PRINT_MSG("Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
@@ -1890,6 +1893,56 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
         err = test_ec_key_ecdsa_verify(keyOSSL, buf, sizeof(buf),
                                        ecdsaSig, ecdsaSigLen);
     }
+
+    /* Test ECDSA_do_sign/ECDSA_do_verify */
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_sign: Sign with OpenSSL");
+        eccSig = ECDSA_do_sign(buf, (int)sizeof(buf), keyOSSL);
+        if (eccSig == NULL) {
+            PRINT_MSG("ECDSA_do_sign with OpenSSL failed");
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_verify: Verify with wolfEngine");
+        res = ECDSA_do_verify(buf, (int)sizeof(buf), eccSig, key);
+        if (res != 1) {
+            PRINT_MSG("ECDSA_do_verify with wolfEngine failed");
+            err = 1;
+        }
+        ECDSA_SIG_free(eccSig);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_sign: Sign with wolfEngine");
+        eccSig = ECDSA_do_sign(buf, (int)sizeof(buf), key);
+        if (eccSig == NULL) {
+            PRINT_MSG("ECDSA_do_sign with wolfEngine failed");
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_verify: Verify with OpenSSL");
+        res = ECDSA_do_verify(buf, (int)sizeof(buf), eccSig, keyOSSL);
+        if (res != 1) {
+            PRINT_MSG("ECDSA_do_verify with OpenSSL failed");
+            err = 1;
+        }
+        ECDSA_SIG_free(eccSig);
+    }
+
+    /* Verify ECDSA_sign_setup broadcasts as not supported */
+    if (err == 0) {
+        PRINT_MSG("Verify ECDSA_sign_setup behavior");
+        res = ECDSA_sign_setup(key, NULL, NULL, NULL);
+        if (res != 0) {
+            /* expect failure, not implemented */
+            err = 1;
+        }
+    }
+
 
     EC_KEY_free(keyOSSL);
     EC_KEY_free(key);
@@ -2186,6 +2239,7 @@ static int test_ecdsa_key(ENGINE *e, const unsigned char *privKey,
     EC_KEY *keyOSSL = NULL;
     const ECDSA_METHOD *method = NULL;
     unsigned char ecdsaSig[140];
+    ECDSA_SIG *eccSig = NULL;
     size_t ecdsaSigLen;
     unsigned char buf[20];
     const unsigned char *p;
@@ -2210,6 +2264,8 @@ static int test_ecdsa_key(ENGINE *e, const unsigned char *privKey,
         keyOSSL = d2i_ECPrivateKey(&keyOSSL, &p, privKeyLen);
         err = (keyOSSL == NULL);
     }
+
+    /* Test ECDSA_sign/ECDSA_verify */
     if (err == 0) {
         PRINT_MSG("ECDSA: Sign with OpenSSL");
         ecdsaSigLen = sizeof(ecdsaSig);
@@ -2240,6 +2296,56 @@ static int test_ecdsa_key(ENGINE *e, const unsigned char *privKey,
         err = test_ecdsa_verify(keyOSSL, buf, sizeof(buf),
                                 ecdsaSig, ecdsaSigLen);
     }
+
+    /* Test ECDSA_do_sign/ECDSA_do_verify */
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_sign: Sign with OpenSSL");
+        eccSig = ECDSA_do_sign(buf, (int)sizeof(buf), keyOSSL);
+        if (eccSig == NULL) {
+            PRINT_MSG("ECDSA_do_sign with OpenSSL failed");
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_verify: Verify with wolfEngine");
+        res = ECDSA_do_verify(buf, (int)sizeof(buf), eccSig, keyWE);
+        if (res != 1) {
+            PRINT_MSG("ECDSA_do_verify with wolfEngine failed");
+            err = 1;
+        }
+        ECDSA_SIG_free(eccSig);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_sign: Sign with wolfEngine");
+        eccSig = ECDSA_do_sign(buf, (int)sizeof(buf), keyWE);
+        if (eccSig == NULL) {
+            PRINT_MSG("ECDSA_do_sign with wolfEngine failed");
+            err = 1;
+        }
+    }
+
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_verify: Verify with OpenSSL");
+        res = ECDSA_do_verify(buf, (int)sizeof(buf), eccSig, keyOSSL);
+        if (res != 1) {
+            PRINT_MSG("ECDSA_do_verify with OpenSSL failed");
+            err = 1;
+        }
+        ECDSA_SIG_free(eccSig);
+    }
+
+    /* Verify ECDSA_sign_setup broadcasts as not supported */
+    if (err == 0) {
+        PRINT_MSG("Verify ECDSA_sign_setup behavior");
+        res = ECDSA_sign_setup(keyWE, NULL, NULL, NULL);
+        if (res != 0) {
+            /* expect failure, not implemented */
+            err = 1;
+        }
+    }
+
     EC_KEY_free(keyWE);
     EC_KEY_free(keyOSSL);
     PRINT_MSG("LEAVE: test_ecdsa");

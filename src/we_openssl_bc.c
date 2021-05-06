@@ -622,6 +622,22 @@ int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key)
     return 1;
 }
 
+int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s)
+{
+    if (r == NULL || s == NULL) {
+        return 0;
+    }
+
+    /* clear BIGNUM structs first */
+    BN_clear_free(sig->r);
+    BN_clear_free(sig->s);
+
+    sig->r = r;
+    sig->s = s;
+
+    return 1;
+}
+
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
 #if OPENSSL_VERSION_NUMBER < 0x10101000L
