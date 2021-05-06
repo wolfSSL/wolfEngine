@@ -290,6 +290,7 @@ build_wolfssl() {
         ./configure LDFLAGS="-L$OPENSSL_SOURCE $WOLFENGINE_EXTRA_LDFLAGS" \
                     CPPFLAGS="$WOLFENGINE_EXTRA_CPPFLAGS" \
                     --with-openssl=$OPENSSL_SOURCE \
+                    $WOLFENGINE_EXTRA_OPTS \
                     --enable-debug 2>&1 | tee -a $LOGFILE
         if [ "${PIPESTATUS[0]}" != 0 ]; then
             printf "config failed\n"

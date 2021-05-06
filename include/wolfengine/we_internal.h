@@ -57,6 +57,7 @@
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 #include <openssl/cmac.h>
 #endif
+#include <openssl/pkcs12.h>
 
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/hash.h>
@@ -73,10 +74,22 @@
 #include <wolfssl/wolfcrypt/asn_public.h>
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/random.h>
+#include <wolfssl/wolfcrypt/pwdbased.h>
 
 #include <wolfengine/we_openssl_bc.h>
 
 #include <wolfengine/we_logging.h>
+
+#if defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
+    /* Function is a printf style function. Pretend parameter is string literal.
+     *
+     * @param s  [in]  Index of string literal. Index from 1.
+     * @param v  [in]  Index of first argument to check. 0 means don't.
+     */
+    #define WE_PRINTF_FUNC(s, v)  __attribute__((__format__ (__printf__, s, v)))
+#else
+    #define WE_PRINTF_FUNC(s, v)
+#endif
 
 #if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
 /*
@@ -289,6 +302,14 @@ extern EVP_PKEY_METHOD *we_ec_p384_method;
 extern EVP_PKEY_METHOD *we_ec_p521_method;
 int we_init_ecc_meths(void);
 int we_init_ec_key_meths(void);
+
+/*
+ * PBE method
+ */
+
+#ifdef WE_HAVE_PBE
+int we_init_pbe_keygen(void);
+#endif
 
 int wolfengine_bind(ENGINE *e, const char *id);
 

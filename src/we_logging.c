@@ -182,6 +182,7 @@ static void wolfengine_log(const int logLevel, const int component,
  * @param fmt   [IN] Log message format string.
  * @param vargs [IN] Variable arguments, used with format string, fmt.
  */
+WE_PRINTF_FUNC(3, 0)
 static void wolfengine_msg_internal(int component, int logLevel,
                                     const char* fmt, va_list vlist)
 {
@@ -200,6 +201,7 @@ static void wolfengine_msg_internal(int component, int logLevel,
  * @param fmt   [IN] Log message format string.
  * @param vargs [IN] Variable arguments, used with format string, fmt.
  */
+WE_PRINTF_FUNC(2, 3)
 void WOLFENGINE_MSG(int component, const char* fmt, ...)
 {
     va_list vlist;
@@ -215,6 +217,7 @@ void WOLFENGINE_MSG(int component, const char* fmt, ...)
  * @param fmt   [IN] Log message format string.
  * @param vargs [IN] Variable arguments, used with format string, fmt.
  */
+WE_PRINTF_FUNC(2, 3)
 void WOLFENGINE_MSG_VERBOSE(int component, const char* fmt, ...)
 {
     va_list vlist;

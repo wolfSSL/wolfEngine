@@ -85,6 +85,7 @@ enum wolfEngine_LogComponents {
     WE_LOG_PK     = 0x0010,  /* public key algorithms (RSA, ECC) */
     WE_LOG_KE     = 0x0020,  /* key agreement (DH, ECDH) */
     WE_LOG_ENGINE = 0x0040,  /* all engine specific logs */
+    WE_LOG_PBE    = 0x0080,  /* password base encryption algorithms */
 
     /* log all compoenents */
     WE_LOG_COMPONENTS_ALL = (WE_LOG_RNG
@@ -93,7 +94,8 @@ enum wolfEngine_LogComponents {
                            | WE_LOG_CIPHER
                            | WE_LOG_PK
                            | WE_LOG_KE
-                           | WE_LOG_ENGINE),
+                           | WE_LOG_ENGINE
+                           | WE_LOG_PBE),
 
     /* default compoenents logged */
     WE_LOG_COMPONENTS_DEFAULT = WE_LOG_COMPONENTS_ALL

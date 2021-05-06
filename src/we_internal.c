@@ -919,6 +919,11 @@ static int wolfengine_init(ENGINE *e)
     }
 #endif
 #endif
+#ifdef WE_HAVE_PBE
+    if (ret == 1) {
+        we_init_pbe_keygen();
+    }
+#endif
 
 #endif
 

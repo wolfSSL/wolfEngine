@@ -63,6 +63,8 @@ make
 sudo make install
 ```
 
+Add `--enable-pwdbased` to the configure command above if PKCS#12 is used in OpenSSL.
+
 Remove `-DWOLFSSL_PSS_LONG_SALT -DWOLFSSL_PSS_SALT_LEN_DISCOVER` and add `--enable-fips=v2` to the configure command above if building from a FIPS bundle and not the git repository.
 
 ### wolfEngine
@@ -83,8 +85,7 @@ make check
 ```
 
 * To build wolfEngine in single-threaded mode, add `--enable-singlethreaded` to the configure command.
-* AES-GCM is disabled by default because of the code changes required to OpenSSL. To enable it, add `--enable-aesgcm`.
-* AES-CCM is disabled by default for the same reason. To enable it, add `--enable-aesccm`.
+* To build wolfEngine with PBES support (used with PKCS #12), add `--enable-pbe`. Note: wolfSSL must have been configured with `--enable-pwdbased`.
 * To disable support for loading wolfEngine dynamically, add `--disable-dynamic-engine`.
 * To build a static version of wolfEngine, add `--enable-static`.
 * To use a custom user_settings.h file to override the defines produced by `./configure`, add `--enable-usersettings` and place a user_settings.h file with the defines you want in the include directory. See the root of the project for an example user_settings.h.

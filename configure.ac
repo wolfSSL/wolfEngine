@@ -589,6 +589,18 @@ then
 fi
 
 
+AC_ARG_ENABLE([pbe],
+    [AS_HELP_STRING([--enable-pbe],[Enable PBE (default: disabled)])],
+    [ ENABLED_PBE=$enableval ],
+    [ ENABLED_PBE=no ]
+    )
+
+if test "$ENABLED_PBE" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_PBE"
+fi
+
+
 # Check enable options
 if test "$ENABLED_DIGEST" = "yes"
 then
@@ -694,6 +706,7 @@ echo "   *  - P-224:                   $ENABLED_EC_P224"
 echo "   *  - P-256:                   $ENABLED_EC_P256"
 echo "   *  - P-384:                   $ENABLED_EC_P384"
 echo "   *  - P-521:                   $ENABLED_EC_P521"
+echo "   * PBE:                        $ENABLED_PBE"
 echo ""
 echo "---"
 
