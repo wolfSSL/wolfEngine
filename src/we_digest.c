@@ -866,7 +866,7 @@ static int we_digest_cleanup(EVP_MD_CTX *ctx)
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
     /* Free the digest unless no hash initialized. */
-    if (digest != NULL) {
+    if ((digest != NULL) && (digest->hashType != 0)) {
         rc = wc_HashFree(&digest->hash, digest->hashType);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashFree", rc);
