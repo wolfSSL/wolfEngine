@@ -398,7 +398,7 @@ static int we_digests(ENGINE *e, const EVP_MD **digest, const int **nids,
             *digest = we_sha3_512_md;
             break;
 #endif
-#if defined(WE_HAVE_ECC) && defined(WE_HAVE_SHA1)
+#if defined(WE_HAVE_ECDSA) && defined(WE_HAVE_SHA1)
         case NID_ecdsa_with_SHA1:
             *digest = we_ecdsa_sha1_md;
             break;
@@ -1044,7 +1044,7 @@ static int wolfengine_destroy(ENGINE *e)
     EVP_MD_meth_free(we_sha3_512_md);
     we_sha3_512_md = NULL;
 #endif
-#if defined(WE_HAVE_ECC) && defined(WE_HAVE_SHA1)
+#if defined(WE_HAVE_ECDSA) && defined(WE_HAVE_SHA1)
     EVP_MD_meth_free(we_ecdsa_sha1_md);
     we_ecdsa_sha1_md = NULL;
 #endif
