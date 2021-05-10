@@ -398,15 +398,15 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
         err = RAND_bytes(buf, sizeof(buf)) == 0;
     }
     if (err == 0) {
-        encryptedBuf = (unsigned char*)OPENSSL_malloc(rsaSize);
+        encryptedBuf = (unsigned char*)OPENSSL_zalloc(rsaSize);
         err = encryptedBuf == NULL;
     }
     if (err == 0) {
-        decryptedBuf = (unsigned char*)OPENSSL_malloc(rsaSize);
+        decryptedBuf = (unsigned char*)OPENSSL_zalloc(rsaSize);
         err = decryptedBuf == NULL;
     }
     if (err == 0) {
-        noPaddingBuf = (unsigned char*)OPENSSL_malloc(rsaSize);
+        noPaddingBuf = (unsigned char*)OPENSSL_zalloc(rsaSize);
         err = noPaddingBuf == NULL;
     }
     if (err == 0) {
@@ -956,14 +956,14 @@ static int test_rsa_enc_dec(ENGINE *e, const unsigned char *der, size_t derLen,
     }
     if (err == 0) {
         rsaEncLen = RSA_size(rsaKey);
-        rsaEnc = (unsigned char*)OPENSSL_malloc(rsaEncLen);
+        rsaEnc = (unsigned char*)OPENSSL_zalloc(rsaEncLen);
         err = rsaEnc == NULL;
     }
     if (err == 0) {
         if (padMode == RSA_NO_PADDING) {
             bufLen = rsaEncLen;
         }
-        buf = (unsigned char *)OPENSSL_malloc(bufLen);
+        buf = (unsigned char *)OPENSSL_zalloc(bufLen);
         err = buf == NULL;
     }
     if (err == 0) {

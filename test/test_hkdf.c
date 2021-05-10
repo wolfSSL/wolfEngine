@@ -98,6 +98,9 @@ static int test_hkdf_md(ENGINE *e, const EVP_MD *md, int mode)
     unsigned char oKey[128];
     unsigned char wKey[128];
 
+    memset(oKey, 0, sizeof(oKey));
+    memset(wKey, 0, sizeof(wKey));
+
     PRINT_MSG("Calc with OpenSSL");
     err = test_hkdf_calc(NULL, oKey, sizeof(oKey), md, mode);
     if (err == 1) {

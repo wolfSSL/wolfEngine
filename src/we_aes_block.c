@@ -148,7 +148,7 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_encrypt");
 
     /* padding is handled by OpenSSL before passed to we_aes_cbc_encrypt */
-    rc = wc_AesCbcEncrypt(&aes->aes, out, in, len);
+    rc = wc_AesCbcEncrypt(&aes->aes, out, in, (unsigned int)len);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
         ret = 0;
@@ -179,13 +179,13 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_decrypt");
 
     /* padding is handled by OpenSSL before passed to we_aes_cbc_decrypt */
-    rc = wc_AesCbcDecrypt(&aes->aes, out, in, len);
+    rc = wc_AesCbcDecrypt(&aes->aes, out, in, (unsigned int)len);
     if (rc != 0) {
         ret = -1;
     }
 
     if (ret >= 0) {
-        ret = len;
+        ret = (int)len;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_encrypt", ret);
