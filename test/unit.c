@@ -49,6 +49,7 @@ static int debug = 1;
 #else
 static int debug = 0;
 #endif /* WOLFENGINE_DEBUG */
+static unsigned long flags = 0;
 
 TEST_CASE test_case[] = {
     TEST_DECL(test_logging, &debug),
@@ -83,7 +84,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_hmac_create, NULL),
 #endif
 #ifdef WE_HAVE_CMAC
-    TEST_DECL(test_cmac_create, NULL),
+    TEST_DECL(test_cmac_create, &flags),
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
@@ -135,11 +136,11 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_random, NULL),
 #endif
 #ifdef WE_HAVE_RSA
-    TEST_DECL(test_rsa_direct_key_gen, NULL),
+    TEST_DECL(test_rsa_direct_key_gen,  NULL),
     TEST_DECL(test_rsa_direct_priv_enc, NULL),
     TEST_DECL(test_rsa_direct_priv_dec, NULL),
-    TEST_DECL(test_rsa_direct_pub_enc, NULL),
-    TEST_DECL(test_rsa_direct_pub_dec, NULL),
+    TEST_DECL(test_rsa_direct_pub_enc,  NULL),
+    TEST_DECL(test_rsa_direct_pub_dec,  NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_DH
     TEST_DECL(test_dh_pgen, NULL),
@@ -357,6 +358,8 @@ static void usage()
 #endif
     printf("  --no-debug      Disable debug logging\n");
     printf("  --list          Display all test cases\n");
+    printf("  --valgrind      Run wolfSSL only tests for Valgrind where OpenSSL "
+                              "has issues\n");
     printf("  <num>           Run this test case, but not all\n");
 }
 
@@ -520,6 +523,9 @@ static int run_tests(ENGINE *e, int runAll)
     int i;
 
     printf("###### TESTSUITE START\n");
+    if (flags) {
+        printf("Using flags value %lx\n", flags);
+    }
     printf("\n");
 
     for (i = 0; i < TEST_CASE_CNT; i++) {
@@ -529,6 +535,7 @@ static int run_tests(ENGINE *e, int runAll)
 
         printf("#### Start: %d - %s\n", i + 1, test_case[i].name);
 
+        test_case[i].err = 0;
         test_case[i].err = test_case[i].func(e, test_case[i].data);
         test_case[i].done = 1;
 
@@ -593,6 +600,9 @@ int main(int argc, char* argv[])
         else if (strncmp(*argv, "--static", 9) == 0) {
             staticTest = 1;
         }
+        else if (strncmp(*argv, "--valgrind", 11) == 0) {
+            flags = flags | WE_VALGRIND_TEST;
+        }
         else if (strncmp(*argv, "--dir", 6) == 0) {
             argc--;
             argv++;
@@ -649,7 +659,7 @@ int main(int argc, char* argv[])
                 err = 1;
                 break;
             }
-            
+
             printf("Run test case: %d\n", i);
             test_case[i-1].run = 1;
             runAll = 0;
@@ -662,6 +672,9 @@ int main(int argc, char* argv[])
             break;
         }
     }
+
+    OpenSSL_add_all_ciphers();
+    OpenSSL_add_all_digests();
 
     if (err == 0 && runTests) {
         printf("\n");

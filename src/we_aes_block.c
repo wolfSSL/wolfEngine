@@ -85,7 +85,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         }
     }
 
-    if ((ret == 1) && (!aes->init)) {
+    if ((ret == 1) && (key != NULL)) {
         WOLFENGINE_MSG(WE_LOG_CIPHER,
                        "Initializing wolfCrypt Aes structure: %p", &aes->aes);
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
@@ -93,11 +93,10 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
+        aes->init = 1;
     }
 
-    if (ret == 1) {
-        /* Must have initialized wolfSSL AES object when here. */
-        aes->init = 1;
+    if (ret == 1 && (aes->init == 1)) {
         aes->over = 0;
         /* Store whether encrypting. */
         aes->enc = enc;
@@ -148,87 +147,12 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_encrypt");
 
-    /* Length of 0 means Final called. */
-    if (len == 0) {
-        if (aes->over != 0) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                 "No Pad - last encrypt block not full");
-            ret = 0;
-        }
+    /* padding is handled by OpenSSL before passed to we_aes_cbc_encrypt */
+    rc = wc_AesCbcEncrypt(&aes->aes, out, in, len);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
+        ret = 0;
     }
-    
-    if (ret == 1) {
-        unsigned int l;
-
-        /* Check for cached data. */
-        if (aes->over > 0) {
-            WOLFENGINE_MSG(WE_LOG_CIPHER, "Encrypting leftover cached data, "
-                           "aes->over = %d", aes->over);
-
-            /* Partial block not yet encrypted. */
-            l = AES_BLOCK_SIZE - aes->over;
-            if (l > len) {
-                l = (int)len;
-            }
-
-            /* Copy as much of input as possible to fill in block. */
-            if (l > 0) {
-                XMEMCPY(aes->lastBlock + aes->over, in, l);
-                aes->over += l;
-                in += l;
-                len -= l;
-            }
-            /* Check if we have a complete block to encrypt. */
-            if (aes->over == AES_BLOCK_SIZE) {
-                /* Encrypt and return block. */
-                rc = wc_AesCbcEncrypt(&aes->aes, out, aes->lastBlock,
-                                      AES_BLOCK_SIZE);
-                if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesCbcEncrypt", rc);
-                    ret = 0;
-                }
-                else {
-                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
-                                           "Encrypted %d bytes (AES-CBC)",
-                                           AES_BLOCK_SIZE);
-                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, AES_BLOCK_SIZE);
-                }
-
-                /* Data put to output. */
-                out += AES_BLOCK_SIZE;
-                /* No more cached data. */
-                aes->over = 0;
-
-                WOLFENGINE_MSG(WE_LOG_CIPHER, "Encrypted all cached data");
-            }
-        }
-        /* Encrypt full blocks from remaining input. */
-        if ((ret == 1) && (len >= AES_BLOCK_SIZE)) {
-            /* Calculate full blocks. */
-            l = (int)len & (~(AES_BLOCK_SIZE - 1));
-
-            rc = wc_AesCbcEncrypt(&aes->aes, out, in, l);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
-                ret = 0;
-            }
-            else {
-                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
-                                       "Encrypted %d bytes (AES-CBC)", l);
-                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
-            }
-
-            in += l;
-            len -= l;
-        }
-        if ((ret == 1) && (len > 0)) {
-            /* Copy remaining input as incomplete block. */
-            XMEMCPY(aes->lastBlock, in, len);
-            aes->over = (int)len;
-        }
-    }
-
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_encrypt", ret);
 
     return ret;
@@ -249,94 +173,22 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
 static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
                               const unsigned char *in, size_t len)
 {
-    int ret = 1;
+    int ret = 0;
     int rc;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_decrypt");
 
-    /* Length of 0 means Final called. */
-    if (len == 0) {
-        if (aes->over != 0) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                 "No Pad - last decrypt block not full");
-            ret = 0;
-        }
-    }
-    if (ret == 1) {
-        unsigned int l;
-
-        /* Check for cached data. */
-        if (aes->over > 0) {
-            WOLFENGINE_MSG(WE_LOG_CIPHER, "Decrypting leftover cached data, "
-                           "aes->over = %d", aes->over);
-
-            /* Calculate amount of input that can be used. */
-            l = AES_BLOCK_SIZE - aes->over;
-            if (l > len) {
-                l = (int)len;
-            }
-
-            if (l > 0) {
-                /* Copy as much of input as possible to fill in block. */
-                XMEMCPY(aes->lastBlock + aes->over, in, l);
-                aes->over += l;
-                in += l;
-                len -= l;
-            }
-            /* Padding and not last full block or not padding and full block. */
-            if ((aes->over == AES_BLOCK_SIZE) || len > 0) {
-                /* Decrypt block cached block. */
-                rc = wc_AesCbcDecrypt(&aes->aes, out, aes->lastBlock,
-                                      AES_BLOCK_SIZE);
-                if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesCbcDecrypt", rc);
-                    ret = 0;
-                }
-                else {
-                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
-                                           "Decrypted %d bytes (AES-CBC)",
-                                           AES_BLOCK_SIZE);
-                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, AES_BLOCK_SIZE);
-                }
-
-                /* Data put to output. */
-                out += AES_BLOCK_SIZE;
-                /* No more cached data. */
-                aes->over = 0;
-            }
-        }
-        /* Decrypt full blocks from remaining input. */
-        if ((ret == 1) && (len >= AES_BLOCK_SIZE)) {
-            /* Calculate full blocks. */
-            l = (int)len & (~(AES_BLOCK_SIZE - 1));
-
-            if (l > 0) {
-                rc = wc_AesCbcDecrypt(&aes->aes, out, in, l);
-                if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesCbcDecrypt", rc);
-                    ret = 0;
-                }
-                else {
-                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
-                                           "Decrypted %d bytes (AES-CBC)", l);
-                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
-                }
-            }
-
-            in += l;
-            len -= l;
-        }
-        if ((ret == 1) && (len > 0)) {
-            /* Copy remaining input as incomplete block. */
-            XMEMCPY(aes->lastBlock, in, len);
-            aes->over = (int)len;
-        }
+    /* padding is handled by OpenSSL before passed to we_aes_cbc_decrypt */
+    rc = wc_AesCbcDecrypt(&aes->aes, out, in, len);
+    if (rc != 0) {
+        ret = -1;
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_decrypt", ret);
+    if (ret >= 0) {
+        ret = len;
+    }
 
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_encrypt", ret);
     return ret;
 }
 
@@ -601,7 +453,7 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
-    if ((ret == 1) && ((key == NULL) || (!aes->init))) {
+    if ((ret == 1) && (key == NULL)) {
         WOLFENGINE_MSG(WE_LOG_CIPHER,
                        "Initializing wolfCrypt Aes structure: %p", &aes->aes);
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
@@ -609,11 +461,12 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
+        else {
+            aes->init = 1;
+        }
     }
 
     if (ret == 1) {
-        /* Must have initialized wolfSSL AES object when here. */
-        aes->init = 1;
         aes->over = 0;
         /* Store whether encrypting. */
         aes->enc = enc;

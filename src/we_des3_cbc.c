@@ -77,7 +77,7 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         }
     }
 
-    if ((ret == 1) && (!des3->init)) {
+    if ((ret == 1) && (key != NULL)) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Initializing wolfCrypt Des3 "
                        "structure: %p", &des3->des3);
         rc = wc_Des3Init(&des3->des3, NULL, INVALID_DEVID);
@@ -85,10 +85,16 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3Init", rc);
             ret = 0;
         }
+        des3->init = 1;
+        if (iv == NULL) {
+            des3->ivSet = 0;
+        }
+        else {
+            des3->ivSet = 1;
+        }
     }
 
     if (ret == 1) {
-        des3->init = 1;
         des3->enc = enc;
 
         if (key != NULL) {

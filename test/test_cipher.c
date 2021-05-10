@@ -31,7 +31,7 @@ static int test_cipher_enc(ENGINE *e, const EVP_CIPHER *cipher,
     int err;
     EVP_CIPHER_CTX *ctx;
     int encLen;
-    int fLen;
+    int fLen = 0;
 
     err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
     if (err == 0) {
@@ -105,11 +105,11 @@ static int test_cipher_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
     (void)data;
 
-    if (RAND_bytes(key, keyLen) == 0) {
+    if (RAND_bytes(key, keyLen) != 1) {
         err = 1;
     }
     if (err == 0) {
-        if (RAND_bytes(iv, ivLen) == 0) {
+        if (RAND_bytes(iv, ivLen) != 1) {
             err = 1;
         }
     }
@@ -280,11 +280,13 @@ static int test_stream_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
     (void)data;
 
-    if (RAND_bytes(key, keyLen) == 0) {
+    if (RAND_bytes(key, keyLen) != 1) {
+        printf("generate key failed\n");
         err = 1;
     }
     if (err == 0) {
-        if (RAND_bytes(iv, ivLen) == 0) {
+        if (RAND_bytes(iv, ivLen) != 1) {
+            printf("generate iv failed\n");
             err = 1;
         }
     }

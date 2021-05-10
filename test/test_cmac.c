@@ -81,9 +81,11 @@ static int test_cmac_generation(ENGINE *e, const EVP_CIPHER *c,
 
 
 static int test_cmac_create_helper(ENGINE *e, unsigned char *in,
-        int inSz, unsigned char *key, int keySz, const EVP_CIPHER *c)
+        int inSz, unsigned char *key, int keySz, const EVP_CIPHER *c,
+        unsigned long flags)
 {
     int ret;
+    ENGINE *tmpe = NULL;
 
     unsigned char exp[16];
     int expLen;
@@ -94,8 +96,12 @@ static int test_cmac_create_helper(ENGINE *e, unsigned char *in,
     macLen = sizeof(mac);
     expLen = sizeof(exp);
 
+    if (flags & WE_VALGRIND_TEST) {
+        tmpe = e; /* use only wolfSSL version for valgrind test */
+    }
+
     /* generate mac using OpenSSL */
-    ret = test_cmac_generation(NULL, c, key, keySz, in, inSz, exp, &expLen);
+    ret = test_cmac_generation(tmpe, c, key, keySz, in, inSz, exp, &expLen);
     if (ret != 0) {
         PRINT_MSG("Generate MAC using OpenSSL failed");
     }
@@ -137,27 +143,32 @@ int test_cmac_create(ENGINE *e, void *data)
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07
     };
     int keySz;
+    unsigned long flags;
 
-    (void)data;
+    flags = *(unsigned long*)data;
     inSz  = sizeof(in);
+
+    if (flags & WE_VALGRIND_TEST) {
+        PRINT_MSG("Running wolfSSL only for valgrind test");
+    }
 
     PRINT_MSG("Testing with 256 bit KEY");
     keySz = 32;
     ret = test_cmac_create_helper(e, in, inSz, key, keySz,
-            EVP_aes_256_cbc());
+            EVP_aes_256_cbc(), flags);
 
     if (ret == 0) {
         PRINT_MSG("Testing with 128 bit KEY");
         keySz = 16;
         ret = test_cmac_create_helper(e, in, inSz, key, keySz,
-                EVP_aes_128_cbc());
+                EVP_aes_128_cbc(), flags);
     }
 
     if (ret == 0) {
         PRINT_MSG("Testing with a 192 bit KEY");
         keySz = 24;
         ret = test_cmac_create_helper(e, in, inSz, key, keySz,
-                EVP_aes_192_cbc());
+                EVP_aes_192_cbc(), flags);
     }
 
     return ret;
