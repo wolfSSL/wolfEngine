@@ -85,13 +85,11 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3Init", rc);
             ret = 0;
         }
+
         des3->init = 1;
-        if (iv == NULL) {
-            des3->ivSet = 0;
-        }
-        else {
-            des3->ivSet = 1;
-        }
+
+        /* set des3->ivSet to 1 if iv buffer passed in is not NULL */
+        des3->ivSet = (iv == NULL);
     }
 
     if (ret == 1) {

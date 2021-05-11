@@ -180,15 +180,14 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
 
     /* padding is handled by OpenSSL before passed to we_aes_cbc_decrypt */
     rc = wc_AesCbcDecrypt(&aes->aes, out, in, (unsigned int)len);
-    if (rc != 0) {
+    if (rc <= 0) {
         ret = -1;
     }
-
-    if (ret >= 0) {
+    else {
         ret = (int)len;
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_encrypt", ret);
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_decrypt", ret);
     return ret;
 }
 
