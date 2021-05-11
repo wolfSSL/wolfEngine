@@ -80,6 +80,8 @@ void EVP_MD_meth_free(EVP_MD *md);
 const unsigned char *EVP_CIPHER_CTX_iv(const EVP_CIPHER_CTX *ctx);
 void *EVP_CIPHER_CTX_get_cipher_data(const EVP_CIPHER_CTX *ctx);
 unsigned char *EVP_CIPHER_CTX_iv_noconst(EVP_CIPHER_CTX *ctx);
+int EVP_CIPHER_CTX_num(const EVP_CIPHER_CTX *ctx);
+void EVP_CIPHER_CTX_set_num(EVP_CIPHER_CTX *ctx, int num);
 
 int EVP_CIPHER_meth_set_iv_length(EVP_CIPHER *cipher, int iv_len);
 int EVP_CIPHER_meth_set_flags(EVP_CIPHER *cipher, unsigned long flags);
