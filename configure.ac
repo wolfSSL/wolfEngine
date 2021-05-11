@@ -40,6 +40,7 @@ if test "x$have_openssl" = "xyes"; then
 fi
 
 AC_RUN_IFELSE([AC_LANG_PROGRAM([
+    #include <stdlib.h>
     #include <openssl/opensslv.h>
     ],[
     #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -48,6 +49,7 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM([
 ])], [OPENSSL_110_PLUS=yes], [OPENSSL_110_PLUS=no])
 
 AC_RUN_IFELSE([AC_LANG_PROGRAM([
+    #include <stdlib.h>
     #include <openssl/opensslv.h>
     ],[
     #if OPENSSL_VERSION_NUMBER < 0x10101000L

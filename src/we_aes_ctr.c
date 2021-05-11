@@ -56,6 +56,8 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     we_AesCtr *aes;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_init");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, iv = %p, "
+                           "enc = %d]", ctx, key, iv, enc);
 
     (void)enc;
 
@@ -66,33 +68,24 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
-    if ((ret == 1) && (((key == NULL) && (iv == NULL)))) {
+    if ((ret == 1) && (key != NULL)) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
+        else {
+            aes->init = 1;
+        }
     }
 
-    if (ret == 1) {
-        /* Must have initialized wolfSSL AES object when here. */
-        aes->init = 1;
-
-        if (key != NULL) {
-            /* No decryption for CTR. */
-            rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
-                              iv, AES_ENCRYPTION);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
-                ret = 0;
-            }
-        }
-        if (iv != NULL) {
-            rc = wc_AesSetIV(&aes->aes, iv);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
-                ret = 0;
-            }
+    if ((ret == 1) && (key != NULL)) {
+        /* No decryption for CTR. */
+        rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx), iv,
+                          AES_ENCRYPTION);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
+            ret = 0;
         }
     }
 
@@ -116,11 +109,13 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                              const unsigned char *in, size_t len)
 {
-    int ret = (int)len;
+    int ret = 1;
     we_AesCtr* aes;
     int rc;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_cipher");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, out = %p, in = %p, "
+                           "len = %d]", ctx, out, in, len);
 
     /* Get the AES-CTR object to work with. */
     aes = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(ctx);
@@ -129,12 +124,27 @@ static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
-    if ((ret == (int)len) && (len != 0)) {
+
+    if (ret == 1) {
+        rc = wc_AesSetIV(&aes->aes, EVP_CIPHER_CTX_iv_noconst(ctx));
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
         rc = wc_AesCtrEncrypt(&aes->aes, out, in, (word32)len);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCtrEncrypt", rc);
             ret = -1;
         }
+    }
+    if (ret == 1) {
+        unsigned int num = EVP_CIPHER_CTX_num(ctx);
+        num = (num + len) % AES_128_KEY_SIZE;
+        EVP_CIPHER_CTX_set_num(ctx, num);
+
+        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->aes.reg, AES_BLOCK_SIZE);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ctr_cipher", ret);
@@ -160,6 +170,8 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_ctrl");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, type = %d, "
+                           "arg = %d, ptr = %p]", ctx, type, arg, ptr);
 
     (void)arg;
     (void)ptr;
@@ -189,9 +201,7 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
 /** Flags for AES-CTR method. */
 #define AES_CTR_FLAGS              \
-    (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
-     EVP_CIPH_ALWAYS_CALL_INIT   | \
-     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
+    (EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CTR_MODE)
 
 /** AES128-CTR EVP cipher method. */

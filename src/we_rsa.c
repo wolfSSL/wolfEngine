@@ -63,6 +63,8 @@ typedef struct we_Rsa
     int privKeySet:1;
     /** Indicates public key has been set into wolfSSL structure. */
     int pubKeySet:1;
+    /** Indicates message digest algorithm has been explicitly set. */
+    int mdSet:1;
 } we_Rsa;
 
 
@@ -901,7 +903,7 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
          * encrypt. */
         engineRsa->padMode = padding;
     #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-        if ((padding == RSA_PKCS1_PADDING) &&
+        if ((padding == RSA_PKCS1_PADDING) && engineRsa->mdSet &&
                                       (EVP_MD_size(engineRsa->md) != fromLen)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
             ret = -1;
@@ -1603,6 +1605,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_MD");
                 /* ptr  [in]  Signing/verification digest. */
                 rsa->md = (EVP_MD*)ptr;
+                rsa->mdSet = 1;
                 break;
             case EVP_PKEY_CTRL_GET_MD:
                 WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_GET_MD");
@@ -1620,6 +1623,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 else {
                     rsa->md = (const EVP_MD *)ptr;
+                    rsa->mdSet = 1;
                 }
                 break;
             case EVP_PKEY_CTRL_GET_RSA_OAEP_MD:
@@ -1935,6 +1939,9 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             rsa->md = EVP_get_digestbyname(value);
             if (rsa->md == NULL) {
                 ret = 0;
+            }
+            else {
+                rsa->mdSet = 1;
             }
         }
     }
