@@ -1,0 +1,26 @@
+diff -ur nginx-1.19.10/src/event/ngx_event_openssl.c nginx-1.19.10-we/src/event/ngx_event_openssl.c
+--- nginx-1.19.10/src/event/ngx_event_openssl.c	2021-04-14 01:13:59.000000000 +1000
++++ nginx-1.19.10-we/src/event/ngx_event_openssl.c	2021-05-11 11:48:14.218268368 +1000
+@@ -165,6 +165,22 @@
+ 
+ #endif
+ 
++    {
++         ENGINE *e;
++
++         ENGINE_load_dynamic();
++         e = ENGINE_by_id("libwolfengine");
++         if (e == NULL) {
++             printf("Failed to find wolfEngine.\n");
++             return 1;
++         }
++         if (ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0) != 1) {
++             printf("Failed to enable wolfEngine debug logging.\n");
++             return 1;
++         }
++         ENGINE_set_default(e, ENGINE_METHOD_ALL);
++    }
++
+ #ifndef SSL_OP_NO_COMPRESSION
+     {
+     /*
