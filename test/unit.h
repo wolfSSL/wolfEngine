@@ -86,6 +86,8 @@ typedef struct TEST_CASE {
 
 int test_logging(ENGINE *e, void *data);
 
+#define WE_VALGRIND_TEST 0x1
+
 #ifdef WE_HAVE_DIGEST
 
 int test_digest_op(const EVP_MD *md, ENGINE *e, unsigned char *msg,

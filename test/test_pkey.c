@@ -259,7 +259,7 @@ int test_pkey_dec(EVP_PKEY *pkey, ENGINE *e, unsigned char *msg, size_t msgLen,
     size_t len = cipherLen;
     unsigned char *buf;
 
-    buf = (unsigned char*)OPENSSL_malloc(cipherLen);
+    buf = (unsigned char*)OPENSSL_zalloc(cipherLen);
     if (buf == NULL) {
         err = 1;
     }

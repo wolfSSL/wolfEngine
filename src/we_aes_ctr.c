@@ -66,7 +66,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
-    if ((ret == 1) && (((key == NULL) && (iv == NULL)) || (!aes->init))) {
+    if ((ret == 1) && (((key == NULL) && (iv == NULL)))) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
