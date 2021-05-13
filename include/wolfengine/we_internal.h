@@ -79,6 +79,7 @@
 #include <wolfengine/we_openssl_bc.h>
 
 #include <wolfengine/we_logging.h>
+#include <wolfengine/we_fips.h>
 
 #if defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
     /* Function is a printf style function. Pretend parameter is string literal.
@@ -90,13 +91,6 @@
 #else
     #define WE_PRINTF_FUNC(s, v)
 #endif
-
-#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
-/*
- * Global FIPS checks flag.
- */
-extern int fipsChecks;
-#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 
 /*
  * Global random

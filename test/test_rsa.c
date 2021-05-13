@@ -20,6 +20,7 @@
  */
 
 #include "unit.h"
+#include <wolfengine/we_fips.h>
 
 #ifdef WE_HAVE_RSA
 
@@ -608,11 +609,15 @@ int test_rsa_direct_key_gen(ENGINE *e, void *data)
     if (err == 0) {
         PRINT_MSG("Check that re-enabling FIPS checks disallows 1024-bit key "
             "gen.");
-        err = ENGINE_ctrl_cmd(e, "enable_fips_checks", 1, NULL, NULL, 0) == 0;
+        err = ENGINE_ctrl_cmd(e, "enable_fips_checks",
+                              WE_FIPS_CHECK_RSA_KEY_SIZE, NULL, NULL, 0) == 0;
     }
     if (err == 0) {
         err = RSA_generate_key_ex(rsaKey, 1024, pubExp, NULL) != 0;
     }
+    /* Restore all FIPS checks. */
+    ENGINE_ctrl_cmd(e, "enable_fips_checks", WE_FIPS_CHECKS_DEFAULT, NULL, NULL,
+                    0);
 #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 
     if (pubExp != NULL) {

@@ -22,4 +22,4 @@ libwolfengine_la_SOURCES += src/we_random.c
 libwolfengine_la_SOURCES += src/we_rsa.c
 libwolfengine_la_SOURCES += src/we_tls_prf.c
 libwolfengine_la_SOURCES += src/we_wolfengine.c
-
+libwolfengine_la_SOURCES += src/we_fips.c
