@@ -102,7 +102,7 @@ void wolfEngine_Debugging_OFF(void)
 
 /**
  * Set wolfEngine logging level.
- * Deafult logging level for wolfEngine is WE_LOG_LEVEL_DEFAULT.
+ * Default logging level for wolfEngine is WE_LOG_LEVEL_DEFAULT.
  *
  * @param levelMask [IN] Bitmask of logging levels from wolfEngine_LogType
  *                  in we_logging.h.

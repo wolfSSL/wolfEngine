@@ -22,10 +22,6 @@
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
 
-#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
-int fipsChecks = 1;
-#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
-
 /** Engine bound to. */
 static ENGINE *bound = NULL;
 
@@ -1194,12 +1190,7 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
             break;
         case WOLFENGINE_CMD_ENABLE_FIPS_CHECKS:
         #if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
-            if (i > 0) {
-                fipsChecks = 1;
-            }
-            else {
-                fipsChecks = 0;
-            }
+            wolfEngine_SetFipsChecks(i);
         #else
             WOLFENGINE_MSG(WE_LOG_ENGINE, "Control command "
                 "WOLFENGINE_CMD_ENABLE_FIPS_CHECKS has no effect when "

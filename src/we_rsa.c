@@ -84,16 +84,13 @@ static int we_check_rsa_key_size(int size, int allow1024) {
     int ret = 0;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
-#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
-    if (fipsChecks == 1) {
+    if (wolfEngine_GetFipsChecks() & WE_FIPS_CHECK_RSA_KEY_SIZE) {
         ret = size == 2048 || size == 3072 || size == 4096;
         if (allow1024 == 1) {
             ret |= size == 1024;
         }
     }
-    else 
-#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
-    {
+    else {
         (void)allow1024;
         ret = size >= RSA_MIN_SIZE && size <= RSA_MAX_SIZE;
 
@@ -121,12 +118,11 @@ static int we_check_rsa_signing_md(int nid) {
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_check_rsa_md");
 
-#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
-    if (fipsChecks == 1 && nid == NID_sha1) {
+    if ((wolfEngine_GetFipsChecks() & WE_FIPS_CHECK_RSA_SHA1) &&
+        (nid == NID_sha1)) {
         ret = 0;
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "SHA-1 isn't allowed in FIPS mode.");
     }
-#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_check_rsa_md", ret);
 

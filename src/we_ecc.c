@@ -41,12 +41,11 @@ static int we_ecc_check_curve_usage(int curveId) {
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ecc_check_curve_usage");
 
-#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
-    if (fipsChecks == 1 && curveId == ECC_SECP192R1) {
+    if ((wolfEngine_GetFipsChecks() & WE_FIPS_CHECK_P192) &&
+        (curveId == ECC_SECP192R1)) {
         ret = 0;
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "P-192 isn't allowed in FIPS mode.");
     }
-#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_ecc_check_curve_usage", ret);
 
