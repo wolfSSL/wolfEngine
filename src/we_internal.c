@@ -22,6 +22,42 @@
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
 
+#ifdef WE_NO_OPENSSL_MALLOC
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+void *we_zalloc(size_t num)
+{
+    void *ret = XMALLOC(num, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (ret != NULL) {
+        XMEMSET(ret, 0, num);
+    }
+    return ret;
+}
+
+void we_clear_free(void *str, size_t num)
+{
+    if (str == NULL)
+        return;
+    if (num)
+        OPENSSL_cleanse(str, num);
+    XFREE(str, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+}
+
+void *we_memdup(const void *data, size_t siz)
+{
+    void *ret;
+
+    if (data == NULL || siz >= INT_MAX)
+        return NULL;
+
+    ret = XMALLOC(siz, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+    if (ret == NULL) {
+        return NULL;
+    }
+    return XMEMCPY(ret, data, siz);
+}
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
+#endif /* WE_NO_OPENSSL_MALLOC */
+
 /** Engine bound to. */
 static ENGINE *bound = NULL;
 

@@ -77,9 +77,34 @@
 #include <wolfssl/wolfcrypt/pwdbased.h>
 
 #include <wolfengine/we_openssl_bc.h>
-
 #include <wolfengine/we_logging.h>
 #include <wolfengine/we_fips.h>
+
+/* Defining WE_NO_OPENSSL_MALLOC will cause wolfEngine to not use the OpenSSL
+ * memory management functions (e.g. OPENSSL_malloc, OPENSSL_free, etc.).
+ * Instead, the corresponding wolfSSL functions will be used (e.g. XMALLOC,
+ * XFREE, etc.). */
+#ifdef WE_NO_OPENSSL_MALLOC
+#undef  OPENSSL_malloc
+#define OPENSSL_malloc(num)       XMALLOC((num), NULL, DYNAMIC_TYPE_TMP_BUFFER)
+#undef  OPENSSL_free
+#define OPENSSL_free(ptr)         XFREE((ptr), NULL, DYNAMIC_TYPE_TMP_BUFFER)
+#undef  OPENSSL_realloc
+#define OPENSSL_realloc(ptr, num) XREALLOC((ptr), (num), NULL, DYNAMIC_TYPE_TMP_BUFFER)
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+void *we_zalloc(size_t num);
+void we_clear_free(void *str, size_t num);
+void *we_memdup(const void *data, size_t siz);
+
+#undef  OPENSSL_zalloc
+#define OPENSSL_zalloc     we_zalloc
+#undef  OPENSSL_clear_free
+#define OPENSSL_clear_free we_clear_free
+#undef  OPENSSL_memdup
+#define OPENSSL_memdup     we_memdup
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
+#endif /* WE_NO_OPENSSL_MALLOC */
 
 #if defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
     /* Function is a printf style function. Pretend parameter is string literal.
