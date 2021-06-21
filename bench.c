@@ -396,9 +396,9 @@ static int aesgcm_dec_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
             err |= EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, sizeof(tag),
                                        tag) != 1;
             err |= EVP_DecryptUpdate(ctx, NULL, &outLen, aad, sizeof(aad)) != 1;
-            err |= EVP_DecryptUpdate(ctx, data, &outLen, data, (int)len) != 1;
-            EVP_DecryptFinal_ex(ctx, data + outLen, &outLen);
             /* Ignore error as the tag doesn't match the data. */
+            EVP_DecryptUpdate(ctx, data, &outLen, data, (int)len);
+            EVP_DecryptFinal_ex(ctx, data + outLen, &outLen);
         }
         cnt += i;
     }
