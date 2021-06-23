@@ -314,7 +314,16 @@ then
         ENABLED_TLS1_PRF="no"
         AC_MSG_WARN([--enable-tls1-prf ignored because OpenSSL doesn't have support for NID_tls1_prf.])
     else
-        AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_TLS1_PRF -DWE_HAVE_EVP_PKEY"
+        AC_CHECK_LIB(wolfssl, wc_PRF_TLS)
+        AC_CHECK_LIB(wolfssl, wc_PRF_TLSv1)
+
+        if test "$ac_cv_lib_wolfssl_wc_PRF_TLS" = "yes" && test "$ac_cv_lib_wolfssl_wc_PRF_TLSv1" = "yes"
+        then
+            AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_TLS1_PRF -DWE_HAVE_EVP_PKEY"
+        else
+            ENABLED_TLS1_PRF="no"
+            AC_MSG_WARN([--enable-tls1-prf ignored because wolfSSL doesn't have support for it.])
+        fi
     fi
 fi
 
