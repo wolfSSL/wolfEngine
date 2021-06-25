@@ -5,6 +5,6 @@
 noinst_HEADERS += include/wolfengine/we_internal.h \
                   include/wolfengine/we_openssl_bc.h 
 
-pkginclude_HEADERS = include/wolfengine/we_wolfengine.h \
-                     include/wolfengine/we_logging.h \
-                     include/wolfengine/we_fips.h
+pkginclude_HEADERS += include/wolfengine/we_wolfengine.h \
+                      include/wolfengine/we_logging.h \
+                      include/wolfengine/we_fips.h

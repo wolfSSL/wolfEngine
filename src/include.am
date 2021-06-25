@@ -2,6 +2,8 @@
 # included from Top Level Makefile.am
 # All paths should be given relative to the root
 
+libwolfengine_la_LDFLAGS = ${AM_LDFLAGS} -no-undefined -version-info ${WOLFENGINE_LIBRARY_VERSION}
+
 libwolfengine_la_SOURCES =
 libwolfengine_la_SOURCES += src/we_aes_block.c
 libwolfengine_la_SOURCES += src/we_aes_cbc_hmac.c
