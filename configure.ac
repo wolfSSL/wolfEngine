@@ -24,6 +24,21 @@ USER_CFLAGS="$CFLAGS"
 AC_PROG_CC
 AC_LANG(C)
 
+# shared library versioning
+WOLFENGINE_LIBRARY_VERSION=1:0:0
+#                          | | |
+#                   +------+ | +---+
+#                   |        |     |
+#                  current:revision:age
+#                   |        |     |
+#                   |        |     +- increment if interfaces have been added
+#                   |        |        set to zero if interfaces have been removed
+#                   |        |        or changed
+#                   |        +- increment if source code has changed
+#                   |           set to zero if current is incremented
+#                   +- increment if interfaces have been added, removed or changed
+AC_SUBST([WOLFENGINE_LIBRARY_VERSION])
+
 LIBS="$LIBS -ldl"
 
 AC_CHECK_HEADERS([openssl/engine.h])
