@@ -1795,7 +1795,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     const EC_GROUP *group;
     int curveId;
     word32 len;
-    int peerKeyLen;
+    int peerKeyLen = 0;
     unsigned char* peerKey = NULL;
     unsigned char* secret = NULL;
 

@@ -85,7 +85,7 @@ static int digest_bench(ENGINE *e, const char *alg, const EVP_MD *md,
     while (BENCH_COND(1));
 
     secs = BENCH_SECS();
-    printf("%-14s %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, len,
+    printf("%-14s %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, (long)len,
            (len * cnt) / secs / 1000.0, secs * 1000000.0 / (len * cnt));
 
     return err;
@@ -221,7 +221,7 @@ static int block_enc_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
     while (BENCH_COND(1));
 
     secs = BENCH_SECS();
-    printf("%-8s enc %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, len,
+    printf("%-8s enc %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, (long)len,
            (len * cnt) / secs / 1000.0, secs * 1000000.0 / (len * cnt));
 
     return err;
@@ -253,7 +253,7 @@ static int block_dec_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
     while (BENCH_COND(1));
 
     secs = BENCH_SECS();
-    printf("%-8s dec %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, len,
+    printf("%-8s dec %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, (long)len,
            (len * cnt) / secs / 1000.0, secs * 1000000.0 / (len * cnt));
 
     return err;
@@ -365,7 +365,7 @@ static int aesgcm_enc_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
     while (BENCH_COND(1));
 
     secs = BENCH_SECS();
-    printf("%-8s enc %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, len,
+    printf("%-8s enc %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, (long)len,
            (len * cnt) / secs / 1000.0, secs * 1000000.0 / (len * cnt));
 
     return err;
@@ -405,7 +405,7 @@ static int aesgcm_dec_bench(const char *alg, EVP_CIPHER_CTX *ctx, size_t len)
     while (BENCH_COND(1));
 
     secs = BENCH_SECS();
-    printf("%-8s dec %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, len,
+    printf("%-8s dec %5ld B/op  %10.2f kB/sec %14.6f us/B\n", alg, (long)len,
            (len * cnt) / secs / 1000.0, secs * 1000000.0 / (len * cnt));
 
     return err;

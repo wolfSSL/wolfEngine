@@ -54,26 +54,8 @@ if test "x$have_openssl" = "xyes"; then
     LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
 fi
 
-AC_RUN_IFELSE([AC_LANG_PROGRAM([
-    #include <openssl/opensslv.h>
-    ],[
-    #if OPENSSL_VERSION_NUMBER < 0x10100000L
-    exit(1);
-    #endif
-])], [OPENSSL_110_PLUS=yes], [OPENSSL_110_PLUS=no])
-
-AC_RUN_IFELSE([AC_LANG_PROGRAM([
-    #include <openssl/opensslv.h>
-    ],[
-    #if OPENSSL_VERSION_NUMBER < 0x10101000L
-    exit(1);
-    #endif
-])], [OPENSSL_111_PLUS=yes], [OPENSSL_111_PLUS=no])
-
 # DEBUG
 DEBUG_CFLAGS="-g -O0 -DWOLFENGINE_DEBUG"
-
-# DEBUG
 AX_DEBUG
 AS_IF([test "$ax_enable_debug" = "yes"],
       [AM_CFLAGS="$DEBUG_CFLAGS $AM_CFLAGS"],
@@ -654,7 +636,6 @@ then
     # Replace all options and just use -DWOLFENGINE_USER_SETTINGS
     AM_CFLAGS="-DWOLFENGINE_USER_SETTINGS"
 fi
-
 
 AX_HARDEN_CC_COMPILER_FLAGS
 
