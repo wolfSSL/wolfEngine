@@ -791,6 +791,7 @@ static int we_sha3_512_init(EVP_MD_CTX *ctx)
  * @param  len   [in]  Length of data to digest.
  * @return  1 on success and 0 on failure.
  */
+
 static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
     int ret = 1, rc;
@@ -802,11 +803,69 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 
     digest = (we_Digest *)EVP_MD_CTX_md_data(ctx);
 
-    rc = wc_HashUpdate(&digest->hash, digest->hashType, (const byte*)data,
-                       (word32)len);
-    if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashUpdate", rc);
+    if (digest == NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_DIGEST, "digest was NULL");
         ret = 0;
+    }
+
+#ifdef WE_ALIGNMENT_SAFETY
+    const word32 ALIGNMENT_REQ = 8;
+    word32 add = 0;
+    byte* tmp = NULL;
+    if (ret == 1 && (digest->hashType == WC_HASH_TYPE_SHA384 ||
+        digest->hashType == WC_HASH_TYPE_SHA512))  {
+        add = len > (WC_SHA512_BLOCK_SIZE - digest->hash.sha512.buffLen) ?
+              (WC_SHA512_BLOCK_SIZE - digest->hash.sha512.buffLen) : len;
+    }
+    /* If the conditions below are satisfied, just calling wc_HashUpdate with
+     * the passed in buffer and length can cause a memory alignment crash on
+     * certain platforms. The alternate algorithm used below (2 calls to
+     * wc_HashUpdate) avoids this crash. */
+    if (len > 0 && add > 0 && ((len - add) >= WC_SHA512_BLOCK_SIZE) &&
+        (((unsigned long)data + add) % ALIGNMENT_REQ != 0)) {
+        /* Update the hash with "add" bytes of data, which will result in
+         * an update with a full WC_SHA512_BLOCK_SIZE number of bytes with no
+         * leftovers. */
+        rc = wc_HashUpdate(&digest->hash, digest->hashType,
+            (const byte*)data, add);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashUpdate", rc);
+            ret = 0;
+        }
+        if (ret == 1) {
+            /* Allocate new, aligned buffer. */
+            tmp = (byte*)XMALLOC(len - add, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+            if (tmp == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_DIGEST, "XMALLOC",
+                    tmp);
+                ret = 0;
+            }
+        }
+        if (ret == 1) {
+            /* Copy remaining data from the unaligned buffer to the aligned one
+             * and update the hash. */
+            XMEMCPY(tmp, (byte*)data + add, len - add);
+            rc = wc_HashUpdate(&digest->hash, digest->hashType,
+                (const byte*)tmp, len - add);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashUpdate", rc);
+                ret = 0;
+            }
+        }
+
+        if (tmp != NULL) {
+            XFREE(tmp, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        }
+    }
+    else
+#endif
+    if (ret == 1) {
+        rc = wc_HashUpdate(&digest->hash, digest->hashType, (const byte*)data,
+                           (word32)len);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashUpdate", rc);
+            ret = 0;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_update", ret);

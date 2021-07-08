@@ -104,6 +104,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_NO_DYNAMIC_ENGINE"
 fi
 
+# Support for fixing memory alignment bugs at the wolfEngine level.
+AC_ARG_ENABLE([alignment-safety],
+    [AS_HELP_STRING([--enable-alignment-safety],[Fixes certain wolfCrypt alignment bugs at the wolfEngine level. (default: disabled).])],
+    [ ENABLED_ALIGNMENT_SAFETY=$enableval ],
+    [ ENABLED_ALIGNMENT_SAFETY=no ]
+    )
+
+if test "$ENABLED_ALIGNMENT_SAFETY" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_ALIGNMENT_SAFETY"
+fi
+
 # Single threaded
 AC_ARG_ENABLE([singlethreaded],
     [AS_HELP_STRING([--enable-singlethreaded],[Enable wolfEngine single threaded (default: disabled).])],
@@ -696,6 +708,7 @@ echo
 echo "   Features "
 echo "   * User settings:              $ENABLED_USERSETTINGS"
 echo "   * Dynamic engine:             $ENABLED_DYNAMIC_ENGINE"
+echo "   * Alignment safety:           $ENABLED_ALIGNMENT_SAFETY"
 echo "   * Digest:"
 echo "   *  - SHA-1:                   $ENABLED_SHA1"
 echo "   *  - SHA-224:                 $ENABLED_SHA224"
