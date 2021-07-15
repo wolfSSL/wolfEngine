@@ -80,6 +80,23 @@ AC_DEFUN([AX_CHECK_OPENSSL], [
                 OPENSSL_INCLUDES="-I$ssldir/include"
                 OPENSSL_LDFLAGS="-L$ssldir/lib"
                 OPENSSL_LIBS="-lssl -lcrypto"
+
+                OPENSSL_VERSION=$(grep -oP "(?<=define OPENSSL_VERSION_NUMBER)\s+0x[[0-9a-fA-F]]+" $ssldir/include/openssl/opensslv.h)
+                OPENSSL_VERSION_DEC=$(printf "%d" $OPENSSL_VERSION)
+                OPENSSL_110_DEC=$(printf "%d" 0x10100000)
+                OPENSSL_111_DEC=$(printf "%d" 0x10101000)
+                if test $OPENSSL_VERSION_DEC -lt $OPENSSL_110_DEC; then
+                    OPENSSL_110_PLUS=no
+                else
+                    OPENSSL_110_PLUS=yes
+                fi
+                
+                if test $OPENSSL_VERSION_DEC -lt $OPENSSL_111_DEC; then
+                    OPENSSL_111_PLUS=no
+                else
+                    OPENSSL_111_PLUS=yes
+                fi
+
                 found=true
                 AC_MSG_RESULT([yes])
                 break
