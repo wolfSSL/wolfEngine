@@ -186,7 +186,7 @@ static int we_mac_cache_key(EVP_PKEY_CTX *ctx, we_Mac *mac)
         /* Get key length and data. */
         mac->keySz = ASN1_STRING_length(key);
         data       = ASN1_STRING_get0_data(key);
-        if (data == NULL) {
+        if (data == NULL || mac->keySz < 0) {
             ret = 0;
         }
     }
@@ -195,8 +195,8 @@ static int we_mac_cache_key(EVP_PKEY_CTX *ctx, we_Mac *mac)
         if (mac->key != NULL) {
             OPENSSL_clear_free(mac->key, mac->keySz);
         }
-        /* Allocate memory to cache key. */
-        mac->key = (unsigned char *)OPENSSL_zalloc(mac->keySz);
+        /* Allocate memory to cache key, +1 for null terminator. */
+        mac->key = (unsigned char *)OPENSSL_zalloc(mac->keySz + 1);
         if (mac->key == NULL) {
             ret = 0;
         }
@@ -204,6 +204,7 @@ static int we_mac_cache_key(EVP_PKEY_CTX *ctx, we_Mac *mac)
     if (ret == 1) {
         /* Copy key data into cache. */
         XMEMCPY(mac->key, data, mac->keySz);
+        mac->key[mac->keySz] = '\0';
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_cache_key", ret);
@@ -391,13 +392,13 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                  * num  [in]  Length of key in bytes.
                  */
                 WOLFENGINE_MSG(WE_LOG_MAC, "type: EVP_PKEY_CTRL_SET_MAC_KEY");
-                if (ptr != NULL) {
+                if (ptr != NULL && num >= 0) {
                     /* Dispose of old key safely. */
                     if (mac->key != NULL) {
                         OPENSSL_clear_free(mac->key, mac->keySz);
                     }
-                    /* Allocate memory for new key. */
-                    mac->key = (unsigned char *)OPENSSL_zalloc(num);
+                    /* Allocate memory for new key, +1 for null terminator. */
+                    mac->key = (unsigned char *)OPENSSL_zalloc(num + 1);
                     if (mac->key == NULL) {
                         ret = 0;
                     }
@@ -405,6 +406,7 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                         /* Copy in key data and store size. */
                         XMEMCPY(mac->key, ptr, num);
                         mac->keySz = num;
+                        mac->key[num] = '\0';
                     }
                 }
                 else {
@@ -517,14 +519,15 @@ static int we_mac_dup(we_Mac *src, we_Mac **dst)
         mac->type  = src->type;
         mac->keySz = src->keySz;
         /* Duplicate the key if set. */
-        if (src->keySz > 0) {
-            mac->key = (unsigned char *)OPENSSL_zalloc(src->keySz);
+        if (src->keySz >= 0) {
+            mac->key = (unsigned char *)OPENSSL_zalloc(src->keySz + 1);
             if (mac->key == NULL) {
                 ret = 0;
             }
             else {
                 /* Copy over key bytes. */
                 XMEMCPY(mac->key, src->key, src->keySz);
+                mac->key[mac->keySz] = '\0';
             }
         }
         else {
