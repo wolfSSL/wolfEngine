@@ -227,7 +227,7 @@ int we_init_hmac_pkey_asn1_meth(void);
  * CMAC methods.
  */
 
-#ifdef WE_HAVE_HMAC
+#ifdef WE_HAVE_CMAC
 
 #define NID_wolfengine_cmac 101
 extern EVP_PKEY_METHOD *we_cmac_pkey_method;

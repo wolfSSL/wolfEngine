@@ -62,11 +62,10 @@ static int test_mac_generation(ENGINE *e, const EVP_MD *md, int pkeyType,
 }
 
 
-static int test_hmac_create_helper(ENGINE *e, void *data, const EVP_MD *md)
+static int test_hmac_create_helper(ENGINE *e, void *data, const EVP_MD *md,
+    unsigned char* pswd, int pswdSz)
 {
     int ret;
-    unsigned char pswd[] = "My empire of dirt";
-    int pswdSz;
 
     unsigned char exp[128];
     int expLen;
@@ -81,7 +80,6 @@ static int test_hmac_create_helper(ENGINE *e, void *data, const EVP_MD *md)
     len    = sizeof(msg);
     macLen = sizeof(mac);
     expLen = sizeof(exp);
-    pswdSz = (int)strlen((const char*)pswd);
 
     /* generate mac using OpenSSL */
     ret = test_mac_generation(NULL, md, EVP_PKEY_HMAC, pswd, pswdSz, msg,
@@ -118,52 +116,64 @@ static int test_hmac_create_helper(ENGINE *e, void *data, const EVP_MD *md)
 int test_hmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
+    unsigned char pswd[] = "My empire of dirt";
+    unsigned char bigPswd[100];
 
     PRINT_MSG("Testing with SHA1");
-    ret = test_hmac_create_helper(e, data, EVP_sha1());
+    ret = test_hmac_create_helper(e, data, EVP_sha1(), pswd, sizeof(pswd));
+    if (ret == 0) {
+        PRINT_MSG("Testing with SHA1, 0 length key");
+        ret = test_hmac_create_helper(e, data, EVP_sha1(), pswd, 0);
+    }
+    if (ret == 0) {
+        PRINT_MSG("Testing with SHA1, key length larger than block size");
+        RAND_bytes(bigPswd, sizeof(bigPswd));
+        ret = test_hmac_create_helper(e, data, EVP_sha1(), bigPswd,
+                  sizeof(bigPswd));
+    }
 
     if (ret == 0) {
         PRINT_MSG("Testing with SHA224");
-        ret = test_hmac_create_helper(e, data, EVP_sha224());
+        ret = test_hmac_create_helper(e, data, EVP_sha224(), pswd, sizeof(pswd));
     }
 
     if (ret == 0) {
         PRINT_MSG("Testing with SHA256");
-        ret = test_hmac_create_helper(e, data, EVP_sha256());
+        ret = test_hmac_create_helper(e, data, EVP_sha256(), pswd, sizeof(pswd));
     }
 
     if (ret == 0) {
         PRINT_MSG("Testing with SHA384");
-        ret = test_hmac_create_helper(e, data, EVP_sha384());
+        ret = test_hmac_create_helper(e, data, EVP_sha384(), pswd, sizeof(pswd));
     }
 
     if (ret == 0) {
         PRINT_MSG("Testing with SHA512");
-        ret = test_hmac_create_helper(e, data, EVP_sha512());
+        ret = test_hmac_create_helper(e, data, EVP_sha512(), pswd, sizeof(pswd));
     }
 
 #ifdef WE_HAVE_SHA3_224
     if (ret == 0) {
         PRINT_MSG("Testing with SHA3-224");
-        ret = test_hmac_create_helper(e, data, EVP_sha3_224());
+        ret = test_hmac_create_helper(e, data, EVP_sha3_224(), pswd, sizeof(pswd));
     }
 #endif
 #ifdef WE_HAVE_SHA3_256
     if (ret == 0) {
         PRINT_MSG("Testing with SHA3-256");
-        ret = test_hmac_create_helper(e, data, EVP_sha3_256());
+        ret = test_hmac_create_helper(e, data, EVP_sha3_256(), pswd, sizeof(pswd));
     }
 #endif
 #ifdef WE_HAVE_SHA3_384
     if (ret == 0) {
         PRINT_MSG("Testing with SHA3-384");
-        ret = test_hmac_create_helper(e, data, EVP_sha3_384());
+        ret = test_hmac_create_helper(e, data, EVP_sha3_384(), pswd, sizeof(pswd));
     }
 #endif
 #ifdef WE_HAVE_SHA3_512
     if (ret == 0) {
         PRINT_MSG("Testing with SHA3-512");
-        ret = test_hmac_create_helper(e, data, EVP_sha3_512());
+        ret = test_hmac_create_helper(e, data, EVP_sha3_512(), pswd, sizeof(pswd));
     }
 #endif
     return ret;
