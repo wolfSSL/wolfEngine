@@ -65,8 +65,57 @@ typedef struct we_Mac
     int type;
 } we_Mac;
 
-static int we_hmac_reset_key(we_Mac *mac);
-static int we_cmac_reset_key(we_Mac *mac, size_t newSize);
+/**
+ * Clear out the existing MAC key in mac and allocate a new key buffer of
+ * newKeySz bytes. Copy newKey into that buffer.
+ *
+ * @param  mac       [in]  Internal MAC object.
+ * @param  newKey    [in]  New key buffer.
+ * @param  newKeySz  [in]  New key buffer size.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_mac_set_key(we_Mac* mac, const unsigned char* newKey,
+    int newKeySz)
+{
+    int ret = 1;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_set_key");
+
+    if (mac == NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "we_mac_set_key called with NULL "
+            "mac");
+        ret = 0;
+    }
+    if (newKeySz < 0) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "we_mac_set_key called with newKeySz "
+            "< 0");
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        /* Dispose of old key. */
+        if (mac->key != NULL) {
+            OPENSSL_clear_free(mac->key, mac->keySz);
+        }
+        /* We allow the key size to be 0, which OpenSSL also allows. In that
+         * case, we need to allocate at least one byte, which we'll set to a
+         * null terminator. */
+        mac->key = (unsigned char *)OPENSSL_malloc(newKeySz + 1);
+        if (mac->key == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_malloc", mac->key);
+            ret = 0;
+        }
+        else {
+            XMEMCPY(mac->key, newKey, newKeySz);
+            mac->key[newKeySz] = '\0';
+            mac->keySz = newKeySz;
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_set_key", ret);
+
+    return ret;
+}
 
 /**
  * Create ASN.1 octet string from key in context.
@@ -166,6 +215,7 @@ static int we_mac_cache_key(EVP_PKEY_CTX *ctx, we_Mac *mac)
     int ret = 1;
     ASN1_OCTET_STRING *key;
     EVP_PKEY *pkey;
+    int dataLen;
     const unsigned char *data;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_cache_key");
@@ -193,26 +243,14 @@ static int we_mac_cache_key(EVP_PKEY_CTX *ctx, we_Mac *mac)
 
     if (ret == 1) {
         /* Get key length and data. */
-        mac->keySz = ASN1_STRING_length(key);
-        data       = ASN1_STRING_get0_data(key);
-        if (data == NULL || mac->keySz < 0) {
+        dataLen = ASN1_STRING_length(key);
+        data    = ASN1_STRING_get0_data(key);
+        if (data == NULL || dataLen < 0) {
             ret = 0;
         }
     }
     if (ret == 1) {
-        if (mac->algo == WE_HMAC_ALGO) {
-            ret = we_hmac_reset_key(mac);
-        }
-        else if (mac->algo == WE_CMAC_ALGO) {
-            ret = we_cmac_reset_key(mac, mac->keySz);
-        }
-        else {
-            ret = 0;
-        }
-    }
-    if (ret == 1) {
-        /* Copy key data into cache. */
-        XMEMCPY(mac->key, data, mac->keySz);
+        ret = we_mac_set_key(mac, data, dataLen);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_cache_key", ret);
@@ -221,41 +259,6 @@ static int we_mac_cache_key(EVP_PKEY_CTX *ctx, we_Mac *mac)
 }
 
 #ifdef WE_HAVE_HMAC
-/**
- * Clear out the existing HMAC key in mac and allocate a new key buffer large
- * enough to hold any hash block size (i.e. the largest supported block size,
- * WC_SHA3_224_BLOCK_SIZE). This is required because this function may be called
- * before the hash type is known. Set buffer to zeros.
- *
- * @param  mac  [in]  Internal MAC object.
- * @returns  1 on success and 0 on failure.
- */
-static int we_hmac_reset_key(we_Mac *mac)
-{
-    int ret = 1;
-
-    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_reset_key");
-
-    if (mac == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "we_hmac_reset_key", mac);
-        ret = 0;
-    }
-
-    if (ret == 1) {
-        /* Dispose of old key. */
-        if (mac->key != NULL) {
-            OPENSSL_clear_free(mac->key, mac->keySz);
-        }
-        mac->key = (unsigned char *)OPENSSL_zalloc(WC_SHA3_224_BLOCK_SIZE);
-        if (mac->key == NULL) {
-            ret = 0;
-        }
-    }
-
-    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_reset_key", ret);
-
-    return ret;
-}
 
 /**
  * Initialize the MAC for HMAC operations.
@@ -282,14 +285,28 @@ static int we_mac_hmac_init(EVP_PKEY_CTX *ctx, we_Mac *mac)
             WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HashGetBlockSize", blockSize);
             ret = 0;
         }
-        if (ret == 1) {
+    }
+    if (ret == 1 && mac->keySz < blockSize) {
+        /* If the key is smaller than the block size of the underlying hash
+         * algorithm, we need to pad the key with zeroes to the block
+         * size. */
+        mac->key = OPENSSL_realloc(mac->key, blockSize);
+        if (mac->key == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_realloc", 
+                mac->key);
+            ret = 0;
+        }
+        else {
+            XMEMSET(mac->key + mac->keySz, 0, blockSize - mac->keySz);
             mac->keySz = blockSize;
-            rc = wc_HmacSetKey(&mac->state.hmac, mac->type,
-                     (const byte*)mac->key, (word32)mac->keySz);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacSetKey", rc);
-                ret = 0;
-            }
+        }
+    }
+    if (ret == 1) {
+        rc = wc_HmacSetKey(&mac->state.hmac, mac->type,
+                 (const byte*)mac->key, (word32)mac->keySz);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacSetKey", rc);
+            ret = 0;
         }
     }
 
@@ -300,45 +317,6 @@ static int we_mac_hmac_init(EVP_PKEY_CTX *ctx, we_Mac *mac)
 #endif
 
 #ifdef WE_HAVE_CMAC
-/**
- * Clear out the existing CMAC key in mac and allocate a new key buffer of
- * newSize bytes. Set buffer to zeros.
- *
- * @param  mac  [in]  Internal MAC object.
- * @returns  1 on success and 0 on failure.
- */
-static int we_cmac_reset_key(we_Mac *mac, size_t newSize)
-{
-    int ret = 1;
-
-    WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_reset_key");
-
-    if (mac == NULL) {
-        WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "we_cmac_reset_key called with NULL "
-            "mac");
-        ret = 0;
-    }
-    if (ret == 1 && newSize <= 0) {
-        WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "we_cmac_reset_key called with "
-            "newSize <= 0");
-        ret = 0;
-    }
-
-    if (ret == 1) {
-        /* Dispose of old key. */
-        if (mac->key != NULL) {
-            OPENSSL_clear_free(mac->key, mac->keySz);
-        }
-        mac->key = (unsigned char *)OPENSSL_zalloc(newSize);
-        if (mac->key == NULL) {
-            ret = 0;
-        }
-    }
-
-    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_reset_key", ret);
-
-    return ret;
-}
 
 /**
  * Initialize the MAC for CMAC operations.
@@ -375,6 +353,7 @@ static int we_mac_cmac_init(EVP_PKEY_CTX *ctx, we_Mac *mac)
 }
 #endif
 
+#ifdef WE_HAVE_HMAC
 /**
  * Convert an EVP_MD to a hash type that wolfSSL understands.
  *
@@ -395,7 +374,7 @@ static int we_mac_md_to_hash_type(EVP_MD *md)
 
     return ret;
 }
-
+#endif
 
 /**
  * Function that is called for setting key, EVP_MD, and digest init.
@@ -486,20 +465,7 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                  */
                 WOLFENGINE_MSG(WE_LOG_MAC, "type: EVP_PKEY_CTRL_SET_MAC_KEY");
                 if (ptr != NULL && num >= 0) {
-                    if (mac->algo == WE_HMAC_ALGO) {
-                        ret = we_hmac_reset_key(mac);
-                    }
-                    else if (mac->algo == WE_CMAC_ALGO) {
-                        ret = we_cmac_reset_key(mac, num);
-                    }
-                    else {
-                        ret = 0;
-                    }
-                    if (ret == 1) {
-                        /* Copy in key data and store size. */
-                        XMEMCPY(mac->key, ptr, num);
-                        mac->keySz = num;
-                    }
+                    ret = we_mac_set_key(mac, ptr, num);
                 }
                 else {
                     ret = 0;
@@ -612,19 +578,7 @@ static int we_mac_dup(we_Mac *src, we_Mac **dst)
         mac->keySz = src->keySz;
         /* Duplicate the key if set. */
         if (src->keySz >= 0) {
-            if (mac->algo == WE_HMAC_ALGO) {
-                ret = we_hmac_reset_key(mac);
-            }
-            else if (mac->algo == WE_CMAC_ALGO) {
-                ret = we_cmac_reset_key(mac, mac->keySz);
-            }
-            else {
-                ret = 0;
-            }
-            if (ret == 1) {
-                /* Copy over key bytes. */
-                XMEMCPY(mac->key, src->key, src->keySz);
-            }
+            ret = we_mac_set_key(mac, src->key, src->keySz);
         }
         else {
             mac->key = NULL;
