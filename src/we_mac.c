@@ -1015,6 +1015,13 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, data = %p, "
                            "dataSz = %zu]", ctx, data, dataSz);
 
+    /* If this function is called with an input buffer length of 0, we need to
+     * return success immediately. This is how OpenSSL handles this scenario. */
+    if (dataSz == 0) {
+        WOLFENGINE_MSG(WE_LOG_MAC, "dataSz == 0, returning success.");
+        return 1;
+    }
+
     /* Validate parameters. */
     if ((ctx == NULL) || (data == NULL)) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
