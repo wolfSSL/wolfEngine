@@ -1048,6 +1048,57 @@ static int we_hmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
         }
     }
 
+#ifdef WE_ALIGNMENT_SAFETY
+    const word32 ALIGNMENT_REQ = 8;
+    word32 add = 0;
+    word32 internalBuffLen = 0;
+    byte* tmp = NULL;
+    if (ret == 1 && (mac->state.hmac.macType == WC_HASH_TYPE_SHA384 ||
+        mac->state.hmac.macType == WC_HASH_TYPE_SHA512))  {
+        internalBuffLen = mac->state.hmac.hash.sha512.buffLen;
+        add = dataSz > (WC_SHA512_BLOCK_SIZE - internalBuffLen) ?
+              (WC_SHA512_BLOCK_SIZE - internalBuffLen) : dataSz;
+    }
+    /* If the conditions below are satisfied, just calling wc_HmacUpdate with
+     * the passed in buffer and length can cause a memory alignment crash on
+     * certain platforms. The alternate algorithm used below (2 calls to
+     * wc_HmacUpdate) avoids this crash. */
+    if (dataSz > 0 && add > 0 && ((dataSz - add) >= WC_SHA512_BLOCK_SIZE) &&
+        (((unsigned long)data + add) % ALIGNMENT_REQ != 0)) {
+        /* Update the hash with "add" bytes of data, which will result in
+         * an update with a full WC_SHA512_BLOCK_SIZE number of bytes with no
+         * leftovers. */
+        rc = wc_HmacUpdate(&mac->state.hmac, (const byte*)data, add);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacUpdate", rc);
+            ret = 0;
+        }
+        if (ret == 1) {
+            /* Allocate new, aligned buffer. */
+            tmp = (byte*)XMALLOC(dataSz - add, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+            if (tmp == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "XMALLOC", tmp);
+                ret = 0;
+            }
+        }
+        if (ret == 1) {
+            /* Copy remaining data from the unaligned buffer to the aligned one
+             * and update the hash. */
+            XMEMCPY(tmp, (byte*)data + add, dataSz - add);
+            rc = wc_HmacUpdate(&mac->state.hmac, (const byte*)tmp,
+                     dataSz - add);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacUpdate", rc);
+                ret = 0;
+            }
+        }
+
+        if (tmp != NULL) {
+            XFREE(tmp, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+        }
+    }
+    else
+#endif
     if (ret == 1) {
         /* Update the wolfCrypt HMAC object with more data. */
         rc = wc_HmacUpdate(&mac->state.hmac, (const byte*)data, (word32)dataSz);
