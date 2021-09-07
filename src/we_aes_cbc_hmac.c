@@ -183,9 +183,9 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         /* MAC the handshake message/data. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "MAC handshake message/data: len = %d",
                        pLen - off);
-        rc = wc_HmacUpdate(&aes->hmac, in + off, pLen - off);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
+        rc = we_hmac_update(&aes->hmac, in + off, pLen - off);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "we_hmac_update", rc);
             ret = -1;
         }
     }
@@ -308,9 +308,9 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* MAC the record header. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Generate MAC over record header: "
                        "len = %d", aes->pLen);
-        rc = wc_HmacUpdate(&aes->hmac, aes->tlsAAD, aes->pLen);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
+        rc = we_hmac_update(&aes->hmac, aes->tlsAAD, aes->pLen);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "we_hmac_update", rc);
             ret = -1;
         }
     }
@@ -319,9 +319,9 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* MAC the message/input. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Generate MAC over message/input, "
                        "len = %d", ret);
-        rc = wc_HmacUpdate(&aes->hmac, out + off, ret);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacUpdate", rc);
+        rc = we_hmac_update(&aes->hmac, out + off, ret);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "we_hmac_update", rc);
             ret = -1;
         }
     }
@@ -478,10 +478,10 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                             /* MAC the record header. */
                             WOLFENGINE_MSG(WE_LOG_CIPHER,
                                            "Updating MAC with record header");
-                            rc = wc_HmacUpdate(&aes->hmac, tls, arg);
-                            if (rc != 0) {
+                            rc = we_hmac_update(&aes->hmac, tls, arg);
+                            if (rc != 1) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                                      "wc_HmacUpdate", rc);
+                                                      "we_hmac_update", rc);
                                 ret = -1;
                             }
                         }
