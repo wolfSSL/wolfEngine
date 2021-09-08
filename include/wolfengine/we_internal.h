@@ -220,6 +220,7 @@ extern EVP_PKEY_ASN1_METHOD *we_hmac_pkey_asn1_method;
 
 int we_init_hmac_pkey_meth(void);
 int we_init_hmac_pkey_asn1_meth(void);
+int we_hmac_update(Hmac*, const void*, size_t);
 
 #endif /* WE_HAVE_HMAC */
 
