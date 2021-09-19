@@ -1229,10 +1229,22 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 break;
 
-            /* Initialize digest. */
             case EVP_PKEY_CTRL_DIGESTINIT:
+                /* Nothing to do. */
                 WOLFENGINE_MSG(WE_LOG_PK,
                                "received type: EVP_PKEY_CTRL_DIGEST");
+                break;
+
+            case EVP_PKEY_CTRL_PKCS7_SIGN:
+                /* Nothing to do. */
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "received type: EVP_PKEY_CTRL_PKCS7_SIGN");
+                break;
+
+            case EVP_PKEY_CTRL_CMS_SIGN:
+                /* Nothing to do. */
+                WOLFENGINE_MSG(WE_LOG_PK,
+                               "received type: EVP_PKEY_CTRL_CMS_SIGN");
                 break;
         #endif
 
