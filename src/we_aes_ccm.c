@@ -31,6 +31,9 @@
 #define CCM_NONCE_MIN_SZ        7
 #endif
 
+/* Default OpenSSL size for nonce. */
+#define CCM_NONCE_DEF_SZ        12
+
 /* Older versions of OpenSSL don't define these. */
 #ifndef EVP_CCM_TLS_EXPLICIT_IV_LEN
 #define EVP_CCM_TLS_EXPLICIT_IV_LEN     EVP_GCM_TLS_EXPLICIT_IV_LEN
@@ -639,7 +642,7 @@ static int we_init_aesccm_meth(EVP_CIPHER *cipher)
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aesccm_meth");
 
-    ret = EVP_CIPHER_meth_set_iv_length(cipher, CCM_NONCE_MAX_SZ);
+    ret = EVP_CIPHER_meth_set_iv_length(cipher, CCM_NONCE_DEF_SZ);
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_flags(cipher, AES_CCM_FLAGS);
     }
