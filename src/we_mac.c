@@ -1041,7 +1041,7 @@ int we_hmac_update(Hmac* hmac, const void *data, size_t dataSz) {
         }
         if (ret == 1) {
             /* Allocate new, aligned buffer. */
-            tmp = (byte*)XMALLOC(dataSz - add, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+            tmp = (byte*)XMALLOC(WC_SHA512_BLOCK_SIZE, NULL, DYNAMIC_TYPE_TMP_BUFFER);
             if (tmp == NULL) {
                 WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "XMALLOC", tmp);
                 ret = 0;
@@ -1049,13 +1049,21 @@ int we_hmac_update(Hmac* hmac, const void *data, size_t dataSz) {
         }
         if (ret == 1) {
             /* Copy remaining data from the unaligned buffer to the aligned one
-             * and update the hash. */
-            XMEMCPY(tmp, (byte*)data + add, dataSz - add);
-            rc = wc_HmacUpdate(hmac, (const byte*)tmp,
-                     dataSz - add);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacUpdate", rc);
-                ret = 0;
+             * and update the hash iteratively, one block's worth of data at a
+             * time. */
+            byte* nextData = (byte*)data + add;
+            for (size_t remaining = dataSz - add; remaining > 0;) {
+                size_t nextLen = (remaining <= WC_SHA512_BLOCK_SIZE) ?
+                    remaining : WC_SHA512_BLOCK_SIZE;
+                XMEMCPY(tmp, nextData, nextLen);
+                rc = wc_HmacUpdate(hmac, (const byte*)tmp, nextLen);
+                if (rc != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacUpdate", rc);
+                    ret = 0;
+                    break;
+                }
+                nextData += nextLen;
+                remaining -= nextLen;
             }
         }
 
