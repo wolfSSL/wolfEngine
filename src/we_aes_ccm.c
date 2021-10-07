@@ -181,22 +181,23 @@ static int we_aes_ccm_tls_cipher(we_AesCcm *aes, unsigned char *out,
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ccm_tls_cipher");
 
+    if (aes->tagLen == 0) {
+        aes->tagLen = EVP_CCM_TLS_TAG_LEN;
+    }
+
     XMEMCPY(aes->iv + EVP_CCM_TLS_FIXED_IV_LEN, in,
             EVP_CCM_TLS_EXPLICIT_IV_LEN);
     /* Doing the TLS variation. */
     if (aes->enc) {
         /* Plaintext is input buffer without IV and tag. */
-        word32 encLen = (word32)len - EVP_CCM_TLS_EXPLICIT_IV_LEN
-                                    - EVP_CCM_TLS_TAG_LEN;
+        word32 encLen = (word32)len - EVP_CCM_TLS_EXPLICIT_IV_LEN - aes->tagLen;
         if (!aes->ivSet) {
             /* Set Nonce/IV. */
-            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES-CCM Nonce");
             rc = wc_AesCcmSetNonce(&aes->aes, aes->iv, aes->ivLen);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCcmSetNonce", rc);
                 ret = 0;
             }
-            aes->ivSet = 1;
         }
         if ((ret == 1) && (len != 0)) {
             /* Copy the explicit part of the IV into out. */
@@ -210,9 +211,8 @@ static int we_aes_ccm_tls_cipher(we_AesCcm *aes, unsigned char *out,
                                      out + EVP_CCM_TLS_EXPLICIT_IV_LEN,
                                      in + EVP_CCM_TLS_EXPLICIT_IV_LEN,
                                      encLen, aes->iv, aes->ivLen,
-                                     out + len - EVP_CCM_TLS_TAG_LEN,
-                                     EVP_CCM_TLS_TAG_LEN, aes->aad,
-                                     aes->aadLen);
+                                     out + len - aes->tagLen, aes->tagLen,
+                                     aes->aad, aes->aadLen);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCcmEncrypt_ex", rc);
                 ret = 0;
@@ -224,15 +224,14 @@ static int we_aes_ccm_tls_cipher(we_AesCcm *aes, unsigned char *out,
             WOLFENGINE_BUFFER(WE_LOG_CIPHER, out + EVP_CCM_TLS_EXPLICIT_IV_LEN,
                               encLen);
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "AES-CCM auth tag:");
-            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out + len - EVP_CCM_TLS_TAG_LEN,
-                              EVP_CCM_TLS_TAG_LEN);
+            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out + len - aes->tagLen,
+                              aes->tagLen);
             ret = (int)len;
         }
     }
     else {
         /* Cipher text is input buffer without IV and tag. */
-        word32 decLen = (word32)len - EVP_CCM_TLS_EXPLICIT_IV_LEN
-                                    - EVP_CCM_TLS_TAG_LEN;
+        word32 decLen = (word32)len - EVP_CCM_TLS_EXPLICIT_IV_LEN - aes->tagLen;
         if (len != 0) {
             /* Copy the explicit part of the IV from input. */
             XMEMCPY(aes->iv + EVP_CCM_TLS_FIXED_IV_LEN, in,
@@ -245,8 +244,8 @@ static int we_aes_ccm_tls_cipher(we_AesCcm *aes, unsigned char *out,
                                   out + EVP_CCM_TLS_EXPLICIT_IV_LEN,
                                   in + EVP_CCM_TLS_EXPLICIT_IV_LEN,
                                   decLen, aes->iv, aes->ivLen,
-                                  in + len - EVP_CCM_TLS_TAG_LEN,
-                                  EVP_CCM_TLS_TAG_LEN, aes->aad, aes->aadLen);
+                                  in + len - aes->tagLen, aes->tagLen,
+                                  aes->aad, aes->aadLen);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCcmDecrypt", rc);
                 ret = 0;
@@ -338,6 +337,10 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         }
     }
     else if ((ret == 1) && (len > 0)) {
+        if (aes->tagLen == 0) {
+            /* Default to full size tag. */
+            aes->tagLen = EVP_CCM_TLS_TAG_LEN;
+        }
         if (aes->enc) {
             if (!aes->ivSet) {
                 /* Set extern IV. */
@@ -350,8 +353,6 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 }
             }
             if (ret == 1) {
-                /* Tag always full size on calculation. */
-                aes->tagLen = EVP_CCM_TLS_TAG_LEN;
                 /* Encrypt the data. */
                 rc = wc_AesCcmEncrypt_ex(&aes->aes, out, in, (word32)len,
                                          aes->iv, aes->ivLen, aes->tag,
@@ -577,14 +578,17 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     }
                     if (ret == 1) {
                         len -= EVP_CCM_TLS_EXPLICIT_IV_LEN;
+                        if (aes->tagLen == 0) {
+                            aes->tagLen = EVP_CCM_TLS_TAG_LEN;
+                        }
                         if (!aes->enc) {
-                            if (len < EVP_CCM_TLS_TAG_LEN) {
+                            if (len < (unsigned int)aes->tagLen) {
                                 WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
                                                      "Length in AAD invalid");
                                 ret = 0;
                             }
                             else {
-                                len -= EVP_CCM_TLS_TAG_LEN;
+                                len -= aes->tagLen;
                             }
                         }
                     }
@@ -594,7 +598,7 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                         aes->aad[arg - 1] = len;
                         /* Encryption to do TLS path. */
                         aes->tls = 1;
-                        ret = EVP_CCM_TLS_TAG_LEN;
+                        ret = aes->tagLen;
                     }
                 }
                 break;
