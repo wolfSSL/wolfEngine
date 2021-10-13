@@ -12,6 +12,7 @@ AC_CONFIG_HEADERS([include/config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
 dnl m4_include([m4/ax_check_openssl.m4])
+dnl m4_include([m4/ax_check_wolfssl.m4])
 
 AM_INIT_AUTOMAKE([1.11  -Wall -Werror -Wno-portability foreign tar-ustar subdir-objects no-define color-tests])
 LT_INIT([disable-static pic-only])
@@ -41,6 +42,7 @@ AC_SUBST([WOLFENGINE_LIBRARY_VERSION])
 
 LIBS="$LIBS -ldl"
 
+# OpenSSL
 AC_CHECK_HEADERS([openssl/engine.h])
 
 AX_CHECK_OPENSSL(
@@ -52,6 +54,18 @@ if test "x$have_openssl" = "xyes"; then
     LIBS="$LIBS $OPENSSL_LIBS"
     CFLAGS="$CFLAGS $OPENSSL_INCLUDES"
     LDFLAGS="$LDFLAGS $OPENSSL_LDFLAGS"
+fi
+
+# wolfSSL
+AX_CHECK_WOLFSSL(
+    [have_wolfssl=yes],
+    AC_MSG_FAILURE([could not locate wolfSSL])
+)
+
+if test "x$have_wolfssl" = "xyes"; then
+    LIBS="$LIBS $WOLFSSL_LIBS"
+    CFLAGS="$CFLAGS $WOLFSSL_INCLUDES"
+    LDFLAGS="$LDFLAGS $WOLFSSL_LDFLAGS"
 fi
 
 # DEBUG
@@ -653,7 +667,7 @@ AX_HARDEN_CC_COMPILER_FLAGS
 
 OPTION_FLAGS="$CFLAGS $CPPFLAGS $AM_CFLAGS"
 
-LIBS="$LIBS -lwolfssl -ldl -lm"
+LIBS="$LIBS -ldl -lm"
 
 if test "$GCC" = "yes"
 then

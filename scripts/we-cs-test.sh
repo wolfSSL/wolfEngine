@@ -42,9 +42,13 @@ do_trap() {
 
 trap do_trap INT TERM
 
+TLS13_ALL_CIPHERS="TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256:TLS_AES_128_CCM_SHA256:TLS_AES_128_CCM_8_SHA256"
+
 TLS13_CIPHERS=(
     TLS_AES_256_GCM_SHA384
     TLS_AES_128_GCM_SHA256
+    TLS_AES_128_CCM_SHA256
+    TLS_AES_128_CCM_8_SHA256
 )
 TLS12_CIPHERS=(
     ECDHE-ECDSA-AES256-GCM-SHA384
@@ -53,6 +57,14 @@ TLS12_CIPHERS=(
     ECDHE-ECDSA-AES128-GCM-SHA256
     ECDHE-RSA-AES128-GCM-SHA256
     DHE-RSA-AES128-GCM-SHA256
+    ECDHE-ECDSA-AES256-CCM8
+    ECDHE-ECDSA-AES256-CCM
+    DHE-RSA-AES256-CCM8
+    DHE-RSA-AES256-CCM
+    ECDHE-ECDSA-AES128-CCM8
+    ECDHE-ECDSA-AES128-CCM
+    DHE-RSA-AES128-CCM8
+    DHE-RSA-AES128-CCM
     ECDHE-ECDSA-AES256-SHA384
     ECDHE-RSA-AES256-SHA384
     DHE-RSA-AES256-SHA256
@@ -67,6 +79,10 @@ TLS12_CIPHERS=(
     DHE-RSA-AES128-SHA
     AES256-GCM-SHA384
     AES128-GCM-SHA256
+    AES256-CCM8
+    AES256-CCM
+    AES128-CCM8
+    AES128-CCM
     AES256-SHA256
     AES128-SHA256
     AES256-SHA
@@ -269,22 +285,32 @@ check_log() {
     # Check wolfEngine's cipher code was used.
     grep we_aes_gcm_cipher $TMP_LOG >/dev/null 2>&1
     GCM_GREP=$?
+    grep we_aes_ccm_cipher $TMP_LOG >/dev/null 2>&1
+    CCM_GREP=$?
     grep we_aes_cbc_cipher $TMP_LOG >/dev/null 2>&1
     CBC_GREP=$?
     grep we_des3_cbc_cipher $TMP_LOG >/dev/null 2>&1
     DES3CBC_GREP=$?
-    if [ $GCM_GREP != 0 -a $CBC_GREP != 0 -a $DES3CBC_GREP != 0 ]; then
-        printf "\t\tCipher not wolfEngine...failed\n"
-        FAIL=$((FAIL+1))
-    fi
+    CIPHER_WOLFENGINE=0
     if [ $GCM_GREP = 0 ]; then
         WE_ALGS="$WE_ALGS AES-GCM"
+        CIPHER_WOLFENGINE=1
+    fi
+    if [ $CCM_GREP = 0 ]; then
+        WE_ALGS="$WE_ALGS AES-CCM"
+        CIPHER_WOLFENGINE=1
     fi
     if [ $CBC_GREP = 0 ]; then
         WE_ALGS="$WE_ALGS AES-CBC"
+        CIPHER_WOLFENGINE=1
     fi
     if [ $DES3CBC_GREP = 0 ]; then
         WE_ALGS="$WE_ALGS DES3-CBC"
+        CIPHER_WOLFENGINE=1
+    fi
+    if [ "$CIPHER_WOLFENGINE" = "0" ]; then
+        printf "\t\tCipher not wolfEngine...failed\n"
+        FAIL=$((FAIL+1))
     fi
 
     printf "$WE_ALGS\n"
@@ -297,7 +323,7 @@ start_openssl_server() {
     ($OPENSSL_DIR/apps/openssl s_server -www \
          -cert $CERT_DIR/server-cert.pem -key $CERT_DIR/server-key.pem \
          -dcert $CERT_DIR/server-ecc.pem -dkey $CERT_DIR/ecc-key.pem \
-         -accept $OPENSSL_PORT \
+         -accept $OPENSSL_PORT $OPENSSL_ALL_CIPHERS \
          >$LOG_SERVER 2>&1
     ) &
     OPENSSL_SERVER_PID=$!
@@ -318,10 +344,10 @@ start_we_openssl_server() {
 
     (OPENSSL_CONF=engine.conf \
      $OPENSSL_DIR/apps/openssl s_server -www \
-         -engine wolfSSL \
+         -engine $WOLFENGINE_NAME \
          -cert $CERT_DIR/server-cert.pem -key $CERT_DIR/server-key.pem \
          -dcert $CERT_DIR/server-ecc.pem -dkey $CERT_DIR/ecc-key.pem \
-         -accept $WE_OPENSSL_PORT \
+         -accept $WE_OPENSSL_PORT $OPENSSL_ALL_CIPHERS \
          >$LOG_WE_SERVER 2>&1
     ) &
     WE_OPENSSL_SERVER_PID=$!
@@ -344,7 +370,7 @@ do_we_client() {
          OPENSSL_CONF=engine.conf \
          LD_LIBRARY_PATH="./.libs:$LD_LIBRARY_PATH" \
          $OPENSSL_DIR/apps/openssl s_client \
-             -engine wolfSSL \
+             -engine $WOLFENGINE_NAME \
              -cipher $CIPHER $TLS_VERSION \
              -curves $CURVES \
              -connect localhost:$OPENSSL_PORT \
@@ -355,7 +381,7 @@ do_we_client() {
          OPENSSL_CONF=engine.conf \
          LD_LIBRARY_PATH="./.libs:$LD_LIBRARY_PATH" \
          $OPENSSL_DIR/apps/openssl s_client \
-             -engine wolfSSL \
+             -engine $WOLFENGINE_NAME \
              -ciphersuites $CIPHER $TLS_VERSION \
              -curves $CURVES \
              -connect localhost:$OPENSSL_PORT \
@@ -504,7 +530,7 @@ do_configure() {
         printf "Setting up wolfEngine\n"
         printf "\tConfigure ... "
         ./configure LDFLAGS="-L$OPENSSL_DIR" --with-openssl=$OPENSSL_DIR \
-            --enable-debug &>$LOG_FILE
+           $WITH_WOLFSSL --enable-debug &>$LOG_FILE
         if [ "$?" = "0" ]; then
             printf "done\n"
         else
@@ -668,6 +694,16 @@ else
     VERSIONS="1.0.2 1.1.1"
 fi
 
+if [ "$WOLFSSL_DIR" != "" ]; then
+    WITH_WOLFSSL="--with-wolfssl=$WOLFSSL_DIR"
+    if [ -d "$WOLFSSL_DIR/lib" ]; then
+        WOLFSSL_LIBDIR=":$WOLFSSL_DIR/lib"
+    else
+        WOLFSSL_LIBDIR=":$WOLFSSL_DIR"
+    fi
+fi
+export OPENSSL_ENGINES="$PWD/.libs"
+
 CURVES=prime256v1
 for VERSION in $VERSIONS
 do
@@ -679,17 +715,23 @@ do
     if [ "$VERSION" = "1.0.2" ]; then
         setup_openssl_102h
         OPENSSL_DIR="${OPENSSL_1_0_2_SOURCE}"
+        OPENSSL_ALL_CIPHERS="-cipher ALL"
+        WOLFENGINE_NAME=wolfengine
     fi
     if [ "$VERSION" = "1.1.0" ]; then
         setup_openssl_110j
         OPENSSL_DIR="${OPENSSL_1_1_0_SOURCE}"
+        OPENSSL_ALL_CIPHERS="-cipher ALL"
+        WOLFENGINE_NAME=libwolfengine
     fi
     if [ "$VERSION" = "1.1.1" ]; then
         setup_openssl_111b
         OPENSSL_DIR="${OPENSSL_1_1_1_SOURCE}"
+        OPENSSL_ALL_CIPHERS="-cipher ALL -ciphersuites $TLS13_ALL_CIPHERS"
+        WOLFENGINE_NAME=libwolfengine
     fi
 
-    export LD_LIBRARY_PATH=$OPENSSL_DIR
+    export LD_LIBRARY_PATH=$OPENSSL_DIR$WOLFSSL_LIBDIR
 
     do_configure
     if [ "$NO_TEST_CLIENT" = "" ]; then
