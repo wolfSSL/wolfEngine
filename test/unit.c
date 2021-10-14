@@ -344,7 +344,7 @@ TEST_CASE test_case[] = {
 };
 #define TEST_CASE_CNT   (int)(sizeof(test_case) / sizeof(*test_case))
 
-static void usage()
+static void usage(void)
 {
     printf("\n");
     printf("Usage: unit.test [options]\n");
@@ -370,7 +370,7 @@ static ENGINE *testEngine = NULL;
 static int stop = 0;
 static int secs = 10;
 
-static int LockInit()
+static int LockInit(void)
 {
     int err = 0;
 
@@ -382,27 +382,27 @@ static int LockInit()
     return err;
 }
 
-static void LockFree()
+static void LockFree(void)
 {
     CRYPTO_THREAD_lock_free(testLock);
 }
 
-static int LockRW()
+static int LockRW(void)
 {
     return CRYPTO_THREAD_write_lock(testLock) != 1;
 }
 
-static int UnlockRW()
+static int UnlockRW(void)
 {
     return CRYPTO_THREAD_unlock(testLock) != 1;
 }
 
-static int LockRO()
+static int LockRO(void)
 {
     return CRYPTO_THREAD_read_lock(testLock) != 1;
 }
 
-static int UnlockRO()
+static int UnlockRO(void)
 {
     return CRYPTO_THREAD_unlock(testLock) != 1;
 }

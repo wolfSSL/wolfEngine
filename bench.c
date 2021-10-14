@@ -1140,7 +1140,7 @@ BENCH_ALG bench_alg[] = {
 };
 #define BENCH_ALG_COUNT  (int)(sizeof(bench_alg) / sizeof(*bench_alg))
 
-static void usage()
+static void usage(void)
 {
     printf("\n");
     printf("Usage: bench [options]\n");

@@ -165,7 +165,7 @@ wolfSSL_Mutex* we_rng_mutex = &we_global_rng_mutex;
  *
  * @returns  1 on success and 0 on failure.
  */
-static int we_init_random()
+static int we_init_random(void)
 {
     int ret = 1;
     int rc;
@@ -201,7 +201,7 @@ static int we_init_random()
 /**
  * Free the global random number generator object.
  */
-static void we_final_random()
+static void we_final_random(void)
 {
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_final_random");
 
