@@ -214,7 +214,7 @@ static int test_pbe_sha1_des3_pbkdf1_op(const unsigned char *in, size_t inLen,
         sizeof(pbeParamPbe), in, inLen, out, outLen, enc_dec);
 }
 
-static int test_pbe_sha1_des3_pbkdf1()
+static int test_pbe_sha1_des3_pbkdf1(void)
 {
     int err;
     unsigned char pbeEnc[sizeof(pbeData) + 8];
@@ -257,7 +257,7 @@ static int test_pbe_pbes2_aes128_cbc_op(const unsigned char *in, size_t inLen,
         sizeof(pbeParamPbes2Aes128Cbc), in, inLen, out, outLen, enc_dec);
 }
 
-static int test_pbe_pbes2_aes128_cbc()
+static int test_pbe_pbes2_aes128_cbc(void)
 {
     int err;
     unsigned char pbeEnc[sizeof(pbeData) + 16];
@@ -300,7 +300,7 @@ static int test_pbe_pbes2_aes256_cbc_op(const unsigned char *in, size_t inLen,
         sizeof(pbeParamPbes2Aes256Cbc), in, inLen, out, outLen, enc_dec);
 }
 
-static int test_pbe_pbes2_aes256_cbc()
+static int test_pbe_pbes2_aes256_cbc(void)
 {
     int err;
     unsigned char pbeEnc[sizeof(pbeData) + 16];
