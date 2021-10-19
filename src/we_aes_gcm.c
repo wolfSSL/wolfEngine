@@ -58,6 +58,14 @@ typedef struct we_AesGcm
     unsigned char *aad;
     /** Length of AAD stored. */
     int            aadLen;
+#ifdef WE_AES_GCM_DECRYPT_ON_FINAL
+    /* Buffer to hold input data when we_aes_gcm_cipher called to decrypt
+     * with no tag. */
+    unsigned char *decryptBuf;
+    int            decryptBufLen;
+#endif
+    /** Flag to indicate if there was a tag error during decryption. */
+    int            tagErr:1;
     /** Flag to indicate whether object initialized. */
     unsigned int   init:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
@@ -147,6 +155,14 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
         if (aes->aad != NULL) {
             OPENSSL_free(aes->aad);
         }
+    #ifdef WE_AES_GCM_DECRYPT_ON_FINAL
+        if (aes->decryptBuf != NULL) {
+            OPENSSL_free(aes->decryptBuf);
+            aes->decryptBuf = NULL;
+        }
+        aes->decryptBufLen = 0;
+    #endif
+        aes->tagErr = 0;
     }
 
     return ret;
@@ -242,6 +258,61 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
 }
 
 /**
+ * Decrypt the ciphertext and check the tag. If the tag is bad, aes->tagErr will
+ * be set to 1, but the return value will still be 1 (success).
+ *
+ * @param  aes  [in,out]  wolfEngine AES object.
+ * @param  out  [out]     Buffer to store decrypted result.
+ * @param  in   [in]      Ciphertext to decrypt.
+ * @param  len  [in]      Length of ciphertext.
+ * @return 1 on success and -1 on failure.
+ */
+static int we_aes_gcm_decrypt(we_AesGcm* aes, unsigned char *out,
+                              const unsigned char *in, size_t len)
+{
+    int ret = 1;
+    int rc = 0;
+
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_decrypt");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [aes = %p, out = %p, in = %p, "
+                           "len = %zu]", aes, out, in, len);
+    if (aes == NULL || out == NULL || in == NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Bad parameter.");
+        ret = -1;
+    }
+
+    if (ret == 1) {
+        /* Decrypt the data, use with AAD to verify tag is correct. */
+        rc = wc_AesGcmDecrypt(&aes->aes, out, in, (word32)len, aes->iv,
+                              aes->ivLen, aes->tag, aes->tagLen,
+                              aes->aad, aes->aadLen);
+        if (rc == AES_GCM_AUTH_E) {
+            /* Defer reporting the tag failure until "final" gets
+             * called.*/
+            aes->tagErr = 1;
+        }
+        else if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt",
+                rc);
+            ret = -1;
+        }
+        else {
+            WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
+                "(AES-GCM):", len);
+            WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
+            WOLFENGINE_MSG(WE_LOG_CIPHER,
+                "Caching nonce/IV to aes->iv");
+            /* Cache nonce/IV to guard against accidental reuse. */
+            XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_gcm_decrypt", ret);
+
+    return ret;
+}
+
+/**
  * Encrypt/decrypt the data.
  * One-shot encrypt/decrypt - not streaming.
  *
@@ -262,6 +333,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     int rc;
     we_AesGcm *aes;
     unsigned char *p;
+    int decryptFinal = 0;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_cipher");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, out = %p, in = %p, "
@@ -274,6 +346,8 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
+
+    decryptFinal = (!aes->enc && len == 0 && in == NULL);
 
     if ((ret == 1) && aes->tls) {
         ret = we_aes_gcm_tls_cipher(aes, out, in, len);
@@ -296,7 +370,8 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         }
     }
     /* Length may be zero for cases with AAD data only (GMAC) */
-    else if ((ret == 1) && (out != NULL) && (in != NULL || aes->aadLen > 0)) {
+    else if ((ret == 1) && (out != NULL) && (in != NULL || aes->aadLen > 0) &&
+             !decryptFinal) {
         if (aes->enc) {
             if (!aes->ivSet) {
                 /* Set extern IV. */
@@ -330,48 +405,77 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, aes->tag, aes->tagLen);
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching nonce/IV to aes->iv");
 
-                /* Cache nonce/IV. */
+                /* Cache nonce/IV to guard against accidental reuse. */
                 XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
             }
         }
         else {
-            /* Decrypt the data, use with AAD to verify tag is correct. */
-            rc = wc_AesGcmDecrypt(&aes->aes, out, in, (word32)len, aes->iv,
-                                  aes->ivLen, aes->tag, aes->tagLen,
-                                  aes->aad, aes->aadLen);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt_ex", rc);
-                ret = -1;
+        #ifdef WE_AES_GCM_DECRYPT_ON_FINAL
+            if (aes->tagLen == 0) {
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "No tag yet, deferring "
+                    "decryption until \"final\" called with tag.");
+                if (aes->decryptBuf != NULL) {
+                    OPENSSL_free(aes->decryptBuf);
+                }
+                aes->decryptBuf = (unsigned char*)OPENSSL_malloc(len);
+                if (aes->decryptBuf == NULL) {
+                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                        "OPENSSL_malloc", aes->decryptBuf);
+                    ret = -1;
+                }
+                else {
+                    XMEMCPY(aes->decryptBuf, in, len);
+                    aes->decryptBufLen = len;
+                }
             }
-            if (ret == 1) {
-
-                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
-                                       "(AES-GCM):", len);
-                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
-                WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching nonce/IV to aes->iv");
-
-                /* Cache nonce/IV. */
-                XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
+            else
+        #endif
+            {
+                ret = we_aes_gcm_decrypt(aes, out, in, len);
             }
         }
 
-        /* Dispose of any AAD - all used now. */
-        OPENSSL_free(aes->aad);
-        aes->aad = NULL;
-        aes->aadLen = 0;
+    #ifdef WE_AES_GCM_DECRYPT_ON_FINAL
+        if (aes->enc || (!aes->enc && aes->tagLen > 0))
+    #endif
+        {
+            /* Dispose of any AAD - all used now. */
+            OPENSSL_free(aes->aad);
+            aes->aad = NULL;
+            aes->aadLen = 0;
+        }
         if (ret == 1) {
             ret = (int)len;
         }
     }
     else if ((ret == 1) && (len == 0)) {
-        /* Final called and nothing to do - no data output. */
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "Final called, nothing to do");
+    #ifdef WE_AES_GCM_DECRYPT_ON_FINAL
+        if (!aes->enc) {
+            ret = we_aes_gcm_decrypt(aes, out, aes->decryptBuf,
+                aes->decryptBufLen);
+
+            OPENSSL_free(aes->decryptBuf);
+            aes->decryptBuf = NULL;
+            aes->decryptBufLen = 0;
+        }
+    #endif
+
+        if (ret == 1) {
+            if (aes->tagErr) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "AES-GCM: tag error.");
+                ret = -1;
+            }
+            else {
+                ret = 0;
+            }
+        }
+
         if (aes->aad != NULL) {
             OPENSSL_free(aes->aad);
             aes->aad = NULL;
             aes->aadLen = 0;
         }
-        ret = 0;
+        aes->tagErr = 0;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_gcm_cipher", ret);
@@ -431,6 +535,11 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 aes->init = 1;
                 /* Not doing GCM for TLS unless ctrl function called. */
                 aes->tls = 0;
+            #ifdef WE_AES_GCM_DECRYPT_ON_FINAL
+                aes->decryptBuf = NULL;
+                aes->decryptBufLen = 0;
+            #endif
+                aes->tagErr = 0;
                 break;
 
             case EVP_CTRL_AEAD_SET_IVLEN:
