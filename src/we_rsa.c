@@ -23,6 +23,14 @@
 
 #ifdef WE_HAVE_RSA
 
+/*
+ * Macros
+ * ------
+ * WE_RSA_USE_GLOBAL_RNG:
+ *     Use the global wolfEngine RNG when an RNG is needed, as opposed to a
+ *     local one.
+ */
+
 /* Maximum DER digest size, taken from wolfSSL. Sum of the maximum size of the
    encoded digest, algorithm tag, and sequence tag. */
 #define MAX_DER_DIGEST_SZ 98
@@ -43,7 +51,7 @@ typedef struct we_Rsa
 {
     /** wolfSSL structure for holding RSA key data. */
     RsaKey key;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_RSA_USE_GLOBAL_RNG
     /** Random number generator for RSA operations. */
     WC_RNG rng;
 #endif
@@ -353,19 +361,22 @@ static int we_rsa_init(RSA *rsa)
         }
     }
 
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_RSA_USE_GLOBAL_RNG
     if (ret == 1) {
         rc = wc_InitRng(&engineRsa->rng);
         if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                  "wc_InitRng", rc);
             ret = 0;
         }
     }
 #endif
+
 #ifdef WC_RSA_BLINDING
     if (ret == 1) {
         /* Set RNG for use when performing private operations or generating
          * random padding. */
-    #ifndef WE_SINGLE_THREADED
+    #ifndef WE_RSA_USE_GLOBAL_RNG
         rc = wc_RsaSetRNG(&engineRsa->key, &engineRsa->rng);
     #else
         rc = wc_RsaSetRNG(&engineRsa->key, we_rng);
@@ -391,9 +402,9 @@ static int we_rsa_init(RSA *rsa)
     }
 
     if ((ret == 0) && (engineRsa != NULL)) {
-        /* Disopse of the wolfSSL RSA key, RNG and internal object on failure.
+        /* Dispose of the wolfSSL RSA key, RNG and internal object on failure.
          */
-    #ifndef WE_SINGLE_THREADED
+    #ifndef WE_RSA_USE_GLOBAL_RNG
         wc_FreeRng(&engineRsa->rng);
     #endif
         wc_FreeRsaKey(&engineRsa->key);
@@ -422,7 +433,7 @@ static int we_rsa_finish(RSA *rsa)
         /* Remove reference to internal RSA object. */
         RSA_set_ex_data(rsa, WE_RSA_EX_DATA_IDX, NULL);
         /* Dispose of the wolfSSL RNG, RSA key and internal object. */
-    #ifndef WE_SINGLE_THREADED
+    #ifndef WE_RSA_USE_GLOBAL_RNG
         wc_FreeRng(&engineRsa->rng);
     #endif
         wc_FreeRsaKey(&engineRsa->key);
@@ -448,7 +459,7 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
 {
     int ret;
     const EVP_MD *mdMGF1 = NULL;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_RSA_USE_GLOBAL_RNG
     WC_RNG *rng = &rsa->rng;
 #else
     WC_RNG *rng = we_rng;
@@ -459,6 +470,14 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
                            "toLen = %zu, to = %p, rsa = %p]", fromLen,
                            from, toLen, to, rsa);
+
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    ret = wc_LockMutex(we_rng_mutex);
+    if (ret != 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
+        return -1;
+    }
+#endif
 
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
@@ -510,6 +529,10 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
             ret = -1;
     }
+
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    wc_UnLockMutex(we_rng_mutex);
+#endif
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pub_enc_int", ret);
 
@@ -764,7 +787,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
     int ret = 1;
     unsigned int tLen = (unsigned int)toLen;
     const EVP_MD *mdMGF1;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_RSA_USE_GLOBAL_RNG
     WC_RNG *rng = &rsa->rng;
 #else
     WC_RNG *rng = we_rng;
@@ -775,6 +798,14 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
                            "toLen = %zu, to = %p, rsa = %p]", fromLen, from,
                            toLen, to, rsa);
+
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    ret = wc_LockMutex(we_rng_mutex);
+    if (ret != 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
+        return -1;
+    }
+#endif
 
     switch (rsa->padMode) {
         case RSA_PKCS1_PADDING:
@@ -832,6 +863,10 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
             ret = -1;
     }
+
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    wc_UnLockMutex(we_rng_mutex);
+#endif
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_priv_enc_int", ret);
 
@@ -936,7 +971,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     int ret = 1;
     unsigned int tLen = (unsigned int)toLen;
     const EVP_MD *mdMGF1;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_RSA_USE_GLOBAL_RNG
     WC_RNG *rng = &rsa->rng;
 #else
     WC_RNG *rng = we_rng;
@@ -968,11 +1003,23 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                 break;
             case RSA_NO_PADDING:
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
-                ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
-                    &tLen, &rsa->key, RSA_PUBLIC_DECRYPT, rng);
-                if (ret < 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
+            #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+                if (wc_LockMutex(we_rng_mutex) != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
                     ret = -1;
+                }
+                else
+            #endif
+                {
+                    ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
+                        &tLen, &rsa->key, RSA_PUBLIC_DECRYPT, rng);
+                    if (ret < 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
+                        ret = -1;
+                    }
+            #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+                    wc_UnLockMutex(we_rng_mutex);
+            #endif
                 }
                 break;
             case RSA_PKCS1_PSS_PADDING:
@@ -1175,7 +1222,7 @@ static int we_rsa_keygen_int(we_Rsa *rsa, RSA **osslKey, int bits, long e)
 {
     int ret = 1;
     int rc = 0;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_RSA_USE_GLOBAL_RNG
     WC_RNG *rng = &rsa->rng;
 #else
     WC_RNG *rng = we_rng;
@@ -1186,7 +1233,7 @@ static int we_rsa_keygen_int(we_Rsa *rsa, RSA **osslKey, int bits, long e)
                            "bits = %d, e = %ld]", rsa, osslKey, bits, e);
 
     /* Validate parameters. */
-    if (rsa == NULL) {
+    if (ret == 1 && rsa == NULL) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "we_rsa_keygen_int: rsa NULL");
         ret = 0;
     }
@@ -1203,11 +1250,24 @@ static int we_rsa_keygen_int(we_Rsa *rsa, RSA **osslKey, int bits, long e)
     }
 
     if (ret == 1) {
-        /* Generate and RSA key with wolfSSL. */
-        rc = wc_MakeRsaKey(&rsa->key, bits, e, rng);
+    #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+        rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_MakeRsaKey", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
             ret = 0;
+        }
+        else
+    #endif
+        {
+            /* Generate and RSA key with wolfSSL. */
+            rc = wc_MakeRsaKey(&rsa->key, bits, e, rng);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_MakeRsaKey", rc);
+                ret = 0;
+            }
+    #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+            wc_UnLockMutex(we_rng_mutex);
+    #endif
         }
     }
 
@@ -1354,7 +1414,7 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
         }
     }
 
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_RSA_USE_GLOBAL_RNG
     if (ret == 1) {
         rc = wc_InitRng(&rsa->rng);
         if (rc != 0) {
@@ -1376,9 +1436,9 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
     if ((ret == 0) && (rsa != NULL)) {
         /* Dispose of the wolfSSL RSA key, RNG and internal object on failure.
          */
-#ifndef WE_SINGLE_THREADED
+    #ifndef WE_RSA_USE_GLOBAL_RNG
         wc_FreeRng(&rsa->rng);
-#endif
+    #endif
         wc_FreeRsaKey(&rsa->key);
         OPENSSL_free(rsa);
     }
@@ -1405,7 +1465,7 @@ static void we_rsa_pkey_cleanup(EVP_PKEY_CTX *ctx)
         /* Remove reference to internal RSA object. */
         EVP_PKEY_CTX_set_data(ctx, NULL);
         /* Free the wolfSSL RSA key. */
-    #ifndef WE_SINGLE_THREADED
+    #ifndef WE_RSA_USE_GLOBAL_RNG
         wc_FreeRng(&rsa->rng);
     #endif
         wc_FreeRsaKey(&rsa->key);
@@ -2466,7 +2526,7 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
 #ifdef WC_RSA_BLINDING
     /* Always need RNG. */
     if (ret == 1) {
-    #ifndef WE_SINGLE_THREADED
+    #ifndef WE_RSA_USE_GLOBAL_RNG
         rc = wc_RsaSetRNG(&rsa->key, &rsa->rng);
     #else
         rc = wc_RsaSetRNG(&rsa->key, we_rng);
