@@ -50,3 +50,5 @@
 /scripts/*.log
 *.gcno
 *.gcda
+.vs
+x64

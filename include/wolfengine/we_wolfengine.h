@@ -22,6 +22,12 @@
 #ifndef WOLFENGINE_H
 #define WOLFENGINE_H
 
+#ifdef WOLFENGINE_USER_SETTINGS
+#include "user_settings.h"
+#endif
+
+#include <wolfengine/we_visibility.h>
+
 /* OpenSSL 3.0.0 has deprecated the ENGINE API. */
 #define OPENSSL_API_COMPAT      10101
 
@@ -30,10 +36,10 @@
 #define WOLFENGINE_FATAL_ERROR -1
 
 /* Engine id - implementation uses wolfSSL */
-extern const char *wolfengine_id;
+WOLFENGINE_API extern const char *wolfengine_id;
 /* Engine name ... or description.  */
-extern const char *wolfengine_name;
+WOLFENGINE_API extern const char *wolfengine_name;
 
-void ENGINE_load_wolfengine(void);
+WOLFENGINE_API void ENGINE_load_wolfengine(void);
 
 #endif /* WOLFENGINE_H */

@@ -24,9 +24,12 @@
 
 #ifdef WOLFENGINE_USER_SETTINGS
     #include "user_settings.h"
+#else
+    #include <wolfssl/options.h>
 #endif
 
-#include <wolfssl/options.h>
+#include <wolfengine/we_visibility.h>
+
 
 enum wolfEngine_FipsCheck {
     /* check that RSA key size is valid */
@@ -47,8 +50,8 @@ enum wolfEngine_FipsCheck {
 };
 
 /* Set FIPS checks, bitmask of wolfEngine_FipsCheck. */
-void wolfEngine_SetFipsChecks(long checksMask);
+WOLFENGINE_API void wolfEngine_SetFipsChecks(long checksMask);
 /* Get FIPS checks mask. */
-long wolfEngine_GetFipsChecks(void);
+WOLFENGINE_API long wolfEngine_GetFipsChecks(void);
 
 #endif /* WE_FIPS_H */

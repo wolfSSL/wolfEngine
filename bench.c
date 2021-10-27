@@ -25,8 +25,9 @@
 
 #ifdef WOLFENGINE_USER_SETTINGS
 #include <user_settings.h>
-#endif
+#else
 #include <wolfssl/options.h>
+#endif
 #include <wolfssl/wolfcrypt/wc_port.h>
 
 #include <wolfengine/we_wolfengine.h>

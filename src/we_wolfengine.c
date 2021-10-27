@@ -22,14 +22,16 @@
 #include <wolfengine/we_internal.h>
 #include <wolfengine/we_wolfengine.h>
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#ifdef _WIN32
+WOLFENGINE_API const char *wolfengine_id = "wolfEngine.dll";
+#elif OPENSSL_VERSION_NUMBER >= 0x10100000L
 /* Engine id - implementation uses wolfSSL */
-const char *wolfengine_id = "libwolfengine";
+WOLFENGINE_API const char *wolfengine_id = "libwolfengine";
 #else
-const char *wolfengine_id = "wolfengine";
+WOLFENGINE_API const char *wolfengine_id = "wolfengine";
 #endif
 /* Engine name ... or description.  */
-const char *wolfengine_name = "An engine using wolfSSL";
+WOLFENGINE_API const char *wolfengine_name = "An engine using wolfSSL";
 
 /**
  * Allocate and bind a wolfEngine ENGINE and return a pointer to it.

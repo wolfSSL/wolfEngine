@@ -29,8 +29,9 @@
 
 #ifdef WOLFENGINE_USER_SETTINGS
 #include <user_settings.h>
-#endif
+#else
 #include <wolfssl/options.h>
+#endif
 #include <wolfssl/wolfcrypt/wc_port.h>
 #include <wolfssl/wolfcrypt/rsa.h>
 
@@ -41,11 +42,6 @@
 #include <openssl/aes.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 #include <openssl/kdf.h>
-#endif
-
-#include <wolfssl/options.h>
-#ifdef WOLFENGINE_USER_SETTINGS
-    #include "user_settings.h"
 #endif
 
 #include <wolfengine/we_logging.h>

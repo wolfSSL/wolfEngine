@@ -109,9 +109,9 @@ int test_dh_pgen(ENGINE *e, void *data)
     DH *dhWolfEngine;
     DH *dhOpenSSL = NULL;
     const DH_METHOD *method = NULL;
-    const BIGNUM *p;
-    const BIGNUM *q;
-    const BIGNUM *g;
+    const BIGNUM *p = NULL;
+    const BIGNUM *q = NULL;
+    const BIGNUM *g = NULL;
 
     (void)data;
 
@@ -346,8 +346,8 @@ int test_dh_pkey(ENGINE *e, void *data)
     DH *dh;
     const DH_METHOD *method = NULL;
     EVP_PKEY *params = NULL;
-    BIGNUM *p;
-    BIGNUM *g;
+    BIGNUM *p = NULL;
+    BIGNUM *g = NULL;
 
     (void)data;
 

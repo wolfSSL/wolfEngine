@@ -30,6 +30,8 @@
 #define WOLFENGINE_MAX_LOG_WIDTH 120
 #endif
 
+#include <wolfengine/we_visibility.h>
+
 /* wolfEngine debug logging support can be compiled in by defining
  * WOLFENGINE_DEBUG or by using the --enable-debug configure option.
  *
@@ -104,17 +106,17 @@ enum wolfEngine_LogComponents {
 typedef void (*wolfEngine_Logging_cb)(const int logLevel,
                                       const int component,
                                       const char *const logMessage);
-int wolfEngine_SetLoggingCb(wolfEngine_Logging_cb logF);
+WOLFENGINE_API int wolfEngine_SetLoggingCb(wolfEngine_Logging_cb logF);
 
 /* turn logging on, only if compiled in */
-int  wolfEngine_Debugging_ON(void);
+WOLFENGINE_API int  wolfEngine_Debugging_ON(void);
 /* turn logging off */
-void wolfEngine_Debugging_OFF(void);
+WOLFENGINE_API void wolfEngine_Debugging_OFF(void);
 
 /* Set logging level, bitmask of wolfEngine_LogType */
-int wolfEngine_SetLogLevel(int levelMask);
+WOLFENGINE_API int wolfEngine_SetLogLevel(int levelMask);
 /* Set which components are logged, bitmask of wolfEngine_LogComponents */
-int wolfEngine_SetLogComponents(int componentMask);
+WOLFENGINE_API int wolfEngine_SetLogComponents(int componentMask);
 
 #ifdef WOLFENGINE_DEBUG
 
@@ -127,18 +129,28 @@ int wolfEngine_SetLogComponents(int componentMask);
 #define WOLFENGINE_ERROR_FUNC_NULL(type, funcName, ret)                  \
     WOLFENGINE_ERROR_FUNC_NULL_LINE(type, funcName, ret, __FILE__, __LINE__)
 
+/* Some defined as WOLFENGINE_API to allow for unit testing */
+WOLFENGINE_LOCAL
 void WOLFENGINE_ENTER(int type, const char* msg);
+WOLFENGINE_LOCAL
 void WOLFENGINE_LEAVE(int type, const char* msg, int ret);
+WOLFENGINE_API
 void WOLFENGINE_MSG(int type, const char* fmt, ...);
+WOLFENGINE_LOCAL
 void WOLFENGINE_MSG_VERBOSE(int type, const char* fmt, ...);
+WOLFENGINE_API
 void WOLFENGINE_ERROR_LINE(int type, int err, const char* file, int line);
+WOLFENGINE_API
 void WOLFENGINE_ERROR_MSG_LINE(int type, const char* msg, const char* file,
                                int line);
+WOLFENGINE_LOCAL
 void WOLFENGINE_ERROR_FUNC_LINE(int type, const char* funcName, int ret,
                                 const char* file, int line);
+WOLFENGINE_LOCAL
 void WOLFENGINE_ERROR_FUNC_NULL_LINE(int type, const char* funcName,
                                      const void *ret, const char* file,
                                      int line);
+WOLFENGINE_LOCAL
 void WOLFENGINE_BUFFER(int type, const unsigned char* buffer,
                        unsigned int length);
 

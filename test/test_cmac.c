@@ -21,7 +21,9 @@
 
 #include "unit.h"
 #undef AES_BLOCK_SIZE
+#ifndef WOLFENGINE_USER_SETTINGS
 #include <wolfssl/options.h>
+#endif
 #include <wolfssl/wolfcrypt/cmac.h>
 
 #ifdef WE_HAVE_CMAC
