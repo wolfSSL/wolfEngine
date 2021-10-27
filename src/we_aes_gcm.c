@@ -397,7 +397,6 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 }
             }
             if (ret == 1) {
-
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %zu bytes "
                                        "(AES-GCM):", len);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
@@ -427,6 +426,8 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                     XMEMCPY(aes->decryptBuf, in, len);
                     aes->decryptBufLen = len;
                 }
+                /* No data decrypted, yet, so return 0. */
+                ret = 0;
             }
             else
         #endif
@@ -453,10 +454,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         if (!aes->enc) {
             ret = we_aes_gcm_decrypt(aes, out, aes->decryptBuf,
                 aes->decryptBufLen);
-
-            OPENSSL_free(aes->decryptBuf);
-            aes->decryptBuf = NULL;
-            aes->decryptBufLen = 0;
+            aes->tagLen = 0;
         }
     #endif
 
@@ -469,6 +467,20 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 ret = 0;
             }
         }
+
+    #ifdef WE_AES_GCM_DECRYPT_ON_FINAL
+        if (!aes->enc) {
+            if (ret != -1) {
+                /* Return the length of decryption now that we've actually
+                 * decrypted. */
+                ret = aes->decryptBufLen;
+            }
+
+            OPENSSL_free(aes->decryptBuf);
+            aes->decryptBuf = NULL;
+            aes->decryptBufLen = 0;
+        }
+    #endif
 
         if (aes->aad != NULL) {
             OPENSSL_free(aes->aad);
