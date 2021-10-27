@@ -50,3 +50,20 @@
 /scripts/*.log
 *.gcno
 *.gcda
+
+# Visual Studio files to ignore
+.vs
+x64
+Release
+DLL Release
+Debug
+DLL Debug
+test.rc
+test.aps
+test/resource.h
+
+# Eclipse files to ignore
+.autotools
+.cproject
+.project
+.settings

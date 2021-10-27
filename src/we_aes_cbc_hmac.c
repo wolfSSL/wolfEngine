@@ -207,7 +207,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         /* Put padding after MAC. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Adding padding after MAC");
         pLen += SHA256_DIGEST_LENGTH;
-        pb = len - pLen - 1;
+        pb = (unsigned char)(len - pLen - 1);
         for (; pLen < (int)len; pLen++) {
             out[pLen] = pb;
         }

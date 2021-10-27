@@ -71,6 +71,9 @@ fi
 AC_CHECK_HEADERS([wolfssl/wolfcrypt/kdf.h])
 AC_CHECK_FUNCS([wc_DhSetNamedKey])
 
+# Export symbols in dynamic lib
+CFLAGS="$CFLAGS -DBUILDING_WOLFENGINE"
+
 # DEBUG
 DEBUG_CFLAGS="-g -O0 -DWOLFENGINE_DEBUG"
 AX_DEBUG

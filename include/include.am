@@ -7,4 +7,5 @@ noinst_HEADERS += include/wolfengine/we_internal.h \
 
 pkginclude_HEADERS += include/wolfengine/we_wolfengine.h \
                       include/wolfengine/we_logging.h \
-                      include/wolfengine/we_fips.h
+                      include/wolfengine/we_fips.h \
+                      include/wolfengine/we_visibility.h
