@@ -23,8 +23,13 @@
 #include <wolfengine/we_internal.h>
 
 #ifdef WE_HAVE_ECC
+
 /*
- * ECC
+ * Macros
+ * ------
+ * WE_ECC_USE_GLOBAL_RNG:
+ *     Use the global wolfEngine RNG when an RNG is needed, as opposed to a
+ *     local one.
  */
 
 /**
@@ -272,7 +277,7 @@ typedef struct we_Ecc
 {
     /** wolfSSL ECC key structure to hold private/public key. */
     ecc_key        key;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     /** wolfSSL random number generator. */
     WC_RNG         rng;
 #endif
@@ -348,7 +353,7 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
             ret = 0;
         }
     }
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     if (ret == 1) {
         rc = wc_InitRng(&ecc->rng);
         if (rc != 0) {
@@ -360,7 +365,7 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
     (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
     if (ret == 1) {
         /* Set the random number generator for use in EC operations. */
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
         rc = wc_ecc_set_rng(&ecc->key, &ecc->rng);
 #else
         rc = wc_ecc_set_rng(&ecc->key, we_rng);
@@ -377,7 +382,7 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
     }
 
     if (ret == 0 && ecc != NULL) {
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
         wc_FreeRng(&ecc->rng);
 #endif
         /* Make sure wolfSSL EC key is freed if initialized. */
@@ -423,7 +428,7 @@ static int we_ec_p192_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_SINGLE_THREADED
+        #ifndef WE_ECC_USE_GLOBAL_RNG
             wc_FreeRng(&ecc->rng);
         #endif
             wc_ecc_free(&ecc->key);
@@ -465,7 +470,7 @@ static int we_ec_p224_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_SINGLE_THREADED
+        #ifndef WE_ECC_USE_GLOBAL_RNG
             wc_FreeRng(&ecc->rng);
         #endif
             wc_ecc_free(&ecc->key);
@@ -508,7 +513,7 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_SINGLE_THREADED
+        #ifndef WE_ECC_USE_GLOBAL_RNG
             wc_FreeRng(&ecc->rng);
         #endif
             wc_ecc_free(&ecc->key);
@@ -551,7 +556,7 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_SINGLE_THREADED
+        #ifndef WE_ECC_USE_GLOBAL_RNG
             wc_FreeRng(&ecc->rng);
         #endif
             wc_ecc_free(&ecc->key);
@@ -595,7 +600,7 @@ static int we_ec_p521_init(EVP_PKEY_CTX *ctx)
             /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_SINGLE_THREADED
+        #ifndef WE_ECC_USE_GLOBAL_RNG
             wc_FreeRng(&ecc->rng);
         #endif
             wc_ecc_free(&ecc->key);
@@ -658,7 +663,7 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
         OPENSSL_free(ecc->peerKey);
         ecc->peerKey = NULL;
 #endif
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
         wc_FreeRng(&ecc->rng);
 #endif
         wc_ecc_free(&ecc->key);
@@ -773,14 +778,27 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
     if (ret == 1 && sig != NULL) {
         /* Sign the data with wolfSSL EC key object. */
         outLen = (word32)*sigLen;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
         rc = wc_ecc_sign_hash(tbs, (word32)tbsLen, sig, &outLen, &ecc->rng,
                               &ecc->key);
 #else
-        rc = wc_ecc_sign_hash(tbs, (word32)tbsLen, sig, &outLen, we_rng,
-                              &ecc->key);
-#endif
+#ifndef WE_SINGLE_THREADED
+        rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            ret = 0;
+        }
+        else
+#endif /* !WE_SINGLE_THREADED */
+        {
+            rc = wc_ecc_sign_hash(tbs, (word32)tbsLen, sig, &outLen, we_rng,
+                                  &ecc->key);
+        #ifndef WE_SINGLE_THREADED
+            wc_UnLockMutex(we_rng_mutex);
+        #endif
+        }
+#endif /* !WE_ECC_USE_GLOBAL_RNG */
+        if (ret == 1 && rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash", rc);
             ret = 0;
         }
@@ -1005,12 +1023,25 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 
     if (ret == 1) {
         /* Generate a new EC key with wolfSSL. */
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
         rc = wc_ecc_make_key_ex(&ecc->rng, len, &ecc->key, ecc->curveId);
 #else
-        rc = wc_ecc_make_key_ex(we_rng, len, &ecc->key, ecc->curveId);
-#endif
+#ifndef WE_SINGLE_THREADED
+        rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            ret = 0;
+        }
+        else
+#endif /* !WE_SINGLE_THREADED */
+        {
+            rc = wc_ecc_make_key_ex(we_rng, len, &ecc->key, ecc->curveId);
+        #ifndef WE_SINGLE_THREADED
+            wc_UnLockMutex(we_rng_mutex);
+        #endif
+        }
+#endif /* !WE_ECC_USE_GLOBAL_RNG */
+        if (ret == 1 && rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_make_key_ex", rc);
             ret = 0;
         }
@@ -1116,43 +1147,57 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
             }
 
             if (ret == 1) {
-                if (ecc->kdfType == EVP_PKEY_ECDH_KDF_NONE) {
-                    len = (word32)*keyLen;
-                    /* Calculate shared secret using wolfSSL. */
-                    rc = wc_ecc_shared_secret(&ecc->key, &peer, key, &len);
-                    if (rc != 0) {
-                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                              "wc_ecc_shared_secret", rc);
-                        ret = 0;
-                    }
+            #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
+                && !defined(WE_SINGLE_THREADED)
+                rc = wc_LockMutex(we_rng_mutex);
+                if (rc != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+                    ret = 0;
                 }
-                else {
-                    /* Maximum output size supported for curves supported. */
-                    unsigned char out[72];
-
-                    /* Get buffer length. */
-                    len = (word32)sizeof(out);
-                    /* Calculate shared secret using wolfSSL. */
-                    rc = wc_ecc_shared_secret(&ecc->key, &peer, out, &len);
-                    if (rc != 0) {
-                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                              "wc_ecc_shared_secret", rc);
-                        ret = 0;
-                    }
-                    if (ret == 1) {
-                        /* Get wolfCrypt hash algorithm to use. */
-                        enum wc_HashType hash =
-                            we_nid_to_wc_hash_type(EVP_MD_type(ecc->kdfMd));
-                        /* KDF secret to key. */
-                        rc = wc_X963_KDF(hash, out, len, ecc->kdfUkm,
-                                         ecc->kdfUkmLen, key, (word32)*keyLen);
+                else
+            #endif
+                {
+                    if (ecc->kdfType == EVP_PKEY_ECDH_KDF_NONE) {
+                        len = (word32)*keyLen;
+                        /* Calculate shared secret using wolfSSL. */
+                        rc = wc_ecc_shared_secret(&ecc->key, &peer, key, &len);
                         if (rc != 0) {
                             WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                                   "wc_ecc_shared_secret", rc);
                             ret = 0;
                         }
                     }
+                    else {
+                        /* Maximum output size supported for curves supported. */
+                        unsigned char out[72];
+
+                        /* Get buffer length. */
+                        len = (word32)sizeof(out);
+                        /* Calculate shared secret using wolfSSL. */
+                        rc = wc_ecc_shared_secret(&ecc->key, &peer, out, &len);
+                        if (rc != 0) {
+                            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                                  "wc_ecc_shared_secret", rc);
+                            ret = 0;
+                        }
+                        if (ret == 1) {
+                            /* Get wolfCrypt hash algorithm to use. */
+                            enum wc_HashType hash =
+                                we_nid_to_wc_hash_type(EVP_MD_type(ecc->kdfMd));
+                            /* KDF secret to key. */
+                            rc = wc_X963_KDF(hash, out, len, ecc->kdfUkm,
+                                             ecc->kdfUkmLen, key, (word32)*keyLen);
+                            if (rc != 0) {
+                                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_X963_KDF", rc);
+                                ret = 0;
+                            }
+                        }
+                    }
                 }
+            #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
+                && !defined(WE_SINGLE_THREADED)
+                wc_UnLockMutex(we_rng_mutex);
+            #endif
             }
             if (ret == 1) {
                 /* Return length of secret. */
@@ -1701,7 +1746,7 @@ static int we_ec_key_keygen(EC_KEY *key)
     int curveId;
     ecc_key ecc;
     ecc_key* pEcc = NULL;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     WC_RNG rng;
     WC_RNG *pRng = NULL;
 #else
@@ -1738,7 +1783,7 @@ static int we_ec_key_keygen(EC_KEY *key)
             }
         }
     }
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     if (ret == 1) {
         rc = wc_InitRng(&rng);
         if (rc != 0) {
@@ -1753,10 +1798,23 @@ static int we_ec_key_keygen(EC_KEY *key)
         pEcc = &ecc;
 
         /* Generate key. */
-        rc = wc_ecc_make_key_ex(pRng, len, &ecc, curveId);
+#if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+        rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_make_key_ex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
             ret = 0;
+        }
+        else
+#endif
+        {
+            rc = wc_ecc_make_key_ex(pRng, len, &ecc, curveId);
+        #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+            wc_UnLockMutex(we_rng_mutex);
+        #endif
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_make_key_ex", rc);
+                ret = 0;
+            }
         }
     }
     if (ret == 1) {
@@ -1765,7 +1823,7 @@ static int we_ec_key_keygen(EC_KEY *key)
         ret = we_ec_export_key(&ecc, len, key);
     }
 
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     wc_FreeRng(pRng);
 #endif
     wc_ecc_free(pEcc);
@@ -1795,7 +1853,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     ecc_key peer;
 #if !defined(HAVE_FIPS) || \
     (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     WC_RNG rng;
     WC_RNG *pRng = NULL;
 #else
@@ -1854,7 +1912,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     }
 #if !defined(HAVE_FIPS) || \
     (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     if (ret == 1) {
         rc = wc_InitRng(&rng);
         if (rc != 0) {
@@ -1903,12 +1961,27 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
         }
     }
     if (ret == 1) {
-        /* Calculate shared secret. */
-        rc = wc_ecc_shared_secret(pKey, pPeer, secret, &len);
+    #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
+        && !defined(WE_SINGLE_THREADED)
+        rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_shared_secret", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
             ret = 0;
         }
+        else
+    #endif
+        {
+            /* Calculate shared secret. */
+            rc = wc_ecc_shared_secret(pKey, pPeer, secret, &len);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_shared_secret", rc);
+                ret = 0;
+            }
+        }
+    #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
+        && !defined(WE_SINGLE_THREADED)
+        wc_UnLockMutex(we_rng_mutex);
+    #endif
     }
     if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_PK, "Calculated ECDH shared secret");
@@ -1921,7 +1994,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     OPENSSL_free(peerKey);
 #if !defined(HAVE_FIPS) || \
     (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     wc_FreeRng(pRng);
 #endif
 #endif
@@ -1955,7 +2028,7 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
 {
     ECDSA_SIG *sig = NULL;
     ecc_key we_key;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     WC_RNG rng;
     WC_RNG *pRng = NULL;
 #else
@@ -1996,7 +2069,7 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         return NULL;
     }
 
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     rc = wc_InitRng(&rng);
     if (rc != 0) {
         err = 1;
@@ -2050,10 +2123,23 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
 
     /* Sign hash with ECDSA */
     if (err == 0) {
-        rc = wc_ecc_sign_hash_ex(d, dlen, pRng, &we_key, &sig_r, &sig_s);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash_ex", rc);
+#if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+        rc = wc_LockMutex(we_rng_mutex);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
             err = 1;
+        }
+        else
+#endif
+        {
+            rc = wc_ecc_sign_hash_ex(d, dlen, pRng, &we_key, &sig_r, &sig_s);
+        #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+            wc_UnLockMutex(we_rng_mutex);
+        #endif
+            if (rc != MP_OKAY) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash_ex", rc);
+                err = 1;
+            }
         }
     }
 
@@ -2123,7 +2209,7 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
     mp_free(&sig_r);
     mp_free(&sig_s);
     wc_ecc_free(&we_key);
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     wc_FreeRng(pRng);
 #endif
 
@@ -2294,7 +2380,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     int ret, rc;
     ecc_key key;
     ecc_key *pKey = NULL;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     WC_RNG rng;
     WC_RNG *pRng = NULL;
 #else
@@ -2331,7 +2417,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     if (ret == 1) {
         pKey = &key;
 
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
         rc = wc_InitRng(&rng);
         if (rc != 0) {
             ret = 0;
@@ -2354,20 +2440,33 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     if (ret == 1 && sig != NULL) {
         /* Sign hash with wolfSSL. */
         outLen = *sigLen;
-        rc = wc_ecc_sign_hash(dgst, dLen, sig, &outLen, pRng, &key);
+#if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+        rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
             ret = 0;
         }
-        if (ret == 1) {
-            /* Return actual size. */
-            *sigLen = outLen;
-            WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "Generated ECDSA signature:");
-            WOLFENGINE_BUFFER(WE_LOG_PK, sig, *sigLen);
+        else
+#endif
+        {
+            rc = wc_ecc_sign_hash(dgst, dLen, sig, &outLen, pRng, &key);
+        #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+            wc_UnLockMutex(we_rng_mutex);
+        #endif
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_sign_hash", rc);
+                ret = 0;
+            }
+            if (ret == 1) {
+                /* Return actual size. */
+                *sigLen = outLen;
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "Generated ECDSA signature:");
+                WOLFENGINE_BUFFER(WE_LOG_PK, sig, *sigLen);
+            }
         }
     }
 
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_ECC_USE_GLOBAL_RNG
     wc_FreeRng(pRng);
 #endif
     wc_ecc_free(pKey);

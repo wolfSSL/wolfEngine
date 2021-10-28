@@ -631,67 +631,81 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
                            "toLen = %zu, to = %p, rsa = %p]", fromLen,
                            from, toLen, to, rsa);
 
-    switch (rsa->padMode) {
-        case RSA_PKCS1_PADDING:
-            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
-            if (to == NULL) {
-                ret = (int)fromLen;
-            }
-            else {
-                /* PKCS#1 v1.5 padding using block type 2. */
-                ret = wc_RsaPrivateDecrypt(from, (word32)fromLen, to,
-                        (word32)toLen, &rsa->key);
-                if (ret < 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt",
-                                          ret);
+ #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    ret = wc_LockMutex(we_rng_mutex);
+    if (ret != 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
+        ret = -1;
+    }
+    else
+#endif
+    {
+        switch (rsa->padMode) {
+            case RSA_PKCS1_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
+                if (to == NULL) {
+                    ret = (int)fromLen;
+                }
+                else {
+                    /* PKCS#1 v1.5 padding using block type 2. */
+                    ret = wc_RsaPrivateDecrypt(from, (word32)fromLen, to,
+                            (word32)toLen, &rsa->key);
+                    if (ret < 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt",
+                                              ret);
+                        ret = -1;
+                    }
+                }
+                break;
+            case RSA_PKCS1_OAEP_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_OAEP_PADDING");
+                /* PKCS#1 OAEP padding. */
+                if (rsa->md == NULL) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not set");
                     ret = -1;
                 }
-            }
-            break;
-        case RSA_PKCS1_OAEP_PADDING:
-            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_OAEP_PADDING");
-            /* PKCS#1 OAEP padding. */
-            if (rsa->md == NULL) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not set");
-                ret = -1;
-            }
-            else if (to == NULL) {
-                ret = (int)fromLen;
-            }
-            else {
-                mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                else if (to == NULL) {
+                    ret = (int)fromLen;
+                }
+                else {
+                    mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                    ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
+                        (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD,
+                        we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                        we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                    if (ret < 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                              "wc_RsaPrivateDecrypt_ex", ret);
+                        ret = -1;
+                    }
+                }
+                break;
+            case RSA_NO_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
+                /* Raw private decrypt - no padding. */
                 ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
-                    (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD,
-                    we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                        (word32)toLen, &rsa->key, WC_RSA_NO_PAD,
+                        WC_HASH_TYPE_NONE,
+                        0, NULL, 0);
                 if (ret < 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
                                           ret);
                     ret = -1;
                 }
-            }
-            break;
-        case RSA_NO_PADDING:
-            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
-            /* Raw private decrypt - no padding. */
-            ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
-                    (word32)toLen, &rsa->key, WC_RSA_NO_PAD, WC_HASH_TYPE_NONE,
-                    0, NULL, 0);
-            if (ret < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
-                                      ret);
+                break;
+            default:
+                /* Unsupported padding mode for RSA decryption. */
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                     "we_rsa_priv_dec: unknown padding");
+                XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding: %d",
+                          rsa->padMode);
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
                 ret = -1;
-            }
-            break;
-        default:
-            /* Unsupported padding mode for RSA decryption. */
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK,
-                                 "we_rsa_priv_dec: unknown padding");
-            XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding: %d",
-                      rsa->padMode);
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-            ret = -1;
+        }
     }
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    wc_UnLockMutex(we_rng_mutex);
+#endif
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_priv_dec_int", ret);
 
@@ -1253,7 +1267,7 @@ static int we_rsa_keygen_int(we_Rsa *rsa, RSA **osslKey, int bits, long e)
     #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
             ret = 0;
         }
         else
@@ -2540,8 +2554,8 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
 
     if (ret == 1) {
         /* Perform decryption operation. */
-        rc = we_rsa_priv_dec_int(cipherLen, ciphertext, *plainLen, plaintext,
-                                 rsa);
+        rc = we_rsa_priv_dec_int(cipherLen, ciphertext, *plainLen,
+                                 plaintext, rsa);
         if (rc == -1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_priv_dec_int", rc);
             ret = 0;
