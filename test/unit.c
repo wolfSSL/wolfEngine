@@ -116,6 +116,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_ctr_stream, NULL),
     TEST_DECL(test_aes192_ctr_stream, NULL),
     TEST_DECL(test_aes256_ctr_stream, NULL),
+    TEST_DECL(test_aes_ctr_iv_init_regression, NULL),
 #endif
 #ifdef WE_HAVE_AESGCM
     TEST_DECL(test_aes128_gcm, NULL),

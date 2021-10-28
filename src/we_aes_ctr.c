@@ -34,8 +34,8 @@ typedef struct we_AesCtr
 {
     /** The wolfSSL AES data object. */
     Aes            aes;
-    /** Flag to indicate whether wolfSSL AES object initialized. */
-    unsigned int   init:1;
+    /** Flag to indicate whether IV has been set. */
+    unsigned int   ivSet:1;
 } we_AesCtr;
 
 
@@ -54,6 +54,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int ret = 1;
     int rc;
     we_AesCtr *aes;
+    const unsigned char *tmpIv;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_init");
 
@@ -75,13 +76,20 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if (ret == 1) {
-        /* Must have initialized wolfSSL AES object when here. */
-        aes->init = 1;
-
         if (key != NULL) {
+            if (iv == NULL && aes->ivSet) {
+                /* If the IV was set on a previous call, we don't want to pass
+                 * NULL for the IV to wc_AesSetKey, as that will result in the
+                 * IV being set to 0s. */
+                tmpIv = (unsigned char *)&aes->aes.reg;
+            }
+            else {
+                tmpIv = iv;
+            }
+
             /* No decryption for CTR. */
             rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
-                              iv, AES_ENCRYPTION);
+                              tmpIv, AES_ENCRYPTION);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
                 ret = 0;
@@ -92,6 +100,9 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
                 ret = 0;
+            }
+            else {
+                aes->ivSet = 1;
             }
         }
     }
