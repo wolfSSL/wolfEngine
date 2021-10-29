@@ -36,3 +36,9 @@ test: check
 AM_DISTCHECK_CONFIGURE_FLAGS=CPPFLAGS="-I@abs_top_srcdir@/include \
                                          @OPENSSL_INCLUDES@" \
                              LDFLAGS="@OPENSSL_LDFLAGS@"
+                             
+EXTRA_DIST = \
+    wolfEngine.sln \
+    wolfEngine.vcxproj \
+    wolfEngine.vcxproj.filters \
+    wolfEngine.vcxproj.user

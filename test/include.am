@@ -28,3 +28,7 @@ test_unit_test_SOURCES = \
 test_unit_test_LDADD = libwolfengine.la
 noinst_HEADERS += test/unit.h
 
+EXTRA_DIST = \
+	test.vcxproj \
+	test.vcxproj.filters \
+	test.vcxproj.user
