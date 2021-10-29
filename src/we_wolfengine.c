@@ -23,7 +23,7 @@
 #include <wolfengine/we_wolfengine.h>
 
 #ifdef _WIN32
-WOLFENGINE_API const char *wolfengine_id = "wolfEngine.dll";
+WOLFENGINE_API const char *wolfengine_id = "wolfEngine";
 #elif OPENSSL_VERSION_NUMBER >= 0x10100000L
 /* Engine id - implementation uses wolfSSL */
 WOLFENGINE_API const char *wolfengine_id = "libwolfengine";
