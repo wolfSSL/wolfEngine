@@ -514,5 +514,75 @@ int test_aes256_ctr_stream(ENGINE *e, void *data)
     return err;
 }
 
+/* OpenSSL allows the user to call EVP_CipherInit with NULL key or IV. In the
+ * past, setting the IV first (with key NULL) with wolfEngine and then setting
+ * the key (with IV NULL) would result in the IV getting set to 0s on the call
+ * to set the key. This was discovered in testing with OpenSSH. This is a
+ * regression test to ensure we preserve the IV in this scenario. */
+int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
+{
+    int err = 0;
+    unsigned char iv[AES_BLOCK_SIZE];
+    unsigned char key[16];
+    EVP_CIPHER_CTX* encCtx = NULL;
+    EVP_CIPHER_CTX* decCtx = NULL;
+    const unsigned char plainText[] = "Lorem ipsum dolor sit amet";
+    unsigned char encText[sizeof(plainText)];
+    unsigned char decText[sizeof(plainText)];
+
+    (void)data;
+
+    /* Generate a random IV and key. */
+    err = RAND_bytes(iv, AES_BLOCK_SIZE) != 1;
+    if (err == 0) {
+        err = RAND_bytes(key, 16) != 1;
+    }
+
+    /* Create encryption context. Use OpenSSL for encryption. */
+    if (err == 0) {
+        err = (encCtx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(encCtx, EVP_aes_128_ctr(), NULL, NULL, iv, 1)
+              != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(encCtx, NULL, NULL, key, NULL, -1) != 1;
+    }
+
+    /* Create decryption context. Use wolfEngine for decryption. */
+    if (err == 0) {
+        err = (decCtx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(decCtx, EVP_aes_128_ctr(), e, NULL, iv, 0) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(decCtx, NULL, e, key, NULL, -1) != 1;
+    }
+
+    /* Encrypt. */
+    if (err == 0) {
+        err = EVP_Cipher(encCtx, encText, plainText, sizeof(plainText)) < 0;
+    }
+
+    /* Decrypt. */
+    if (err == 0) {
+        err = EVP_Cipher(decCtx, decText, encText, sizeof(plainText)) < 0;
+    }
+
+    /* Ensure decrypted and plaintext match. */
+    if (err == 0) {
+        err = memcmp(decText, plainText, sizeof(plainText)) != 0;
+    }
+
+    if (encCtx != NULL)
+        EVP_CIPHER_CTX_free(encCtx);
+    if (decCtx != NULL)
+        EVP_CIPHER_CTX_free(decCtx);
+
+    return err;
+}
+
 #endif /* WE_HAVE_AESCTR */
 
