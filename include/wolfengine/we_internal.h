@@ -22,6 +22,10 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
+#ifdef HAVE_CONFIG_H
+    #include <config.h>
+#endif
+
 /* OpenSSL 3.0.0 has deprecated the ENGINE API. */
 #define OPENSSL_API_COMPAT      10101
 
