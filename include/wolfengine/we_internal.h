@@ -79,7 +79,9 @@
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/pwdbased.h>
-#include <wolfssl/wolfcrypt/kdf.h>
+#ifdef HAVE_WOLFSSL_WOLFCRYPT_KDF_H
+    #include <wolfssl/wolfcrypt/kdf.h>
+#endif
 
 #include <wolfengine/we_openssl_bc.h>
 #include <wolfengine/we_logging.h>

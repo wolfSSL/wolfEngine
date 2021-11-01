@@ -68,6 +68,7 @@ if test "x$have_wolfssl" = "xyes"; then
     LDFLAGS="$LDFLAGS $WOLFSSL_LDFLAGS"
 fi
 
+AC_CHECK_HEADERS([wolfssl/wolfcrypt/kdf.h])
 AC_CHECK_FUNCS([wc_DhSetNamedKey])
 
 # DEBUG
