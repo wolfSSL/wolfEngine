@@ -1080,25 +1080,41 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     if (ret == 1) {
         /* Set named DH parameters. */
         if (XSTRNCMP(type, "dh_param", 9) == 0) {
+        #ifndef HAVE_WC_DHSETNAMEDKEY
             const DhParams *params;
+        #else
+            int params;
+        #endif
 
             if (XSTRNCMP(value, "ffdhe2048", 10) == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe2048");
+            #ifndef HAVE_WC_DHSETNAMEDKEY
                 params = wc_Dh_ffdhe2048_Get();
+            #else
+                params = WC_FFDHE_2048;
+            #endif
             }
         #ifdef HAVE_FFDHE_3072
             else if (XSTRNCMP(value, "ffdhe3072", 10) == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe3072");
+            #ifndef HAVE_WC_DHSETNAMEDKEY
                 params = wc_Dh_ffdhe3072_Get();
+            #else
+                params = WC_FFDHE_3072;
+            #endif
             }
         #endif
         #ifdef HAVE_FFDHE_4096
             else if (XSTRNCMP(value, "ffdhe4096", 10) == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe4096");
+            #ifndef HAVE_WC_DHSETNAMEDKEY
                 params = wc_Dh_ffdhe4096_Get();
+            #else
+                params = WC_FFDHE_4096;
+            #endif
             }
         #endif
             else {
@@ -1110,14 +1126,18 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             }
 
             if (ret == 1) {
+            #ifndef HAVE_WC_DHSETNAMEDKEY
                 rc = wc_DhSetKey_ex(&dh->key, params->p, params->p_len,
                                               params->g, params->g_len,
-            #ifdef HAVE_FFDHE_Q
+                #ifdef HAVE_FFDHE_Q
                                               params->q, params->q_len
-            #else
+                #else
                                               NULL, 0
-            #endif
+                #endif
                                     );
+            #else
+                rc = wc_DhSetNamedKey(&dh->key, params);
+            #endif
                 if (rc != 0) {
                      WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Failed set parameters");
                      ret = 0;

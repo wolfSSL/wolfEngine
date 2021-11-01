@@ -68,6 +68,8 @@ if test "x$have_wolfssl" = "xyes"; then
     LDFLAGS="$LDFLAGS $WOLFSSL_LDFLAGS"
 fi
 
+AC_CHECK_FUNCS([wc_DhSetNamedKey])
+
 # DEBUG
 DEBUG_CFLAGS="-g -O0 -DWOLFENGINE_DEBUG"
 AX_DEBUG
