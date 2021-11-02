@@ -6,6 +6,7 @@ check_PROGRAMS =
 dist_noinst_SCRIPTS =
 DISTCLEANFILES =
 pkginclude_HEADERS =
+EXTRA_DIST =
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -36,8 +37,10 @@ test: check
 AM_DISTCHECK_CONFIGURE_FLAGS=CPPFLAGS="-I@abs_top_srcdir@/include \
                                          @OPENSSL_INCLUDES@" \
                              LDFLAGS="@OPENSSL_LDFLAGS@"
-                             
-EXTRA_DIST = \
+
+EXTRA_DIST+= README.md
+
+EXTRA_DIST += \
     wolfEngine.sln \
     wolfEngine.vcxproj \
     wolfEngine.vcxproj.filters \
