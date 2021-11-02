@@ -115,9 +115,6 @@ expects the following directory structure:
 └── wolfssl
 ```
 
-Please note that building for Windows has only been tested for the 64 bit 
-debug configuration.
-
 ### Building OpenSSL
 
 Follow the instructions in the OpenSSL `INSTALL` file. The list of commands to run are:
