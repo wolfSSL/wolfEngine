@@ -23,6 +23,10 @@
 
 #ifdef WE_HAVE_TLS1_PRF
 
+#ifndef WOLFSSL_HAVE_PRF
+#error wolfSSL has been compiled without PRF support
+#endif
+
 /* Maximum seed length to use with TLS v1.0 PRF. */
 #define WE_MAX_SEED_SIZE        1024
 
