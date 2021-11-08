@@ -37,7 +37,7 @@ typedef struct we_Des3Cbc
     Des3           des3;
     /** Flag to indicate whether wolfSSL DES3 object initialized. */
     unsigned int   init:1;
-    /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
+    /** Flag to indicate whether we are doing encrypt (1) or decrypt (0). */
     unsigned int   enc:1;
 } we_Des3Cbc;
 

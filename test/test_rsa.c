@@ -562,7 +562,7 @@ int test_rsa_direct_key_gen(ENGINE *e, void *data)
 #if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
     const int badKeyGenSizes[] = {512, 1024, 8192};
 #else
-    const int badKeyGenSizes[] = {256, 8192};
+    const int badKeyGenSizes[] = {RSA_MIN_SIZE - 1, RSA_MAX_SIZE + 1};
 #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
     const int numBad = sizeof(badKeyGenSizes) / sizeof(*badKeyGenSizes);
     int i = 0;
@@ -1092,7 +1092,7 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
     const int badKeyGenSizes[] = {512, 1024, 8192};
 #else
     const int newKeySize = 1024;
-    const int badKeyGenSizes[] = {256, 8192};
+    const int badKeyGenSizes[] = {RSA_MIN_SIZE - 1, RSA_MAX_SIZE + 1};
 #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
     const int numBad = sizeof(badKeyGenSizes) / sizeof(*badKeyGenSizes);
     int i = 0;

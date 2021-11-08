@@ -326,7 +326,8 @@ build_wolfengine() {
     if [ -n "${OPENSSL_INSTALL}" ]; then
         ./configure $OPENSSL_CPPFLAGS $OPENSSL_LDFLAGS \
                     --with-openssl=$OPENSSL_INSTALL \
-                    --enable-debug >> $LOGFILE 2>&1
+                    --enable-debug \
+                    $WOLFENGINE_EXTRA_OPTS >> $LOGFILE 2>&1
     else
         # Tests have been patched to use debug logging - must enable debug.
         # User can set WOLFENGINE_EXTRA_LDFLAGS to provide extra LDFLAGS and
@@ -334,8 +335,8 @@ build_wolfengine() {
         ./configure LDFLAGS="-L$OPENSSL_SOURCE $WOLFENGINE_EXTRA_LDFLAGS" \
                     CPPFLAGS="$WOLFENGINE_EXTRA_CPPFLAGS" \
                     --with-openssl=$OPENSSL_SOURCE \
-                    $WOLFENGINE_EXTRA_OPTS \
-                    --enable-debug >> $LOGFILE 2>&1
+                    --enable-debug \
+                    $WOLFENGINE_EXTRA_OPTS >> $LOGFILE 2>&1
     fi
     if [ "$?" != 0 ]; then
         printf "failed\n"

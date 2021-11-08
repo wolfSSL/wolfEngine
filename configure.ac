@@ -112,6 +112,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_ALIGNMENT_SAFETY"
 fi
 
+# Adds the necessary flags to support using wolfEngine with OpenSSH.
+AC_ARG_ENABLE([openssh],
+    [AS_HELP_STRING([--enable-openssh],[Support using wolfEngine with OpenSSH. (default: disabled).])],
+    [ ENABLED_OPENSSH=$enableval ],
+    [ ENABLED_OPENSSH=no ]
+    )
+
+if test "$ENABLED_OPENSSH" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_RSA_USE_GLOBAL_RNG -DWE_ECC_USE_GLOBAL_RNG -DWE_DH_USE_GLOBAL_RNG"
+fi
+
 # Single threaded
 AC_ARG_ENABLE([singlethreaded],
     [AS_HELP_STRING([--enable-singlethreaded],[Enable wolfEngine single threaded (default: disabled).])],
@@ -704,6 +716,7 @@ echo "   Features "
 echo "   * User settings:              $ENABLED_USERSETTINGS"
 echo "   * Dynamic engine:             $ENABLED_DYNAMIC_ENGINE"
 echo "   * Alignment safety:           $ENABLED_ALIGNMENT_SAFETY"
+echo "   * OpenSSH support:            $ENABLED_OPENSSH"
 echo "   * Digest:"
 echo "   *  - SHA-1:                   $ENABLED_SHA1"
 echo "   *  - SHA-224:                 $ENABLED_SHA224"

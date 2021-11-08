@@ -313,10 +313,6 @@ static int we_aes_gcm_decrypt(we_AesGcm* aes, unsigned char *out,
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
                 "(AES-GCM):", len);
             WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
-            WOLFENGINE_MSG(WE_LOG_CIPHER,
-                "Caching nonce/IV to aes->iv");
-            /* Cache nonce/IV to guard against accidental reuse. */
-            XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
         }
     }
 
@@ -375,7 +371,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             ret = -1;
         }
         else {
-            /* Copy in new data after exisitng data. */
+            /* Copy in new data after existing data. */
             aes->aad = p;
             XMEMCPY(aes->aad + aes->aadLen, in, len);
             aes->aadLen += len;

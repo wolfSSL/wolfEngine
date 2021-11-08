@@ -34,8 +34,6 @@ typedef struct we_AesBlock
     unsigned char  lastBlock[AES_BLOCK_SIZE];
     /** Number of buffered bytes.  */
     unsigned int   over;
-    /** Flag to indicate whether wolfSSL AES object initialized. */
-    unsigned int   init:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
 } we_AesBlock;
@@ -86,23 +84,21 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
-        aes->init = (ret == 1);
+        if (ret == 1) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
+                           EVP_CIPHER_CTX_key_length(ctx));
+            rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
+                              iv, enc ? AES_ENCRYPTION : AES_DECRYPTION);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
+                ret = 0;
+            }
+        }
     }
 
     if (ret == 1) {
         /* Store whether encrypting. */
         aes->enc = enc;
-    }
-
-    if ((ret == 1) && (key != NULL)) {
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
-                       EVP_CIPHER_CTX_key_length(ctx));
-        rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx), iv,
-                          enc ? AES_ENCRYPTION : AES_DECRYPTION);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
-            ret = 0;
-        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_init", ret);
@@ -439,9 +435,6 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
-        }
-        else {
-            aes->init = 1;
         }
     }
 

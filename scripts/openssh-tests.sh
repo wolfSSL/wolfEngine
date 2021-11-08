@@ -7,16 +7,18 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 WOLFENGINE_ROOT="${SCRIPT_DIR}/.."
 
-OPENSSL_INSTALL_DIR=${SCRIPT_DIR}/openssl
-OPENSSH_DIR=${SCRIPT_DIR}/openssh-portable
+if [ -z "${OPENSSL_INSTALL_DIR}" ]; then
+    OPENSSL_INSTALL_DIR=${SCRIPT_DIR}/openssl
+fi
+OPENSSH_DIR=${SCRIPT_DIR}/openssh
 
 source ${SCRIPT_DIR}/build-openssl-wolfengine.sh
 
 do_cleanup() {
     printf "Cleaning up.\n"
 
-    # Use the environment variable KEEP_OPENSSH to prevent OpenSSH directories
-    # from being deleted at the end of the run.
+    # Use the environment variable KEEP_OPENSSH to prevent OpenSSH and OpenSSL
+    # directories from being deleted at the end of the run.
     if [ -z "${KEEP_OPENSSH}" ]; then
         printf "\tDeleting OpenSSH directory.\n"
         rm -rf ${OPENSSH_DIR}
@@ -27,8 +29,8 @@ do_cleanup() {
 }
 
 do_failure() {
-    # Keep the logs around to help debug the failure.
-    KEEP_LOGS=1
+    # Keep the OpenSSH and OpenSSL directories around to help debug the failure.
+    KEEP_OPENSSH=1
     do_cleanup
     exit 1
 }
@@ -37,7 +39,7 @@ do_failure() {
 trap do_failure INT TERM
 
 download_openssh() {
-    printf "Setting up OpenSSH.\n"
+    printf "Downloading OpenSSH..."
     if [ -n "${OPENSSH_NO_DOWNLOAD}" -o -n "${OPENSSH_NO_BUILD}" ]; then
         return
     fi
@@ -46,8 +48,7 @@ download_openssh() {
 
     cd ${SCRIPT_DIR}
 
-    printf "\tDownloading..."
-    git clone https://github.com/openssh/openssh-portable.git >> $LOGFILE 2>&1
+    git clone https://github.com/openssh/openssh-portable.git $OPENSSH_DIR >> $LOGFILE 2>&1
     if [ $? != 0 ]; then
         printf "failed\n"
         do_failure
@@ -65,7 +66,7 @@ build_openssh() {
     cd ${OPENSSH_DIR}
 
     printf "Building OpenSSH.\n"
-    printf "\tAutoreconf..."
+    printf "\tRunning autoreconf..."
     autoreconf >> $LOGFILE 2>&1
     if [ $? != 0 ]; then
         printf "failed.\n"
@@ -98,81 +99,81 @@ test_openssh_separate() {
 
     printf "Running OpenSSH tests with wolfEngine\n"
     for T in connect \
-                proxy-connect \
-                connect-privsep \
-                connect-uri \
-                proto-version \
-                proto-mismatch \
-                exit-status \
-                envpass \
-                transfer \
-                banner \
-                rekey \
-                dhgex \
-                stderr-data \
-                stderr-after-eof \
-                broken-pipe \
-                try-ciphers \
-                yes-head \
-                login-timeout \
-                agent \
-                agent-getpeereid \
-                agent-timeout \
-                agent-ptrace \
-                agent-subprocess \
-                keyscan \
-                keygen-change \
-                keygen-convert \
-                keygen-moduli \
-                key-options \
-                scp \
-                scp-uri \
-                sftp \
-                sftp-chroot \
-                sftp-cmds \
-                sftp-badcmds \
-                sftp-batch \
-                sftp-glob \
-                sftp-perm \
-                sftp-uri \
-                reconfigure \
-                dynamic-forward \
-                forwarding \
-                multiplex \
-                reexec \
-                brokenkeys \
-                sshcfgparse \
-                cfgparse \
-                cfgmatch \
-                cfgmatchlisten \
-                percent \
-                addrmatch \
-                localcommand \
-                forcecommand \
-                portnum \
-                keytype \
-                kextype \
-                cert-hostkey \
-                cert-userkey \
-                host-expand \
-                keys-command \
-                forward-control \
-                integrity \
-                krl \
-                multipubkey \
-                limit-keytype \
-                hostkey-agent \
-                keygen-knownhosts \
-                hostkey-rotate \
-                principals-command \
-                cert-file \
-                cfginclude \
-                servcfginclude \
-                allow-deny-users \
-                authinfo \
-                sshsig \
-                keygen-comment \
-                knownhosts-command
+             proxy-connect \
+             agent \
+             connect-privsep \
+             connect-uri \
+             proto-version \
+             proto-mismatch \
+             exit-status \
+             envpass \
+             transfer \
+             banner \
+             rekey \
+             dhgex \
+             stderr-data \
+             stderr-after-eof \
+             broken-pipe \
+             try-ciphers \
+             yes-head \
+             login-timeout \
+             agent-getpeereid \
+             agent-timeout \
+             agent-ptrace \
+             agent-subprocess \
+             keyscan \
+             keygen-change \
+             keygen-convert \
+             keygen-moduli \
+             key-options \
+             scp \
+             scp-uri \
+             sftp \
+             sftp-chroot \
+             sftp-cmds \
+             sftp-badcmds \
+             sftp-batch \
+             sftp-glob \
+             sftp-perm \
+             sftp-uri \
+             reconfigure \
+             dynamic-forward \
+             forwarding \
+             multiplex \
+             reexec \
+             brokenkeys \
+             sshcfgparse \
+             cfgparse \
+             cfgmatch \
+             cfgmatchlisten \
+             percent \
+             addrmatch \
+             localcommand \
+             forcecommand \
+             portnum \
+             keytype \
+             kextype \
+             cert-hostkey \
+             cert-userkey \
+             host-expand \
+             keys-command \
+             forward-control \
+             integrity \
+             krl \
+             multipubkey \
+             limit-keytype \
+             hostkey-agent \
+             keygen-knownhosts \
+             hostkey-rotate \
+             principals-command \
+             cert-file \
+             cfginclude \
+             servcfginclude \
+             allow-deny-users \
+             authinfo \
+             sshsig \
+             keygen-comment \
+             knownhosts-command
     do
         printf "\t$T..."
         make t-exec LTESTS=$T >> $LOGFILE 2>&1
@@ -256,14 +257,17 @@ do
     OPENSSL_INSTALL=${OPENSSL_INSTALL_DIR}
     setup_openssl_install
 
-    WE_OPENSSL_CONF=${SCRIPT_DIR}/wolfengine.conf
-    WE_DEBUG=0
-
+    WOLFENGINE_EXTRA_OPTS="--enable-openssh"
     build_wolfengine
+
+    # We don't want to print debug messages as that will trigger false failures
+    # in the OpenSSH tests.
+    WE_DEBUG=0
+    WE_OPENSSL_CONF=${SCRIPT_DIR}/wolfengine.conf
     write_conf_file
 
     build_openssh
-    test_openssh
+    test_openssh_separate
 done
 
 

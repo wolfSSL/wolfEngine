@@ -785,7 +785,7 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
 #ifndef WE_SINGLE_THREADED
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", rc);
             ret = 0;
         }
         else
@@ -1029,7 +1029,7 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 #ifndef WE_SINGLE_THREADED
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", rc);
             ret = 0;
         }
         else
@@ -1151,7 +1151,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                 && !defined(WE_SINGLE_THREADED)
                 rc = wc_LockMutex(we_rng_mutex);
                 if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", rc);
                     ret = 0;
                 }
                 else
@@ -1801,7 +1801,7 @@ static int we_ec_key_keygen(EC_KEY *key)
 #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", rc);
             ret = 0;
         }
         else
@@ -1965,7 +1965,7 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
         && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", rc);
             ret = 0;
         }
         else
@@ -2126,7 +2126,7 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
 #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", rc);
             err = 1;
         }
         else
@@ -2443,7 +2443,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
 #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", rc);
             ret = 0;
         }
         else

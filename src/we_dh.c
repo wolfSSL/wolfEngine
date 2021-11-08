@@ -23,6 +23,14 @@
 
 #ifdef WE_HAVE_DH
 
+/*
+ * Macros
+ * ------
+ * WE_DH_USE_GLOBAL_RNG:
+ *     Use the global wolfEngine RNG when an RNG is needed, as opposed to a
+ *     local one.
+ */
+
 #ifndef EVP_PKEY_CTRL_DH_PAD
 #define EVP_PKEY_CTRL_DH_PAD   (EVP_PKEY_ALG_CTRL + 16)
 #endif
@@ -36,7 +44,7 @@ typedef struct we_Dh
 {
     /** wolfSSL structure for holding DH key data. */
     DhKey key;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_DH_USE_GLOBAL_RNG
     /** wolfSSL random number generator. */
     WC_RNG rng;
 #endif
@@ -55,7 +63,6 @@ typedef struct we_Dh
 /** DH key method - DH using wolfSSL for the implementation. */
 DH_METHOD *we_dh_method = NULL;
 
-
 /* Dispose of internal DH object.
  *
  * Assumes that engineDh is not NULL.
@@ -70,8 +77,8 @@ static void we_dh_free_int(we_Dh *engineDh)
     if (engineDh->q != NULL) {
         OPENSSL_free(engineDh->q);
     }
+#ifndef WE_DH_USE_GLOBAL_RNG
     /* Free the wolfSSL key, RNG and internal DH object. */
-#ifndef WE_SINGLE_THREADED
     wc_FreeRng(&engineDh->rng);
 #endif
     wc_FreeDhKey(&engineDh->key);
@@ -116,7 +123,7 @@ static int we_dh_init_int(we_Dh **dh)
                        DEFAULT_PRIME_LEN);
     }
 
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_DH_USE_GLOBAL_RNG
     if (ret == 1) {
         /* Initialize the random number generator for use in key and parameter
          * generation. */
@@ -346,7 +353,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     unsigned int pubLen = 0;
     BIGNUM *privBn = NULL;
     BIGNUM *pubBn = NULL;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_DH_USE_GLOBAL_RNG
     WC_RNG *pRng = &engineDh->rng;
 #else
     WC_RNG *pRng = we_rng;
@@ -413,12 +420,26 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
         }
         else {
             /* Generate public/private key pair with wolfSSL. */
-            rc = wc_DhGenerateKeyPair(&engineDh->key, pRng, priv, &privLen, pub,
-                                      &pubLen);
+        #if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+            rc = wc_LockMutex(we_rng_mutex);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateKeyPair", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_LockMutex", rc);
                 ret = 0;
             }
+            else
+        #endif
+            {
+                rc = wc_DhGenerateKeyPair(&engineDh->key, pRng, priv, &privLen,
+                                          pub, &pubLen);
+                if (rc != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateKeyPair",
+                        rc);
+                    ret = 0;
+                }
+            }
+        #if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+            wc_UnLockMutex(we_rng_mutex);
+        #endif
         }
     }
 
@@ -805,7 +826,7 @@ static int we_dh_paramgen_int(DH *dh, we_Dh *engineDh)
 {
     int ret = 1;
     int rc;
-#ifndef WE_SINGLE_THREADED
+#ifndef WE_DH_USE_GLOBAL_RNG
     WC_RNG *pRng = &engineDh->rng;
 #else
     WC_RNG *pRng = we_rng;
@@ -813,12 +834,25 @@ static int we_dh_paramgen_int(DH *dh, we_Dh *engineDh)
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_paramgen_int");
 
-    /* Generate the parameters. */
-    rc = wc_DhGenerateParams(pRng, engineDh->primeLen, &engineDh->key);
+#if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    rc = wc_LockMutex(we_rng_mutex);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateParams", rc);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_LockMutex", rc);
         ret = 0;
     }
+    else
+#endif
+    {
+        /* Generate the parameters. */
+        rc = wc_DhGenerateParams(pRng, engineDh->primeLen, &engineDh->key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateParams", rc);
+            ret = 0;
+        }
+    }
+#if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    wc_UnLockMutex(we_rng_mutex);
+#endif
 
     if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_KE, "Converting DH params to OpenSSL DH");

@@ -52,7 +52,6 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int ret = 1;
     int rc;
     we_AesCtr *aes;
-    const unsigned char *tmpIv;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_init");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, iv = %p, "
@@ -100,7 +99,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
- * @return  Number of bytes put in out on success.
+ * @return  1 on success.
  */
 static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                              const unsigned char *in, size_t len)
@@ -125,7 +124,7 @@ static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         rc = wc_AesSetIV(&aes->aes, EVP_CIPHER_CTX_iv_noconst(ctx));
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
-            ret = 0;
+            ret = -1;
         }
     }
     if (ret == 1) {
@@ -206,7 +205,6 @@ EVP_CIPHER* we_aes128_ctr_ciph = NULL;
 EVP_CIPHER* we_aes192_ctr_ciph = NULL;
 /** AES256-CTR EVP cipher method. */
 EVP_CIPHER* we_aes256_ctr_ciph = NULL;
-
 
 /**
  * Initialize an AES-CTR method.
@@ -315,4 +313,3 @@ int we_init_aesctr_meths()
 }
 
 #endif /* WE_HAVE_AESCTR */
-

@@ -474,7 +474,7 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
 #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
     ret = wc_LockMutex(we_rng_mutex);
     if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", ret);
         return -1;
     }
 #endif
@@ -634,7 +634,7 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
  #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
     ret = wc_LockMutex(we_rng_mutex);
     if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", ret);
         ret = -1;
     }
     else
@@ -816,7 +816,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
 #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
     ret = wc_LockMutex(we_rng_mutex);
     if (ret != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", ret);
         return -1;
     }
 #endif
@@ -1019,7 +1019,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
             #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
                 if (wc_LockMutex(we_rng_mutex) != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", ret);
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", ret);
                     ret = -1;
                 }
                 else
@@ -1267,7 +1267,7 @@ static int we_rsa_keygen_int(we_Rsa *rsa, RSA **osslKey, int bits, long e)
     #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", rc);
             ret = 0;
         }
         else
