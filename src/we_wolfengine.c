@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
+#include <wolfengine/we_wolfengine.h>
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 /* Engine id - implementation uses wolfSSL */

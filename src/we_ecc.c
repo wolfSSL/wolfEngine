@@ -19,8 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
-#include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
+#include <wolfengine/we_wolfengine.h>
 
 #ifdef WE_HAVE_ECC
 

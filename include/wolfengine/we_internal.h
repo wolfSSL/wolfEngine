@@ -22,6 +22,10 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
+#ifdef HAVE_CONFIG_H
+    #include <config.h>
+#endif
+
 /* OpenSSL 3.0.0 has deprecated the ENGINE API. */
 #define OPENSSL_API_COMPAT      10101
 
@@ -75,6 +79,9 @@
 #include <wolfssl/wolfcrypt/ecc.h>
 #include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/pwdbased.h>
+#ifdef HAVE_WOLFSSL_WOLFCRYPT_KDF_H
+    #include <wolfssl/wolfcrypt/kdf.h>
+#endif
 
 #include <wolfengine/we_openssl_bc.h>
 #include <wolfengine/we_logging.h>

@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <wolfengine/we_internal.h>
 #include <wolfengine/we_fips.h>
 
 /* Bitmask of FIPS checks in wolfEngine_FipsCheck. Can be set by application

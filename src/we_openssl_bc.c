@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <wolfengine/we_internal.h>
 #include <wolfengine/we_openssl_bc.h>
 
 /* These were all added in OpenSSL 1.1.0 */
