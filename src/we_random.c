@@ -273,7 +273,7 @@ static void we_rand_cleanup(void)
 {
     /* Global random cleanup done in internal.c: we_final_random(). */
     WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_cleanup");
-    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_cleanup", 0);
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_cleanup", 1);
 }
 
 /**

@@ -34,12 +34,8 @@ typedef struct we_AesBlock
     unsigned char  lastBlock[AES_BLOCK_SIZE];
     /** Number of buffered bytes.  */
     unsigned int   over;
-    /** Flag to indicate whether wolfSSL AES object initialized. */
-    unsigned int   init:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
-    /** Flag to indicate whether iv has been set. */
-    unsigned int   ivSet:1;
 } we_AesBlock;
 
 #endif
@@ -88,15 +84,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
-        aes->init = 1;
-    }
-
-    if (ret == 1 && (aes->init == 1)) {
-        aes->over = 0;
-        /* Store whether encrypting. */
-        aes->enc = enc;
-
-        if (key != NULL) {
+        if (ret == 1) {
             WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
                            EVP_CIPHER_CTX_key_length(ctx));
             rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
@@ -106,15 +94,11 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                 ret = 0;
             }
         }
-        if (ret == 1 && iv != NULL) {
-            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV");
-            rc = wc_AesSetIV(&aes->aes, iv);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
-                ret = 0;
-            }
-            aes->ivSet = (ret == 1);
-        }
+    }
+
+    if (ret == 1) {
+        /* Store whether encrypting. */
+        aes->enc = enc;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_init", ret);
@@ -216,14 +200,13 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
-    if ((ret == 1) && (!aes->ivSet)) {
+    if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV");
         rc = wc_AesSetIV(&aes->aes, EVP_CIPHER_CTX_iv_noconst(ctx));
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
             ret = 0;
         }
-        aes->ivSet = (ret == 1);
     }
     if (ret == 1) {
         if (aes->enc) {
@@ -232,6 +215,8 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         else {
             ret = we_aes_cbc_decrypt(aes, out, in, len);
         }
+
+        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->aes.reg, AES_BLOCK_SIZE);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_cipher", ret);
@@ -450,9 +435,6 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
-        }
-        else {
-            aes->init = 1;
         }
     }
 

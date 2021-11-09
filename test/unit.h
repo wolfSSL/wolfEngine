@@ -32,6 +32,7 @@
 #endif
 #include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/wc_port.h>
+#include <wolfssl/wolfcrypt/rsa.h>
 
 #include <openssl/engine.h>
 #include <openssl/evp.h>

@@ -37,10 +37,8 @@ typedef struct we_Des3Cbc
     Des3           des3;
     /** Flag to indicate whether wolfSSL DES3 object initialized. */
     unsigned int   init:1;
-    /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
+    /** Flag to indicate whether we are doing encrypt (1) or decrypt (0). */
     unsigned int   enc:1;
-    /** Flag to indicate whether IV has been set. */
-    unsigned int   ivSet:1;
 } we_Des3Cbc;
 
 /**
@@ -87,9 +85,6 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         }
 
         des3->init = 1;
-
-        /* set des3->ivSet to 1 if iv buffer passed in is not NULL */
-        des3->ivSet = (iv != NULL);
     }
 
     if (ret == 1) {
@@ -103,15 +98,6 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetKey", rc);
                 ret = 0;
             }
-        }
-        else {
-            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting 3DES IV");
-            rc = wc_Des3_SetIV(&des3->des3, iv);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetIV", rc);
-                ret = 0;
-            }
-            des3->ivSet = (ret == 1);
         }
     }
 
@@ -243,14 +229,13 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                    "EVP_CIPHER_CTX_get_cipher_data", des3);
         ret = 0;
     }
-    if ((ret == 1) && (!des3->ivSet)) {
+    if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting 3DES IV");
         rc = wc_Des3_SetIV(&des3->des3, EVP_CIPHER_CTX_iv_noconst(ctx));
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetIV", rc);
             ret = 0;
         }
-        des3->ivSet = (ret == 1); 
     }
     if (ret == 1) {
         if (des3->enc) {
@@ -259,6 +244,9 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         else {
             ret = we_des3_cbc_decrypt(ctx, des3, out, in, len);
         }
+    }
+    if (ret == 1) {
+        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), des3->des3.reg, DES_IV_SIZE);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_cipher", ret);

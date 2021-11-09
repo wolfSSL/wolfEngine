@@ -117,6 +117,16 @@ unsigned char *EVP_CIPHER_CTX_iv_noconst(EVP_CIPHER_CTX *ctx)
     return ctx->iv;
 }
 
+int EVP_CIPHER_CTX_num(const EVP_CIPHER_CTX *ctx)
+{
+    return ctx->num;
+}
+
+void EVP_CIPHER_CTX_set_num(EVP_CIPHER_CTX *ctx, int num)
+{
+    ctx->num = num;
+}
+
 int EVP_CIPHER_meth_set_iv_length(EVP_CIPHER *cipher, int iv_len)
 {
     cipher->iv_len = iv_len;
