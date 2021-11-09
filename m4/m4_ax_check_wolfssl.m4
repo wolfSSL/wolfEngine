@@ -86,38 +86,15 @@ AC_DEFUN([AX_CHECK_WOLFSSL], [
                 AC_MSG_RESULT([no])
             fi
         done
-
-        # if the file wasn't found, well, go ahead and try the link anyway --
-        # maybe it will just work!
     fi
 
-    # try the preprocessor and linker with our new flags,
-    # being careful not to pollute the global LIBS, LDFLAGS, and CPPFLAGS
-
-    AC_MSG_CHECKING([whether compiling and linking against wolfSSL works])
-    echo "Trying link with WOLFSSL_LDFLAGS=$WOLFSSL_LDFLAGS;" \
-        "WOLFSSL_LIBS=$WOLFSSL_LIBS; WOLFSSL_INCLUDES=$WOLFSSL_INCLUDES" >&AS_MESSAGE_LOG_FD
-
-    save_LIBS="$LIBS"
-    save_LDFLAGS="$LDFLAGS"
-    save_CPPFLAGS="$CPPFLAGS"
-    LDFLAGS="$LDFLAGS $WOLFSSL_LDFLAGS"
-    LIBS="$WOLFSSL_LIBS $LIBS"
-    CPPFLAGS="$WOLFSSL_INCLUDES $CPPFLAGS"
-    AC_LINK_IFELSE(
-        [AC_LANG_PROGRAM([
-#include <wolfssl/options.h>
-#include <wolfssl/ssl.h>], [wolfSSL_new(NULL)])],
-        [
-            AC_MSG_RESULT([yes])
-            $1
-        ], [
-            AC_MSG_RESULT([no])
-            $2
-        ])
-    CPPFLAGS="$save_CPPFLAGS"
-    LDFLAGS="$save_LDFLAGS"
-    LIBS="$save_LIBS"
+    if $found; then
+        AC_MSG_RESULT([yes])
+        $1
+    else
+        AC_MSG_RESULT([no])
+        $2
+    fi
 
     AC_SUBST([WOLFSSL_INCLUDES])
     AC_SUBST([WOLFSSL_LIBS])
