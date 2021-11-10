@@ -789,8 +789,14 @@ static int wolfengine_init(ENGINE *e)
 
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_init");
 
+#if defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION == 5
+    wolfCrypt_SetPrivateKeyReadEnable_fips(1, WC_KEYTYPE_ALL);
+#endif
 #if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
     defined(WE_HAVE_DH) || defined(WE_HAVE_RANDOM)
+#ifdef WC_RNG_SEED_CB
+    wc_SetSeed_Cb(wc_GenerateSeed);
+#endif
     ret = we_init_random();
 #endif
 #ifdef WE_HAVE_SHA1
