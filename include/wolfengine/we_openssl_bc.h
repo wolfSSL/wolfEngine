@@ -38,6 +38,8 @@
 #include <openssl/dh.h>
 #include <openssl/rsa.h>
 
+#include <wolfengine/we_visibility.h>
+
 /* These were all added in OpenSSL 1.1.0 */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 
