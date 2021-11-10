@@ -1090,7 +1090,7 @@ int we_init_sha224_meth()
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha224_meth");
 
-    ret = (we_sha224_md = EVP_MD_meth_new(NID_sha256, EVP_PKEY_NONE)) != NULL;
+    ret = (we_sha224_md = EVP_MD_meth_new(NID_sha224, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
         ret = EVP_MD_meth_set_init(we_sha224_md, we_sha224_init);
     }
