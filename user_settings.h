@@ -98,7 +98,6 @@
 #define HAVE_FFDHE_4096
 
 /* Needed to export symbols in the final DLL */
-#define WOLFENGINE_DLL
 #define OPENSSL_SYS_WINDOWS
 #define OPENSSL_OPT_WINDLL
 
