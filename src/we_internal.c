@@ -799,7 +799,7 @@ static int wolfengine_init(ENGINE *e)
     }
     #ifdef WE_HAVE_ECDSA
     if (ret == 1) {
-        we_init_ecdsa_sha1_meth();
+        ret = we_init_ecdsa_sha1_meth();
     }
     #endif
 #endif
@@ -947,13 +947,13 @@ static int wolfengine_init(ENGINE *e)
 #ifdef WE_HAVE_ECDSA
 #if OPENSSL_VERSION_NUMBER <= 0x100020ffL
     if (ret == 1) {
-        we_init_ecdsa_meth();
+        ret = we_init_ecdsa_meth();
     }
 #endif
 #endif
 #ifdef WE_HAVE_PBE
     if (ret == 1) {
-        we_init_pbe_keygen();
+        ret = we_init_pbe_keygen();
     }
 #endif
 
