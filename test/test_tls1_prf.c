@@ -364,6 +364,9 @@ int test_tls1_prf(ENGINE *e, void *data)
     (void)data;
 
     err = test_tls1_prf_md(e, EVP_md5_sha1());
+#if defined(NO_MD5) || defined(NO_SHA)
+    err = (err != 1);
+#endif
     if (err == 0) {
         err = test_tls1_prf_md(e, EVP_sha256());
     }
