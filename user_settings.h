@@ -86,6 +86,16 @@
 #define GCM_TABLE_4BIT
 #define HAVE_AESGCM
 #define HAVE_WC_INTROSPECTION
+#define OPENSSL_COEXIST
+#define NO_OLD_RNGNAME
+#define NO_OLD_WC_NAMES
+#define NO_OLD_SSL_NAMES
+#define NO_OLD_SHA_NAMES
+#define NO_OLD_MD5_NAME
+#define HAVE_PUBLIC_FFDHE
+#define HAVE_FFDHE_2048
+#define HAVE_FFDHE_3072
+#define HAVE_FFDHE_4096
 
 /* Needed to export symbols in the final DLL */
 #define WOLFENGINE_DLL

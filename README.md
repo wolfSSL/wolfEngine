@@ -120,6 +120,7 @@ expects the following directory structure:
 Follow the instructions in the OpenSSL `INSTALL` file. The list of commands to run are:
 ```
     $ perl Configure { VC-WIN32 | VC-WIN64A | VC-WIN64I | VC-CE }
+    $ nmake clean # This command needs to be run if OpenSSL has previously been built in this directory with a different configuration.
     $ nmake
 ```
 
@@ -186,6 +187,12 @@ wolfSSL.
 #define GCM_TABLE_4BIT
 #define HAVE_AESGCM
 #define HAVE_WC_INTROSPECTION
+#define OPENSSL_COEXIST
+#define NO_OLD_RNGNAME
+#define NO_OLD_WC_NAMES
+#define NO_OLD_SSL_NAMES
+#define NO_OLD_SHA_NAMES
+#define NO_OLD_MD5_NAME
 ```
 
 ### Building wolfEngine
