@@ -1,7 +1,10 @@
-﻿
-## Description
+# wolfEngine
 
-wolfEngine is a library that can be used as an Engine in OpenSSL.
+wolfEngine is an [OpenSSL engine](https://www.openssl.org/docs/man1.0.2/man3/engine.html)
+backed by wolfSSL's wolfCrypt cryptography library. wolfCrypt is
+[FIPS-validated](https://csrc.nist.gov/Projects/cryptographic-module-validation-program/Certificate/3389),
+so wolfEngine can be used to achieve FIPS compliance with OpenSSL, all without
+having to touch the OpenSSL code itself.
 
 ## Features
 
@@ -34,20 +37,31 @@ wolfEngine is a library that can be used as an Engine in OpenSSL.
     * Curve P-256
     * Curve P-384
     * Curve P-521
+* HMAC
+* CMAC
+* HKDF
+* PBKDF2
+* TLS PRF
 
-### OpenSSL Version Caveats
+### OpenSSL Version Support
+wolfEngine can be used with any OpenSSL version that supports the engine
+framework. Engines are deprecated in OpenSSL 3.0.0. They're replaced with a
+similar concept called [providers](https://www.openssl.org/docs/manmaster/man7/provider.html).
+wolfSSL also offers a provider backed by wolfCrypt. Please reach out to
+facts@wolfssl.com if you're interested in evaluating the wolfSSL provider. 
 
+#### Caveats
 * SHA-3 support is only available with OpenSSL versions 1.1.1+.
 * EC_KEY_METHOD is only available with OpenSSL versions 1.1.1+.
 
-## Building on *nix Systems
+## Building on \*nix
 
 ### OpenSSL
 
+Assuming you've downloaded OpenSSL source code into a directory called openssl:
 ```
-git clone https://github.com/openssl/openssl.git
 cd openssl
-./config no-fips
+./config shared
 make
 sudo make install
 ```
@@ -58,50 +72,71 @@ sudo make install
 git clone https://github.com/wolfssl/wolfssl.git
 cd wolfssl
 ./autogen.sh
-./configure --enable-opensslcoexist --enable-cmac --enable-keygen --enable-sha --enable-des3 --enable-aesctr --enable-aesccm --enable-x963kdf CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_NO_PADDING -DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192 -DWOLFSSL_PSS_LONG_SALT -DWOLFSSL_PSS_SALT_LEN_DISCOVER"
+./configure --enable-opensslcoexist --enable-cmac --enable-keygen --enable-sha
+--enable-des3 --enable-aesctr --enable-aesccm --enable-x963kdf
+CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_NO_PADDING
+-DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192 -DWOLFSSL_PSS_LONG_SALT
+-DWOLFSSL_PSS_SALT_LEN_DISCOVER"
 make
 sudo make install
 ```
 
-Add `--enable-pwdbased` to the configure command above if PKCS#12 is used in OpenSSL.
+Add `--enable-pwdbased` to the configure command above if using PKCS#12.
 
-Remove `-DWOLFSSL_PSS_LONG_SALT -DWOLFSSL_PSS_SALT_LEN_DISCOVER` and add `--enable-fips=v2` to the configure command above if building from a FIPS v2 bundle and not the git repository. Change `--enable-fips=v2` to `--enable-fips=ready` if using a FIPS Ready bundle.
+Remove `-DWOLFSSL_PSS_LONG_SALT -DWOLFSSL_PSS_SALT_LEN_DISCOVER` and add
+`--enable-fips=v2` to the configure command above if building from a FIPS v2
+bundle and not the git repository. Change `--enable-fips=v2` to
+`--enable-fips=ready` if using a FIPS Ready bundle.
 
 ### wolfEngine
 
 ```
+git clone https://github.com/wolfSSL/wolfEngine.git
+cd wolfEngine
 ./autogen.sh
-./configure
+./configure --with-openssl=/path/to/openssl/installation --with-wolfssl=/path/to
+/wolfssl/installation
 make
-```
-
-To build using a different OpenSSL installation directory (e.g. one at /usr/local/ssl) use:
-
-```
-./configure --with-openssl=/usr/local/ssl
-make
-export LD_LIBRARY_PATH=/usr/local/ssl/lib
 make check
 ```
 
-* To build wolfEngine in single-threaded mode, add `--enable-singlethreaded` to the configure command.
-* To build wolfEngine with PBES support (used with PKCS #12), add `--enable-pbe`. Note: wolfSSL must have been configured with `--enable-pwdbased`.
-* To disable support for loading wolfEngine dynamically, add `--disable-dynamic-engine`.
-* To build a static version of wolfEngine, add `--enable-static`.
-* To use a custom user_settings.h file to override the defines produced by `./configure`, add `--enable-usersettings` and place a user_settings.h file with the defines you want in the include directory. See the root of the project for an example user_settings.h.
-* To build wolfEngine with debug support, add `--enable-debug`. Then, to activate the debug logging at runtime, your application should send this control command to wolfEngine (denoted "e" here): `ENGINE_ctrl_cmd(e, "enable_debug", 1, NULL, NULL, 0)`.
+`make check` may fail if the OpenSSL or wolfSSL libraries aren't found. In this
+case, try `export LD_LIBRARY_PATH=/path/to/openssl/installation/lib:/path/to/
+wolfssl/installation/lib:$LD_LIBRARY_PATH` and re-run `make check`.
 
-## Testing on *nix Systems
+#### Customizing
+
+* To build wolfEngine in single-threaded mode, add `--enable-singlethreaded` to
+the configure command.
+* To build wolfEngine with PBES support (used with PKCS #12), add
+`--enable-pbe`. Note: wolfSSL must have been configured with
+`--enable-pwdbased`.
+* To disable support for loading wolfEngine dynamically, add
+`--disable-dynamic-engine`.
+* To build a static version of wolfEngine, add `--enable-static`.
+* To use a custom user_settings.h file to override the defines produced by
+`./configure`, add `--enable-usersettings` and place a user_settings.h file with
+the defines you want in the include directory. See the root of the project for
+an example user_settings.h.
+* To build wolfEngine with debug support, add `--enable-debug`. Then, to
+activate the debug logging at runtime, your application should send this control
+command to wolfEngine (denoted "e" here): `ENGINE_ctrl_cmd(e, "enable_debug", 1,
+NULL, NULL, 0)`.
+* To build wolfEngine for use with OpenSSH, add `--enable-openssh`.
+
+## Testing on \*nix
 
 ### Unit Tests
-To run automated unit tests:
 
-* `make test`
+Run the unit tests with `make check`.
 
-If you get an error like `error while loading shared libraries: libssl.so.3` then the library cannot be found. Use the `LD_LIBRARY_PATH` environment variable as described in the section above.
+If you get an error like `error while loading shared libraries: libssl.so.3`
+then the library cannot be found. Use the `LD_LIBRARY_PATH` environment variable
+as described earlier.
 
 ### Integration Tests
-There are no automated integration tests, yet.
+See the scripts directory for integration tests with other applications (e.g.
+OpenSSH, stunnel, etc.).
 
 ## Building on Windows
 
@@ -115,25 +150,27 @@ expects the following directory structure:
 └── wolfssl
 ```
 
-### Building OpenSSL
+### OpenSSL
 
-Follow the instructions in the OpenSSL `INSTALL` file. The list of commands to run are:
+Follow the instructions in the OpenSSL `INSTALL` file. The list of commands to
+run are:
 ```
     $ perl Configure { VC-WIN32 | VC-WIN64A | VC-WIN64I | VC-CE }
-    $ nmake clean # This command needs to be run if OpenSSL has previously been built in this directory with a different configuration.
+    $ nmake clean # This command needs to be run if OpenSSL has previously been
+    built in this directory with a different configuration.
     $ nmake
 ```
 
-### Building wolfSSL
+### wolfSSL
 
 Compile wolfSSL using one of the solution projects available in the 
 project (`wolfssl.sln` or `wolfssl64.sln`). The following is a list of defines 
 that are generated when using the configure script. You do not need to turn all
 of them on but this list will provide full functionality. For ease of use, it is
 recommended to add the desired defines to the `user_settings.h` file used in
-the chosen wolfSSL Visual Studio solution. Please make sure to update the defines
-in the wolfEngine `user_settings.h` file to match the defines used to compile
-wolfSSL.
+the chosen wolfSSL Visual Studio solution. Please make sure to update the
+defines in the wolfEngine `user_settings.h` file to match the defines used to
+compile wolfSSL.
 
 ```
 /* Settings generated by the configure script when compiling for wolfEngine */
@@ -195,7 +232,7 @@ wolfSSL.
 #define NO_OLD_MD5_NAME
 ```
 
-### Building wolfEngine
+### wolfEngine
 
 It is enough to compile the wolfEngine solution to generate the DLL file. 
 Please make sure that you have updated the `user_settings.h` header to match 
@@ -206,5 +243,13 @@ files into the output directory. If you want to skip this step and use system
 supplied versions of OpenSSL, delete the command under:
 
 ```
-test Properties -> Configuration Properties -> Build Events -> Post-Build Event -> Command Line
+test Properties -> Configuration Properties -> Build Events -> Post-Build Event
+-> Command Line
 ```
+
+## Need Help?
+
+Please reach out to support@wolfssl.com for technical support. If you're
+interested in commercial licensing, FIPS operating environment additions,
+consulting services, or other business engagements, please reach out to
+facts@wolfssl.com.
