@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Resource Files\x86">
+      <UniqueIdentifier>{8ae3f0aa-2901-4898-8858-b12329cfacb2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\x86\DLL Debug">
+      <UniqueIdentifier>{a209503e-9501-4a14-a86b-fcb96347681e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\x86\DLL Release">
+      <UniqueIdentifier>{2b7ea6b2-ce07-48e8-9bb4-6388d18a1539}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\x64">
+      <UniqueIdentifier>{57e91ee9-a6be-4686-89b6-e9dccd7b376a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\x64\DLL Release">
+      <UniqueIdentifier>{120df63f-5f43-439e-b961-cba5a397706e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\x64\DLL Debug">
+      <UniqueIdentifier>{3c0be879-6bf6-46bd-a13e-63e1e632f395}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="test_aestag.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_cipher.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_cmac.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_dh.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_digest.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_ecc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_hkdf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_hmac.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_logging.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_pbe.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_pkey.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rand.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_rsa.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_tls1_prf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="unit.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\..\wolfssl\DLL Debug\wolfssl.dll">
+      <Filter>Resource Files\x86\DLL Debug</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="..\..\wolfssl\DLL Release\wolfssl.dll">
+      <Filter>Resource Files\x86\DLL Release</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="..\..\wolfssl\x64\DLL Release\wolfssl.dll">
+      <Filter>Resource Files\x64\DLL Release</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="..\..\wolfssl\x64\DLL Debug\wolfssl.dll">
+      <Filter>Resource Files\x64\DLL Debug</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="test.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

@@ -63,7 +63,9 @@
 #endif
 #include <openssl/pkcs12.h>
 
+#ifndef WOLFENGINE_USER_SETTINGS
 #include <wolfssl/options.h>
+#endif
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/cmac.h>
@@ -86,6 +88,7 @@
 #include <wolfengine/we_openssl_bc.h>
 #include <wolfengine/we_logging.h>
 #include <wolfengine/we_fips.h>
+#include <wolfengine/we_visibility.h>
 
 /* Defining WE_NO_OPENSSL_MALLOC will cause wolfEngine to not use the OpenSSL
  * memory management functions (e.g. OPENSSL_malloc, OPENSSL_free, etc.).
@@ -100,9 +103,9 @@
 #define OPENSSL_realloc(ptr, num) XREALLOC((ptr), (num), NULL, DYNAMIC_TYPE_TMP_BUFFER)
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-void *we_zalloc(size_t num);
-void we_clear_free(void *str, size_t num);
-void *we_memdup(const void *data, size_t siz);
+WOLFENGINE_LOCAL void *we_zalloc(size_t num);
+WOLFENGINE_LOCAL void we_clear_free(void *str, size_t num);
+WOLFENGINE_LOCAL void *we_memdup(const void *data, size_t siz);
 
 #undef  OPENSSL_zalloc
 #define OPENSSL_zalloc     we_zalloc
@@ -133,81 +136,81 @@ extern WC_RNG* we_rng;
 extern wolfSSL_Mutex* we_rng_mutex;
 #endif
 
-int we_pkey_get_nids(const int** nids);
-int we_pkey_asn1_get_nids(const int** nids);
+WOLFENGINE_LOCAL int we_pkey_get_nids(const int** nids);
+WOLFENGINE_LOCAL int we_pkey_asn1_get_nids(const int** nids);
 
 /*
  * Digest methods.
  */
 
 extern EVP_MD *we_sha1_md;
-int we_init_sha_meth(void);
+WOLFENGINE_LOCAL int we_init_sha_meth(void);
 
 extern EVP_MD *we_ecdsa_sha1_md;
-int we_init_ecdsa_sha1_meth(void);
+WOLFENGINE_LOCAL int we_init_ecdsa_sha1_meth(void);
 
 extern EVP_MD *we_sha224_md;
-int we_init_sha224_meth(void);
+WOLFENGINE_LOCAL int we_init_sha224_meth(void);
 
 extern EVP_MD *we_sha256_md;
-int we_init_sha256_meth(void);
+WOLFENGINE_LOCAL int we_init_sha256_meth(void);
 
 extern EVP_MD *we_sha384_md;
-int we_init_sha384_meth(void);
+WOLFENGINE_LOCAL int we_init_sha384_meth(void);
 
 extern EVP_MD *we_sha512_md;
-int we_init_sha512_meth(void);
+WOLFENGINE_LOCAL int we_init_sha512_meth(void);
 
 extern EVP_MD *we_sha3_224_md;
-int we_init_sha3_224_meth(void);
+WOLFENGINE_LOCAL int we_init_sha3_224_meth(void);
 
 extern EVP_MD *we_sha3_256_md;
-int we_init_sha3_256_meth(void);
+WOLFENGINE_LOCAL int we_init_sha3_256_meth(void);
 
 extern EVP_MD *we_sha3_384_md;
-int we_init_sha3_384_meth(void);
+WOLFENGINE_LOCAL int we_init_sha3_384_meth(void);
 
 extern EVP_MD *we_sha3_512_md;
-int we_init_sha3_512_meth(void);
+WOLFENGINE_LOCAL int we_init_sha3_512_meth(void);
 
-enum wc_HashType we_nid_to_wc_hash_type(int nid);
-int we_nid_to_wc_hash_oid(int nid);
+WOLFENGINE_LOCAL enum wc_HashType we_nid_to_wc_hash_type(int nid);
+WOLFENGINE_LOCAL int we_nid_to_wc_hash_oid(int nid);
 
 /*
  * Cipher methods.
  */
 
 extern EVP_CIPHER* we_des3_cbc_ciph;
-int we_init_des3cbc_meths(void);
+WOLFENGINE_LOCAL int we_init_des3cbc_meths(void);
 
 extern EVP_CIPHER* we_aes128_ecb_ciph;
 extern EVP_CIPHER* we_aes192_ecb_ciph;
 extern EVP_CIPHER* we_aes256_ecb_ciph;
-int we_init_aesecb_meths(void);
+WOLFENGINE_LOCAL int we_init_aesecb_meths(void);
 
 extern EVP_CIPHER* we_aes128_cbc_ciph;
 extern EVP_CIPHER* we_aes192_cbc_ciph;
 extern EVP_CIPHER* we_aes256_cbc_ciph;
-int we_init_aescbc_meths(void);
+WOLFENGINE_LOCAL int we_init_aescbc_meths(void);
 
 extern EVP_CIPHER* we_aes128_cbc_hmac_ciph;
 extern EVP_CIPHER* we_aes256_cbc_hmac_ciph;
-int we_init_aescbc_hmac_meths(void);
+WOLFENGINE_LOCAL int we_init_aescbc_hmac_meths(void);
 
 extern EVP_CIPHER* we_aes128_ctr_ciph;
 extern EVP_CIPHER* we_aes192_ctr_ciph;
 extern EVP_CIPHER* we_aes256_ctr_ciph;
-int we_init_aesctr_meths(void);
+WOLFENGINE_LOCAL int we_init_aesctr_meths(void);
 
 extern EVP_CIPHER* we_aes128_gcm_ciph;
 extern EVP_CIPHER* we_aes192_gcm_ciph;
 extern EVP_CIPHER* we_aes256_gcm_ciph;
-int we_init_aesgcm_meths(void);
+WOLFENGINE_LOCAL int we_init_aesgcm_meths(void);
 
 extern EVP_CIPHER* we_aes128_ccm_ciph;
 extern EVP_CIPHER* we_aes192_ccm_ciph;
 extern EVP_CIPHER* we_aes256_ccm_ciph;
-int we_init_aesccm_meths(void);
+WOLFENGINE_LOCAL int we_init_aesccm_meths(void);
 
 
 /*
@@ -225,9 +228,9 @@ extern RAND_METHOD* we_random_method;
 extern EVP_PKEY_METHOD *we_hmac_pkey_method;
 extern EVP_PKEY_ASN1_METHOD *we_hmac_pkey_asn1_method;
 
-int we_init_hmac_pkey_meth(void);
-int we_init_hmac_pkey_asn1_meth(void);
-int we_hmac_update(Hmac*, const void*, size_t);
+WOLFENGINE_LOCAL int we_init_hmac_pkey_meth(void);
+WOLFENGINE_LOCAL int we_init_hmac_pkey_asn1_meth(void);
+WOLFENGINE_LOCAL int we_hmac_update(Hmac*, const void*, size_t);
 
 #endif /* WE_HAVE_HMAC */
 
@@ -243,8 +246,8 @@ extern EVP_PKEY_METHOD *we_cmac_we_pkey_method;
 extern EVP_PKEY_ASN1_METHOD *we_cmac_pkey_asn1_method;
 extern EVP_PKEY_ASN1_METHOD *we_cmac_we_pkey_asn1_method;
 
-int we_init_cmac_pkey_meth(void);
-int we_init_cmac_pkey_asn1_meth(void);
+WOLFENGINE_LOCAL int we_init_cmac_pkey_meth(void);
+WOLFENGINE_LOCAL int we_init_cmac_pkey_asn1_meth(void);
 
 #endif /* WE_HAVE_CMAC */
 
@@ -253,14 +256,14 @@ int we_init_cmac_pkey_asn1_meth(void);
  */
 
 extern EVP_PKEY_METHOD *we_tls1_prf_method;
-int we_init_tls1_prf_meth(void);
+WOLFENGINE_LOCAL int we_init_tls1_prf_meth(void);
 
 /*
  * HKDF method.
  */
 
 extern EVP_PKEY_METHOD *we_hkdf_method;
-int we_init_hkdf_meth(void);
+WOLFENGINE_LOCAL int we_init_hkdf_meth(void);
 
 /*
  * DH method.
@@ -269,10 +272,10 @@ int we_init_hkdf_meth(void);
 #ifdef WE_HAVE_DH
 
 extern DH_METHOD *we_dh_method;
-int we_init_dh_meth(void);
+WOLFENGINE_LOCAL int we_init_dh_meth(void);
 
 extern EVP_PKEY_METHOD *we_dh_pkey_method;
-int we_init_dh_pkey_meth(void);
+WOLFENGINE_LOCAL int we_init_dh_pkey_meth(void);
 
 #endif /* WE_HAVE_DH */
 
@@ -283,9 +286,9 @@ int we_init_dh_pkey_meth(void);
 #ifdef WE_HAVE_RSA
 
 extern EVP_PKEY_METHOD *we_rsa_pkey_method;
-int we_init_rsa_pkey_meth(void);
+WOLFENGINE_LOCAL int we_init_rsa_pkey_meth(void);
 extern RSA_METHOD *we_rsa_method;
-int we_init_rsa_meth(void);
+WOLFENGINE_LOCAL int we_init_rsa_meth(void);
 
 #endif /* WE_HAVE_RSA */
 
@@ -296,7 +299,7 @@ int we_init_rsa_meth(void);
 #ifdef WE_HAVE_ECDH
 
 extern ECDH_METHOD *we_ecdh_method;
-int we_init_ecdh_meth(void);
+WOLFENGINE_LOCAL int we_init_ecdh_meth(void);
 
 #endif /* WE_HAVE_ECDH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
@@ -309,7 +312,7 @@ int we_init_ecdh_meth(void);
 #if OPENSSL_VERSION_NUMBER <= 0x100020ffL
 
 extern ECDSA_METHOD *we_ecdsa_method;
-int we_init_ecdsa_meth(void);
+WOLFENGINE_LOCAL int we_init_ecdsa_meth(void);
 
 #endif
 #endif /* WE_HAVE_ECDSA */
@@ -327,17 +330,17 @@ extern EVP_PKEY_METHOD *we_ec_p224_method;
 extern EVP_PKEY_METHOD *we_ec_p256_method;
 extern EVP_PKEY_METHOD *we_ec_p384_method;
 extern EVP_PKEY_METHOD *we_ec_p521_method;
-int we_init_ecc_meths(void);
-int we_init_ec_key_meths(void);
+WOLFENGINE_LOCAL int we_init_ecc_meths(void);
+WOLFENGINE_LOCAL int we_init_ec_key_meths(void);
 
 /*
  * PBE method
  */
 
 #ifdef WE_HAVE_PBE
-int we_init_pbe_keygen(void);
+WOLFENGINE_LOCAL int we_init_pbe_keygen(void);
 #endif
 
-int wolfengine_bind(ENGINE *e, const char *id);
+WOLFENGINE_LOCAL int wolfengine_bind(ENGINE *e, const char *id);
 
 #endif /* INTERNAL_H */

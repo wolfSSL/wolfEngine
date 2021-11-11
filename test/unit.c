@@ -23,6 +23,7 @@
 #include <unistd.h>
 #endif
 
+
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_logging.h>
 
@@ -582,11 +583,10 @@ int main(int argc, char* argv[])
     ENGINE *e = NULL;
 #ifdef WE_NO_DYNAMIC_ENGINE
     int staticTest = 1;
-    const char *name = wolfengine_id;
 #else
     int staticTest = 0;
-    const char *name = wolfengine_id;
 #endif /* WE_NO_DYNAMIC_ENGINE */
+    const char *name = wolfengine_id;
     const char *dir = ".libs";
     int i;
     int runAll = 1;
@@ -703,9 +703,19 @@ int main(int argc, char* argv[])
         }
     #endif /* WE_NO_DYNAMIC_ENGINE */
 
+        {
+            ENGINE* eList;
+            for (eList = ENGINE_get_first(); eList != NULL; 
+                 eList = ENGINE_get_next(eList)) {
+                printf("Found engine %s : %s\n", ENGINE_get_id(eList),
+                    ENGINE_get_name(eList));
+            }
+        }
+
         e = ENGINE_by_id(name);
         if (e == NULL) {
             PRINT_ERR_MSG("Failed to find engine!\n");
+            printf("Looking for %s\n", name);
             err = 1;
         }
     }

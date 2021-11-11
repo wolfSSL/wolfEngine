@@ -1120,6 +1120,8 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             int params;
         #endif
 
+        #ifdef HAVE_PUBLIC_FFDHE
+        #ifdef HAVE_FFDHE_2048
             if (XSTRNCMP(value, "ffdhe2048", 10) == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe2048");
@@ -1129,8 +1131,10 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                 params = WC_FFDHE_2048;
             #endif
             }
+            else
+        #endif
         #ifdef HAVE_FFDHE_3072
-            else if (XSTRNCMP(value, "ffdhe3072", 10) == 0) {
+            if (XSTRNCMP(value, "ffdhe3072", 10) == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe3072");
             #ifndef HAVE_WC_DHSETNAMEDKEY
@@ -1139,9 +1143,10 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                 params = WC_FFDHE_3072;
             #endif
             }
+            else
         #endif
         #ifdef HAVE_FFDHE_4096
-            else if (XSTRNCMP(value, "ffdhe4096", 10) == 0) {
+            if (XSTRNCMP(value, "ffdhe4096", 10) == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe4096");
             #ifndef HAVE_WC_DHSETNAMEDKEY
@@ -1150,8 +1155,10 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                 params = WC_FFDHE_4096;
             #endif
             }
+            else
         #endif
-            else {
+        #endif
+            {
                 /* Unsupported parameters. */
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported DH params: %s",
                           value);

@@ -306,7 +306,7 @@ static int load_static_rsa_key(ENGINE *e, const unsigned char *der,
     }
 
     if (ret == 1) {
-        pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der, derLen);
+        pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der, (long)derLen);
         if (pkey == NULL) {
             PRINT_MSG("load_static_rsa_key: d2i_PrivateKey failed.");
             ret = 0;
@@ -953,7 +953,7 @@ static int test_rsa_enc_dec(ENGINE *e, const unsigned char *der, size_t derLen,
     unsigned char *buf = NULL;
 
     PRINT_MSG("Load RSA key");
-    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der, derLen);
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der, (long)derLen);
     err = pkey == NULL;
     if (err == 0) {
         rsaKey = EVP_PKEY_get0_RSA(pkey);
@@ -1178,7 +1178,7 @@ int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data) {
     (void)rsa_key_der_256;
     (void)rsa_key_der_1024;
 
-    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, pSize);
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, (long)pSize);
     err = pkey == NULL;
     if (err == 0) {
         rsa = EVP_PKEY_get0_RSA(pkey);

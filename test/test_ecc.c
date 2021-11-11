@@ -740,13 +740,13 @@ int test_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
     const unsigned char *p;
 
     p = privKey;
-    keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, len);
+    keyA = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, (long)len);
     if (keyA == NULL) {
         err = 1;
     }
     if (err == 0) {
         p = peerPrivKey;
-        err = (keyB = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, peerLen)) == NULL;
+        err = (keyB = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, (long)peerLen)) == NULL;
     }
     if (err == 0) {
         PRINT_MSG("Derive secret A");
