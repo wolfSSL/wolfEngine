@@ -85,6 +85,11 @@
     #include <wolfssl/wolfcrypt/kdf.h>
 #endif
 
+/* The DES3-CBC code won't compile unless wolfCrypt has support for it. */
+#if defined(NO_DES3) && defined(WE_HAVE_DES3CBC)
+#undef WE_HAVE_DES3CBC
+#endif
+
 #include <wolfengine/we_openssl_bc.h>
 #include <wolfengine/we_logging.h>
 #include <wolfengine/we_fips.h>

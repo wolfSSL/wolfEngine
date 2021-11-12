@@ -1115,9 +1115,9 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         /* Set named DH parameters. */
         if (XSTRNCMP(type, "dh_param", 9) == 0) {
         #ifndef HAVE_WC_DHSETNAMEDKEY
-            const DhParams *params;
+            const DhParams *params = NULL;
         #else
-            int params;
+            int params = 0;
         #endif
 
         #ifdef HAVE_PUBLIC_FFDHE
