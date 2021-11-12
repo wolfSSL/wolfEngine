@@ -31,4 +31,6 @@ noinst_HEADERS += test/unit.h
 EXTRA_DIST += \
 	test/test.vcxproj \
 	test/test.vcxproj.filters \
-	test/test.vcxproj.user
+	test/test.vcxproj.user \
+	test/resource.h \
+	test/test.rc
