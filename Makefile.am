@@ -44,4 +44,5 @@ EXTRA_DIST += \
     wolfEngine.sln \
     wolfEngine.vcxproj \
     wolfEngine.vcxproj.filters \
-    wolfEngine.vcxproj.user
+    wolfEngine.vcxproj.user \
+    user_settings.h
