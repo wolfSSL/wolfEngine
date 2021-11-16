@@ -951,7 +951,7 @@ static int wolfengine_init(ENGINE *e)
 #endif /* WE_HAVE_ECDH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 #ifdef WE_HAVE_ECDSA
-#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     if (ret == 1) {
         ret = we_init_ecdsa_meth();
     }
@@ -1278,7 +1278,7 @@ static const ECDH_METHOD *we_ecdh(void)
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
 #ifdef WE_HAVE_ECDSA
-#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 /**
  * Return the ECDSA method.
  *
@@ -1345,7 +1345,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
     }
 #endif /* WE_HAVE_DH */
 #ifdef WE_HAVE_ECDSA
-#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     if (ret == 1 && ENGINE_set_ECDSA(e, we_ecdsa()) == 0) {
         ret = 0;
     }

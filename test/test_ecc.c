@@ -2191,7 +2191,7 @@ int test_ecdh_direct_p521(ENGINE* e, void* data)
 
 
 #if defined(WE_HAVE_ECDSA)
-#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 
 static int test_ecdsa_sign(EC_KEY *key, unsigned char *hash,
                            size_t hashLen, unsigned char *ecdsaSig,
@@ -2377,7 +2377,7 @@ int test_ecdsa(ENGINE *e, void *data)
     return err;
 }
 
-#endif /* OPENSSL_VERSION_NUMBER <= 0x100020ffL */
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 #endif /* WE_HAVE_ECDSA */
 
 #endif /* WE_HAVE_ECC */
