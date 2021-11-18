@@ -81,7 +81,7 @@ AC_DEFUN([AX_CHECK_OPENSSL], [
                 OPENSSL_LDFLAGS="-L$ssldir/lib"
                 OPENSSL_LIBS="-lssl -lcrypto"
 
-                OPENSSL_VERSION=$(grep -oP "(?<=define OPENSSL_VERSION_NUMBER)\s+0x[[0-9a-fA-F]]+" $ssldir/include/openssl/opensslv.h)
+                OPENSSL_VERSION=$(perl -nle'print $& while m{(?<=define OPENSSL_VERSION_NUMBER)\s+0x[[0-9a-fA-F]]+}g' $ssldir/include/openssl/opensslv.h)
                 OPENSSL_VERSION_DEC=$(printf "%d" $OPENSSL_VERSION)
                 OPENSSL_110_DEC=$(printf "%d" 0x10100000)
                 OPENSSL_111_DEC=$(printf "%d" 0x10101000)

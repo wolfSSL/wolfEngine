@@ -76,7 +76,7 @@ AC_DEFUN([AX_CHECK_WOLFSSL], [
                 WOLFSSL_LDFLAGS="-L$wolfssldir/lib"
                 WOLFSSL_LIBS="-lwolfssl"
 
-                WOLFSSL_VERSION=$(grep -oP "(?<=define LIBWOLFSSL_VERSION_HEX)\s+0x[[0-9a-fA-F]]+" $wolfssldir/include/wolfssl/version.h)
+                WOLFSSL_VERSION=$(perl -nle'print $& while m{(?<=define LIBWOLFSSL_VERSION_HEX)\s+0x[[0-9a-fA-F]]+}g' $wolfssldir/include/wolfssl/version.h)
                 WOLFSSL_VERSION_DEC=$(printf "%d" $WOLFSSL_VERSION)
 
                 found=true

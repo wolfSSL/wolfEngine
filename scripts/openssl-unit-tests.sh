@@ -3,6 +3,7 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 WOLFENGINE_ROOT=`dirname "$SCRIPT_DIR"`
 WOLFENGINE_LIBS="$WOLFENGINE_ROOT/.libs"
+LIBWOLFENGINE_PATH="$WOLFENGINE_LIBS/libwolfengine.so"
 CERT_DIR="$WOLFENGINE_ROOT/certs"
 TMP_CONF="$SCRIPT_DIR/tmp.conf"
 TMP_OUT="$SCRIPT_DIR/out"
@@ -11,6 +12,21 @@ TEST_PATCH_DIR_102="$WOLFENGINE_ROOT/openssl_patches/1.0.2h/tests/"
 TEST_PATCH_DIR_111="$WOLFENGINE_ROOT/openssl_patches/1.1.1b/tests/"
 
 OPENSSL_EXTRA_CFLAGS="-g3 -O0 -fno-omit-frame-pointer -fno-inline-functions"
+OPENSSL_CONFIG_CMD="./config"
+ARCH="$(arch)"
+OS="$(uname -s)"
+if [ "$OS" == "Darwin" ]; then
+    LIBWOLFENGINE_PATH="$WOLFENGINE_LIBS/libwolfengine.dylib"
+
+    # See https://wiki.openssl.org/index.php/Compilation_and_Installation#Configure_.26_Config
+    if [ "$ARCH" == "i386" ]; then # Intel
+        OPENSSL_CONFIG_CMD="./Configure darwin64-x86_64-cc"
+    elif [ "$ARCH" == "arm64" ]; then # M1
+        echo "Not able to run tests on Mac with arm64 architecture, yet."
+        exit 1
+        # OPENSSL_CONFIG_CMD="./Configure darwin64-arm64-cc"
+    fi
+fi
 
 if [ "$MAKE_JOBS" = "" ]; then
   MAKE_JOBS=4
@@ -45,7 +61,7 @@ run_testssl() {
     printf "\ttestssl RSA..." | tee -a $LOGFILE
     echo "" >> $LOGFILE # add a newline to make failure logs easier to read
     local TMP_LOG=$(mktemp ./log.XXXXX)
-    sh ./testssl $KEY $CERT $CA &>> $TMP_LOG
+    sh ./testssl $KEY $CERT $CA >> $TMP_LOG 2>&1
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
@@ -62,7 +78,7 @@ run_individual_111testssl() {
     printf "\t$1..." | tee -a $LOGFILE
     echo "" >> $LOGFILE
     local TMP_LOG=$(mktemp ./log.XXXXX)
-    eval "CTLOG_FILE=ct/log_list.conf TEST_CERTS_DIR=certs ./$* &>> $TMP_LOG"
+    eval "CTLOG_FILE=ct/log_list.conf TEST_CERTS_DIR=certs ./$* >> $TMP_LOG 2>&1"
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
@@ -77,7 +93,7 @@ run_111recipe() {
     printf "\t$1..." | tee -a $LOGFILE
     echo "" >> $LOGFILE
     local TMP_LOG=$(mktemp ./log.XXXXX)
-    eval "SRCTOP=../. BLDTOP=../. RESULT_D=test-runs PERL="/usr/bin/perl" EXE_EXT= OPENSSL_ENGINES=`cd ../../.libs 2>/dev/null && pwd` OPENSSL_DEBUG_MEMORY=on perl run_tests.pl $1 &>> $TMP_LOG"
+    eval "SRCTOP=../. BLDTOP=../. RESULT_D=test-runs PERL="/usr/bin/perl" EXE_EXT= OPENSSL_ENGINES=`cd ../../.libs 2>/dev/null && pwd` OPENSSL_DEBUG_MEMORY=on perl run_tests.pl $1 >> $TMP_LOG 2>&1"
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
@@ -98,7 +114,7 @@ run_openssl() {
     echo "" >> $LOGFILE
     local TMP_LOG=$(mktemp ./log.XXXXX)
     (LD_LIBRARY_PATH="$WOLFENGINE_LIBS:$LD_LIBRARY_PATH" \
-    eval "../apps/openssl $1 -engine wolfengine $2" &>> $TMP_LOG)
+    eval "../apps/openssl $1 -engine wolfengine $2" >> $TMP_LOG 2>&1)
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
@@ -113,7 +129,7 @@ run_test() {
     printf "\t$1..." | tee -a $LOGFILE
     echo "" >> $LOGFILE
     local TMP_LOG=$(mktemp ./log.XXXXX)
-    ./$* &>> $TMP_LOG
+    ./$* >> $TMP_LOG 2>&1
     if [ $? != 0 ]; then
         printf "failed\n"
         FAILED=$((FAILED+1))
@@ -135,7 +151,7 @@ engines = engine_section
 wolfengine = wolfengine_section
 
 [wolfengine_section]
-dynamic_path = $WOLFENGINE_ROOT/.libs/libwolfengine.so
+dynamic_path = $LIBWOLFENGINE_PATH
 default_algorithms = ALL
 init = 1
 enable_debug = 1
@@ -148,7 +164,7 @@ apply_patches() {
     do
         # Try to patch. If doesn't work, check whether it has already been
         # applied.
-        git apply $PATCH &>$LOGFILE || git apply $PATCH -R --check &>> $LOGFILE
+        git apply $PATCH &>$LOGFILE || git apply $PATCH -R --check >> $LOGFILE 2>&1
         if [ $? != 0 ]; then
             printf "$PATCH failed to apply\n"
             do_cleanup
@@ -203,7 +219,7 @@ setup_openssl_102h() {
         if [ -z "${OPENSSL_NO_CONFIG}" ]; then
             printf "\tConfiguring.\n"
             # Configure for debug.
-            ./config shared no-asm $OPENSSL_EXTRA_CFLAGS 2>&1 | tee -a $LOGFILE
+            $OPENSSL_CONFIG_CMD shared no-asm $OPENSSL_EXTRA_CFLAGS 2>&1 | tee -a $LOGFILE
             if [ "${PIPESTATUS[0]}" != 0 ]; then
                 printf "config failed\n"
                 do_cleanup
@@ -248,7 +264,7 @@ setup_openssl_111b() {
         if [ -z "${OPENSSL_NO_CONFIG}" ]; then
             printf "\tConfiguring.\n"
             # Configure for debug.
-            ./config shared no-asm $OPENSSL_EXTRA_CFLAGS 2>&1 | tee -a $LOGFILE
+            $OPENSSL_CONFIG_CMD shared no-asm $OPENSSL_EXTRA_CFLAGS 2>&1 | tee -a $LOGFILE
             if [ "${PIPESTATUS[0]}" != 0 ]; then
                 printf "config failed\n"
                 do_cleanup
@@ -275,11 +291,14 @@ setup_openssl_111b() {
 
 check_fips() {
     printf "Checking if libwolfssl is FIPS.\n"
-    local LIBWOLFENGINE="$WOLFENGINE_LIBS/libwolfengine.so"
-    if [ ! -f $LIBWOLFENGINE ]; then
+    if [ ! -f $LIBWOLFENGINE_PATH ]; then
         printf "\tlibwolfengine.so not built yet, can't do FIPS check.\n"
     else
-        local LIBWOLFSSL=$(ldd $LIBWOLFENGINE | grep -oP "(?<!=>)+\/.*(libwolfssl\.so(\.[0-9]+)*)")
+        if [ "$OS" == "Darwin" ]; then
+            local LIBWOLFSSL=$(otool -L $LIBWOLFENGINE_PATH | grep -oE "(\/.*libwolfssl.*dylib)")
+        else
+            local LIBWOLFSSL=$(ldd $LIBWOLFENGINE_PATH | grep -oP "(?<!=>)+\/.*(libwolfssl\.so(\.[0-9]+)*)")
+        fi
         if [ -z "$LIBWOLFSSL" ]; then
             printf "\tUnable to find libwolfssl.\n"
         else
@@ -373,8 +392,11 @@ test_openssl_102h() {
     setup_openssl_102h
 
     OPENSSL_SOURCE=$OPENSSL_1_0_2_SOURCE
-    export LD_LIBRARY_PATH="$OPENSSL_SOURCE:$OLD_LIB_PATH"
-
+    if [ "$OS" == "Darwin" ]; then
+        export DYLD_LIBRARY_PATH="$OPENSSL_SOURCE:$OLD_LIB_PATH"
+    else
+        export LD_LIBRARY_PATH="$OPENSSL_SOURCE:$OLD_LIB_PATH"
+    fi
 
     printf "Running OpenSSL unit tests using wolfEngine.\n\n"
 
@@ -404,7 +426,11 @@ test_openssl_111b() {
     setup_openssl_111b
 
     OPENSSL_SOURCE=$OPENSSL_1_1_1_SOURCE
-    export LD_LIBRARY_PATH="$OPENSSL_SOURCE:$OLD_LIB_PATH"
+    if [ "$OS" == "Darwin" ]; then
+        export DYLD_LIBRARY_PATH="$OPENSSL_SOURCE:$OLD_LIB_PATH"
+    else
+        export LD_LIBRARY_PATH="$OPENSSL_SOURCE:$OLD_LIB_PATH"
+    fi
 
     printf "Running OpenSSL unit tests using wolfEngine.\n\n"
 
@@ -474,11 +500,21 @@ test_openssl_111b() {
 }
 
 # Start
-OLD_LIB_PATH=$LD_LIBRARY_PATH
 export OPENSSL_ENGINES="$WOLFENGINE_LIBS"
 FAILED=0
 
 VERSIONS="1.0.2 1.1.1"
+if [ "$OS" == "Darwin" ]; then
+    OLD_LIB_PATH=$DYLD_LIBRARY_PATH
+
+    if [ "$ARCH" == "arm64" ]; then
+        # 1.0.2 isn't set up to work with the M1.
+        VERSIONS="1.1.1"
+    fi
+else
+    OLD_LIB_PATH=$LD_LIBRARY_PATH
+fi
+
 if [ "$OPENSSL_VERSIONS" != "" ]; then
     VERSIONS=$OPENSSL_VERSIONS
 fi
