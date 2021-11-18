@@ -2698,7 +2698,7 @@ int we_init_ecdh_meth(void)
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
 #ifdef WE_HAVE_ECDSA
-#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 
 /** ECDSA method - ECDSA using wolfSSL for the implementation. */
 ECDSA_METHOD *we_ecdsa_method = NULL;

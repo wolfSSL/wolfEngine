@@ -335,7 +335,7 @@ TEST_CASE test_case[] = {
 #endif /* WE_HAVE_EC_KEY */
 
 #ifdef WE_HAVE_ECDSA
-#if OPENSSL_VERSION_NUMBER <= 0x100020ffL
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     TEST_DECL(test_ecdsa, NULL),
 #endif
 #endif /* WE_HAVE_ECDSA */
