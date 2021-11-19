@@ -434,7 +434,7 @@ run_stunnel_custom_tests() {
 
     printf "\tStarting stunnel server..."
     echo "Starting stunnel server" >> $LOGFILE
-    $SCRIPT_DIR/stunnel-5.59/src/stunnel ./stunnel-server.conf &>> $LOGFILE
+    $SCRIPT_DIR/stunnel-5.59/src/stunnel ./stunnel-server.conf >> $LOGFILE 2>&1
     
     wait_file $STUNNEL_SERVER_PID_FILE || {
       printf "failed, timed out.\n"
@@ -453,7 +453,7 @@ run_stunnel_custom_tests() {
 
     printf "\tStarting stunnel client..."
     echo "Starting stunnel client" >> $LOGFILE
-    $SCRIPT_DIR/stunnel-5.59/src/stunnel ./stunnel-client.conf &>> $LOGFILE
+    $SCRIPT_DIR/stunnel-5.59/src/stunnel ./stunnel-client.conf >> $LOGFILE 2>&1
 
     wait_file $STUNNEL_CLIENT_PID_FILE || {
       printf "failed, timed out.\n"
@@ -527,7 +527,7 @@ run_stunnel_custom_tests() {
     done
 
     printf "\tKilling application server..."
-    echo "shutdown" | stdbuf -oL $SCRIPT_DIR/wolfssl-examples/tls/client-tcp 127.0.0.1 &>> application-client.log
+    echo "shutdown" | stdbuf -oL $SCRIPT_DIR/wolfssl-examples/tls/client-tcp 127.0.0.1 >> application-client.log 2>&1
     if [ $? != 0 ]; then
         printf "failed.\n"
         do_failure

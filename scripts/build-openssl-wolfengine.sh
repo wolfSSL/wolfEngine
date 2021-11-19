@@ -53,7 +53,7 @@ apply_patches() {
     do
         # Try to patch. If doesn't work, check whether it has already been
         # applied.
-        git apply $PATCH &>$LOGFILE || git apply $PATCH -R --check &>> $LOGFILE
+        git apply $PATCH &>$LOGFILE || git apply $PATCH -R --check >> $LOGFILE 2>&1
         if [ $? != 0 ]; then
             printf "$PATCH failed to apply\n"
             do_cleanup
