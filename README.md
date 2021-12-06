@@ -247,6 +247,10 @@ test Properties -> Configuration Properties -> Build Events -> Post-Build Event
 -> Command Line
 ```
 
+## Examples
+
+Example programs using wolfEngine can be found in the `examples/` subdirectory.
+
 ## Need Help?
 
 Please reach out to support@wolfssl.com for technical support. If you're
