@@ -922,7 +922,7 @@ static int we_hmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 {
     int ret = 1;
     we_Mac *mac;
-    we_Mac *dup;
+    we_Mac *dupl;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_copy");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [dst = %p, src = %p]", dst, src);
@@ -946,15 +946,15 @@ static int we_hmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 
     if (ret == 1) {
         /* Duplicate internal MAC object. */
-        ret = we_mac_dup(mac, &dup);
+        ret = we_mac_dup(mac, &dupl);
     }
     if (ret == 1) {
         /* Copy wolfSSL HMAC object. */
-        ret = we_hmac_copy(&dup->state.hmac, &mac->state.hmac);
+        ret = we_hmac_copy(&dupl->state.hmac, &mac->state.hmac);
     }
     if (ret == 1) {
         /* Set the internal MAC object against context. */
-        EVP_PKEY_CTX_set_data(dst, dup);
+        EVP_PKEY_CTX_set_data(dst, dupl);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_copy", ret);
@@ -1544,7 +1544,7 @@ static int we_cmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 {
     int ret = 1;
     we_Mac *mac;
-    we_Mac *dup;
+    we_Mac *dupl;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_cmac_pkey_copy");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [dst = %p, src = %p]", dst, src);
@@ -1568,15 +1568,15 @@ static int we_cmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 
     if (ret == 1) {
         /* Duplicate internal MAC object. */
-        ret = we_mac_dup(mac, &dup);
+        ret = we_mac_dup(mac, &dupl);
     }
     if (ret == 1) {
         /* Copy wolfSSL CMAC object. */
-        ret = we_cmac_copy(mac, &dup->state.cmac, &mac->state.cmac);
+        ret = we_cmac_copy(mac, &dupl->state.cmac, &mac->state.cmac);
     }
     if (ret == 1) {
         /* Set the internal MAC object against context. */
-        EVP_PKEY_CTX_set_data(dst, dup);
+        EVP_PKEY_CTX_set_data(dst, dupl);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_cmac_pkey_copy", ret);
