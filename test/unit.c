@@ -125,6 +125,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes256_gcm, NULL),
     TEST_DECL(test_aes128_gcm_fixed, NULL),
     TEST_DECL(test_aes128_gcm_tls, NULL),
+    TEST_DECL(test_aes_gcm_evp_cipher, NULL),
 #endif
 #ifdef WE_HAVE_AESCCM
     TEST_DECL(test_aes128_ccm, NULL),

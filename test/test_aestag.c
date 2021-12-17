@@ -176,7 +176,7 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
     /* Bug in older versions has tag_set cleared and causes failure. */
     if (err == 0) {
 #else
-    if ((err == 0) && (len == 0)) {
+    if (err == 0 && (!ccm || len == 0)) {
 #endif
         err = EVP_DecryptFinal_ex(ctx, dec + decLen, &decLen) != 1;
     }
@@ -629,6 +629,95 @@ int test_aes128_gcm_tls(ENGINE *e, void *data)
 {
     return test_aes_tag_tls(e, data, EVP_aes_128_gcm(), 16,
                             EVP_GCM_TLS_FIXED_IV_LEN, 0);
+}
+
+/* 
+ * OpenSSL doesn't recommend using EVP_Cipher(), but there are applications
+ * using it, so we need to support it. With wolfCrypt, AES-GCM decryption cannot
+ * be decoupled from checking the authentication tag, so we only expect the
+ * decryption to succeed when the caller has set the tag properly. It is not
+ * possible to decrypt ciphertext without checking the tag.
+ */
+int test_aes_gcm_evp_cipher(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX* ctx = NULL;
+    unsigned char key[AES_128_KEY_SIZE] = {0};
+    unsigned char iv[AES_BLOCK_SIZE] = {0};
+    unsigned char aad[3] = {0x01, 0x02, 0x03};
+    unsigned char plainText[5] = {0x04, 0x05, 0x06, 0x07, 0x08};
+    unsigned char cipherText[sizeof(plainText)];
+    unsigned char decryptedText[sizeof(plainText)];
+    unsigned char tag[EVP_GCM_TLS_TAG_LEN];
+
+    (void)data;
+
+    /* Encrypt with OpenSSL. */
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, EVP_aes_128_gcm(), NULL, key, iv, 1) != 1;
+    }
+    if (err == 0) {
+        /* AAD */
+        err = EVP_Cipher(ctx, NULL, aad, sizeof(aad)) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, cipherText, plainText, sizeof(plainText)) <= 0;
+    }
+    if (err == 0) {
+        /* Compute tag. */
+        err = EVP_Cipher(ctx, NULL, NULL, 0) < 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  EVP_GCM_TLS_TAG_LEN, tag) != 1;
+    }
+    if (ctx != NULL) {
+        EVP_CIPHER_CTX_free(ctx);
+    }
+
+    /* Decrypt with wolfEngine. */
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv, 0) != 1;
+    }
+    if (err == 0) {
+        /* AAD */
+        err = EVP_Cipher(ctx, NULL, aad, sizeof(aad)) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, decryptedText, cipherText,
+                         sizeof(cipherText)) <= 0;
+    }
+    if (err == 0) {
+        /* Decrypt without tag set, should fail. */
+        err = EVP_Cipher(ctx, NULL, NULL, 0) >= 0;
+    }
+
+    /* Try the same sequence again, but set the tag before the final
+     * EVP_Cipher() call. */
+    if (err == 0) {
+        err = EVP_Cipher(ctx, NULL, aad, sizeof(aad)) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, decryptedText, cipherText,
+                         sizeof(cipherText)) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  EVP_GCM_TLS_TAG_LEN, tag) != 1;
+    }
+    if (err == 0) {
+        /* Decrypt with tag set, should succeed. */
+        err = EVP_Cipher(ctx, NULL, NULL, 0) < 0;
+    }
+    if (ctx != NULL) {
+        EVP_CIPHER_CTX_free(ctx);
+    }
+
+    return err;
 }
 
 #endif /* WE_HAVE_AESGCM */
