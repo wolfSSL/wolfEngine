@@ -68,6 +68,8 @@ sudo make install
 
 ### wolfSSL
 
+#### From Git
+
 ```
 git clone https://github.com/wolfssl/wolfssl.git
 cd wolfssl
@@ -81,12 +83,22 @@ make
 sudo make install
 ```
 
-Add `--enable-pwdbased` to the configure command above if using PKCS#12.
+#### From FIPS Bundle
 
-Remove `-DWOLFSSL_PSS_LONG_SALT -DWOLFSSL_PSS_SALT_LEN_DISCOVER` and add
-`--enable-fips=v2` to the configure command above if building from a FIPS v2
-bundle and not the git repository. Change `--enable-fips=v2` to
-`--enable-fips=ready` if using a FIPS Ready bundle.
+Use this configure command:
+```
+./configure --enable-fips=v2 --enable-opensslcoexist --enable-cmac
+--enable-keygen --enable-sha --enable-des3 --enable-aesctr --enable-aesccm
+--enable-x963kdf CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT
+-DWC_RSA_NO_PADDING -DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192 -DSha3=wc_Sha3
+-DNO_OLD_SHA256_NAMES -DNO_OLD_MD5_NAME"
+```
+
+Change `--enable-fips=v2` to `--enable-fips=ready` if using a FIPS Ready bundle.
+
+#### Additional Options
+- Add `--enable-pwdbased` to the configure commands above if using PKCS#12.
+- Add `--enable-debug` to turn on debug logging.
 
 ### wolfEngine
 
