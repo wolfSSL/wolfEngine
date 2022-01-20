@@ -823,7 +823,7 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
  * @param  sigLen  [in]  Length of signature data.
  * @param  tbs     [in]  To Be Signed data.
  * @param  tbsLen  [in]  Length of To Be Signed data.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 on successful verification, 0 on failure, and -1 on error.
  */
 static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                            size_t sigLen, const unsigned char *tbs,
@@ -861,7 +861,7 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         /* Check for indefinite length - length not specified. */
         if (sig[o] == 0x80) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature has indefinite length");
-            ret = 0;
+            ret = -1;
         }
         /* Check for multi-byte length. */
         else if (sig[o] > 0x80) {
@@ -880,7 +880,7 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
          *     SEQUENCE header length + SQUENCE data length */
         if ((ret == 1) && (o + len != sigLen)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature length invalid");
-            ret = 0;
+            ret = -1;
         }
     }
     if (ret == 1) {
@@ -889,7 +889,7 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                                 &ecc->key);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
-            ret = 0;
+            ret = -1;
         }
     }
     if (ret == 1) {
@@ -2485,7 +2485,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
  * @param  dLen    [in]  Length of digest.
  * @param  sig     [in]  Signature data.
  * @param  sigLen  [in]  Length of signature data.
- * @returns  1 on success and 0 on failure.
+ * @returns  11 on successful verification, 0 on failure, and -1 on error.
  */
 static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
                             const unsigned char *sig, int sigLen, EC_KEY *ecKey)
@@ -2511,7 +2511,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         rc = wc_ecc_init(&key);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
-            ret = 0;
+            ret = -1;
         }
     }
     if (ret == 1) {
@@ -2525,7 +2525,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         rc = wc_ecc_verify_hash(sig, sigLen, dgst, dLen, &res, &key);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
-            ret = 0;
+            ret = -1;
         }
     }
     if (ret == 1) {

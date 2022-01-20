@@ -523,7 +523,7 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
             }
             break;
         default:
-            /* Unsupported padding mode for RSA encrpytion. */
+            /* Unsupported padding mode for RSA encryption. */
             XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding mode:  %d",
                       rsa->padMode);
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
