@@ -21,6 +21,9 @@
 
 #include <wolfengine/we_internal.h>
 #include <wolfengine/we_wolfengine.h>
+#if defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION == 5
+#include <wolfssl/wolfcrypt/fips_test.h>
+#endif
 
 #ifdef WE_NO_OPENSSL_MALLOC
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -798,6 +801,23 @@ static int wolfengine_init(ENGINE *e)
     wc_SetSeed_Cb(wc_GenerateSeed);
 #endif
     ret = we_init_random();
+#if defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION == 5 && \
+    defined(WE_HAVE_ECC)
+#if defined(WE_HAVE_ECDH)
+    if (ret == 1) {
+        if (wc_RunCast_fips(FIPS_CAST_ECC_PRIMITIVE_Z) != 0) {
+            ret = 0;
+        }
+    }
+#endif /* WE_HAVE_ECDH */
+#if defined(WE_HAVE_ECDSA)
+    if (ret == 1) {
+        if (wc_RunCast_fips(FIPS_CAST_ECDSA) != 0) {
+            ret = 0;
+        }
+    }
+#endif /* WE_HAVE_ECDSA */
+#endif /* HAVE_FIPS_VERSION && WE_HAVE_ECC */
 #endif
 #ifdef WE_HAVE_SHA1
     if (ret == 1) {
