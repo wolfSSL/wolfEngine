@@ -74,7 +74,7 @@ sudo make install
 git clone https://github.com/wolfssl/wolfssl.git
 cd wolfssl
 ./autogen.sh
-./configure --enable-engine
+./configure --enable-engine-without-fips
 make
 sudo make install
 ```
@@ -83,10 +83,10 @@ sudo make install
 
 Use this configure command:
 ```
-./configure --enable-fips=v2 --enable-fips-engine
+./configure --enable-engine
 ```
 
-Change `--enable-fips=v2` to `--enable-fips=ready` if using a FIPS Ready bundle.
+This adds support for `fips=v2` automatically. Add `--enable-fips=ready` if using a FIPS Ready bundle.
 
 #### Additional Options
 - Add `--enable-pwdbased` to the configure commands above if using PKCS#12.
