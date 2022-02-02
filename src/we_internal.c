@@ -1311,6 +1311,23 @@ static const ECDSA_METHOD *we_ecdsa(void)
 #endif
 #endif /* WE_HAVE_ECDSA */
 
+#ifdef HAVE_FIPS
+static void we_fips_cb(int ok, int err, const char* hash)
+{
+    printf("*******************************************\n");
+    printf("we_fips_cb: ok = %d, err = %d\n", ok, err);
+    printf("error message = %s\n", wc_GetErrorString(err));
+    printf("hash = %s\n", hash);
+
+    if (err == IN_CORE_FIPS_E) {
+        printf("FIPS module integrity check failure. Copy above hash value "
+               "into verifyCore[] in wolfSSL's (NOT wolfEngine) fips_test.c "
+               "and rebuild wolfSSL.\n");
+    }
+    printf("*******************************************\n");
+}
+#endif
+
 /**
  * Bind the wolfengine into an engine object.
  *
@@ -1323,6 +1340,10 @@ int wolfengine_bind(ENGINE *e, const char *id)
     int ret = 1;
 
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_bind");
+
+#ifdef HAVE_FIPS
+    wolfCrypt_SetCb_fips(we_fips_cb);
+#endif
 
     if ((id != NULL) &&
                  (XSTRNCMP(id, wolfengine_id, XSTRLEN(wolfengine_id)) != 0)) {

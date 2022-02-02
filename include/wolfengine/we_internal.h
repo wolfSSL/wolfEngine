@@ -82,7 +82,10 @@
 #include <wolfssl/wolfcrypt/random.h>
 #include <wolfssl/wolfcrypt/pwdbased.h>
 #ifdef HAVE_WOLFSSL_WOLFCRYPT_KDF_H
-    #include <wolfssl/wolfcrypt/kdf.h>
+#include <wolfssl/wolfcrypt/kdf.h>
+#endif
+#ifdef HAVE_FIPS
+#include <wolfssl/wolfcrypt/fips_test.h>
 #endif
 
 /* The DES3-CBC code won't compile unless wolfCrypt has support for it. */
