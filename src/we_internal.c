@@ -1117,11 +1117,13 @@ static int wolfengine_destroy(ENGINE *e)
     return 1;
 }
 
-#define WOLFENGINE_CMD_ENABLE_DEBUG          ENGINE_CMD_BASE
-#define WOLFENGINE_CMD_SET_LOG_LEVEL         (ENGINE_CMD_BASE + 1)
-#define WOLFENGINE_CMD_SET_LOG_COMPONENTS    (ENGINE_CMD_BASE + 2)
-#define WOLFENGINE_CMD_SET_LOGGING_CB        (ENGINE_CMD_BASE + 3)
-#define WOLFENGINE_CMD_ENABLE_FIPS_CHECKS    (ENGINE_CMD_BASE + 4)
+#define WOLFENGINE_CMD_ENABLE_DEBUG           ENGINE_CMD_BASE
+#define WOLFENGINE_CMD_SET_LOG_LEVEL          (ENGINE_CMD_BASE + 1)
+#define WOLFENGINE_CMD_SET_LOG_COMPONENTS     (ENGINE_CMD_BASE + 2)
+#define WOLFENGINE_CMD_SET_LOGGING_CB         (ENGINE_CMD_BASE + 3)
+#define WOLFENGINE_CMD_ENABLE_FIPS_CHECKS     (ENGINE_CMD_BASE + 4)
+#define WOLFENGINE_CMD_ENABLE_DEBUG_WOLFSSL   (ENGINE_CMD_BASE + 5)
+#define WOLFENGINE_CMD_SET_LOGGING_CB_WOLFSSL (ENGINE_CMD_BASE + 6)
 
 /**
  * wolfEngine control command list.
@@ -1177,6 +1179,14 @@ static ENGINE_CMD_DEFN wolfengine_cmd_defns[] = {
       "enable_fips_checks",
       "Enable wolfEngine FIPS checks (1=enable, 0=disable)",
       ENGINE_CMD_FLAG_NUMERIC },
+    { WOLFENGINE_CMD_ENABLE_DEBUG_WOLFSSL,
+      "enable_debug_wolfssl",
+      "Enable wolfSSL debug logging (1=enable, 0=disable)",
+      ENGINE_CMD_FLAG_NUMERIC },
+    { WOLFENGINE_CMD_SET_LOGGING_CB_WOLFSSL,
+      "set_logging_cb_wolfssl",
+      "Set wolfSSL logging callback",
+      ENGINE_CMD_FLAG_INTERNAL },
 
     /* last element MUST be NULL/0 entry, do not remove */
     {0, NULL, NULL, 0}
@@ -1224,6 +1234,16 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
                 wolfEngine_Debugging_OFF();
             }
             break;
+        case WOLFENGINE_CMD_ENABLE_DEBUG_WOLFSSL:
+            if (i > 0) {
+                if (wolfSSL_Debugging_ON() < 0) {
+                    ret = 0;
+                }
+            }
+            else {
+                wolfSSL_Debugging_OFF();
+            }
+            break;
         case WOLFENGINE_CMD_SET_LOG_LEVEL:
             if (wolfEngine_SetLogLevel((int)i) < 0) {
                 WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE,
@@ -1248,6 +1268,18 @@ static int wolfengine_ctrl(ENGINE* e, int cmd, long i, void* p,
             else {
                 WOLFENGINE_MSG(WE_LOG_ENGINE,
                                "wolfEngine user logging callback registered");
+            }
+            break;
+        case WOLFENGINE_CMD_SET_LOGGING_CB_WOLFSSL:
+            /* if f is NULL, resets logging back to default */
+            if (wolfSSL_SetLoggingCb((wolfSSL_Logging_cb)f) != 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_ENGINE, 
+                        "Error registering wolfSSL logging callback");
+                ret = 0;
+            }
+            else {
+                WOLFENGINE_MSG(WE_LOG_ENGINE,
+                               "wolfSSL user logging callback registered");
             }
             break;
         case WOLFENGINE_CMD_ENABLE_FIPS_CHECKS:

@@ -36,6 +36,13 @@ static void my_Logging_cb(const int logLevel, const int component,
     log_cnt++;
 }
 
+static void my_wolfSSL_log_cb(const int logLevel, const char* const logMessage)
+{
+    (void)logLevel;
+    (void)logMessage;
+    log_cnt++;
+}
+
 /******************************************************************************/
 
 int test_logging(ENGINE *e, void *data)
@@ -72,6 +79,21 @@ int test_logging(ENGINE *e, void *data)
     }
 #endif
 
+    /* test enabling wolfSSL debug logging */
+    PRINT_MSG("Enable wolfSSL debug logging");
+    ret = ENGINE_ctrl_cmd(e, "enable_debug_wolfssl", 1, NULL, NULL, 0);
+#ifdef DEBUG_WOLFSSL
+    if (ret != 1) {
+        PRINT_ERR_MSG("Failed to enable wolfSSL debug logging");
+        err = 1;
+    }
+#else
+    if (ret != 0) {
+        PRINT_ERR_MSG("Allowed to enable wolfSSL debug when not compiled in");
+        err = 1;
+    }
+#endif
+
     /* test setting logging level */
     PRINT_MSG("Set logging level");
     ret = ENGINE_ctrl_cmd(e, "log_level", defaultLogLevel, NULL, NULL, 0);
@@ -99,6 +121,23 @@ int test_logging(ENGINE *e, void *data)
 #else
     if (ret != 0) {
         PRINT_ERR_MSG("Allowed to register debug cb when not compiled in");
+        err = 1;
+    }
+#endif
+
+    /* test registering logging callback */
+    PRINT_MSG("Set wolfSSL logging callback");
+    ret = ENGINE_ctrl_cmd(e, "set_logging_cb_wolfssl", 0, NULL,
+                (void(*)(void))my_wolfSSL_log_cb, 0);
+#ifdef DEBUG_WOLFSSL
+    if (ret != 1) {
+        PRINT_ERR_MSG("Failed to set wolfSSL logging callback");
+        err = 1;
+    }
+#else
+    if (ret != 0) {
+        PRINT_ERR_MSG("Allowed to register wolfSSL debug cb when not compiled"
+                      " in");
         err = 1;
     }
 #endif
