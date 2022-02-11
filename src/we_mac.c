@@ -1296,13 +1296,13 @@ static int we_hmac_pkey_asn1_size(const EVP_PKEY *pkey)
  * @param  len   [in]      Length of data in buffer.
  * @returns  1 on success and 0 on failure.
  */
-static int we_hmac_set_priv_key(EVP_PKEY *pkey, const unsigned char *priv,
-                                size_t len)
+static int we_hmac_pkey_asn1_set_priv_key(EVP_PKEY *pkey,
+        const unsigned char *priv, size_t len)
 {
     int ret = 1;
     ASN1_OCTET_STRING *asn1 = NULL;
 
-    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_set_priv_key");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_asn1_set_priv_key");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [pkey = %p, priv = %p, len = %zu]",
                            pkey, priv, len);
 
@@ -1331,11 +1331,86 @@ static int we_hmac_set_priv_key(EVP_PKEY *pkey, const unsigned char *priv,
         ASN1_OCTET_STRING_free(asn1);
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_set_priv_key", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_asn1_set_priv_key", ret);
+
+    return ret;
+}
+
+/**
+ * Get the private key as a byte buffer from the passed in EVP_PKEY.
+ *
+ * @param  pkey  [in]   EVP_PKEY to get private key buffer from.
+ * @param  priv  [out]  Output byte buffer to hold private key.
+ * @param  len   [out]  Holds the length of priv.
+ * @returns  1 on success, 0 on failure.
+ */
+static int we_hmac_pkey_asn1_get_priv_key(const EVP_PKEY *pkey,
+     unsigned char *priv, size_t *len)
+{
+    int ret = 1;
+    const unsigned char* privTmp;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_asn1_get_priv_key");
+
+    if (pkey == NULL || len == NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "Bad argument.");
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        privTmp = EVP_PKEY_get0_hmac(pkey, len);
+        if (privTmp == NULL) {
+            ret = 0;
+        }
+        else {
+            if (priv != NULL) {
+                XMEMCPY(priv, privTmp, *len);
+            }
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_asn1_get_priv_key", ret);
 
     return ret;
 }
 #endif
+
+/**
+ * Compare the public keys (ASN1_OCTET_STRINGs) held in a and b.
+ *
+ * @param  a  [in]  First key for comparison.
+ * @param  b  [in]  Second key for comparison.
+ * @returns  -2 on error, 1 if the keys match, and 0 if they don't.
+ */
+static int we_hmac_pkey_pub_cmp(const EVP_PKEY* a, const EVP_PKEY* b)
+{
+    int ret = 1;
+    ASN1_OCTET_STRING* aString;
+    ASN1_OCTET_STRING* bString;
+
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_pub_cmp");
+
+    if (a == NULL || b == NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "Bad argument.");
+        ret = -2;
+    }
+
+    if (ret == 1) {
+        aString = (ASN1_OCTET_STRING*)EVP_PKEY_get0((EVP_PKEY*)a);
+        bString = (ASN1_OCTET_STRING*)EVP_PKEY_get0((EVP_PKEY*)b);
+
+        if (aString != NULL && bString != NULL) {
+            ret = ASN1_OCTET_STRING_cmp(aString, bString) == 0;
+        }
+        else {
+            ret = 0;
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_pub_cmp", ret);
+
+    return ret;
+}
 
 /**
  * Create a new method and assign the functions to use for ASN.1 HMAC
@@ -1360,11 +1435,13 @@ int we_init_hmac_pkey_asn1_meth(void)
     if (ret == 1) {
         /* Set with HMAC methods. */
         EVP_PKEY_asn1_set_free(we_hmac_pkey_asn1_method, we_hmac_pkey_free);
-        EVP_PKEY_asn1_set_public(we_hmac_pkey_asn1_method, 0, 0, 0, 0,
-                we_hmac_pkey_asn1_size, 0);
+        EVP_PKEY_asn1_set_public(we_hmac_pkey_asn1_method, 0,
+                0, we_hmac_pkey_pub_cmp, 0, we_hmac_pkey_asn1_size, 0);
     #if OPENSSL_VERSION_NUMBER >= 0x10101000L
         EVP_PKEY_asn1_set_set_priv_key(we_hmac_pkey_asn1_method,
-                we_hmac_set_priv_key);
+                we_hmac_pkey_asn1_set_priv_key);
+        EVP_PKEY_asn1_set_get_priv_key(we_hmac_pkey_asn1_method,
+                we_hmac_pkey_asn1_get_priv_key);
     #endif
         /* Add our created asn1 method to the internal list of available
          * methods. */
