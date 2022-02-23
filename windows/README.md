@@ -1,7 +1,7 @@
 # Building on Windows
 
-wolfEngine has Visual Studio support for both FIPS 140-2 and non-FIPS builds.
-Both expect the following directory structure:
+wolfEngine has Visual Studio support for FIPS 140-2, FIPS Ready, and non-FIPS
+builds. All expect the following directory structure:
 
 ```
 .
@@ -10,23 +10,30 @@ Both expect the following directory structure:
 └── wolfssl
 ```
 
+The build will not work unless the directories are named as above.
+
 ## OpenSSL
 
 Follow the instructions in the OpenSSL `INSTALL` file. The list of commands to
 run are:
 
 ```
-    $ perl Configure { VC-WIN32 | VC-WIN64A | VC-WIN64I | VC-CE }
-    $ nmake clean # This command needs to be run if OpenSSL has previously been
-    built in this directory with a different configuration.
-    $ nmake
+$ perl Configure { VC-WIN32 | VC-WIN64A | VC-WIN64I | VC-CE }
+$ nmake clean # This command needs to be run if OpenSSL has previously been
+built in this directory with a different configuration.
+$ nmake
 ```
 
 ## wolfSSL
 
-You should select the same configuration and platform combination that you plan
-to use with wolfEngine (e.g. if you're going to build Debug|x64 for wolfEngine,
-you should build the same for wolfSSL).
+The wolfSSL FIPS module performs an integrity check over the code and read only
+data contents of itself during the FIPS self-test. This requires that the
+module be assembled in a specific order, with the object files wolfcrypt_first.o
+and wolfcrypt_last.o marking the beginning and end of the FIPS module,
+respectively. The only way we have found to reliably ensure this ordering on
+Windows is by building wolfSSL as a DLL. As such, even static builds of
+wolfEngine (i.e. the "Debug" and "Release" configurations) will use wolfSSL as a
+DLL. All wolfEngine Visual Studio configurations also use OpenSSL as a DLL.
 
 ### FIPS 140-2
 
@@ -48,13 +55,10 @@ wolfSSL using `wolfssl64.sln`.
 
 ## wolfEngine
 
-As mentioned above, first ensure that your configuration and platform match what
-you just built for wolfSSL. Note that even if you do a "static" build (i.e. you
-build both wolfSSL and wolfEngine as static libraries), wolfEngine will still
-use OpenSSL as a dynamic library (DLL). To this end, the wolfEngine "test"
-project copies the OpenSSL DLL into the test output directory. If you want to
-skip this step and use system supplied versions of OpenSSL, delete the OpenSSL
-DLL copy command under the test project's properties:
+The wolfEngine "test" project copies the OpenSSL and wolfSSL DLLs into the test
+output directory. If you want to skip the OpenSSL step and use system supplied
+versions of OpenSSL, delete the OpenSSL DLL copy command under the test
+project's properties:
 
 ```
 Properties -> Configuration Properties -> Build Events -> Post-Build Event ->
@@ -64,11 +68,12 @@ Command Line
 There is currently no official support for using OpenSSL as a static library
 with wolfEngine.
 
-#### FIPS 140-2
+### FIPS 140-2
 
-Build wolfEngine using `windows\fips_140_2\wolfEngine.sln`. Run the test suite
-by right-clicking on the "test" project in the Solution Explorer > Debug > Start
-New instance. You are likely to encounter this error message:
+Build wolfEngine using `windows\wolfEngine.sln`. Select one of the 4 FIPS 140-2
+configurations (e.g. DLL Debug FIPS 140-2) Run the test suite by right-clicking
+on the "test" project in the Solution Explorer > Debug > Start New instance. You
+are likely to encounter this error message:
 
 ```
 in FIPS callback, ok = 0, err = -203
@@ -79,25 +84,26 @@ into verifyCore[] in wolfSSL's (NOT wolfEngine) fips_test.c and rebuild
 ERR: Failed to find engine!
 ```
 
-Part of wolfSSL's FIPS self-test is an integrity check of the FIPS module. At
-startup, the self-test computes an HMAC of the code and read-only data of the
-FIPS module and compares the result to an expected value compiled into the
-library. If these don't match, the FIPS module enters an error state and cannot
-be used. The wolfEngine test program will print the above error message in this
-case. If this happens, you should take the hash value printed out and replace
-the `verifyCore` value wolfSSL's `wolfcrypt\src\fips_test.c` with it. Rebuild
-wolfSSL, rebuild wolfEngine, and run the wolfEngine tests again. The integrity
-check should pass this time.
+As mentioned earlier, part of wolfSSL's FIPS self-test is an integrity check
+of the FIPS module. At startup, the self-test computes an HMAC of the code and
+read-only data of the FIPS module and compares the result to an expected value
+compiled into the library. If these don't match, the FIPS module enters an error
+state and cannot be used. The wolfEngine test program will print the above error
+message in this case. If this happens, you should take the hash value printed
+out and replace the `verifyCore` value wolfSSL's `wolfcrypt\src\fips_test.c`
+with it. Rebuild wolfSSL, rebuild wolfEngine, and run the wolfEngine tests
+again. The integrity check should pass this time.
 
-#### FIPS Ready
+### FIPS Ready
 
-Build wolfEngine using `windows\fips_ready\wolfEngine.sln`. Run the test suite
-by right-clicking on the "test" project in the Solution Explorer > Debug > Start
-New instance. The FIPS self-test notes above for FIPS 140-2 apply to FIPS Ready,
-too, so you will need to update the expected hash value accordingly.
+Build wolfEngine using `windows\wolfEngine.sln`. Select one of the 4 FIPS Ready
+configurations (e.g. DLL Debug FIPS Ready). Run the test suite by right-clicking
+on the "test" project in the Solution Explorer > Debug > Start New instance. The
+FIPS self-test noted above for FIPS 140-2 applies to FIPS Ready, too, so you
+will need to update the expected hash value accordingly.
 
-#### Non-FIPS
+### Non-FIPS
 
-Build wolfEngine using `windows\non_fips\wolfEngine.sln`. Run the test suite by
-right-clicking on the "test" project in the Solution Explorer > Debug > Start
-New instance.
+Build wolfEngine using `windows\wolfEngine.sln`. Select one of the 4 non-FIPS
+configurations (e.g. DLL Debug Non-FIPS) Run the test suite by right-clicking on
+the "test" project in the Solution Explorer > Debug > Start New instance.

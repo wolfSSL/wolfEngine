@@ -97,8 +97,6 @@
 #define WOLFSSL_PSS_SALT_LEN_DISCOVER
 
 #ifdef _WIN64
-#define HAVE_INTEL_RDSEED
-#define FORCE_FAILURE_RDSEED
 #define WOLFSSL_AESNI
 #endif
 

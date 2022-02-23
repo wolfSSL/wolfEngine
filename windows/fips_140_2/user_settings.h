@@ -104,8 +104,6 @@
 #define WOLFSSL_NOSHA512_256
 
 #ifdef _WIN64
-#define HAVE_INTEL_RDSEED
-#define FORCE_FAILURE_RDSEED
 #define WOLFSSL_AESNI
 #endif
 
