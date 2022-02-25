@@ -5,6 +5,10 @@
       <Configuration>Debug FIPS 140-2</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug FIPS 140-2|x64">
+      <Configuration>Debug FIPS 140-2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug FIPS Ready|Win32">
       <Configuration>Debug FIPS Ready</Configuration>
       <Platform>Win32</Platform>
@@ -73,10 +77,6 @@
       <Configuration>Release FIPS 140-2</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug FIPS 140-2|x64">
-      <Configuration>Debug FIPS 140-2</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Release FIPS 140-2|x64">
       <Configuration>Release FIPS 140-2</Configuration>
       <Platform>x64</Platform>
@@ -101,123 +101,81 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{341f4644-f72c-45ed-87d8-a072327a5b0f}</ProjectGuid>
+    <ProjectGuid>{02ee71ca-892b-479f-bc80-1641a81bf74e}</ProjectGuid>
     <RootNamespace>test</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|Win32'">
     <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|x64'">
     <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|Win32'" Label="Configuration">
-    <PlatformToolset>v142</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|Win32'" Label="Configuration">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|x64'" Label="Configuration">
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|x64'" Label="Configuration">
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|Win32'">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|Win32'">
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|x64'">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|Win32'" Label="Configuration">
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|Win32'">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|Win32'" Label="Configuration">
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|x64'">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'">
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|x64'" Label="Configuration">
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|Win32'">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'" Label="Configuration">
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|Win32'" Label="Configuration">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|x64'" Label="Configuration">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|Win32'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|Win32'" Label="Configuration">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'">
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'" Label="Configuration">
     <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -225,622 +183,95 @@
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|Win32'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="props\static_debug_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
+    <Import Project="props\static_debug_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|x64'">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|x64'">
+    <Import Project="props\static_debug_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|x64'">
+    <Import Project="props\dll_debug_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|x64'">
+    <Import Project="props\static_release_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|x64'">
+    <Import Project="props\dll_release_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|Win32'">
+    <Import Project="props\static_debug_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|Win32'">
+    <Import Project="props\static_debug_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|Win32'">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'">
+    <Import Project="props\static_release_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|Win32'" Label="PropertySheets">
+    <Import Project="props\static_release_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|Win32'">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|Win32'" Label="PropertySheets">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|x64'">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="props\static_release_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
   </ImportGroup>
-  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|x64'" Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'">
+    <Import Project="props\static_release_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'">
+    <Import Project="props\static_debug_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|Win32'">
+    <Import Project="props\dll_debug_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|Win32'">
+    <Import Project="props\dll_release_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|x64'">
+    <Import Project="props\static_release_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|Win32'">
-    <OutDir>$(SolutionDir)$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Configuration)\$(Platform)\$(ProjectName)_obj\</IntDir>
-  </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_140_2;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\*.dll
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\non_fips;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\DLL Debug\$(Platform)\wolfssl.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\DLL Debug\$(Platform)\*.dll
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_ready;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\*.dll
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_140_2;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\non_fips;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\DLL Release\$(Platform)\wolfssl.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\DLL Release\$(Platform)\*.dll
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_ready;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_140_2;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\non_fips;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\DLL Debug\$(Platform)\wolfssl.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_ready;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_140_2;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\non_fips;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\DLL Debug\$(Platform)\wolfssl.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_ready;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_140_2;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\non_fips;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\DLL Release\$(Platform)\wolfssl.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_ready;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <OptimizeReferences>true</OptimizeReferences>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_140_2;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\non_fips;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\DLL Release\$(Platform)\wolfssl.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'">
-    <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>.\fips_ready;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>.\fips_140_2;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|Win32'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>.\non_fips;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\DLL Debug\$(Platform)\wolfssl.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|Win32'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>.\fips_ready;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Debug\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|Win32'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>.\fips_140_2;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|Win32'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>.\non_fips;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\DLL Release\$(Platform)\wolfssl.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|Win32'">
-    <ClCompile>
-      <AdditionalIncludeDirectories>.\fips_ready;..\..\wolfssl;..\include;..\..\openssl\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WOLFSSL_USER_SETTINGS;WOLFENGINE_USER_SETTINGS;WOLFENGINE_DLL;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>..\..\openssl\libssl.lib;..\..\openssl\libcrypto.lib;..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\wolfssl-fips.lib;$(SolutionDir)$(Configuration)\$(Platform)\wolfEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <RandomizedBaseAddress>false</RandomizedBaseAddress>
-    </Link>
-    <PostBuildEvent>
-      <Command>copy /Y "$(ProjectDir)..\..\openssl\*.dll" "$(OutDir)"
-copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll" "$(OutDir)"
-</Command>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClInclude Include="..\test\unit.h" />
-  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\test\test_aestag.c" />
     <ClCompile Include="..\test\test_cipher.c" />
@@ -857,6 +288,9 @@ copy /Y "$(ProjectDir)..\..\wolfssl\IDE\WIN10\DLL Release\$(Platform)\*.dll" "$(
     <ClCompile Include="..\test\test_rsa.c" />
     <ClCompile Include="..\test\test_tls1_prf.c" />
     <ClCompile Include="..\test\unit.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\test\unit.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
