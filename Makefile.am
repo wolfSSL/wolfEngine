@@ -38,6 +38,8 @@ AM_DISTCHECK_CONFIGURE_FLAGS=CPPFLAGS="-I@abs_top_srcdir@/include \
                                          @OPENSSL_INCLUDES@" \
                              LDFLAGS="@OPENSSL_LDFLAGS@"
 
+AM_CPPFLAGS = -I$(top_srcdir)/include
+
 EXTRA_DIST+= README.md
 
 EXTRA_DIST += \
