@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug FIPS 140-2|Win32">
+      <Configuration>Debug FIPS 140-2</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug FIPS 140-2|x64">
+      <Configuration>Debug FIPS 140-2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug FIPS Ready|Win32">
+      <Configuration>Debug FIPS Ready</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug FIPS Ready|x64">
+      <Configuration>Debug FIPS Ready</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug Non-FIPS|Win32">
+      <Configuration>Debug Non-FIPS</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug Non-FIPS|x64">
+      <Configuration>Debug Non-FIPS</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug FIPS 140-2|Win32">
+      <Configuration>DLL Debug FIPS 140-2</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug FIPS 140-2|x64">
+      <Configuration>DLL Debug FIPS 140-2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug FIPS Ready|Win32">
+      <Configuration>DLL Debug FIPS Ready</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug FIPS Ready|x64">
+      <Configuration>DLL Debug FIPS Ready</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug Non-FIPS|Win32">
+      <Configuration>DLL Debug Non-FIPS</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug Non-FIPS|x64">
+      <Configuration>DLL Debug Non-FIPS</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release FIPS 140-2|Win32">
+      <Configuration>DLL Release FIPS 140-2</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release FIPS 140-2|x64">
+      <Configuration>DLL Release FIPS 140-2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release FIPS Ready|Win32">
+      <Configuration>DLL Release FIPS Ready</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release FIPS Ready|x64">
+      <Configuration>DLL Release FIPS Ready</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release Non-FIPS|Win32">
+      <Configuration>DLL Release Non-FIPS</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release Non-FIPS|x64">
+      <Configuration>DLL Release Non-FIPS</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release FIPS 140-2|Win32">
+      <Configuration>Release FIPS 140-2</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release FIPS 140-2|x64">
+      <Configuration>Release FIPS 140-2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release FIPS Ready|Win32">
+      <Configuration>Release FIPS Ready</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release FIPS Ready|x64">
+      <Configuration>Release FIPS Ready</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Non-FIPS|Win32">
+      <Configuration>Release Non-FIPS</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Non-FIPS|x64">
+      <Configuration>Release Non-FIPS</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{02ee71ca-892b-479f-bc80-1641a81bf74e}</ProjectGuid>
+    <RootNamespace>test</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|Win32'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|x64'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|Win32'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|x64'">
+    <Import Project="props\static_debug_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
+    <Import Project="props\static_debug_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|x64'">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|x64'">
+    <Import Project="props\static_debug_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|x64'">
+    <Import Project="props\dll_debug_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|x64'">
+    <Import Project="props\static_release_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|x64'">
+    <Import Project="props\dll_release_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS 140-2|Win32'">
+    <Import Project="props\static_debug_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|Win32'">
+    <Import Project="props\static_debug_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS Ready|Win32'">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'">
+    <Import Project="props\static_release_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|Win32'" Label="PropertySheets">
+    <Import Project="props\static_release_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|Win32'">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|Win32'" Label="PropertySheets">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|x64'">
+    <Import Project="props\static_release_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'">
+    <Import Project="props\static_release_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'">
+    <Import Project="props\static_debug_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|Win32'">
+    <Import Project="props\dll_debug_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release Non-FIPS|Win32'">
+    <Import Project="props\dll_release_non_fips_test.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|x64'">
+    <Import Project="props\static_release_fips_test.props" />
+    <Import Project="props\fips_ready.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemGroup>
+    <ClCompile Include="..\test\test_aestag.c" />
+    <ClCompile Include="..\test\test_cipher.c" />
+    <ClCompile Include="..\test\test_cmac.c" />
+    <ClCompile Include="..\test\test_dh.c" />
+    <ClCompile Include="..\test\test_digest.c" />
+    <ClCompile Include="..\test\test_ecc.c" />
+    <ClCompile Include="..\test\test_hkdf.c" />
+    <ClCompile Include="..\test\test_hmac.c" />
+    <ClCompile Include="..\test\test_logging.c" />
+    <ClCompile Include="..\test\test_pbe.c" />
+    <ClCompile Include="..\test\test_pkey.c" />
+    <ClCompile Include="..\test\test_rand.c" />
+    <ClCompile Include="..\test\test_rsa.c" />
+    <ClCompile Include="..\test\test_tls1_prf.c" />
+    <ClCompile Include="..\test\unit.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\test\unit.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
