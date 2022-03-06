@@ -16,6 +16,7 @@ include src/include.am
 include include/include.am
 include test/include.am
 include scripts/include.am
+include windows/include.am
 
 noinst_PROGRAMS += bench
 bench_SOURCES    = bench.c
@@ -39,10 +40,3 @@ AM_DISTCHECK_CONFIGURE_FLAGS=CPPFLAGS="-I@abs_top_srcdir@/include \
                              LDFLAGS="@OPENSSL_LDFLAGS@"
 
 EXTRA_DIST+= README.md
-
-EXTRA_DIST += \
-    wolfEngine.sln \
-    wolfEngine.vcxproj \
-    wolfEngine.vcxproj.filters \
-    wolfEngine.vcxproj.user \
-    user_settings.h
