@@ -5,7 +5,7 @@
 
 AC_COPYRIGHT([Copyright (C) 2019-2021 wolfSSL Inc.])
 AC_PREREQ([2.69])
-AC_INIT([wolfengine], [0.9.0])
+AC_INIT([wolfengine], [1.0.0])
 AC_CONFIG_AUX_DIR([build-aux])
 
 AC_CONFIG_HEADERS([include/config.h])

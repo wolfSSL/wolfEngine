@@ -2485,7 +2485,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
  * @param  dLen    [in]  Length of digest.
  * @param  sig     [in]  Signature data.
  * @param  sigLen  [in]  Length of signature data.
- * @returns  11 on successful verification, 0 on failure, and -1 on error.
+ * @returns  1 on successful verification, 0 on failure, and -1 on error.
  */
 static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
                             const unsigned char *sig, int sigLen, EC_KEY *ecKey)
