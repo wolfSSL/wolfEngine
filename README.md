@@ -68,33 +68,25 @@ sudo make install
 
 ### wolfSSL
 
+#### From FIPS Bundle
+
+Use this configure command:
+```
+./configure --enable-engine
+```
+
+This adds support for `fips=v2` automatically. Replace this will `--enable-engine=fips-ready` if using a FIPS Ready bundle.
+
 #### From Git
 
 ```
 git clone https://github.com/wolfssl/wolfssl.git
 cd wolfssl
 ./autogen.sh
-./configure --enable-opensslcoexist --enable-cmac --enable-keygen --enable-sha
---enable-des3 --enable-aesctr --enable-aesccm --enable-x963kdf
-CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_NO_PADDING
--DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192 -DWOLFSSL_PSS_LONG_SALT
--DWOLFSSL_PSS_SALT_LEN_DISCOVER"
+./configure --enable-engine=no-fips
 make
 sudo make install
 ```
-
-#### From FIPS Bundle
-
-Use this configure command:
-```
-./configure --enable-fips=v2 --enable-opensslcoexist --enable-cmac
---enable-keygen --enable-sha --enable-des3 --enable-aesctr --enable-aesccm
---enable-x963kdf CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT
--DWC_RSA_NO_PADDING -DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192 -DSha3=wc_Sha3
--DNO_OLD_SHA256_NAMES -DNO_OLD_MD5_NAME"
-```
-
-Change `--enable-fips=v2` to `--enable-fips=ready` if using a FIPS Ready bundle.
 
 #### Additional Options
 - Add `--enable-pwdbased` to the configure commands above if using PKCS#12.
