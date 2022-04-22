@@ -384,15 +384,14 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
         int inBufLen;
     } TestVector;
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
-#define numTestVectors 3
+#define numTestVectors 4
 #else
-    const int numTestVectors = 3;
+    const int numTestVectors = 4;
 #endif
     TestVector testVectors[numTestVectors];
     int i = 0;
     int rsaSize = 0;
 
-    PRINT_MSG("Load RSA key");
     err = load_static_rsa_key(e, der, derLen, &weRsaKey, &osslRsaKey) != 1;
     if (err == 0) {
         rsaSize = RSA_size(weRsaKey);
@@ -434,6 +433,10 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
         testVectors[2].padName = "RSA_NO_PADDING";
         testVectors[2].inBuf = noPaddingBuf;
         testVectors[2].inBufLen = rsaSize;
+        testVectors[3].padding = RSA_X931_PADDING;
+        testVectors[3].padName = "RSA_X931_PADDING";
+        testVectors[3].inBuf = buf;
+        testVectors[3].inBufLen = sizeof(buf);
     }
 
     for (; err == 0 && i < numTestVectors; ++i) {
@@ -447,7 +450,6 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
                 }
                 if (err == 0) {
                     PRINT_MSG("Private encrypt with wolfengine");
-                    PRINT_MSG(testVectors[i].padName);
                     encryptedLen = RSA_private_encrypt(testVectors[i].inBufLen,
                                                        testVectors[i].inBuf,
                                                        encryptedBuf, weRsaKey,
@@ -464,6 +466,11 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
                 }
                 break;
             case PRIVATE_DECRYPT:
+                if (testVectors[i].padding == RSA_X931_PADDING) {
+                    /* OpenSSL doesn't support X9.31 padding for private
+                     * decrypt. */
+                    continue;
+                }
                 if (err == 0) {
                     PRINT_MSG("Public encrypt with OpenSSL");
                     encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
@@ -482,9 +489,13 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
                 }
                 break;
             case PUBLIC_ENCRYPT:
+                if (testVectors[i].padding == RSA_X931_PADDING) {
+                    /* OpenSSL doesn't support X9.31 padding for public
+                     * encrypt. */
+                    continue;
+                }
                 if (err == 0) {
                     PRINT_MSG("Public encrypt with wolfengine");
-                    PRINT_MSG(testVectors[i].padName);
                     encryptedLen = RSA_public_encrypt(testVectors[i].inBufLen,
                                                       testVectors[i].inBuf,
                                                       encryptedBuf, weRsaKey,
@@ -508,7 +519,6 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
                 }
                 if (err == 0) {
                     PRINT_MSG("Private encrypt with OpenSSL");
-                    PRINT_MSG(testVectors[i].padName);
                     encryptedLen = RSA_private_encrypt(testVectors[i].inBufLen,
                                                        testVectors[i].inBuf,
                                                        encryptedBuf, osslRsaKey,
@@ -729,7 +739,6 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
     unsigned char *buf = NULL;
     const unsigned char *p = rsa_key_der_2048;
 
-    PRINT_MSG("Load RSA key");
     pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
     err = pkey == NULL;
     if (err == 0) {
@@ -757,69 +766,73 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
         buf[0] = 0;
     }
 
-    /* Don't run these first tests in the case of PSS, which is strictly for
-     * signatures and not arbitrary data. */
-    if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
-        PRINT_MSG("Test signing/verifying arbitrary data");
-        PRINT_MSG("Sign with OpenSSL");
-        err = test_pkey_sign(pkey, NULL, buf, bufLen, rsaSig, &rsaSigLen,
-                             padMode, md, mgf1Md);
-    }
-    if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
-        PRINT_MSG("Verify with wolfengine");
-        err = test_pkey_verify(pkey, e, buf, bufLen, rsaSig, rsaSigLen,
-                               padMode, md, mgf1Md);
-    }
-    if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
-        PRINT_MSG("Verify bad signature with wolfengine");
-        rsaSig[1] ^= 0x80;
-        res = test_pkey_verify(pkey, e, buf, bufLen, rsaSig, rsaSigLen,
-                               padMode, md, mgf1Md);
-        if (res != 1)
-            err = 1;
-    }
-    if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
-        PRINT_MSG("Sign with wolfengine");
-        rsaSigLen = RSA_size(rsaKey);
-        err = test_pkey_sign(pkey, e, buf, bufLen, rsaSig, &rsaSigLen,
-                             padMode, md, mgf1Md);
-    }
-    if ((err == 0) && (padMode != RSA_PKCS1_PSS_PADDING)) {
-        PRINT_MSG("Verify with OpenSSL");
-        err = test_pkey_verify(pkey, NULL, buf, bufLen, rsaSig, rsaSigLen,
-                               padMode, md, mgf1Md);
+    /* Don't run these first tests in the case of PSS or X9.31, which are
+     * strictly for signatures and not arbitrary data. */
+    if (padMode != RSA_PKCS1_PSS_PADDING && padMode != RSA_X931_PADDING) {
+        if (err == 0) {
+            PRINT_MSG("Test signing/verifying arbitrary data");
+            PRINT_MSG("Sign with OpenSSL");
+            err = test_pkey_sign(pkey, NULL, buf, bufLen, rsaSig, &rsaSigLen,
+                                 padMode, md, mgf1Md);
+        }
+        if (err == 0) {
+            PRINT_MSG("Verify with wolfengine");
+            err = test_pkey_verify(pkey, e, buf, bufLen, rsaSig, rsaSigLen,
+                                   padMode, md, mgf1Md);
+        }
+        if (err == 0) {
+            PRINT_MSG("Verify bad signature with wolfengine");
+            rsaSig[1] ^= 0x80;
+            res = test_pkey_verify(pkey, e, buf, bufLen, rsaSig, rsaSigLen,
+                                   padMode, md, mgf1Md);
+            if (res != 1)
+                err = 1;
+        }
+        if (err == 0) {
+            PRINT_MSG("Sign with wolfengine");
+            rsaSigLen = RSA_size(rsaKey);
+            err = test_pkey_sign(pkey, e, buf, bufLen, rsaSig, &rsaSigLen,
+                                 padMode, md, mgf1Md);
+        }
+        if (err == 0) {
+            PRINT_MSG("Verify with OpenSSL");
+            err = test_pkey_verify(pkey, NULL, buf, bufLen, rsaSig, rsaSigLen,
+                                   padMode, md, mgf1Md);
+        }
     }
 
     /* OpenSSL doesn't allow RSA signatures with no padding. */
-    if ((err == 0) && (padMode != RSA_NO_PADDING)) {
-        PRINT_MSG("Test creating/verifying a signature");
-        PRINT_MSG("Sign with OpenSSL");
-        err = test_digest_sign(pkey, NULL, buf, bufLen, EVP_sha256(),
-                               rsaSig, &rsaSigLen, padMode);
-    }
-    if ((err == 0) && (padMode != RSA_NO_PADDING)) {
-        PRINT_MSG("Verify with wolfengine");
-        err = test_digest_verify(pkey, e, buf, bufLen, EVP_sha256(),
-                                 rsaSig, rsaSigLen, padMode);
-    }
-    if ((err == 0) && (padMode != RSA_NO_PADDING)) {
-        PRINT_MSG("Verify bad signature with wolfengine");
-        rsaSig[1] ^= 0x80;
-        res = test_digest_verify(pkey, e, buf, bufLen, EVP_sha256(),
-                                 rsaSig, rsaSigLen, padMode);
-        if (res != 1)
-            err = 1;
-    }
-    if ((err == 0) && (padMode != RSA_NO_PADDING)) {
-        PRINT_MSG("Sign with wolfengine");
-        rsaSigLen = RSA_size(rsaKey);
-        err = test_digest_sign(pkey, e, buf, bufLen, EVP_sha256(),
-                              rsaSig, &rsaSigLen, padMode);
-    }
-    if ((err == 0) && (padMode != RSA_NO_PADDING)) {
-        PRINT_MSG("Verify with OpenSSL");
-        err = test_digest_verify(pkey, NULL, buf, bufLen, EVP_sha256(),
-                                 rsaSig, rsaSigLen, padMode);
+    if (padMode != RSA_NO_PADDING) {
+        if (err == 0) {
+            PRINT_MSG("Test creating/verifying a signature");
+            PRINT_MSG("Sign with OpenSSL");
+            err = test_digest_sign(pkey, NULL, buf, bufLen, EVP_sha256(),
+                                   rsaSig, &rsaSigLen, padMode);
+        }
+        if (err == 0) {
+            PRINT_MSG("Verify with wolfengine");
+            err = test_digest_verify(pkey, e, buf, bufLen, EVP_sha256(),
+                                     rsaSig, rsaSigLen, padMode);
+        }
+        if (err == 0) {
+            PRINT_MSG("Verify bad signature with wolfengine");
+            rsaSig[1] ^= 0x80;
+            res = test_digest_verify(pkey, e, buf, bufLen, EVP_sha256(),
+                                     rsaSig, rsaSigLen, padMode);
+            if (res != 1)
+                err = 1;
+        }
+        if (err == 0) {
+            PRINT_MSG("Sign with wolfengine");
+            rsaSigLen = RSA_size(rsaKey);
+            err = test_digest_sign(pkey, e, buf, bufLen, EVP_sha256(),
+                                  rsaSig, &rsaSigLen, padMode);
+        }
+        if (err == 0) {
+            PRINT_MSG("Verify with OpenSSL");
+            err = test_digest_verify(pkey, NULL, buf, bufLen, EVP_sha256(),
+                                     rsaSig, rsaSigLen, padMode);
+        }
     }
 
     EVP_PKEY_free(pkey);
@@ -933,6 +946,13 @@ int test_rsa_sign_verify_pss(ENGINE *e, void *data)
     }
 
     return err;
+}
+
+int test_rsa_sign_verify_x931(ENGINE *e, void *data)
+{
+    (void)data;
+
+    return test_rsa_sign_verify_pad(e, RSA_X931_PADDING, NULL, NULL);
 }
 
 static int test_rsa_enc_dec(ENGINE *e, const unsigned char *der, size_t derLen,

@@ -220,6 +220,214 @@ static int we_pss_salt_len_to_wc(int saltLen, const EVP_MD *md, RsaKey *key,
 }
 
 /**
+ * Add X9.31 padding to the input buffer, placing the result in the output
+ * buffer.
+ *
+ * @param  to       [out]  Buffer to store padded result.
+ * @param  toLen    [in]   Length of "to" buffer.
+ * @param  from     [in]   Input buffer.
+ * @param  fromLen  [in]   Length of input buffer. 
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_add_x931_padding(unsigned char* to, size_t toLen,
+                               const unsigned char* from, size_t fromLen)
+{
+    int ret = 1;
+    int padBytes;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_add_x931_padding");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [to = %p, toLen = %zu, from = %p, "
+                           "fromLen = %zu]", to, toLen, from, fromLen);
+
+    if (to == NULL || from == NULL) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Bad argument.");
+        ret = 0;
+    }
+    else {
+        /* Need at least two bytes for trailer and header. */
+        padBytes = toLen - fromLen - 2;
+        if (padBytes < 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Output buffer too small.");
+            ret = 0;
+        }
+    }
+
+    if (ret == 1) {
+        if (padBytes == 0) {
+            to[0] = 0x6A;
+        }
+        else {
+            to[0] = 0x6B;
+            if (padBytes > 1) {
+                XMEMSET(&to[1], 0xBB, padBytes - 1);
+            }
+            to[padBytes] = 0xBA;
+        }
+
+        XMEMCPY(&to[padBytes + 1], from, fromLen);
+        to[toLen - 1] = 0xCC;
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_add_x931_padding", ret);
+
+    return ret;
+}
+
+/**
+ * Remove X9.31 padding from the input buffer, placing the result in the output
+ * buffer.
+ *
+ * @param  to       [out]  Pointer to buffer holding unpadded result. This
+ *                         buffer will be allocated by this function if *to is
+ *                         NULL.
+ * @param  from     [in]   Input buffer.
+ * @param  fromLen  [in]   Length of input buffer. 
+ * @returns  Length of unpadded result on success and -1 on failure.
+ */
+static int we_remove_x931_padding(unsigned char** to, const unsigned char* from,
+                                  size_t fromLen)
+{
+    int ret = 1;
+    size_t idx = 0;
+    int numCopy = 0;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_remove_x931_padding");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [to = %p, from = %p, fromLen = "
+                           "%zu]", to, from, fromLen);
+
+    if (to == NULL || from == NULL || fromLen < 2) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Bad argument.");
+        ret = -1;
+    }
+    else {
+        if (from[fromLen - 1] != 0xCC) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Bad X9.31 trailer.");
+            ret = -1;
+        }
+
+        if (from[idx] == 0x6B) {
+            while (++idx < fromLen && from[idx] == 0xBB) {}
+
+            if (idx == fromLen || from[idx] != 0xBA) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Bad X9.31 padding.");
+                ret = -1;
+            }
+        }
+        else if (from[idx] != 0x6A) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Bad X9.31 header.");
+            ret = -1;
+        }
+    }
+
+    if (ret == 1) {
+        ++idx;
+        numCopy = fromLen - idx - 1;
+        if (numCopy > 0) {
+            if (*to == NULL) {
+                *to = (unsigned char*)OPENSSL_malloc(numCopy);
+                if (*to == NULL) {
+                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                               *to);
+                    ret = -1;
+                }
+            }
+            if (ret == 1){
+                XMEMCPY(*to, from + idx, numCopy);
+            }
+        }
+    }
+
+    if (ret == 1) {
+        ret = numCopy;
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_remove_x931_padding", ret);
+
+    return ret;
+}
+
+/**
+ * Return the X9.31 code associated with the passed in NID.
+ * 
+ * @param  nid  [in]  NID associated with hash.
+ * @returns  Hash code on success and 0 on failure.
+ */
+static int we_rsa_get_x931_hash_code(int nid) {
+    int ret = 0;
+
+    if (nid == NID_sha1) {
+        ret = 0x33;
+    }
+    else if (nid == NID_sha256) {
+        ret = 0x34;
+    }
+    else if (nid == NID_sha384) {
+        ret = 0x36;
+    }
+    else if (nid == NID_sha512) {
+        ret = 0x35;
+    }
+
+    return ret;
+}
+
+/**
+ * Add the X9.31 hash code derived from the digest to the end of the input
+ * buffer.
+ *
+ * @param  md       [in]   Digest to derive hash code from.
+ * @param  to       [out]  Pointer to output buffer. If NULL, this function will
+ *                         allocate the buffer for the caller. If not NULL, the
+ *                         buffer should be at least fromLen + 1 bytes long.
+ * @param  from     [in]   Input buffer.
+ * @param  fromLen  [in]   Length of input buffer.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_rsa_add_x931_hash_code(const EVP_MD* md, unsigned char** to,
+                                     const unsigned char* from, size_t fromLen)
+{
+    int ret = 1;
+    int nid;
+    unsigned char hashCode;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_add_x931_hash_code");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [md = %p, to = %p, from = %p, "
+                           "fromLen = %zu]", md, to, from, fromLen);
+
+    if (md == NULL || to == NULL || from == NULL || fromLen == 0) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Bad argument.");
+        ret = 0;
+    }
+
+    if (ret == 1 && *to == NULL) {
+        *to = (unsigned char*)OPENSSL_malloc(fromLen + 1);
+        if (*to == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc", *to);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        nid = EVP_MD_type(md);
+        hashCode = we_rsa_get_x931_hash_code(nid);
+        if (hashCode == 0) {
+            XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported digest NID: %d.",
+                      nid);
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        XMEMCPY(*to, from, fromLen);
+        (*to)[fromLen] = hashCode;
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_add_x931_hash_code", ret);
+
+    return ret;
+}
+
+/**
  * Set the public key in a we_Rsa structure.
  *
  * @param  ctx     [in]  Public key context of operation.
@@ -807,6 +1015,11 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
     WC_RNG *rng = we_rng;
 #endif
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+    unsigned char* padded = NULL;
+    int paddedSz;
+    mp_int toMp;
+    mp_int nMinusTo;
+    int rc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc_int");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
@@ -867,6 +1080,81 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                     ret = -1;
                 }
             }
+            break;
+        case RSA_X931_PADDING:
+            WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
+            paddedSz = wc_RsaEncryptSize(&rsa->key);
+            if (paddedSz <= 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize", ret);
+                ret = -1;
+            }
+            else {
+                padded = (unsigned char *)OPENSSL_malloc(paddedSz);
+                if (padded == NULL) {
+                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                               padded);
+                    ret = -1;
+                }
+                else {
+                    ret = we_add_x931_padding(padded, paddedSz, from, fromLen);
+                    if (ret != 1) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_add_x931_padding", ret);
+                        ret = -1;
+                    }
+                    else {
+                        ret = wc_RsaDirect(padded, paddedSz, to, &tLen,
+                                           &rsa->key, RSA_PRIVATE_ENCRYPT, rng);
+                        if (ret < 0) {
+                            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect",
+                                                  ret);
+                            ret = -1;
+                        }
+                    }
+                }
+            }
+
+            if (padded != NULL) {
+                OPENSSL_free(padded);
+            }
+
+            if (ret != -1) {
+                rc = mp_init_multi(&toMp, &nMinusTo, NULL, NULL, NULL, NULL);
+                if (rc != MP_OKAY) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init_multi", rc);
+                    ret = -1;
+                }
+                else {
+                    rc = mp_read_unsigned_bin(&toMp, to, toLen);
+                    if (rc != MP_OKAY) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_read_unsigned_bin",
+                                              rc);
+                        ret = -1;
+                    }
+                    else {
+                        /*
+                         * X9.31 specifies, "The signature is either the result
+                         * or its complement to n, whichever is smaller."
+                         */
+                        rc = mp_sub(&rsa->key.n, &toMp, &nMinusTo);
+                        if (rc != MP_OKAY) {
+                            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_sub", rc);
+                            ret = -1;
+                        }
+                        else if (mp_cmp(&toMp, &nMinusTo) == MP_GT) {
+                            rc = mp_to_unsigned_bin(&nMinusTo, to);
+                            if (rc != MP_OKAY) {
+                                WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                    "mp_to_unsigned_bin", rc);
+                                ret = -1;
+                            }
+                        }
+                    }
+
+                    mp_free(&toMp);
+                    mp_free(&nMinusTo);
+                }
+            }
+
             break;
         default:
             /* Unsupported padding mode for RSA private encryption. */
@@ -991,6 +1279,10 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     WC_RNG *rng = we_rng;
 #endif
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+    unsigned char* unpadded = NULL;
+    mp_int toMp;
+    mp_int nMinusTo;
+    int rc;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec_int");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
@@ -1062,6 +1354,73 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Verify_ex",
                                               ret);
                         ret = -1;
+                    }
+                }
+                break;
+            case RSA_X931_PADDING:
+                WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
+                ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
+                                   &tLen, &rsa->key, RSA_PUBLIC_DECRYPT, rng);
+                if (ret < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
+                    ret = -1;
+                }
+                else {
+                    /* 
+                     * X9.31 specifies, "If e is odd, then
+                     *   - If RR = 12 mod 16, then IR = RR ;
+                     *   - If n - RR = 12 mod 16, then IR = n - RR ;"
+                     * RR is "to" and IR is the value to unpad in the next
+                     * step. Taking "to" mod 16 is the same as just checking the
+                     * lower 4 bits of "to."
+                     */
+                    if ((to[toLen-1] & 0x0F) != 12) {
+                        rc = mp_init_multi(&toMp, &nMinusTo, NULL, NULL, NULL,
+                                           NULL);
+                        if (rc != MP_OKAY) {
+                            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init_multi",
+                                ret);
+                            ret = -1;
+                        }
+                        else {
+                            rc = mp_read_unsigned_bin(&toMp, to, toLen);
+                            if (rc != MP_OKAY) {
+                                WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                    "mp_read_unsigned_bin", ret);
+                                ret = -1;
+                            }
+                            else {
+                                rc = mp_sub(&rsa->key.n, &toMp, &nMinusTo);
+                                if (rc != MP_OKAY) {
+                                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_sub", rc);
+                                    ret = -1;
+                                }
+                                else {
+                                    rc = mp_to_unsigned_bin(&nMinusTo, to);
+                                    if (rc != MP_OKAY) {
+                                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                            "mp_to_unsigned_bin", rc);
+                                        ret = -1;
+                                    }
+                                }
+                            }
+
+                            mp_free(&toMp);
+                            mp_free(&nMinusTo);
+                        }
+                    }
+
+                    if (ret != -1) {
+                        ret = we_remove_x931_padding(&unpadded, to, tLen);
+                        if (ret <= 0) {
+                            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                "we_remove_x931_padding", ret);
+                            ret = -1;
+                        }
+                        else {
+                            XMEMCPY(to, unpadded, ret);
+                            OPENSSL_free(unpadded);
+                        }
                     }
                 }
                 break;
@@ -1649,7 +2008,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 if (num != RSA_PKCS1_PADDING &&
                     num != RSA_PKCS1_PSS_PADDING &&
                     num != RSA_PKCS1_OAEP_PADDING &&
-                    num != RSA_NO_PADDING)
+                    num != RSA_NO_PADDING &&
+                    num != RSA_X931_PADDING)
                 {
                     WOLFENGINE_ERROR_MSG(WE_LOG_PK,
                                          "Unsupported RSA padding mode.");
@@ -2113,6 +2473,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     int len;
     int actualSigLen = 0;
     int keySize = 0;
+    unsigned char* tbsWithHashCode = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_sign");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, sig = %p, sigLen = %p, "
@@ -2204,6 +2565,26 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
             }
         }
         if (ret == 1) {
+            if (rsa->padMode == RSA_X931_PADDING) {
+                if (rsa->md == NULL) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No digest specified for "
+                                         "X9.31 padding.");
+                    ret = 0;
+                }
+                else {
+                    ret = we_rsa_add_x931_hash_code(rsa->md, &tbsWithHashCode,
+                                                    tbs, tbsLen);
+                    if (ret != 1) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                            "we_rsa_add_x931_hash_code", ret);
+                        ret = 0;
+                    }
+                    else {
+                        tbs = tbsWithHashCode;
+                        ++tbsLen;
+                    }
+                }
+            }
             /* Pad and private encrypt. */
             actualSigLen = we_rsa_priv_enc_int(tbsLen, tbs, *sigLen, sig, rsa);
             if (actualSigLen == -1) {
@@ -2220,6 +2601,9 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
 
     if (encodedDigest != NULL) {
         OPENSSL_free(encodedDigest);
+    }
+    if (tbsWithHashCode != NULL) {
+        OPENSSL_free(tbsWithHashCode);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_sign", ret);
@@ -2250,6 +2634,9 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     unsigned char *encodedDigest = NULL;
     int encodedDigestLen = 0;
     int keySize = 0;
+    int nid;
+    unsigned char hashCode;
+    char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, sig = %p, sigLen = %zu, "
@@ -2352,6 +2739,40 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                 /* Encoded digest is now the ToBeSigned data. */
                 tbs = encodedDigest;
                 tbsLen = encodedDigestLen;
+            }
+        }
+        if (ret == 1 && rsa->padMode == RSA_X931_PADDING) {
+            if (rsa->md == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No digest specified for "
+                                     "X9.31 padding.");
+                ret = 0;
+            }
+            else {
+                nid = EVP_MD_type(rsa->md);
+                hashCode = we_rsa_get_x931_hash_code(nid);
+                if (hashCode == 0) {
+                    XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported digest "
+                              "NID: %d.", nid);
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+                    ret = 0;
+                }
+                else {
+                    if (hashCode != decryptedSig[rc-1]) {
+                        XSNPRINTF(errBuff, sizeof(errBuff), "Expected hash code"
+                                  ": 0x%02X but got 0x%02X.", hashCode,
+                                  decryptedSig[rc-1]);
+                        WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
+                        ret = 0;
+                    }
+                    else if (EVP_MD_size(rsa->md) != (rc - 1)) {
+                        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Actual Digest size "
+                            "doesn't match digest size implied by hash code.");
+                        ret = 0;
+                    }
+                    else {
+                        --rc;
+                    }
+                }
             }
         }
         if ((ret == 1) && (tbsLen != (size_t)rc)) {
