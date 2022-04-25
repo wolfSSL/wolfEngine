@@ -245,7 +245,7 @@ static int we_add_x931_padding(unsigned char* to, size_t toLen,
     }
     else {
         /* Need at least two bytes for trailer and header. */
-        padBytes = toLen - fromLen - 2;
+        padBytes = (int)(toLen - fromLen - 2);
         if (padBytes < 0) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Output buffer too small.");
             ret = 0;
@@ -289,7 +289,7 @@ static int we_remove_x931_padding(unsigned char** to, const unsigned char* from,
 {
     int ret = 1;
     size_t idx = 0;
-    int numCopy = 0;
+    size_t numCopy = 0;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_remove_x931_padding");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [to = %p, from = %p, fromLen = "
@@ -338,7 +338,7 @@ static int we_remove_x931_padding(unsigned char** to, const unsigned char* from,
     }
 
     if (ret == 1) {
-        ret = numCopy;
+        ret = (int)numCopy;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_remove_x931_padding", ret);
@@ -1124,7 +1124,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                     ret = -1;
                 }
                 else {
-                    rc = mp_read_unsigned_bin(&toMp, to, toLen);
+                    rc = mp_read_unsigned_bin(&toMp, to, (int)toLen);
                     if (rc != MP_OKAY) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_read_unsigned_bin",
                                               rc);
@@ -1383,7 +1383,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                             ret = -1;
                         }
                         else {
-                            rc = mp_read_unsigned_bin(&toMp, to, toLen);
+                            rc = mp_read_unsigned_bin(&toMp, to, (int)toLen);
                             if (rc != MP_OKAY) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                     "mp_read_unsigned_bin", ret);
@@ -2297,6 +2297,9 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         }
         else if (XSTRNCMP(value, "pss", 4) == 0) {
             rsa->padMode = RSA_PKCS1_PSS_PADDING;
+        }
+        else if (XSTRNCMP(value, "x931", 5) == 0) {
+            rsa->padMode = RSA_X931_PADDING;
         }
         else {
             ret = 0;
