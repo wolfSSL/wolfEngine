@@ -425,14 +425,8 @@ static int we_ec_p192_init(EVP_PKEY_CTX *ctx)
         ecc->curveName = NID_X9_62_prime192v1;
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
         if (ecc->group == NULL) {
-            /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_ECC_USE_GLOBAL_RNG
-            wc_FreeRng(&ecc->rng);
-        #endif
-            wc_ecc_free(&ecc->key);
-            OPENSSL_free(ecc);
             ret = 0;
         }
     }
@@ -467,14 +461,8 @@ static int we_ec_p224_init(EVP_PKEY_CTX *ctx)
         ecc->curveName = NID_secp224r1;
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
         if (ecc->group == NULL) {
-            /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_ECC_USE_GLOBAL_RNG
-            wc_FreeRng(&ecc->rng);
-        #endif
-            wc_ecc_free(&ecc->key);
-            OPENSSL_free(ecc);
             ret = 0;
         }
     }
@@ -510,14 +498,8 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
         ecc->curveName = NID_X9_62_prime256v1;
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
         if (ecc->group == NULL) {
-            /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_ECC_USE_GLOBAL_RNG
-            wc_FreeRng(&ecc->rng);
-        #endif
-            wc_ecc_free(&ecc->key);
-            OPENSSL_free(ecc);
             ret = 0;
         }
     }
@@ -553,14 +535,8 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
         ecc->curveName = NID_secp384r1;
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
         if (ecc->group == NULL) {
-            /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_ECC_USE_GLOBAL_RNG
-            wc_FreeRng(&ecc->rng);
-        #endif
-            wc_ecc_free(&ecc->key);
-            OPENSSL_free(ecc);
             ret = 0;
         }
     }
@@ -597,14 +573,8 @@ static int we_ec_p521_init(EVP_PKEY_CTX *ctx)
         ecc->curveName = NID_secp521r1;
         ecc->group = EC_GROUP_new_by_curve_name(ecc->curveName);
         if (ecc->group == NULL) {
-            /* Failed - free allocated data. */
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
-        #ifndef WE_ECC_USE_GLOBAL_RNG
-            wc_FreeRng(&ecc->rng);
-        #endif
-            wc_ecc_free(&ecc->key);
-            OPENSSL_free(ecc);
             ret = 0;
         }
     }
@@ -656,12 +626,16 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
     ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
     if (ecc != NULL) {
 #ifdef WE_HAVE_ECKEYGEN
-        EC_GROUP_free(ecc->group);
-        ecc->group = NULL;
+        if (ecc->group != NULL) {
+            EC_GROUP_free(ecc->group);
+            ecc->group = NULL;
+        }
 #endif
 #ifdef WE_HAVE_ECDH
-        OPENSSL_free(ecc->peerKey);
-        ecc->peerKey = NULL;
+        if (ecc->peerKey != NULL) {
+            OPENSSL_free(ecc->peerKey);
+            ecc->peerKey = NULL;
+        }
 #endif
 #ifndef WE_ECC_USE_GLOBAL_RNG
         wc_FreeRng(&ecc->rng);
