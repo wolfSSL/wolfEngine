@@ -514,11 +514,134 @@ int test_aes256_ctr_stream(ENGINE *e, void *data)
     return err;
 }
 
-/* OpenSSL allows the user to call EVP_CipherInit with NULL key or IV. In the
+/*
+ * This test exercises a bug in some versions of wolfSSL where partial block
+ * data (i.e. data that didn't align to the AES block size of 16 bytes) from a
+ * previous AES-CTR operation would be mixed in with the next operation's input
+ * data, even when the IV was changed in between. When the key or IV changes,
+ * any partial block data should not be used.
+ */
+int test_aes_ctr_leftover_data_regression(ENGINE *e, void *data)
+{
+    enum {
+        NUM_PACKETS = 2,
+        PACKET_SIZE = AES_BLOCK_SIZE + 1
+    };
+    int err = 0;
+    const unsigned char key[AES_128_KEY_SIZE] = {
+        0x37, 0xe8, 0x46, 0x48, 0xf4, 0xd6, 0xa7, 0x28, 0xc6, 0xd5, 0x2e, 0x3b,
+        0xf4, 0xc4, 0x46, 0x66
+    };
+    const unsigned char ivs[NUM_PACKETS][AES_BLOCK_SIZE] = {
+        {
+            0x88, 0x93, 0x6f, 0xfd, 0x7d, 0x94, 0x21, 0xcc, 0x40, 0x64, 0xde,
+            0x8a, 0xb9, 0xaf, 0xdd, 0xe4
+        },
+        {
+            0x0f, 0x10, 0x9c, 0xc9, 0x25, 0x9a, 0x53, 0xf0, 0xd3, 0x92, 0xdf,
+            0x35, 0xb2, 0x35, 0xa6, 0xd8
+        }
+    };
+    const unsigned char packets[NUM_PACKETS][PACKET_SIZE] = {
+        {
+            0x3c, 0x89, 0x18, 0x76, 0xfc, 0xae, 0xdc, 0xee, 0xab, 0xf2, 0xf7,
+            0x56, 0x47, 0x1f, 0xe9, 0x20, 0x67
+        },
+        {
+            0xb5, 0x3b, 0x8d, 0xa1, 0xe7, 0x0a, 0x46, 0x56, 0xf6, 0xfd, 0xeb,
+            0x85, 0x61, 0xd8, 0xaf, 0xac, 0xfb
+        }
+    };
+    EVP_CIPHER_CTX* encCtx = NULL;
+    EVP_CIPHER_CTX* decCtx = NULL;
+    unsigned char encText[PACKET_SIZE];
+    unsigned char decText[PACKET_SIZE];
+    int i;
+
+    (void)data;
+
+    if (err == 0) {
+        err = (encCtx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = (decCtx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+
+    /* Set key. */
+    if (err == 0) {
+        err = EVP_CipherInit_ex(encCtx, EVP_aes_128_ctr(), NULL, key,
+                                NULL, -1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(decCtx, EVP_aes_128_ctr(), e, key,
+                                NULL, -1) != 1;
+    }
+
+    for (i = 0; err == 0 && i < NUM_PACKETS; ++ i) {
+        /* Set IV. */
+        if (err == 0) {
+            err = EVP_CipherInit_ex(encCtx, NULL, NULL, NULL, ivs[i], 1) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherInit_ex(decCtx, NULL, e, NULL, ivs[i], 0) != 1;
+        }
+        /* Encrypt. */
+        if (err == 0) {
+            err = EVP_Cipher(encCtx, encText, packets[i], PACKET_SIZE) < 0;
+        }
+        /* Decrypt. */
+        if (err == 0) {
+            err = EVP_Cipher(decCtx, decText, encText, PACKET_SIZE) < 0;
+        }
+        /* Ensure decrypted and plaintext match. */
+        if (err == 0) {
+            err = memcmp(decText, packets[i], PACKET_SIZE) != 0;
+        }
+    }
+
+    /* Try the other way, now. Encrypt with wolfEngine, decrypt with wolfSSL. */
+    if (err == 0) {
+        err = EVP_CipherInit_ex(encCtx, EVP_aes_128_ctr(), e, key,
+                                NULL, -1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherInit_ex(decCtx, EVP_aes_128_ctr(), NULL, key,
+                                NULL, -1) != 1;
+    }
+
+    for (i = 0; err == 0 && i < NUM_PACKETS; ++ i) {
+        if (err == 0) {
+            err = EVP_CipherInit_ex(encCtx, NULL, e, NULL, ivs[i], 1) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherInit_ex(decCtx, NULL, NULL, NULL, ivs[i], 0) != 1;
+        }
+        if (err == 0) {
+            err = EVP_Cipher(encCtx, encText, packets[i], PACKET_SIZE) < 0;
+        }
+        if (err == 0) {
+            err = EVP_Cipher(decCtx, decText, encText, PACKET_SIZE) < 0;
+        }
+        if (err == 0) {
+            err = memcmp(decText, packets[i], PACKET_SIZE) != 0;
+        }
+    }
+
+    if (encCtx != NULL)
+        EVP_CIPHER_CTX_free(encCtx);
+    if (decCtx != NULL)
+        EVP_CIPHER_CTX_free(decCtx);
+
+    return err;
+}
+
+/*
+ * OpenSSL allows the user to call EVP_CipherInit with NULL key or IV. In the
  * past, setting the IV first (with key NULL) with wolfEngine and then setting
  * the key (with IV NULL) would result in the IV getting set to 0s on the call
  * to set the key. This was discovered in testing with OpenSSH. This is a
- * regression test to ensure we preserve the IV in this scenario. */
+ * regression test to ensure we preserve the IV in this scenario.
+ */
 int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
 {
     int err = 0;
