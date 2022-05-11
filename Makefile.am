@@ -17,6 +17,7 @@ include include/include.am
 include test/include.am
 include scripts/include.am
 include windows/include.am
+include examples/include.am
 
 noinst_PROGRAMS += bench
 bench_SOURCES    = bench.c
@@ -39,4 +40,5 @@ AM_DISTCHECK_CONFIGURE_FLAGS=CPPFLAGS="-I@abs_top_srcdir@/include \
                                          @OPENSSL_INCLUDES@" \
                              LDFLAGS="@OPENSSL_LDFLAGS@"
 
-EXTRA_DIST+= README.md
+EXTRA_DIST += README.md \
+              engine.conf
