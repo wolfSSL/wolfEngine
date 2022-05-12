@@ -32,8 +32,8 @@
  */
 typedef struct we_AesCtr
 {
-    /** The wolfSSL AES data object. */
-    Aes            aes;
+    /* The wolfSSL AES data object. */
+    Aes aes;
 } we_AesCtr;
 
 
@@ -52,6 +52,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int ret = 1;
     int rc;
     we_AesCtr *aes;
+    const unsigned char* tmpIv = iv;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ctr_init");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, iv = %p, "
@@ -66,21 +67,38 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
-    if ((ret == 1) && (key != NULL)) {
+    if (ret == 1) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
     }
-
     if ((ret == 1) && (key != NULL)) {
-        /* No decryption for CTR. */
-        rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx), iv,
+        if (tmpIv == NULL) {
+            /* If no IV given, attempt to use previously set ctx IV. */
+            tmpIv = EVP_CIPHER_CTX_iv_noconst(ctx);
+        }
+        /* No decryption for CTR (hence AES_ENCRYPTION). */
+        rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx), tmpIv,
                           AES_ENCRYPTION);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
             ret = 0;
+        }
+    }
+    if ((ret == 1) && (iv != NULL)) {
+        rc = wc_AesSetIV(&aes->aes, iv);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
+            ret = -1;
+        }
+        else {
+            /* 
+             * wc_AesSetIV should clear this field, but it doesn't in some
+             * wolfSSL versions.
+             */
+            aes->aes.left = 0;
         }
     }
 
@@ -99,7 +117,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
  * @return  -1 on failure.
- * @return  1 on success.
+ * @return  Length of output data on success.
  */
 static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                              const unsigned char *in, size_t len)
@@ -121,25 +139,26 @@ static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     }
 
     if (ret == 1) {
-        rc = wc_AesSetIV(&aes->aes, EVP_CIPHER_CTX_iv_noconst(ctx));
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
-            ret = -1;
-        }
-    }
-    if (ret == 1) {
-        rc = wc_AesCtrEncrypt(&aes->aes, out, in, (word32)len);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCtrEncrypt", rc);
-            ret = -1;
-        }
-    }
-    if (ret == 1) {
-        unsigned int num = EVP_CIPHER_CTX_num(ctx);
-        num = (num + len) % AES_128_KEY_SIZE;
-        EVP_CIPHER_CTX_set_num(ctx, num);
+        if (in != NULL && len > 0) {
+            rc = wc_AesCtrEncrypt(&aes->aes, out, in, (word32)len);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCtrEncrypt", rc);
+                ret = -1;
+            }
+            else {
+                unsigned int num = EVP_CIPHER_CTX_num(ctx);
+                num = (num + len) % AES_128_KEY_SIZE;
+                EVP_CIPHER_CTX_set_num(ctx, num);
 
-        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->aes.reg, AES_BLOCK_SIZE);
+                XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->aes.reg,
+                        AES_BLOCK_SIZE);
+
+                ret = (int)len;
+            }
+        }
+        else if (in == NULL)  {
+            ret = 0;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ctr_cipher", ret);
@@ -196,7 +215,9 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
 /** Flags for AES-CTR method. */
 #define AES_CTR_FLAGS              \
-    (EVP_CIPH_FLAG_DEFAULT_ASN1  | \
+    (EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_FLAG_CUSTOM_CIPHER | \
+     EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CTR_MODE)
 
 /** AES128-CTR EVP cipher method. */

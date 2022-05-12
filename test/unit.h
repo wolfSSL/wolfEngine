@@ -157,7 +157,8 @@ int test_aes128_ctr_stream(ENGINE *e, void *data);
 int test_aes192_ctr_stream(ENGINE *e, void *data);
 int test_aes256_ctr_stream(ENGINE *e, void *data);
 
-int test_aes_ctr_iv_init_regression(ENGINE *, void *);
+int test_aes_ctr_leftover_data_regression(ENGINE *e, void *data);
+int test_aes_ctr_iv_init_regression(ENGINE *e, void *data);
 
 #endif
 
