@@ -75,7 +75,19 @@ Use this configure command:
 ./configure --enable-engine
 ```
 
-This adds support for `fips=v2` automatically. Replace this will `--enable-engine=fips-ready` if using a FIPS Ready bundle.
+This adds support for `fips=v2` automatically. Replace this with
+`--enable-engine=fips-ready` if using a FIPS Ready bundle. If your wolfSSL
+version doesn't support `--enable-engine`, use this instead:
+
+```
+./configure --enable-fips=v2 --enable-opensslcoexist --enable-cmac
+--enable-keygen --enable-sha --enable-des3 --enable-aesctr --enable-aesccm
+--enable-x963kdf CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT
+-DWC_RSA_NO_PADDING -DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192 -DSha3=wc_Sha3
+-DNO_OLD_SHA256_NAMES -DNO_OLD_MD5_NAME"
+```
+
+Change `--enable-fips=v2` to `--enable-fips=ready` if using a FIPS Ready bundle.
 
 #### From Git
 
@@ -86,6 +98,16 @@ cd wolfssl
 ./configure --enable-engine=no-fips
 make
 sudo make install
+```
+
+If your wolfSSL version doesn't support `--enable-engine`, use this instead:
+
+```
+./configure --enable-opensslcoexist --enable-cmac --enable-keygen --enable-sha
+--enable-des3 --enable-aesctr --enable-aesccm --enable-x963kdf
+CPPFLAGS="-DHAVE_AES_ECB -DWOLFSSL_AES_DIRECT -DWC_RSA_NO_PADDING
+-DWOLFSSL_PUBLIC_MP -DECC_MIN_KEY_SZ=192 -DWOLFSSL_PSS_LONG_SALT
+-DWOLFSSL_PSS_SALT_LEN_DISCOVER"
 ```
 
 #### Additional Options
