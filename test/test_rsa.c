@@ -384,9 +384,17 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
         int inBufLen;
     } TestVector;
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN__) || defined(_WIN32_WCE)
+#ifdef WE_HAVE_RSA_X931
 #define numTestVectors 4
 #else
+#define numTestVectors 3
+#endif /* WE_HAVE_RSA_X931 */
+#else
+#ifdef WE_HAVE_RSA_X931
     const int numTestVectors = 4;
+#else
+    const int numTestVectors = 3;
+#endif /* WE_HAVE_RSA_X931 */
 #endif
     TestVector testVectors[numTestVectors];
     int i = 0;
@@ -433,10 +441,12 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
         testVectors[2].padName = "RSA_NO_PADDING";
         testVectors[2].inBuf = noPaddingBuf;
         testVectors[2].inBufLen = rsaSize;
+    #ifdef WE_HAVE_RSA_X931
         testVectors[3].padding = RSA_X931_PADDING;
         testVectors[3].padName = "RSA_X931_PADDING";
         testVectors[3].inBuf = buf;
         testVectors[3].inBufLen = sizeof(buf);
+    #endif
     }
 
     for (; err == 0 && i < numTestVectors; ++i) {
@@ -948,12 +958,14 @@ int test_rsa_sign_verify_pss(ENGINE *e, void *data)
     return err;
 }
 
+#ifdef WE_HAVE_RSA_X931
 int test_rsa_sign_verify_x931(ENGINE *e, void *data)
 {
     (void)data;
 
     return test_rsa_sign_verify_pad(e, RSA_X931_PADDING, NULL, NULL);
 }
+#endif /* WE_HAVE_RSA_X931 */
 
 static int test_rsa_enc_dec(ENGINE *e, const unsigned char *der, size_t derLen,
                             int padMode, const EVP_MD *rsaMd,

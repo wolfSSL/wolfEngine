@@ -482,6 +482,18 @@ then
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_RSA"
 fi
 
+# RSA X9.31 padding
+AC_ARG_ENABLE([rsa-x931],
+    [AS_HELP_STRING([--enable-rsa-x931],[Enable X9.31 padding for RSA signatures (default: enabled)])],
+    [ ENABLED_RSA_X931=$enableval ],
+    [ ENABLED_RSA_X931=yes ]
+    )
+
+if test "$ENABLED_RSA" = "yes" && test "$ENABLED_RSA_X931" = "yes"
+then
+    AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_RSA_X931"
+fi
+
 # DH
 AC_ARG_ENABLE([dh],
     [AS_HELP_STRING([--enable-dh],[Enable Diffie-Hellman (DH) (default: enabled)])],
@@ -739,6 +751,7 @@ echo "   * TLS1 PRF:                   $ENABLED_TLS1_PRF"
 echo "   * HKDF:                       $ENABLED_HKDF"
 echo "   * Random:                     $ENABLED_RAND"
 echo "   * RSA:                        $ENABLED_RSA"
+echo "   * RSA X9.31 padding:          $ENABLED_RSA_X931"
 echo "   * DH:                         $ENABLED_DH"
 echo "   * AES-GCM:                    $ENABLED_AESGCM"
 echo "   * AES-CBC:                    $ENABLED_AESCBC"

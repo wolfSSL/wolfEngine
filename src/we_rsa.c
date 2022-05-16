@@ -219,6 +219,7 @@ static int we_pss_salt_len_to_wc(int saltLen, const EVP_MD *md, RsaKey *key,
     return saltLen;
 }
 
+#ifdef WE_HAVE_RSA_X931
 /**
  * Add X9.31 padding to the input buffer, placing the result in the output
  * buffer.
@@ -426,6 +427,7 @@ static int we_rsa_add_x931_hash_code(const EVP_MD* md, unsigned char** to,
 
     return ret;
 }
+#endif /* WE_HAVE_RSA_X931 */
 
 /**
  * Set the public key in a we_Rsa structure.
@@ -1015,11 +1017,13 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
     WC_RNG *rng = we_rng;
 #endif
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+#ifdef WE_HAVE_RSA_X931
     unsigned char* padded = NULL;
     int paddedSz;
     mp_int toMp;
     mp_int nMinusTo;
     int rc;
+#endif
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_priv_enc_int");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
@@ -1081,6 +1085,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                 }
             }
             break;
+    #ifdef WE_HAVE_RSA_X931
         case RSA_X931_PADDING:
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
             paddedSz = wc_RsaEncryptSize(&rsa->key);
@@ -1154,8 +1159,8 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                     mp_free(&nMinusTo);
                 }
             }
-
             break;
+    #endif /* WE_HAVE_RSA_X931 */
         default:
             /* Unsupported padding mode for RSA private encryption. */
             WOLFENGINE_ERROR_MSG(WE_LOG_PK,
@@ -1279,10 +1284,12 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     WC_RNG *rng = we_rng;
 #endif
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+#ifdef WE_HAVE_RSA_X931
     unsigned char* unpadded = NULL;
     mp_int toMp;
     mp_int nMinusTo;
     int rc;
+#endif
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec_int");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [fromLen = %zu, from = %p, "
@@ -1357,6 +1364,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                     }
                 }
                 break;
+        #ifdef WE_HAVE_RSA_X931
             case RSA_X931_PADDING:
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
                 ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
@@ -1424,6 +1432,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                     }
                 }
                 break;
+        #endif /* WE_HAVE_RSA_X931 */
             default:
                 /* Unsupported padding mode for RSA public decryption. */
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unknown padding mode: %d",
@@ -2008,8 +2017,11 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 if (num != RSA_PKCS1_PADDING &&
                     num != RSA_PKCS1_PSS_PADDING &&
                     num != RSA_PKCS1_OAEP_PADDING &&
-                    num != RSA_NO_PADDING &&
-                    num != RSA_X931_PADDING)
+                    num != RSA_NO_PADDING
+                #ifdef WE_HAVE_RSA_X931
+                    && num != RSA_X931_PADDING
+                #endif
+                    )
                 {
                     WOLFENGINE_ERROR_MSG(WE_LOG_PK,
                                          "Unsupported RSA padding mode.");
@@ -2298,9 +2310,11 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         else if (XSTRNCMP(value, "pss", 4) == 0) {
             rsa->padMode = RSA_PKCS1_PSS_PADDING;
         }
+    #ifdef WE_HAVE_RSA_X931
         else if (XSTRNCMP(value, "x931", 5) == 0) {
             rsa->padMode = RSA_X931_PADDING;
         }
+    #endif
         else {
             ret = 0;
         }
@@ -2568,6 +2582,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
             }
         }
         if (ret == 1) {
+        #ifdef WE_HAVE_RSA_X931
             if (rsa->padMode == RSA_X931_PADDING) {
                 if (rsa->md == NULL) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No digest specified for "
@@ -2588,6 +2603,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
                     }
                 }
             }
+        #endif
             /* Pad and private encrypt. */
             actualSigLen = we_rsa_priv_enc_int(tbsLen, tbs, *sigLen, sig, rsa);
             if (actualSigLen == -1) {
@@ -2637,9 +2653,11 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     unsigned char *encodedDigest = NULL;
     int encodedDigestLen = 0;
     int keySize = 0;
+#ifdef WE_HAVE_RSA_X931
     int nid;
     unsigned char hashCode;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
+#endif
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, sig = %p, sigLen = %zu, "
@@ -2744,6 +2762,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                 tbsLen = encodedDigestLen;
             }
         }
+    #ifdef WE_HAVE_RSA_X931
         if (ret == 1 && rsa->padMode == RSA_X931_PADDING) {
             if (rsa->md == NULL) {
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No digest specified for "
@@ -2778,6 +2797,7 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                 }
             }
         }
+    #endif
         if ((ret == 1) && (tbsLen != (size_t)rc)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Encoding different size");
             ret = 0;
