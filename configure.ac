@@ -5,7 +5,7 @@
 
 AC_COPYRIGHT([Copyright (C) 2019-2021 wolfSSL Inc.])
 AC_PREREQ([2.69])
-AC_INIT([wolfengine], [1.0.0])
+AC_INIT([wolfengine], [1.1.0])
 AC_CONFIG_AUX_DIR([build-aux])
 
 AC_CONFIG_HEADERS([include/config.h])
@@ -26,7 +26,7 @@ AC_PROG_CC
 AC_LANG(C)
 
 # shared library versioning
-WOLFENGINE_LIBRARY_VERSION=1:0:0
+WOLFENGINE_LIBRARY_VERSION=1:1:0
 #                          | | |
 #                   +------+ | +---+
 #                   |        |     |

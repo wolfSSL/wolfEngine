@@ -1,3 +1,12 @@
+# wolfEngine Release 1.1.0 (May 16, 2022)
+* Updated README.md to refer to new wolfSSL configure flag `--enable-engine`.
+* Fixed a double free bug in certain error cases in the ECC code.
+* Added examples/ and engine.conf to the distribution.
+* Fixed a bug in the AES-CTR implementation where partial block data from a
+previous operation would leak into the current operation, even when the IV was
+changed between operations.
+* Added support for X9.31 padding with RSA signatures.
+
 # wolfEngine Release 1.0.0 (March 7, 2022)
 * Added the examples/ directory.
 * Added logic to openssl-unit-tests.sh to support macOS.
