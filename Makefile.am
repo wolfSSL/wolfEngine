@@ -41,4 +41,5 @@ AM_DISTCHECK_CONFIGURE_FLAGS=CPPFLAGS="-I@abs_top_srcdir@/include \
                              LDFLAGS="@OPENSSL_LDFLAGS@"
 
 EXTRA_DIST += README.md \
-              engine.conf
+              engine.conf \
+              ChangeLog.md
