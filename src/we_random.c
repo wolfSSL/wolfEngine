@@ -20,14 +20,14 @@
  */
 
 #include <wolfengine/we_internal.h>
+#ifndef _WIN32
+#include <sys/time.h>
+#endif /* !_WIN32 */
 
 #ifdef WE_HAVE_RANDOM
 
 #ifdef WE_STATIC_WOLFSSL
 extern int wc_RNG_DRBG_Reseed(WC_RNG* rng, const byte* seed, word32 seedSz);
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-extern int wc_GenerateSeed(OS_Seed* os, byte* seed, int sz);
-#endif
 #else
 /* Hash of all the seed so far. */
 unsigned char we_seed[WC_SHA256_DIGEST_SIZE] = {0,};
@@ -45,7 +45,7 @@ int haveSeed = 0;
  * @param  num      [in]   Number of random bytes.
  * @param  seed     [in]   Buffer holding seed data.
  * @param  seedLen  [in]   Number of seed bytes.
- * @returns 1 when successful and 0 on fauilure.
+ * @returns 1 when successful and 0 on failure.
  */
 static int we_rand_mix_seed(unsigned char* buf, int num,
                             const unsigned char* seed, int seedLen)
@@ -203,72 +203,6 @@ static int we_rand_seed(const void *buf, int num)
 #endif
 }
 
-/* Note: from OpensSL 1.1.0 onwards RAND_bytes no longer gets true entropy.
- * There are public and private randoms that are each seeded from entropy.
- * No way to tell when RAND_priv_rand() is called with methods.
- * Use pseudo-bytes implementation when RAND_bytes(), RAND_priv_bytes() and
- * RAND_pseudo_bytes() are called.
- */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-/**
- * Generate true random.
- *
- * @param  buf  [out]  Buffer to hold random.
- * @param  num  [in]   Number of bytes to generate.
- * @returns 1 when data generated and 0 on failure.
- */
-static int we_rand_bytes(unsigned char *buf, int num)
-{
-    int ret = 1;
-    int rc;
-#ifdef WE_STATIC_WOLFSSL
-    OS_Seed os;
-#else
-    WC_RNG rng;
-#endif
-
-    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_bytes");
-    WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d]", buf, num);
-
-#ifdef WE_STATIC_WOLFSSL
-    /* Generate true random using internal API. */
-    rc = wc_GenerateSeed(&os, buf, num);
-    if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_GenerateSeed", rc);
-        ret = 0;
-    }
-
-#else
-    /* Create a new random number generator that is seeded with true random. */
-    rc = wc_InitRng(&rng);
-    if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_InitRng", rc);
-        ret = 0;
-    }
-    else {
-        /* Generate true random. */
-        rc = wc_RNG_GenerateBlock(&rng, buf, num);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_RNG_GenerateBlock", rc);
-            ret = 0;
-        }
-
-        /* Dispose of random number generator. */
-        rc = wc_FreeRng(&rng);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_FreeRng", rc);
-            ret = 0;
-        }
-    }
-
-#endif
-
-    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_bytes", ret);
-
-    return ret;
-}
-#endif
-
 static void we_rand_cleanup(void)
 {
     /* Global random cleanup done in internal.c: we_final_random(). */
@@ -312,6 +246,102 @@ static int we_rand_add(const void *buf, int num, double entropy)
 #endif
 }
 
+#ifndef WE_STATIC_WOLFSSL
+/**
+ * Add weak entropy to the input buffer. Used by we_rand_bytes to add entropy
+ * for RNG. Uses thread ID, a timer value, and PID.
+ *
+ * @param  buf  [in]  Input buffer to mix with generated entropy.
+ * @param  num  [in]  Length of input buffer.
+ * @returns 1 on success, 0 on failure.
+ */
+static int we_rand_add_weak_entropy(unsigned char* buf, int num)
+{
+    int ret = 1;
+    unsigned char* idx;
+#if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+    CRYPTO_THREAD_ID threadId;
+#else
+    CRYPTO_THREADID threadId;
+    unsigned long threadIdHash;
+#endif /* OPENSSL_VERSION_NUMBER >= 0x1010000fL */
+#ifndef _WIN32
+    struct timeval tv;
+    unsigned long timer;
+    pid_t pid;
+#else
+    LARGE_INTEGER timer;
+    DWORD pid;
+#endif /* !_WIN32 */
+
+#if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+    threadId = CRYPTO_THREAD_get_current_id();
+    unsigned char addEntropy[sizeof(threadId) + sizeof(timer) + sizeof(pid)];
+#else
+    CRYPTO_THREADID_current(&threadId);
+    threadIdHash = CRYPTO_THREADID_hash(&threadId);
+    unsigned char addEntropy[sizeof(threadIdHash) + sizeof(timer) +
+                             sizeof(pid)];
+#endif /* OPENSSL_VERSION_NUMBER >= 0x1010000fL */
+    const size_t addEntropySz = sizeof(addEntropy);
+
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_add_weak_entropy");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d]", buf, num);
+
+    if (buf == NULL || num <= 0) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "Bad argument.");
+        ret = 0;
+    }
+
+    if (ret == 1) {
+    #ifndef _WIN32
+        if (gettimeofday(&tv, NULL) != 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "gettimeofday for additional "
+                "entropy failed");
+            ret = 0;
+        }
+        else {
+            timer = 1000000 * tv.tv_sec + tv.tv_usec; /* time in us */
+            pid = getpid();
+        }
+    #else
+        ret = QueryPerformanceCounter(&timer);
+        if (ret == 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "QueryPerformanceCounter for "
+                "additional entropy failed");
+        }
+        else {
+            pid = GetCurrentProcessId();
+        }
+    #endif /* !_WIN32 */
+    }
+
+    if (ret == 1) {
+        idx = addEntropy;
+    #if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+        XMEMCPY(idx, (unsigned char*)&threadId, sizeof(threadId));
+        idx += sizeof(threadId);
+    #else
+        XMEMCPY(idx, (unsigned char*)&threadIdHash, sizeof(threadIdHash));
+        idx += sizeof(threadIdHash);
+    #endif /* OPENSSL_VERSION_NUMBER >= 0x1010000fL */
+        XMEMCPY(idx, (unsigned char*)&timer, sizeof(timer));
+        idx += sizeof(timer);
+        XMEMCPY(idx, (unsigned char*)&pid, sizeof(pid));
+
+        ret = we_rand_mix_seed(buf, num, addEntropy, addEntropySz);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "we_rand_mix_seed with weak "
+                "entropy failed");
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_add_weak_entropy", ret);
+
+    return ret;
+}
+#endif /* WE_STATIC_WOLFSSL */
+
 /**
  * Generate pseudo-random data.
  *
@@ -319,12 +349,12 @@ static int we_rand_add(const void *buf, int num, double entropy)
  * @param  num  [in]   Number of bytes to generate.
  * @returns 1 when data generated and 0 on failure.
  */
-static int we_rand_pseudorand(unsigned char *buf, int num)
+static int we_rand_bytes(unsigned char *buf, int num)
 {
     int ret = 1;
     int rc;
 
-    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_pseudorand");
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_bytes");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d]",
                            buf, num);
 
@@ -346,14 +376,27 @@ static int we_rand_pseudorand(unsigned char *buf, int num)
         /* Mix global seed if RAND_add() or RAND_seed() has been called. */
         if (haveSeed) {
             ret = we_rand_mix_seed(buf, num, we_seed, sizeof(we_seed));
+            if (ret != 1) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "we_rand_mix_seed with global "
+                                                 "seed failed");
+            }
         }
-    #endif
+        /* Mix in weak entropy. */
+        if (ret == 1) {
+            ret = we_rand_add_weak_entropy(buf, num);
+            if (ret != 1) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "we_rand_mix_seed with "
+                    "weak entropy failed");
+            }
+        }
+    #endif /* !WE_STATIC_WOLFSSL */
+
     #ifndef WE_SINGLE_THREADED
         wc_UnLockMutex(we_rng_mutex);
     #endif
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_pseudorand", ret);
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_bytes", ret);
 
     return ret;
 }
@@ -377,15 +420,10 @@ static int we_rand_status(void)
  */
 RAND_METHOD we_rand_method ={
     we_rand_seed,
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
     we_rand_bytes,
-#else
-    /* See note above we_rand_bytes. */
-    we_rand_pseudorand,
-#endif
     we_rand_cleanup,
     we_rand_add,
-    we_rand_pseudorand,
+    we_rand_bytes,
     we_rand_status,
 };
 

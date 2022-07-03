@@ -62,6 +62,7 @@
 #include <openssl/cmac.h>
 #endif
 #include <openssl/pkcs12.h>
+#include <openssl/crypto.h>
 
 #ifndef WOLFENGINE_USER_SETTINGS
 #include <wolfssl/options.h>
