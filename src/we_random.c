@@ -362,6 +362,7 @@ static int we_rand_bytes(unsigned char *buf, int num)
     rc = wc_LockMutex(we_rng_mutex);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_LockMutex", rc);
+        ret = 0;
     }
     else
 #endif
@@ -374,7 +375,7 @@ static int we_rand_bytes(unsigned char *buf, int num)
         }
     #ifndef WE_STATIC_WOLFSSL
         /* Mix global seed if RAND_add() or RAND_seed() has been called. */
-        if (haveSeed) {
+        if (ret == 1 && haveSeed) {
             ret = we_rand_mix_seed(buf, num, we_seed, sizeof(we_seed));
             if (ret != 1) {
                 WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "we_rand_mix_seed with global "
