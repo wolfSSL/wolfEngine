@@ -340,7 +340,65 @@ int test_dh_pgen_pkey(ENGINE *e, void *data)
     return err;
 }
 
-int test_dh_pkey(ENGINE *e, void *data)
+#if !defined(WE_SINGLE_THREADED) && defined(_WIN32)
+
+typedef struct {
+    ENGINE* e;
+    EVP_PKEY* params;
+} DH_KEYGEN_THREAD_VARS;
+
+static DWORD WINAPI DhKeyGenThreadFunc(LPVOID arg)
+{
+    DH_KEYGEN_THREAD_VARS* vars = (DH_KEYGEN_THREAD_VARS*)arg;
+
+    return test_dh_pgen_pkey(vars->e, vars->params);
+}
+
+int test_dh_key_gen_multithreaded(ENGINE* e, EVP_PKEY* params)
+{
+    DH_KEYGEN_THREAD_VARS vars;
+    DH_KEYGEN_THREAD_VARS* pDataArray[1];
+    DWORD   dwThreadIdArray[1];
+    HANDLE  hThreadArray[1];
+    DWORD threadErr = 0;
+    int err = 0;
+
+    vars.e = e;
+    vars.params = params;
+    pDataArray[0] = &vars;
+
+    hThreadArray[0] = CreateThread(
+        NULL,
+        0,
+        DhKeyGenThreadFunc,
+        pDataArray[0],
+        0,
+        &dwThreadIdArray[0]);
+
+    if (hThreadArray[0] == NULL) {
+        err = 1;
+    }
+
+    if (err == 0) {
+        WaitForSingleObject(hThreadArray[0], INFINITE);
+        if (GetExitCodeThread(hThreadArray[0], &threadErr) == 0) {
+            err = 1;
+        }
+        else {
+            err = threadErr;
+        }
+    }
+
+    if (hThreadArray[0] != NULL) {
+        CloseHandle(hThreadArray[0]);
+    }
+
+    return err;
+}
+
+#endif /* !WE_SINGLE_THREADED && _WIN32 */
+
+int test_dh_pkey(ENGINE* e, void* data)
 {
     int err;
     DH *dh;

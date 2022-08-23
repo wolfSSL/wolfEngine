@@ -152,6 +152,9 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_EVP_PKEY
     TEST_DECL(test_dh_pgen_pkey, NULL),
     TEST_DECL(test_dh_pkey, NULL),
+#if !defined(WE_SINGLE_THREADED) && defined(_WIN32)
+    TEST_DECL(test_dh_key_gen_multithreaded, NULL),
+#endif /* !WE_SINGLE_THREADED && _WIN32 */
 #endif /* WE_HAVE_EVP_PKEY */
 #endif /* WE_HAVE_DH */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
