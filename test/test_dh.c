@@ -362,7 +362,6 @@ int test_dh_key_gen_multithreaded(ENGINE* e, EVP_PKEY* params)
     DH_KEYGEN_THREAD_VARS vars;
     HANDLE hThread;
     DWORD dwThreadId;
-
     DWORD dwThreadErr = 0;
     int err = 0;
 
