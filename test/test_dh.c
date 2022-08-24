@@ -354,43 +354,45 @@ static DWORD WINAPI DhKeyGenThreadFunc(LPVOID arg)
     return test_dh_pgen_pkey(vars->e, vars->params);
 }
 
+/* Regression test for problem in multi-threaded Windows environment where only
+   initial thread has private key read access while additionally created
+   threads do not */
 int test_dh_key_gen_multithreaded(ENGINE* e, EVP_PKEY* params)
 {
     DH_KEYGEN_THREAD_VARS vars;
-    DH_KEYGEN_THREAD_VARS* pDataArray[1];
-    DWORD   dwThreadIdArray[1];
-    HANDLE  hThreadArray[1];
-    DWORD threadErr = 0;
+    HANDLE hThread;
+    DWORD dwThreadId;
+
+    DWORD dwThreadErr = 0;
     int err = 0;
 
     vars.e = e;
     vars.params = params;
-    pDataArray[0] = &vars;
 
-    hThreadArray[0] = CreateThread(
+    hThread = CreateThread(
         NULL,
         0,
         DhKeyGenThreadFunc,
-        pDataArray[0],
+        &vars,
         0,
-        &dwThreadIdArray[0]);
+        &dwThreadId);
 
-    if (hThreadArray[0] == NULL) {
+    if (hThread == NULL) {
         err = 1;
     }
 
     if (err == 0) {
-        WaitForSingleObject(hThreadArray[0], INFINITE);
-        if (GetExitCodeThread(hThreadArray[0], &threadErr) == 0) {
+        WaitForSingleObject(hThread, INFINITE);
+        if (GetExitCodeThread(hThread, &dwThreadErr) == 0) {
             err = 1;
         }
         else {
-            err = threadErr;
+            err = dwThreadErr;
         }
     }
 
-    if (hThreadArray[0] != NULL) {
-        CloseHandle(hThreadArray[0]);
+    if (hThread != NULL) {
+        CloseHandle(hThread);
     }
 
     return err;
