@@ -347,6 +347,7 @@ typedef struct {
     EVP_PKEY* params;
 } DH_KEYGEN_THREAD_VARS;
 
+/* Windows thread entry function which will test private key read access. */
 static DWORD WINAPI DhKeyGenThreadFunc(LPVOID arg)
 {
     DH_KEYGEN_THREAD_VARS* vars = (DH_KEYGEN_THREAD_VARS*)arg;
