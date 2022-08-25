@@ -360,32 +360,16 @@ static DWORD WINAPI DhKeyGenThreadFunc(LPVOID arg)
    threads do not */
 int test_dh_key_gen_multithreaded(ENGINE* e, EVP_PKEY* params)
 {
-    DH_KEYGEN_THREAD_VARS vars;
-    HANDLE hThread;
-    DWORD dwThreadId;
-    DWORD dwThreadErr = 0;
-    int err = 0;
+    DH_KEYGEN_THREAD_VARS vars = {.e = e, .params = params};
+    HANDLE thread;
+    DWORD threadErr = 0;
+    int err = 1;
 
-    vars.e = e;
-    vars.params = params;
-
-    hThread = CreateThread(NULL, 0, DhKeyGenThreadFunc, &vars, 0, &dwThreadId);
-    if (hThread == NULL) {
-        err = 1;
-    }
-
-    if (err == 0) {
-        WaitForSingleObject(hThread, INFINITE);
-        if (GetExitCodeThread(hThread, &dwThreadErr) == 0) {
-            err = 1;
-        }
-        else {
-            err = dwThreadErr;
-        }
-    }
-
-    if (hThread != NULL) {
-        CloseHandle(hThread);
+    thread = CreateThread(NULL, 0, DhKeyGenThreadFunc, &vars, 0, NULL);
+    if (thread) {
+        WaitForSingleObject(thread, INFINITE);
+        err = (GetExitCodeThread(thread, &threadErr) == 0 ? 1 : threadErr);
+        CloseHandle(thread);
     }
 
     return err;
