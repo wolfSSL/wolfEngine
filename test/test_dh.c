@@ -368,14 +368,7 @@ int test_dh_key_gen_multithreaded(ENGINE* e, EVP_PKEY* params)
     vars.e = e;
     vars.params = params;
 
-    hThread = CreateThread(
-        NULL,
-        0,
-        DhKeyGenThreadFunc,
-        &vars,
-        0,
-        &dwThreadId);
-
+    hThread = CreateThread(NULL, 0, DhKeyGenThreadFunc, &vars, 0, &dwThreadId);
     if (hThread == NULL) {
         err = 1;
     }
