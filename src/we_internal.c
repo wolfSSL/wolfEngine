@@ -1463,3 +1463,23 @@ int wolfengine_bind(ENGINE *e, const char *id)
 
     return ret;
 }
+
+#if !defined(WE_SINGLE_THREADED) && defined(_WIN32) && defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION == 5
+/**
+ * Windows DLL entry point when wolfEngine built as a DLL.
+ *
+ * Called for DLL process or thread events, such as creation (attach).
+ *
+ * @param hinstDLL    [IN]  A handle to the DLL module.
+ * @param fdwReason   [IN]  Reason why function being called.
+ * @param lpvReserved [IN]  Reason-dependent extra data.
+ * @returns TRUE always
+ */
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+    if (fdwReason == DLL_THREAD_ATTACH) {
+        wolfCrypt_SetPrivateKeyReadEnable_fips(1, WC_KEYTYPE_ALL);
+    }
+    return TRUE;
+}
+#endif /* !WE_SINGLE_THREADED && _WIN32 && HAVE_FIPS_VERSION && HAVE_FIPS_VERSION 5 */

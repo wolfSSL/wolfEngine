@@ -340,7 +340,45 @@ int test_dh_pgen_pkey(ENGINE *e, void *data)
     return err;
 }
 
-int test_dh_pkey(ENGINE *e, void *data)
+#if !defined(WE_SINGLE_THREADED) && defined(_WIN32)
+
+#define TEST_MT_TIMEOUT 5000 /* Multi-threaded test timeout (ms) */
+
+typedef struct {
+    ENGINE* e;
+    EVP_PKEY* params;
+} DH_KEYGEN_THREAD_VARS;
+
+/* Windows thread entry function which will test private key read access. */
+static DWORD WINAPI DhKeyGenThreadFunc(LPVOID arg)
+{
+    DH_KEYGEN_THREAD_VARS* vars = (DH_KEYGEN_THREAD_VARS*)arg;
+
+    return test_dh_pgen_pkey(vars->e, vars->params);
+}
+
+/* Regression test for problem in multi-threaded Windows environment where only
+   initial thread has private key read access while additionally created
+   threads do not */
+int test_dh_key_gen_multithreaded(ENGINE* e, EVP_PKEY* params)
+{
+    DH_KEYGEN_THREAD_VARS vars = {.e = e, .params = params};
+    HANDLE thread;
+    DWORD threadErr = 0;
+    int err = 1;
+
+    thread = CreateThread(NULL, 0, DhKeyGenThreadFunc, &vars, 0, NULL);
+    if (thread && (WaitForSingleObject(thread, TEST_MT_TIMEOUT) == WAIT_OBJECT_0)) {
+        err = (GetExitCodeThread(thread, &threadErr) == 0 ? 1 : threadErr);
+        CloseHandle(thread);
+    }
+
+    return err;
+}
+
+#endif /* !WE_SINGLE_THREADED && _WIN32 */
+
+int test_dh_pkey(ENGINE* e, void* data)
 {
     int err;
     DH *dh;
