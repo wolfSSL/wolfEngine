@@ -2266,15 +2266,16 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 /**
  * Extra operations for working with RSA.
  * Supported operations include:
- *  - "rsa_padding_mode": set the padding mode
- *  - "rsa_pss_saltlen": set RSA-PSS salt length to use
- *  - "rsa_keygen_bits": set size of RSA keys to generate in bits
- *  - "rsa_mgf1_md": set the RSA-PSS MGF1 hash to use
+ *  - rsa_padding_mode: set the padding mode.
+ *  - rsa_pss_saltlen: set RSA-PSS salt length to use.
+ *  - rsa_keygen_bits: set size of RSA keys to generate in bits.
+ *  - rsa_mgf1_md: set the RSA-PSS MGF1 hash to use.
+ *  - rsa_oaep_md: set the digest to use with OAEP padding.
+ *  - rsa_keygen_pubexp: set public exponent to use when making a key.
  *
- * @param  ctx   [in]  Public key context of operation.
- * @param  type  [in]  Type of operation to perform.
- * @param  num   [in]  Integer parameter.
- * @param  ptr   [in]  Pointer parameter.
+ * @param  ctx    [in]  Public key context of operation.
+ * @param  type   [in]  Type of operation to perform.
+ * @param  value  [in]  Control string dependent value.
  * @returns  1 on success and 0 on failure.
  */
 static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
@@ -2296,22 +2297,22 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         ret = 0;
     }
 
-    if ((ret == 1) && (XSTRNCMP(type, "rsa_padding_mode", 17) == 0)) {
+    if ((ret == 1) && (XSTRCMP(type, "rsa_padding_mode") == 0)) {
         /* Padding mode. */
-        if (XSTRNCMP(value, "none", 5) == 0) {
+        if (XSTRCMP(value, "none") == 0) {
             rsa->padMode = RSA_NO_PADDING;
         }
-        else if (XSTRNCMP(value, "pkcs1", 6) == 0) {
+        else if (XSTRCMP(value, "pkcs1") == 0) {
             rsa->padMode = RSA_PKCS1_PADDING;
         }
-        else if (XSTRNCMP(value, "oaep", 5) == 0) {
+        else if (XSTRCMP(value, "oaep") == 0) {
             rsa->padMode = RSA_PKCS1_OAEP_PADDING;
         }
-        else if (XSTRNCMP(value, "pss", 4) == 0) {
+        else if (XSTRCMP(value, "pss") == 0) {
             rsa->padMode = RSA_PKCS1_PSS_PADDING;
         }
     #ifdef WE_HAVE_RSA_X931
-        else if (XSTRNCMP(value, "x931", 5) == 0) {
+        else if (XSTRCMP(value, "x931") == 0) {
             rsa->padMode = RSA_X931_PADDING;
         }
     #endif
@@ -2326,19 +2327,19 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
            rsa->md = EVP_sha1();
         }
     }
-    else if ((ret == 1) && (XSTRNCMP(type, "rsa_pss_saltlen", 16) == 0)) {
+    else if ((ret == 1) && (XSTRCMP(type, "rsa_pss_saltlen") == 0)) {
         /* RSA-PSS salt length. */
         if (rsa->padMode != RSA_PKCS1_PSS_PADDING) {
             ret = 0;
         }
     #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-        else if (XSTRNCMP(value, "digest", 7) == 0) {
+        else if (XSTRCMP(value, "digest") == 0) {
             rsa->saltLen = RSA_PSS_SALTLEN_DIGEST;
         }
-        else if (XSTRNCMP(value, "max", 4) == 0) {
+        else if (XSTRCMP(value, "max") == 0) {
             rsa->saltLen = RSA_PSS_SALTLEN_MAX;
         }
-        else if (XSTRNCMP(value, "auto", 5) == 0) {
+        else if (XSTRCMP(value, "auto") == 0) {
         #if OPENSSL_VERSION_NUMBER >= 0x10101000L
             rsa->saltLen = RSA_PSS_SALTLEN_AUTO;
         #else
@@ -2347,10 +2348,20 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         }
     #endif
         else {
-            rsa->saltLen = XATOI(value);
+            int len;
+
+            len = XATOI(value);
+            WOLFENGINE_MSG(WE_LOG_PK, "Setting PSS salt length to %d", len);
+            if (len < 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative PSS salt length.");
+                ret = 0;
+            }
+            else {
+                rsa->saltLen = len;
+            }
         }
     }
-    else if ((ret == 1) && (XSTRNCMP(type, "rsa_keygen_bits", 16) == 0)) {
+    else if ((ret == 1) && (XSTRCMP(type, "rsa_keygen_bits") == 0)) {
         /* Size, in bits, of RSA key to generate. */
         bits = XATOI(value);
         ret = we_check_rsa_key_size(bits, 0);
@@ -2362,7 +2373,7 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             rsa->bits = bits;
         }
     }
-    else if ((ret == 1) && (XSTRNCMP(type, "rsa_mgf1_md", 12) == 0)) {
+    else if ((ret == 1) && (XSTRCMP(type, "rsa_mgf1_md") == 0)) {
         if ((rsa->padMode != RSA_PKCS1_OAEP_PADDING) &&
             (rsa->padMode != RSA_PKCS1_PSS_PADDING)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Setting MGF1 and not PSS or OAEP");
@@ -2376,7 +2387,7 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             }
         }
     }
-    else if ((ret == 1) && (XSTRNCMP(type, "rsa_oaep_md", 12) == 0)) {
+    else if ((ret == 1) && (XSTRCMP(type, "rsa_oaep_md") == 0)) {
         if (rsa->padMode != RSA_PKCS1_OAEP_PADDING) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Setting MD and not OAEP");
             ret = -2;
@@ -2390,6 +2401,23 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             else {
                 rsa->mdSet = 1;
             }
+        }
+    }
+    else if ((ret == 1) && (XSTRCMP(type, "rsa_keygen_pubexp") == 0)) {
+        int e;
+
+        e = XATOI(value);
+        WOLFENGINE_MSG(WE_LOG_PK, "Setting public exponent (e) to %d", e);
+        if (e < 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Negative public exponent.");
+            ret = 0;
+        }
+        else if (e == 0) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Zero public exponent.");
+            ret = 0;
+        }
+        else {
+            rsa->pubExp = e;
         }
     }
     else {

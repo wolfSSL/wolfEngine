@@ -571,6 +571,106 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
     return err;
 }
 
+int test_rsa_ctrl_str(ENGINE* e, void* data)
+{
+    int err;
+    EVP_PKEY_CTX* ctx = NULL;
+
+    (void)data;
+
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, e)) == NULL;
+
+    /* rsa_padding_mode */
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_padding_mode", "none") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_padding_mode", "pkcs1") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_padding_mode", "oaep") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_padding_mode", "pss") <= 0;
+    }
+#ifdef WE_HAVE_RSA_X931
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_padding_mode", "x931") <= 0;
+    }
+#endif
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_padding_mode", "garbage") > 0;
+    }
+
+    /* rsa_keygen_bits */
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "2048") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "-1") > 0;
+    }
+
+    /* rsa_pss_saltlen */
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(ctx) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_pss_saltlen", "digest") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_pss_saltlen", "max") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_pss_saltlen", "auto") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_pss_saltlen", "4") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_pss_saltlen", "0") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_pss_saltlen", "-1") > 0;
+    }
+
+    /* rsa_mgf1_md */
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_mgf1_md", "SHA256") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_mgf1_md", "garbage") > 0;
+    }
+
+    /* rsa_oaep_md */
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_oaep_md", "SHA256") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_oaep_md", "garbage") > 0;
+    }
+
+    /* rsa_keygen_pubexp */
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_pubexp", "65537") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_pubexp", "0") > 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_pubexp", "-1") > 0;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
 int test_rsa_direct_key_gen(ENGINE *e, void *data)
 {
     int err = 0;
@@ -1150,7 +1250,7 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
         err = BN_set_word(eCmd, 3) != 1;
     }
     if (err == 0) {
-         PRINT_MSG("Change the public exponent w/ ctrl command");
+        PRINT_MSG("Change the public exponent w/ ctrl command");
         err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_KEYGEN,
                                 EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP, 0, eCmd) <= 0;
     }

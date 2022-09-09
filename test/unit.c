@@ -140,6 +140,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_random, NULL),
 #endif
 #ifdef WE_HAVE_RSA
+    TEST_DECL(test_rsa_ctrl_str,        NULL),
     TEST_DECL(test_rsa_direct_key_gen,  NULL),
     TEST_DECL(test_rsa_direct_priv_enc, NULL),
     TEST_DECL(test_rsa_direct_priv_dec, NULL),
