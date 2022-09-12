@@ -200,6 +200,11 @@ size_t EC_POINT_point2buf(const EC_GROUP *group, const EC_POINT *point,
 #define EVP_PKEY_ECDH_KDF_X9_63     EVP_PKEY_ECDH_KDF_X9_62
 #endif
 
+#ifndef EVP_PKEY_CTRL_DH_PAD
+/* First defined in OPENSSL_VERSION_NUMBER == 0x10101001L. */
+#define EVP_PKEY_CTRL_DH_PAD (EVP_PKEY_ALG_CTRL + 16)
+#endif
+
 WOLFENGINE_LOCAL const BIGNUM *DH_get0_p(const DH *dh);
 WOLFENGINE_LOCAL const BIGNUM *DH_get0_g(const DH *dh);
 WOLFENGINE_LOCAL const BIGNUM *DH_get0_q(const DH *dh);

@@ -358,43 +358,45 @@ static int we_rand_bytes(unsigned char *buf, int num)
     WOLFENGINE_MSG_VERBOSE(WE_LOG_RNG, "ARGS [buf = %p, num = %d]",
                            buf, num);
 
-#ifndef WE_SINGLE_THREADED
-    rc = wc_LockMutex(we_rng_mutex);
-    if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_LockMutex", rc);
-        ret = 0;
-    }
-    else
-#endif
-    {
-        /* Use global random to generator pseudo-random data. */
-        rc = wc_RNG_GenerateBlock(we_rng, buf, num);
+    if (num > 0) {
+    #ifndef WE_SINGLE_THREADED
+        rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_RNG_GenerateBlock", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_LockMutex", rc);
             ret = 0;
         }
-    #ifndef WE_STATIC_WOLFSSL
-        /* Mix global seed if RAND_add() or RAND_seed() has been called. */
-        if (ret == 1 && haveSeed) {
-            ret = we_rand_mix_seed(buf, num, we_seed, sizeof(we_seed));
-            if (ret != 1) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "we_rand_mix_seed with global "
-                                                 "seed failed");
-            }
-        }
-        /* Mix in weak entropy. */
-        if (ret == 1) {
-            ret = we_rand_add_weak_entropy(buf, num);
-            if (ret != 1) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "we_rand_mix_seed with "
-                    "weak entropy failed");
-            }
-        }
-    #endif /* !WE_STATIC_WOLFSSL */
-
-    #ifndef WE_SINGLE_THREADED
-        wc_UnLockMutex(we_rng_mutex);
+        else
     #endif
+        {
+            /* Use global random to generator pseudo-random data. */
+            rc = wc_RNG_GenerateBlock(we_rng, buf, num);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_RNG_GenerateBlock", rc);
+                ret = 0;
+            }
+        #ifndef WE_STATIC_WOLFSSL
+            /* Mix global seed if RAND_add() or RAND_seed() has been called. */
+            if (ret == 1 && haveSeed) {
+                ret = we_rand_mix_seed(buf, num, we_seed, sizeof(we_seed));
+                if (ret != 1) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "we_rand_mix_seed with "
+                                                     "global seed failed");
+                }
+            }
+            /* Mix in weak entropy. */
+            if (ret == 1) {
+                ret = we_rand_add_weak_entropy(buf, num);
+                if (ret != 1) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_RNG, "we_rand_mix_seed with "
+                        "weak entropy failed");
+                }
+            }
+        #endif /* !WE_STATIC_WOLFSSL */
+
+        #ifndef WE_SINGLE_THREADED
+            wc_UnLockMutex(we_rng_mutex);
+        #endif
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_bytes", ret);
