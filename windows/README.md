@@ -41,6 +41,12 @@ First, replace the contents of `IDE\WIN10\user_settings.h` in wolfSSL with the
 contents of `windows\fips_140_2\user_settings.h` from wolfEngine. Then, compile
 wolfSSL using `IDE\WIN10\wolfssl-fips.sln`.
 
+### FIPS 140-3
+
+First, replace the contents of `IDE\WIN10\user_settings.h` in wolfSSL with the
+contents of `windows\fips_140_3\user_settings.h` from wolfEngine. Then, compile
+wolfSSL using `IDE\WIN10\wolfssl-fips.sln`.
+
 ### FIPS Ready
 
 First, replace the contents of `IDE\WIN10\user_settings.h` in wolfSSL with the
@@ -74,6 +80,37 @@ Build wolfEngine using `windows\wolfEngine.sln`. Select one of the 4 FIPS 140-2
 configurations (e.g. DLL Debug FIPS 140-2). Run the test suite by right-clicking
 on the "test" project in the Solution Explorer > Debug > Start New Instance. You
 are likely to encounter this error message:
+
+```
+in FIPS callback, ok = 0, err = -203
+message = In Core Integrity check FIPS error
+hash = 550122FD59F12AFA94F1B0D95AB361FF03E3EB8708C68974C36D6571524B675C
+In core integrity hash check failure, copy above hash
+into verifyCore[] in wolfSSL's (NOT wolfEngine) fips_test.c and rebuild
+ERR: Failed to find engine!
+```
+
+As mentioned earlier, part of wolfSSL's FIPS self-test is an integrity check
+of the FIPS module. At startup, the self-test computes an HMAC of the code and
+read-only data of the FIPS module and compares the result to an expected value
+compiled into the library. If these don't match, the FIPS module enters an error
+state and cannot be used. The wolfEngine test program will print the above error
+message in this case. If this happens, you should take the hash value printed
+out and replace the `verifyCore` value in wolfSSL's `wolfcrypt\src\fips_test.c`
+with it. Rebuild wolfSSL, rebuild wolfEngine, and run the wolfEngine tests
+again. The integrity check should pass this time.
+
+### FIPS 140-3
+
+Build wolfEngine using `windows\wolfEngine.sln`. Select one of the 2 FIPS 140-3
+configurations (e.g. DLL Debug FIPS 140-3 or DLL Release FIPS 140-3). 
+
+NOTE: wolfEngine does NOT support building as a static library for FIP 140-3
+      configurations due to per-thread private key read access support.
+
+Run the test suite by right-clicking on the "test" project in the
+Solution Explorer > Debug > Start New Instance. You are likely to encounter 
+this error message:
 
 ```
 in FIPS callback, ok = 0, err = -203
