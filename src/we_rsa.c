@@ -432,8 +432,8 @@ static int we_rsa_add_x931_hash_code(const EVP_MD* md, unsigned char** to,
 /**
  * Set the public key in a we_Rsa structure.
  *
- * @param  ctx     [in]  Public key context of operation.
- * @param  rsa     [in]  RSA structure to hold public key.
+ * @param  rsaKey     [in]   Key to use.
+ * @param  engineRsa  [out]  wolfEngine RSA object to hold key.
  * @returns  1 on success and 0 on failure.
  */
 static int we_rsa_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
@@ -477,6 +477,61 @@ static int we_rsa_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_set_public_key", ret);
+
+    return ret;
+}
+
+/**
+ * Set the public key from an EVP_PKEY_CTX into a we_Rsa structure.
+ *
+ * @param  ctx     [in]  Public key context of operation.
+ * @param  rsa     [out]  wolfEngine RSA object to hold key.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_rsa_set_public_key_from_ctx(EVP_PKEY_CTX* ctx, we_Rsa* engineRsa)
+{
+    int ret = 1;
+    int rc;
+    EVP_PKEY *pkey = NULL;
+    RSA *rsaKey = NULL;
+    int keySize = 0;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_set_public_key_from_ctx");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
+
+    /* OpenSSL RSA key in EVP PKEY associated with context. */
+    pkey = EVP_PKEY_CTX_get0_pkey(ctx);
+    if (pkey == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get0_pkey",
+                                   pkey);
+        ret = 0;
+    }
+    if (ret == 1) {
+        /* Get OpenSSL RSA key containing public key. */
+        rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey);
+        if (rsaKey == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_get0_RSA",
+                                       rsaKey);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        keySize = RSA_size(rsaKey) * 8;
+        rc = we_check_rsa_key_size(keySize, 1);
+        if (rc != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        /* Set the public key into the internal RSA key. */
+        ret = we_rsa_set_public_key(rsaKey, engineRsa);
+        if (ret == 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_public_key", ret);
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_set_public_key_from_ctx", ret);
 
     return ret;
 }
@@ -2575,7 +2630,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
         /* Only determining signature size this call. */
         len = wc_RsaEncryptSize(&rsa->key);
         if (len <= 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_SignatureGetSize", (int)len);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize", (int)len);
             ret = 0;
         }
         else {
@@ -2659,6 +2714,71 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
 }
 
 /**
+ * Recover (decrypt) the plaintext from a signature, but don't check the
+ * validity.
+ *
+ * @param  ctx     [in]      Public key context of operation.
+ * @param  out     [out]     Buffer to place recovered (decrypted) plaintext in.
+ * @param  outSz   [in/out]  Size of out on input, actual length on output. If
+ *                           out is NULL, the maximum possible output size will
+ *                           be written to outSz.
+ * @param  in      [in]      Ciphertext (signature) input.
+ * @param  inSz    [in]      Length of in buffer.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_rsa_pkey_verify_recover(EVP_PKEY_CTX *ctx, unsigned char* out,
+                                      size_t* outSz, const unsigned char* in,
+                                      size_t inSz)
+{
+    int ret = 1;
+    int rc;
+    we_Rsa *rsa = NULL;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify_recover");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, out = %p, outSz = %p, "
+                           "in = %p, inSz = %zu]", ctx, out, outSz, in, inSz);
+
+    /* Get the internal RSA object. */
+    rsa = (we_Rsa *)EVP_PKEY_CTX_get_data(ctx);
+    if (rsa == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", rsa);
+        ret = 0;
+    }
+
+    /* Set up public key */
+    if ((ret == 1) && (!rsa->pubKeySet)) {
+        ret = we_rsa_set_public_key_from_ctx(ctx, rsa);
+    }
+    if (ret == 1) {
+        if (out == NULL) {
+            rc = wc_RsaEncryptSize(&rsa->key);
+            if (rc <= 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize", rc);
+                ret = 0;
+            }
+            else {
+                *outSz = rc;
+            }
+        }
+        else {
+            /* Unpad and public decrypt. */
+            rc = we_rsa_pub_dec_int(inSz, in, *outSz, out, rsa);
+            if (rc < 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
+                ret = 0;
+            }
+            else {
+                *outSz = rc;
+            }
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_verify_recover", ret);
+
+    return ret;
+}
+
+/**
  * Verify data with a public RSA key.
  *
  * @param  ctx     [in]  Public key context of operation.
@@ -2675,17 +2795,15 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
     int ret = 1;
     int rc = 0;
     we_Rsa *rsa = NULL;
-    EVP_PKEY *pkey = NULL;
-    RSA *rsaKey = NULL;
     unsigned char *decryptedSig = NULL;
     unsigned char *encodedDigest = NULL;
     int encodedDigestLen = 0;
-    int keySize = 0;
 #ifdef WE_HAVE_RSA_X931
     int nid;
     unsigned char hashCode;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 #endif
+    size_t decLen = sigLen;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, sig = %p, sigLen = %zu, "
@@ -2698,42 +2816,6 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", rsa);
         ret = 0;
     }
-
-    /* Set up public key */
-    if ((ret == 1) && (!rsa->pubKeySet)) {
-        /* OpenSSL RSA key in EVP PKEY associated with context. */
-        pkey = EVP_PKEY_CTX_get0_pkey(ctx);
-        if (pkey == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get0_pkey",
-                                       pkey);
-            ret = 0;
-        }
-        if (ret == 1) {
-            /* Get OpenSSL RSA key containing public key. */
-            rsaKey = (RSA*)EVP_PKEY_get0_RSA(pkey);
-            if (rsaKey == NULL) {
-                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_get0_RSA",
-                                           rsaKey);
-                ret = 0;
-            }
-        }
-        if (ret == 1) {
-            keySize = RSA_size(rsaKey) * 8;
-            rc = we_check_rsa_key_size(keySize, 1);
-            if (rc != 1) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_check_rsa_key_size", rc);
-                ret = 0;
-            }
-        }
-        if (ret == 1) {
-            /* Set the public key into the internal RSA key. */
-            ret = we_rsa_set_public_key(rsaKey, rsa);
-            if (ret == 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_set_public_key", ret);
-            }
-        }
-    }
-
     if (ret == 1) {
         /* Decrypted signature will same size or smaller than the signature. */
         decryptedSig = (unsigned char *)OPENSSL_malloc(sigLen);
@@ -2744,29 +2826,28 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         }
     }
     if ((ret == 1) && (rsa->md != NULL) &&
-                                     (rsa->padMode == RSA_PKCS1_PADDING) &&
-                                     ((size_t)EVP_MD_size(rsa->md) != tbsLen)) {
+        (rsa->padMode == RSA_PKCS1_PADDING) &&
+        ((size_t)EVP_MD_size(rsa->md) != tbsLen)) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
         ret = -1;
     }
-
     if (ret == 1) {
-        /* Unpad and public decrypt. */
-        rc = we_rsa_pub_dec_int(sigLen, sig, sigLen, decryptedSig, rsa);
-        if (rc == -1) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
+        rc = we_rsa_pkey_verify_recover(ctx, decryptedSig, &decLen, sig,
+                                        sigLen);
+        if (rc <= 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pkey_verify_recover", rc);
             ret = 0;
         }
     }
-
     if ((ret == 1) && (rsa->padMode == RSA_PKCS1_PSS_PADDING)) {
         /* Convert salt length into wolfCrypt value. */
         int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md,
             &rsa->key, 0);
         /* Verify call in we_rsa_pub_dec_int only decrypts - this actually
            checks padding. */
-        rc = wc_RsaPSS_CheckPadding_ex(tbs, (word32)tbsLen, decryptedSig, rc,
-            we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)), wc_saltLen, 0);
+        rc = wc_RsaPSS_CheckPadding_ex(tbs, (word32)tbsLen, decryptedSig,
+                 (word32)decLen, we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
+                 wc_saltLen, 0);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_CheckPadding_ex", rc);
             ret = 0;
@@ -2807,26 +2888,30 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
                     ret = 0;
                 }
                 else {
-                    if (hashCode != decryptedSig[rc-1]) {
+                    if (hashCode != decryptedSig[decLen-1]) {
                         XSNPRINTF(errBuff, sizeof(errBuff), "Expected hash code"
                                   ": 0x%02X but got 0x%02X.", hashCode,
-                                  decryptedSig[rc-1]);
+                                  decryptedSig[decLen-1]);
                         WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
                         ret = 0;
                     }
-                    else if (EVP_MD_size(rsa->md) != (rc - 1)) {
+                    else if (EVP_MD_size(rsa->md) != (int)(decLen - 1)) {
                         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Actual Digest size "
                             "doesn't match digest size implied by hash code.");
                         ret = 0;
                     }
                     else {
-                        --rc;
+                        /* 
+                         * Reduce decrypted length by 1 byte to account for hash
+                         * code.
+                         */
+                        --decLen;
                     }
                 }
             }
         }
     #endif
-        if ((ret == 1) && (tbsLen != (size_t)rc)) {
+        if ((ret == 1) && (tbsLen != decLen)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Encoding different size");
             ret = 0;
         }
@@ -3065,6 +3150,8 @@ int we_init_rsa_pkey_meth(void)
         EVP_PKEY_meth_set_init(we_rsa_pkey_method, we_rsa_pkey_init);
         EVP_PKEY_meth_set_sign(we_rsa_pkey_method, NULL, we_rsa_pkey_sign);
         EVP_PKEY_meth_set_verify(we_rsa_pkey_method, NULL, we_rsa_pkey_verify);
+        EVP_PKEY_meth_set_verify_recover(we_rsa_pkey_method, NULL,
+                                         we_rsa_pkey_verify_recover);
         EVP_PKEY_meth_set_encrypt(we_rsa_pkey_method, NULL,
                                   we_rsa_pkey_encrypt);
         EVP_PKEY_meth_set_decrypt(we_rsa_pkey_method, NULL,
