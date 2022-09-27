@@ -426,6 +426,97 @@ int test_dh_pkey(ENGINE* e, void* data)
     return err;
 }
 
+int test_dh_ctrl(ENGINE* e, void* data)
+{
+    int err;
+    EVP_PKEY_CTX* ctx = NULL;
+    int primeLengths[] = {1024, 2048, 3072};
+    word32 i;
+
+    (void)data;
+
+    err = (ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, e)) == NULL;
+    if (err == 0){
+        err = EVP_PKEY_paramgen_init(ctx) <= 0;
+    }
+
+    for (i = 0; err == 0 && i < sizeof(primeLengths)/sizeof(*primeLengths);
+         ++i) {
+        /* Set valid prime lengths. */
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
+                  EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN, primeLengths[i],
+                  NULL) <= 0;
+    }
+    if (err == 0) {
+        /* Set an invalid prime length. */
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
+                  EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN, 512, NULL) > 0;
+    }
+    if (err == 0) {
+        /* Set a valid prime length via control string. */
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_paramgen_prime_len", "2048") <= 0;
+    }
+
+    if (err == 0) {
+        /* Set the generator (not supported by wolfCrypt). */
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
+                  EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR, 2, NULL) > 0;
+    }
+
+    if (err == 0) {
+        /* Zero pad secret. */
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
+                  EVP_PKEY_CTRL_DH_PAD, 1, NULL) <= 0;
+    }
+    if (err == 0) {
+        /* Same as above but using a control string. */
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_pad", "1") <= 0;
+    }
+
+    if (err == 0) {
+        /* Set peer key for shared secret. No-op internally. */
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_PARAMGEN,
+                  EVP_PKEY_CTRL_PEER_KEY, 0, NULL) <= 0;
+    }
+
+#ifdef HAVE_PUBLIC_FFDHE
+    /* Set parameters to different named parameter sets. */
+    #ifdef HAVE_FFDHE_2048
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe2048") <= 0;
+    }
+    #else
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe2048") > 0;
+    }
+    #endif /* HAVE_FFDHE_2048 */
+
+    #ifdef HAVE_FFDHE_3072
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe3072") <= 0;
+    }
+    #else
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe3072") > 0;
+    }
+    #endif /* HAVE_FFDHE_3072 */
+
+    #ifdef HAVE_FFDHE_4096
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe4096") <= 0;
+    }
+    #else
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe4096") > 0;
+    }
+    #endif /* HAVE_FFDHE_4096 */
+#endif /* HAVE_PUBLIC_FFDHE */
+
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
 #endif /* WE_HAVE_EVP_PKEY */
 
 #endif /* WE_HAVE_DH */

@@ -31,10 +31,6 @@
  *     local one.
  */
 
-#ifndef EVP_PKEY_CTRL_DH_PAD
-#define EVP_PKEY_CTRL_DH_PAD   (EVP_PKEY_ALG_CTRL + 16)
-#endif
-
 #define DEFAULT_PRIME_LEN 1024
 
 /**
@@ -567,6 +563,7 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
     unsigned char *privBuf = NULL;
     int privLen = 0;
     unsigned int secLen = 0;
+    const BIGNUM* privBn;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_compute_key_int");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [engineDh = %p, secret = %p, "
@@ -600,7 +597,15 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
 
     if (ret == 1) {
         /* Convert our private key to a byte array. */
-        ret = we_dh_bignum_to_bin(DH_get0_priv_key(dh), &privBuf, &privLen);
+        privBn = DH_get0_priv_key(dh);
+        if (privBn == NULL) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Private key is NULL. Can't create "
+                                            "DH shared secret.");
+            ret = 0;
+        }
+        else {
+            ret = we_dh_bignum_to_bin(DH_get0_priv_key(dh), &privBuf, &privLen);
+        }
     }
 
     if (ret == 1) {
@@ -1057,6 +1062,7 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     "setting the generator when generating DH params");
                 /* wolfCrypt doesn't allow setting the generator when generating
                  * DH params. */
+                ret = 0;
                 break;
             case EVP_PKEY_CTRL_DH_PAD:
                 dh->pad = num;
@@ -1086,7 +1092,8 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  * Extra operations for working with DH.
  * Supported operations include:
  *  - "dh_param": set the named parameters.
- *  - "pad": pad out secret to input length.
+ *  - "dh_pad": pad out secret to input length.
+ *  - "dh_paramgen_prime_len": set the length of the prime, "p."
  *
  * @param  ctx    [in]  Public key context of operation.
  * @param  type   [in]  Type of operation to perform.
@@ -1113,7 +1120,7 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
 
     if (ret == 1) {
         /* Set named DH parameters. */
-        if (XSTRNCMP(type, "dh_param", 9) == 0) {
+        if (XSTRCMP(type, "dh_param") == 0) {
         #ifndef HAVE_WC_DHSETNAMEDKEY
             const DhParams *params = NULL;
         #else
@@ -1122,7 +1129,7 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
 
         #ifdef HAVE_PUBLIC_FFDHE
         #ifdef HAVE_FFDHE_2048
-            if (XSTRNCMP(value, "ffdhe2048", 10) == 0) {
+            if (XSTRCMP(value, "ffdhe2048") == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe2048");
             #ifndef HAVE_WC_DHSETNAMEDKEY
@@ -1134,7 +1141,7 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             else
         #endif
         #ifdef HAVE_FFDHE_3072
-            if (XSTRNCMP(value, "ffdhe3072", 10) == 0) {
+            if (XSTRCMP(value, "ffdhe3072") == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe3072");
             #ifndef HAVE_WC_DHSETNAMEDKEY
@@ -1146,7 +1153,7 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             else
         #endif
         #ifdef HAVE_FFDHE_4096
-            if (XSTRNCMP(value, "ffdhe4096", 10) == 0) {
+            if (XSTRCMP(value, "ffdhe4096") == 0) {
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "Setting named parameters: ffdhe4096");
             #ifndef HAVE_WC_DHSETNAMEDKEY
@@ -1180,7 +1187,8 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                 rc = wc_DhSetNamedKey(&dh->key, params);
             #endif
                 if (rc != 0) {
-                     WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Failed set parameters");
+                     WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Failed to set "
+                        "parameters.");
                      ret = 0;
                 }
             }
@@ -1189,8 +1197,12 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             }
         }
         /* Set padding requirement for secret output. */
-        else if (XSTRNCMP(type, "dh_pad", 7) == 0) {
+        else if (XSTRCMP(type, "dh_pad") == 0) {
             dh->pad = XATOI(value);
+        }
+        else if (XSTRCMP(type, "dh_paramgen_prime_len") == 0) {
+            ret = we_dh_pkey_ctrl(ctx, EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN,
+                                  XATOI(value), NULL);
         }
         else {
             /* Unsupported control type. */

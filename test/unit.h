@@ -249,6 +249,7 @@ int test_dh(ENGINE *e, void *data);
 #ifdef WE_HAVE_EVP_PKEY
 int test_dh_pgen_pkey(ENGINE *e, void *data);
 int test_dh_pkey(ENGINE *e, void *data);
+int test_dh_ctrl(ENGINE *e, void *data);
 #if !defined(WE_SINGLE_THREADED) && defined(_WIN32)
 int test_dh_key_gen_multithreaded(ENGINE *e, void *data);
 #endif /* !WE_SINGLE_THREADED && _WIN32 */
