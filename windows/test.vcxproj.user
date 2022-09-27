@@ -36,4 +36,22 @@ $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
     <LocalDebuggerEnvironment>OPENSSL_ENGINES=$(OutDir)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|Win32'">
+    <LocalDebuggerEnvironment>OPENSSL_ENGINES=$(OutDir)
+$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|x64'">
+    <LocalDebuggerEnvironment>OPENSSL_ENGINES=$(OutDir)</LocalDebuggerEnvironment>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|Win32'">
+    <LocalDebuggerEnvironment>OPENSSL_ENGINES=$(OutDir)
+$(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|x64'">
+    <LocalDebuggerEnvironment>OPENSSL_ENGINES=$(OutDir)</LocalDebuggerEnvironment>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
 </Project>

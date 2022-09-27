@@ -33,6 +33,14 @@
       <Configuration>DLL Debug FIPS 140-2</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug FIPS 140-3|Win32">
+      <Configuration>DLL Debug FIPS 140-3</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug FIPS 140-3|x64">
+      <Configuration>DLL Debug FIPS 140-3</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="DLL Debug FIPS Ready|Win32">
       <Configuration>DLL Debug FIPS Ready</Configuration>
       <Platform>Win32</Platform>
@@ -55,6 +63,14 @@
     </ProjectConfiguration>
     <ProjectConfiguration Include="DLL Release FIPS 140-2|x64">
       <Configuration>DLL Release FIPS 140-2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release FIPS 140-3|Win32">
+      <Configuration>DLL Release FIPS 140-3</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release FIPS 140-3|x64">
+      <Configuration>DLL Release FIPS 140-3</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="DLL Release FIPS Ready|Win32">
@@ -115,7 +131,13 @@
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|Win32'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|x64'" Label="Configuration">
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
@@ -172,10 +194,16 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|Win32'" Label="Configuration">
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|Win32'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'">
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|x64'" Label="Configuration">
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -190,6 +218,10 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
     <Import Project="props\dll_debug_fips_test.props" />
     <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|x64'" Label="PropertySheets">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_140_3.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
     <Import Project="props\static_debug_fips_test.props" />
@@ -239,6 +271,10 @@
     <Import Project="props\dll_release_fips_test.props" />
     <Import Project="props\fips_140_2.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|Win32'" Label="PropertySheets">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_140_3.props" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS 140-2|x64'">
     <Import Project="props\static_release_fips_test.props" />
     <Import Project="props\fips_140_2.props" />
@@ -246,6 +282,10 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'">
     <Import Project="props\dll_release_fips_test.props" />
     <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|x64'" Label="PropertySheets">
+    <Import Project="props\dll_release_fips_test.props" />
+    <Import Project="props\fips_140_3.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release Non-FIPS|Win32'">
     <Import Project="props\static_release_non_fips_test.props" />
@@ -256,6 +296,10 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
     <Import Project="props\dll_debug_fips_test.props" />
     <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|Win32'" Label="PropertySheets">
+    <Import Project="props\dll_debug_fips_test.props" />
+    <Import Project="props\fips_140_3.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug Non-FIPS|Win32'">
     <Import Project="props\dll_debug_non_fips_test.props" />

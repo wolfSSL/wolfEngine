@@ -33,6 +33,14 @@
       <Configuration>DLL Debug FIPS 140-2</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug FIPS 140-3|Win32">
+      <Configuration>DLL Debug FIPS 140-3</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Debug FIPS 140-3|x64">
+      <Configuration>DLL Debug FIPS 140-3</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="DLL Debug FIPS Ready|Win32">
       <Configuration>DLL Debug FIPS Ready</Configuration>
       <Platform>Win32</Platform>
@@ -55,6 +63,14 @@
     </ProjectConfiguration>
     <ProjectConfiguration Include="DLL Release FIPS 140-2|x64">
       <Configuration>DLL Release FIPS 140-2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release FIPS 140-3|Win32">
+      <Configuration>DLL Release FIPS 140-3</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DLL Release FIPS 140-3|x64">
+      <Configuration>DLL Release FIPS 140-3</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="DLL Release FIPS Ready|Win32">
@@ -118,7 +134,15 @@
     <PlatformToolset>v143</PlatformToolset>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|Win32'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
+    <PlatformToolset>v143</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|x64'" Label="Configuration">
     <PlatformToolset>v143</PlatformToolset>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
@@ -194,11 +218,19 @@
     <PlatformToolset>v143</PlatformToolset>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|Win32'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS Ready|x64'">
     <PlatformToolset>v143</PlatformToolset>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-2|x64'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|x64'" Label="Configuration">
     <PlatformToolset>v143</PlatformToolset>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
@@ -214,6 +246,10 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|x64'">
     <Import Project="props\dll_debug_fips_wolfengine.props" />
     <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|x64'" Label="PropertySheets">
+    <Import Project="props\dll_debug_fips_wolfengine.props" />
+    <Import Project="props\fips_140_3.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug FIPS Ready|x64'">
     <Import Project="props\debug_fips_wolfengine.props" />
@@ -255,6 +291,10 @@
     <Import Project="props\dll_release_fips_wolfengine.props" />
     <Import Project="props\fips_140_2.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|Win32'" Label="PropertySheets">
+    <Import Project="props\dll_release_fips_wolfengine.props" />
+    <Import Project="props\fips_140_3.props" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release FIPS Ready|Win32'">
     <Import Project="props\release_fips_wolfengine.props" />
     <Import Project="props\fips_ready.props" />
@@ -271,9 +311,17 @@
     <Import Project="props\dll_release_fips_wolfengine.props" />
     <Import Project="props\fips_140_2.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Release FIPS 140-3|x64'" Label="PropertySheets">
+    <Import Project="props\dll_release_fips_wolfengine.props" />
+    <Import Project="props\fips_140_3.props" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-2|Win32'">
     <Import Project="props\dll_debug_fips_wolfengine.props" />
     <Import Project="props\fips_140_2.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|Win32'" Label="PropertySheets">
+    <Import Project="props\dll_debug_fips_wolfengine.props" />
+    <Import Project="props\fips_140_3.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug Non-FIPS|Win32'">
     <Import Project="props\debug_non_fips_wolfengine.props" />
@@ -296,6 +344,9 @@
     <Import Project="props\fips_ready.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DLL Debug FIPS 140-3|x64'">
+    <ClCompile />
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\we_aes_block.c" />
     <ClCompile Include="..\src\we_aes_cbc_hmac.c" />
