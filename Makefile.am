@@ -10,6 +10,8 @@ EXTRA_DIST =
 
 ACLOCAL_AMFLAGS = -I m4
 
+AM_CPPFLAGS = -I$(top_srcdir)/include
+
 lib_LTLIBRARIES = libwolfengine.la
 
 include src/include.am
