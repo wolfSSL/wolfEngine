@@ -1,3 +1,26 @@
+# wolfEngine Release 1.2.0 (September 29, 2022)
+* ChangeLog.md is now shipped with releases.
+* Random number generation now mixes in some additional weak entropy (e.g. PID)
+to ensure unique numbers, even if the RNG state is copied into a forked process.
+* Using wolfEngine with the wolfSSL FIPS 140-3 candidate code will now work as
+intended in multi-threaded Windows applications. This was accomplished by adding
+a `DllMain` function that calls `wolfCrypt_SetPrivateKeyReadEnable_fips` on new
+thread creation.
+* The RSA code now supports the `rsa_keygen_pubexp` control command string.
+* The RSA code now has a `verify_recover` function.
+* The automake code was adjusted to support builds not in the project root. This
+is particularly useful for Yocto builds.
+* The Visual Studio solution now has configurations to support the wolfSSL FIPS
+140-3 candidate code.
+* The random bytes function will now return success and do nothing if the
+provided length is 0.
+* Fixed a potential seg fault in `we_dh_compute_key_int` if `DH_get0_priv_key`
+returned NULL.
+* The DH code now supports the `dh_paramgen_prime_len` control command string.
+* Attempting to use the control command `EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR`
+will now return an error, as wolfCrypt doesn't support setting the generator for
+DH.
+
 # wolfEngine Release 1.1.0 (May 16, 2022)
 * Updated README.md to refer to new wolfSSL configure flag `--enable-engine`.
 * Fixed a double free bug in certain error cases in the ECC code.
