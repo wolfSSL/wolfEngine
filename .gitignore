@@ -65,3 +65,5 @@ test.aps
 .cproject
 .project
 .settings
+
+rpm/spec

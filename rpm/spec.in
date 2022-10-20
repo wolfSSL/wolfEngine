@@ -1,0 +1,79 @@
+Name:           @PACKAGE@
+Version:        @VERSION@
+Release:        1
+Summary:        wolfCrypt and wolfCrypt FIPS engine for OpenSSL
+
+License:        GPLv3
+URL:            http://www.wolfssl.com/
+Source0:        @PACKAGE@-@VERSION@.tar.gz
+
+BuildRequires: gcc
+BuildRequires: glibc
+BuildRequires: glibc-common
+BuildRequires: glibc-devel
+BuildRequires: glibc-headers
+BuildRequires: make
+BuildRequires: pkgconfig
+BuildRequires: sed
+BuildRequires: tar
+
+
+# Don't add wolfSSL and OpenSSL to dependency list. User may want to
+# use a version outside of RPM.
+%global __requires_exclude ^lib(wolfssl|ssl|crypto).*$
+
+
+%description
+This package contains the header files and development libraries
+for %{name}. If you like to develop programs using %{name},
+you will need to install %{name}-devel.
+
+
+%package devel
+Summary: Header files and development libraries for %{name}
+Group: Development/Libraries
+Requires: %{name} = %{version}-%{release}
+
+%description devel
+This package contains the header files and development libraries
+for %{name}. If you like to develop programs using %{name},
+you will need to install %{name}-devel.
+
+
+%prep
+%setup
+
+
+%build
+%configure @WOLFENGINE_CONFIG_ARGS@
+%make_build
+
+
+%install
+%make_install
+%{__rm} -f %{buildroot}/%{_libdir}/libwolfengine.la
+
+
+%clean
+%{__rm} -rf %{buildroot}
+
+
+%files
+%doc ChangeLog.md COPYING INSTALL README.md
+
+%{_libdir}/libwolfengine.so
+%{_libdir}/libwolfengine.so.@WOLFENGINE_LIBRARY_VERSION_FIRST@
+%{_libdir}/libwolfengine.so.@WOLFENGINE_LIBRARY_VERSION_FIRST@.@WOLFENGINE_LIBRARY_VERSION_SECOND@.@WOLFENGINE_LIBRARY_VERSION_THIRD@
+
+
+%files devel
+%{_includedir}/wolfengine/we_fips.h
+%{_includedir}/wolfengine/we_logging.h
+%{_includedir}/wolfengine/we_visibility.h
+%{_includedir}/wolfengine/we_wolfengine.h
+
+
+
+%changelog
+* Mon Oct 17 2022 Juliusz Sosinowicz <juliusz@wolfssl.com>
+- Initial package
