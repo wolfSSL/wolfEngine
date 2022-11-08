@@ -25,7 +25,15 @@ USER_CFLAGS="$CFLAGS"
 AC_PROG_CC
 AC_LANG(C)
 
+WOLFENGINE_CONFIG_ARGS=$ac_configure_args
+AC_SUBST([WOLFENGINE_CONFIG_ARGS])
+
 # shared library versioning
+# The three numbers in the libwolfengine.so.*.*.* file name. Unfortunately
+# these numbers don't always line up nicely with the library version.
+WOLFENGINE_LIBRARY_VERSION_FIRST=1
+WOLFENGINE_LIBRARY_VERSION_SECOND=0
+WOLFENGINE_LIBRARY_VERSION_THIRD=2
 WOLFENGINE_LIBRARY_VERSION=1:2:0
 #                          | | |
 #                   +------+ | +---+
@@ -39,6 +47,9 @@ WOLFENGINE_LIBRARY_VERSION=1:2:0
 #                   |           set to zero if current is incremented
 #                   +- increment if interfaces have been added, removed or changed
 AC_SUBST([WOLFENGINE_LIBRARY_VERSION])
+AC_SUBST([WOLFENGINE_LIBRARY_VERSION_FIRST])
+AC_SUBST([WOLFENGINE_LIBRARY_VERSION_SECOND])
+AC_SUBST([WOLFENGINE_LIBRARY_VERSION_THIRD])
 
 LIBS="$LIBS -ldl"
 
@@ -710,7 +721,8 @@ AC_SUBST([AM_CPPFLAGS])
 AC_SUBST([AM_CFLAGS])
 AC_SUBST([AM_LDFLAGS])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile
+       rpm/spec])
 AC_OUTPUT
 
 # force make clean

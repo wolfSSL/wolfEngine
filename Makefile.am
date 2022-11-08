@@ -20,6 +20,7 @@ include test/include.am
 include scripts/include.am
 include windows/include.am
 include examples/include.am
+include rpm/include.am
 
 noinst_PROGRAMS += bench
 bench_SOURCES    = bench.c
