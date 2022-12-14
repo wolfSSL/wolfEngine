@@ -135,45 +135,71 @@ int test_hmac_create(ENGINE *e, void *data)
     if (ret == 0) {
         PRINT_MSG("Testing with SHA224");
         ret = test_hmac_create_helper(e, data, EVP_sha224(), pswd, sizeof(pswd));
+        if (ret == 0) {
+            /* EVP_PKEY_new_mac_key() can be called with -1, OpenSSL expects
+             * engine implementations to use strlen() to find string length */
+            ret = test_hmac_create_helper(e, data, EVP_sha224(), pswd, -1);
+        }
     }
 
     if (ret == 0) {
         PRINT_MSG("Testing with SHA256");
         ret = test_hmac_create_helper(e, data, EVP_sha256(), pswd, sizeof(pswd));
+        if (ret == 0) {
+            ret = test_hmac_create_helper(e, data, EVP_sha256(), pswd, -1);
+        }
     }
 
     if (ret == 0) {
         PRINT_MSG("Testing with SHA384");
         ret = test_hmac_create_helper(e, data, EVP_sha384(), pswd, sizeof(pswd));
+        if (ret == 0) {
+            ret = test_hmac_create_helper(e, data, EVP_sha384(), pswd, -1);
+        }
     }
 
     if (ret == 0) {
         PRINT_MSG("Testing with SHA512");
         ret = test_hmac_create_helper(e, data, EVP_sha512(), pswd, sizeof(pswd));
+        if (ret == 0) {
+            ret = test_hmac_create_helper(e, data, EVP_sha512(), pswd, -1);
+        }
     }
 
 #ifdef WE_HAVE_SHA3_224
     if (ret == 0) {
         PRINT_MSG("Testing with SHA3-224");
         ret = test_hmac_create_helper(e, data, EVP_sha3_224(), pswd, sizeof(pswd));
+        if (ret == 0) {
+            ret = test_hmac_create_helper(e, data, EVP_sha3_224(), pswd, -1);
+        }
     }
 #endif
 #ifdef WE_HAVE_SHA3_256
     if (ret == 0) {
         PRINT_MSG("Testing with SHA3-256");
         ret = test_hmac_create_helper(e, data, EVP_sha3_256(), pswd, sizeof(pswd));
+        if (ret == 0) {
+            ret = test_hmac_create_helper(e, data, EVP_sha3_256(), pswd, -1);
+        }
     }
 #endif
 #ifdef WE_HAVE_SHA3_384
     if (ret == 0) {
         PRINT_MSG("Testing with SHA3-384");
         ret = test_hmac_create_helper(e, data, EVP_sha3_384(), pswd, sizeof(pswd));
+        if (ret == 0) {
+            ret = test_hmac_create_helper(e, data, EVP_sha3_384(), pswd, -1);
+        }
     }
 #endif
 #ifdef WE_HAVE_SHA3_512
     if (ret == 0) {
         PRINT_MSG("Testing with SHA3-512");
         ret = test_hmac_create_helper(e, data, EVP_sha3_512(), pswd, sizeof(pswd));
+        if (ret == 0) {
+            ret = test_hmac_create_helper(e, data, EVP_sha3_512(), pswd, -1);
+        }
     }
 #endif
     return ret;

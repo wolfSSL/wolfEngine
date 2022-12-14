@@ -464,7 +464,11 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                  * num  [in]  Length of key in bytes.
                  */
                 WOLFENGINE_MSG(WE_LOG_MAC, "type: EVP_PKEY_CTRL_SET_MAC_KEY");
-                if (ptr != NULL && num >= 0) {
+                if (ptr != NULL && num >= -1) {
+                    if (num == -1) {
+                        /* App can pass -1 length, must use strlen() */
+                        num = (int)XSTRLEN(ptr);
+                    }
                     ret = we_mac_set_key(mac, ptr, num);
                 }
                 else {
