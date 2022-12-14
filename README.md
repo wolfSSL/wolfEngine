@@ -164,6 +164,14 @@ as described earlier.
 See the scripts directory for integration tests with other applications (e.g.
 OpenSSH, stunnel, etc.).
 
+### Commit Tests
+
+For wolfEngine developers running commit tests, a custom OpenSSL installation
+location can be set using the `WOLFENGINE_OPENSSL_INSTALL` environment variable.
+When set, wolfEngine commit tests will use the specified OpenSSL installation
+path for commit tests, setting the path using
+`--with-openssl=WOLFENGINE_OPENSSL_INSTALL` at configure time.
+
 ## Windows
 
 Refer to `windows/README.md` for instructions for building wolfEngine using
