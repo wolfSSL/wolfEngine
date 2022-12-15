@@ -26,9 +26,9 @@
 #if OPENSSL_VERSION_NUMBER < 0x10100000
 int main()
 {
-    fprintf(stderr, "This example is not compatible with versions of OpenSSL "
-                    "before 1.1.0. OPENSSL_init_crypto() was introduced after "
-                    "that.\n");
+    fprintf(stderr, "This wolfEngine example is not compatible with versions "
+                    "of OpenSSL before 1.1.0. OPENSSL_init_crypto() was "
+                    "introduced after that.\n");
     return 0;
 }
 
