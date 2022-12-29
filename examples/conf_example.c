@@ -20,6 +20,7 @@
  */
 
 #include <stdio.h>
+#include <openssl/conf.h>
 #include <openssl/engine.h>
 
 /* From https://www.openssl.org/docs/man3.0/man3/EVP_MD_CTX_new.html:
