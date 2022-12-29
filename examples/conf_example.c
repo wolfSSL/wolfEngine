@@ -20,8 +20,18 @@
  */
 
 #include <stdio.h>
-
+#include <openssl/conf.h>
 #include <openssl/engine.h>
+
+/* From https://www.openssl.org/docs/man3.0/man3/EVP_MD_CTX_new.html:
+ *
+ * The EVP_MD_CTX_create() and EVP_MD_CTX_destroy() functions were renamed to
+ * EVP_MD_CTX_new() and EVP_MD_CTX_free() in OpenSSL 1.1.0, respectively.
+ */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    #define EVP_MD_CTX_new  EVP_MD_CTX_create
+    #define EVP_MD_CTX_free EVP_MD_CTX_destroy
+#endif
 
 int main()
 {
@@ -37,9 +47,13 @@ int main()
      * OPENSSL_CONF). This will load wolfEngine and make it the default engine
      * for all the algorithms it provides. See wolfEngine.conf for more.
      */
+#if OPENSSL_VERSION_NUMBER < 0x10100000
+    OPENSSL_config(NULL);
+#else
     OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS |
                         OPENSSL_INIT_ADD_ALL_DIGESTS |
                         OPENSSL_INIT_LOAD_CONFIG, NULL);
+#endif
 
     /*
      * Compute a digest/hash over the data in the "someData" buffer. wolfEngine
@@ -96,4 +110,3 @@ int main()
 
     return 0;
 }
-
