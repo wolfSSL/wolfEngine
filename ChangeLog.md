@@ -1,3 +1,8 @@
+# wolfEngine Release 1.3.0 (January 16, 2023)
+* Added RPM package support
+* Added support and tests for OpenSSL HMAC to be called with -1 key length
+* Updated examples to support use with OpenSSL 1.0.2
+
 # wolfEngine Release 1.2.0 (September 29, 2022)
 * ChangeLog.md is now shipped with releases.
 * Random number generation now mixes in some additional weak entropy (e.g. PID)

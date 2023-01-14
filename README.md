@@ -75,7 +75,8 @@ Use this configure command:
 ./configure --enable-engine
 ```
 
-This adds support for `fips=v2` automatically. Replace this with
+This adds support for `--enable-engine=fips-v2` automatically. Replace this with
+`--enable-engine=fips-v5` if using a FIPSv5 140-3 bundle. Replace this with
 `--enable-engine=fips-ready` if using a FIPS Ready bundle. If your wolfSSL
 version doesn't support `--enable-engine`, use this instead:
 
