@@ -2,7 +2,7 @@
 
 # test-openssl-version.sh
 #
-# Copyright (C) 2019-2021 wolfSSL Inc.
+# Copyright (C) 2019-2023 wolfSSL Inc.
 #
 
 
