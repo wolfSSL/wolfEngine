@@ -71,7 +71,7 @@ BEGIN
             VALUE "FileDescription", "OpenSSL engine using wolfSSL"
             VALUE "FileVersion", "1.0.0.0"
             VALUE "InternalName", "wolfEngine.dll"
-            VALUE "LegalCopyright", "Copyright (C) 2022"
+            VALUE "LegalCopyright", "Copyright (C) 2023"
             VALUE "OriginalFilename", "wolfEngine.dll"
             VALUE "ProductName", "wolfEngine"
             VALUE "ProductVersion", "1.0.0.0"
