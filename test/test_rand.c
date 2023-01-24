@@ -88,4 +88,4 @@ int test_random(ENGINE *e, void *data)
     return err;
 }
 
-#endif /* WE_HAVE_DH */
+#endif /* WE_HAVE_RANDOM */

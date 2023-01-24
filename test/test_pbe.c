@@ -361,4 +361,4 @@ int test_pbe(ENGINE *e, void *data)
     return err;
 }
 
-#endif
+#endif /* WE_HAVE_PBE */
