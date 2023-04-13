@@ -921,7 +921,7 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 
     if (ret == 1 && ecc->group == NULL) {
         const EC_GROUP *group;
-        EC_KEY *tmp;
+        const EC_KEY *tmp;
 
         /* set group from the ctx pkey */
         tmp = EVP_PKEY_get0_EC_KEY(ctxPkey);

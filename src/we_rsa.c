@@ -208,9 +208,11 @@ static int we_pss_salt_len_to_wc(int saltLen, const EVP_MD *md, RsaKey *key,
             if (signing) {
                 saltLen = wc_RsaEncryptSize(key) - EVP_MD_size(md) - 2;
             }
+            #ifdef WOLFSSL_PSS_SALT_LEN_DISCOVER
             else {
                 saltLen = RSA_PSS_SALT_LEN_DISCOVER;
             }
+            #endif
         #endif
         }
     }
