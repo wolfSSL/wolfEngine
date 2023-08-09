@@ -1375,6 +1375,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
 
 #ifdef HAVE_FIPS
     wolfCrypt_SetCb_fips(we_fips_cb);
+    PRIVATE_KEY_UNLOCK();
 #endif
 
     if ((id != NULL) &&
