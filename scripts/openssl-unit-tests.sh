@@ -261,6 +261,17 @@ setup_openssl_111b() {
 
         patch_openssl
 
+        #update the certificates so they are not expired.
+        cd test
+        cd certs
+        ./setup.sh
+        cd ..
+        cd smime-certs
+        chmod a+x mksmime-certs.sh
+        ./mksmime-certs.sh
+        cd ..
+        cd ..
+
         if [ -z "${OPENSSL_NO_CONFIG}" ]; then
             printf "\tConfiguring.\n"
             # Configure for debug.
