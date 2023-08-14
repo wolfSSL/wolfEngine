@@ -1,0 +1,13 @@
+diff --git a/test/smime-certs/mksmime-certs.sh b/test/smime-certs/mksmime-certs.sh
+index c98e164b..8fad96c2
+--- a/test/smime-certs/mksmime-certs.sh
++++ b/test/smime-certs/mksmime-certs.sh
+@@ -9,7 +9,7 @@
+ 
+ # Utility to recreate S/MIME certificates
+ 
+-OPENSSL=../../apps/openssl
++OPENSSL=openssl
+ OPENSSL_CONF=./ca.cnf
+ export OPENSSL_CONF
+ 
