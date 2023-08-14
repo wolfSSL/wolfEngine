@@ -753,8 +753,10 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
         /* Sign the data with wolfSSL EC key object. */
         outLen = (word32)*sigLen;
 #ifndef WE_ECC_USE_GLOBAL_RNG
+        PRIVATE_KEY_UNLOCK();
         rc = wc_ecc_sign_hash(tbs, (word32)tbsLen, sig, &outLen, &ecc->rng,
                               &ecc->key);
+        PRIVATE_KEY_LOCK();
 #else
 #ifndef WE_SINGLE_THREADED
         rc = wc_LockMutex(we_rng_mutex);
@@ -765,8 +767,10 @@ static int we_pkey_ecdsa_sign(EVP_PKEY_CTX *ctx, unsigned char *sig, size_t *sig
         else
 #endif /* !WE_SINGLE_THREADED */
         {
+            PRIVATE_KEY_UNLOCK();
             rc = wc_ecc_sign_hash(tbs, (word32)tbsLen, sig, &outLen, we_rng,
                                   &ecc->key);
+            PRIVATE_KEY_LOCK();
         #ifndef WE_SINGLE_THREADED
             wc_UnLockMutex(we_rng_mutex);
         #endif
@@ -998,7 +1002,9 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     if (ret == 1) {
         /* Generate a new EC key with wolfSSL. */
 #ifndef WE_ECC_USE_GLOBAL_RNG
+        PRIVATE_KEY_UNLOCK();
         rc = wc_ecc_make_key_ex(&ecc->rng, len, &ecc->key, ecc->curveId);
+        PRIVATE_KEY_LOCK();
 #else
 #ifndef WE_SINGLE_THREADED
         rc = wc_LockMutex(we_rng_mutex);
@@ -1009,7 +1015,9 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         else
 #endif /* !WE_SINGLE_THREADED */
         {
+            PRIVATE_KEY_UNLOCK();
             rc = wc_ecc_make_key_ex(we_rng, len, &ecc->key, ecc->curveId);
+            PRIVATE_KEY_LOCK();
         #ifndef WE_SINGLE_THREADED
             wc_UnLockMutex(we_rng_mutex);
         #endif
@@ -1134,7 +1142,9 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                     if (ecc->kdfType == EVP_PKEY_ECDH_KDF_NONE) {
                         len = (word32)*keyLen;
                         /* Calculate shared secret using wolfSSL. */
+                        PRIVATE_KEY_UNLOCK();
                         rc = wc_ecc_shared_secret(&ecc->key, &peer, key, &len);
+                        PRIVATE_KEY_LOCK();
                         if (rc != 0) {
                             WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                                   "wc_ecc_shared_secret", rc);
@@ -1142,13 +1152,16 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                         }
                     }
                     else {
-                        /* Maximum output size supported for curves supported. */
+                        /* Maximum output size supported for curves supported.
+                         */
                         unsigned char out[72];
 
                         /* Get buffer length. */
                         len = (word32)sizeof(out);
                         /* Calculate shared secret using wolfSSL. */
+                        PRIVATE_KEY_UNLOCK();
                         rc = wc_ecc_shared_secret(&ecc->key, &peer, out, &len);
+                        PRIVATE_KEY_LOCK();
                         if (rc != 0) {
                             WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                                   "wc_ecc_shared_secret", rc);
@@ -1781,7 +1794,9 @@ static int we_ec_key_keygen(EC_KEY *key)
         else
 #endif
         {
+            PRIVATE_KEY_UNLOCK();
             rc = wc_ecc_make_key_ex(pRng, len, &ecc, curveId);
+            PRIVATE_KEY_LOCK();
         #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
             wc_UnLockMutex(we_rng_mutex);
         #endif
@@ -1946,7 +1961,9 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     #endif
         {
             /* Calculate shared secret. */
+            PRIVATE_KEY_UNLOCK();
             rc = wc_ecc_shared_secret(pKey, pPeer, secret, &len);
+            PRIVATE_KEY_LOCK();
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_shared_secret", rc);
                 ret = 0;
@@ -2106,7 +2123,9 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         else
 #endif
         {
+            PRIVATE_KEY_UNLOCK();
             rc = wc_ecc_sign_hash_ex(d, dlen, pRng, &we_key, &sig_r, &sig_s);
+            PRIVATE_KEY_LOCK();
         #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
             wc_UnLockMutex(we_rng_mutex);
         #endif
@@ -2423,7 +2442,9 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
         else
 #endif
         {
+            PRIVATE_KEY_UNLOCK();
             rc = wc_ecc_sign_hash(dgst, dLen, sig, &outLen, pRng, &key);
+            PRIVATE_KEY_LOCK();
         #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
             wc_UnLockMutex(we_rng_mutex);
         #endif

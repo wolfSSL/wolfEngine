@@ -913,8 +913,10 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
                 }
                 else {
                     /* PKCS#1 v1.5 padding using block type 2. */
+                    PRIVATE_KEY_UNLOCK();
                     ret = wc_RsaPrivateDecrypt(from, (word32)fromLen, to,
                             (word32)toLen, &rsa->key);
+                    PRIVATE_KEY_LOCK();
                     if (ret < 0) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt",
                                               ret);
@@ -934,10 +936,12 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
                 }
                 else {
                     mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                    PRIVATE_KEY_UNLOCK();
                     ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
                         (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD,
                         we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
                         we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                    PRIVATE_KEY_LOCK();
                     if (ret < 0) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                               "wc_RsaPrivateDecrypt_ex", ret);
@@ -948,10 +952,12 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
             case RSA_NO_PADDING:
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
                 /* Raw private decrypt - no padding. */
+                PRIVATE_KEY_UNLOCK();
                 ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
                         (word32)toLen, &rsa->key, WC_RSA_NO_PAD,
                         WC_HASH_TYPE_NONE,
                         0, NULL, 0);
+                PRIVATE_KEY_LOCK();
                 if (ret < 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPrivateDecrypt_ex",
                                           ret);
@@ -1097,8 +1103,10 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
         case RSA_PKCS1_PADDING:
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_PKCS1_PADDING");
             /* PKCS#1 v1.5 padding using block type 1. */
+            PRIVATE_KEY_UNLOCK();
             ret = wc_RsaSSL_Sign(from, (word32)fromLen, to, (word32)toLen,
                     &rsa->key, rng);
+            PRIVATE_KEY_LOCK();
             if (ret < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaSSL_Sign", ret);
                 ret = -1;
@@ -1107,8 +1115,10 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
         case RSA_NO_PADDING:
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
             /* Raw private encrypt - no padding. */
+            PRIVATE_KEY_UNLOCK();
             ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to, &tLen,
                                &rsa->key, RSA_PRIVATE_ENCRYPT, rng);
+            PRIVATE_KEY_LOCK();
             if (ret < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
                 ret = -1;
@@ -1130,10 +1140,12 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                 }
                 /* When MGF1 digest is not specified, use signing digest. */
                 mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
+                PRIVATE_KEY_UNLOCK();
                 ret = wc_RsaPSS_Sign_ex(from, (word32)fromLen, to,
                     (word32)toLen, we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
                     we_mgf_from_hash(EVP_MD_type(mdMGF1)), wc_saltLen,
                     &rsa->key, rng);
+                PRIVATE_KEY_LOCK();
                 if (ret < 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPSS_Sign_ex", ret);
                     ret = -1;
@@ -1162,8 +1174,10 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                         ret = -1;
                     }
                     else {
+                        PRIVATE_KEY_UNLOCK();
                         ret = wc_RsaDirect(padded, paddedSz, to, &tLen,
                                            &rsa->key, RSA_PRIVATE_ENCRYPT, rng);
+                        PRIVATE_KEY_UNLOCK();
                         if (ret < 0) {
                             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect",
                                                   ret);
@@ -1379,8 +1393,10 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                 else
             #endif
                 {
+                    PRIVATE_KEY_UNLOCK();
                     ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
                         &tLen, &rsa->key, RSA_PUBLIC_DECRYPT, rng);
+                    PRIVATE_KEY_LOCK();
                     if (ret < 0) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
                         ret = -1;
@@ -1422,8 +1438,10 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
         #ifdef WE_HAVE_RSA_X931
             case RSA_X931_PADDING:
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
+                PRIVATE_KEY_UNLOCK();
                 ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
                                    &tLen, &rsa->key, RSA_PUBLIC_DECRYPT, rng);
+                PRIVATE_KEY_LOCK();
                 if (ret < 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
                     ret = -1;
