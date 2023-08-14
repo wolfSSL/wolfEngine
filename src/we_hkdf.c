@@ -148,17 +148,21 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         ret = 0;
     }
     if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND)) {
+        PRIVATE_KEY_UNLOCK();
         rc = wc_HKDF(hkdf->mdType, hkdf->key, (word32)hkdf->keySz, hkdf->salt,
             (word32)hkdf->saltSz, hkdf->info, (word32)hkdf->infoSz, key,
             (word32)*keySz);
+        PRIVATE_KEY_LOCK();
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HKDF", rc);
             ret = 0;
         }
     }
     else if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY)) {
+        PRIVATE_KEY_UNLOCK();
         rc = wc_HKDF_Extract(hkdf->mdType, hkdf->salt, (word32)hkdf->saltSz,
             hkdf->key, (word32)hkdf->keySz, key);
+        PRIVATE_KEY_LOCK();
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HKDF_Extract", rc);
             ret = 0;
@@ -168,8 +172,10 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         }
     }
     else if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXPAND_ONLY)) {
+        PRIVATE_KEY_UNLOCK();
         rc = wc_HKDF_Expand(hkdf->mdType, hkdf->key, (word32)hkdf->keySz,
             hkdf->info, (word32)hkdf->infoSz, key, (word32)*keySz);
+        PRIVATE_KEY_LOCK();
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HKDF_Expand", rc);
             ret = 0;

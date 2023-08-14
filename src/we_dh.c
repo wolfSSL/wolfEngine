@@ -406,8 +406,10 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
             ret = we_dh_bignum_to_bin(DH_get0_g(dh), &gBuf, &gBufLen);
             if (ret == 1) {
                 /* Perform key agree: y^x but y == g therefore g^x. */
+                PRIVATE_KEY_UNLOCK();
                 rc = wc_DhAgree(&engineDh->key, pub, &pubLen, priv, privLen,
                                 gBuf, gBufLen);
+                PRIVATE_KEY_LOCK();
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhAgree", rc);
                     ret = 0;
@@ -425,8 +427,10 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
             else
         #endif
             {
+                PRIVATE_KEY_UNLOCK();
                 rc = wc_DhGenerateKeyPair(&engineDh->key, pRng, priv, &privLen,
                                           pub, &pubLen);
+                PRIVATE_KEY_LOCK();
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateKeyPair",
                         rc);
@@ -612,8 +616,10 @@ static int we_dh_compute_key_int(we_Dh *engineDh, unsigned char *secret,
         /* Set length of secret buffer into appropriate typed variable. */
         secLen = (unsigned int)*secretLen;
         /* Calculate the secret. */
+        PRIVATE_KEY_UNLOCK();
         rc = wc_DhAgree(&engineDh->key, secret, &secLen, privBuf, privLen,
                          pubBuf, pubLen);
+        PRIVATE_KEY_LOCK();
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhAgree", rc);
             ret = 0;

@@ -174,8 +174,10 @@ static int we_pbkdf2_keygen(EVP_CIPHER_CTX *ctx, const char *passwd,
 
         WOLFENGINE_MSG(WE_LOG_PBE, "Deriving key with PBKDF2");
         /* Derive the key. */
+        PRIVATE_KEY_UNLOCK();
         rc = wc_PBKDF2_ex(key, (const byte*)passwd, passwdLen, salt, sLen,
             iterations, kLen, hashType, NULL, INVALID_DEVID);
+        PRIVATE_KEY_LOCK();
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PBE, "wc_PBKDF2_ex", rc);
             ret = 0;
@@ -363,8 +365,10 @@ static int we_pbe_keyivgen(EVP_CIPHER_CTX *ctx, const char *passwd,
 
         WOLFENGINE_MSG(WE_LOG_PBE, "Deriving key with PKCS#12 PBKDF");
         /* Derive the key using the unicode password and id for a key. */
+        PRIVATE_KEY_UNLOCK();
         rc = wc_PKCS12_PBKDF_ex(key, uniPass, uniLen, salt, sLen, iterations,
             kLen, hashType, PKCS12_KEY_ID, NULL);
+        PRIVATE_KEY_LOCK();
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PBE, "wc_PBKDF1_ex", rc);
             ret = 0;
@@ -372,8 +376,10 @@ static int we_pbe_keyivgen(EVP_CIPHER_CTX *ctx, const char *passwd,
     }
     if (ret == 1) {
         /* Derive the IV using the unicode password and id for an IV. */
+        PRIVATE_KEY_UNLOCK();
         rc = wc_PKCS12_PBKDF_ex(iv, uniPass, uniLen, salt, sLen, iterations,
             ivLen, hashType, PKCS12_IV_ID, NULL);
+        PRIVATE_KEY_LOCK();
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PBE, "wc_PBKDF1_ex", rc);
             ret = 0;
