@@ -247,6 +247,13 @@ static int we_rand_add(const void *buf, int num, double entropy)
 }
 
 #ifndef WE_STATIC_WOLFSSL
+
+#ifdef ADD_WEAK_ENTROPY_OVERRIDE
+/* Prototype for user implemenations of XADD_WEAK_ENTROPY() */
+extern int my_add_weak_entropy(unsigned char* buf, int num);
+#define XADD_WEAK_ENTROPY(b, n) my_add_weak_entropy(b, n)
+#endif /* ADD_WEAK_ENTROPY_OVERRIDE */
+
 /**
  * Add weak entropy to the input buffer. Used by we_rand_bytes to add entropy
  * for RNG. Uses thread ID, a timer value, and PID.
@@ -257,6 +264,9 @@ static int we_rand_add(const void *buf, int num, double entropy)
  */
 static int we_rand_add_weak_entropy(unsigned char* buf, int num)
 {
+#ifdef ADD_WEAK_ENTROPY_OVERRIDE
+    return XADD_WEAK_ENTROPY(buf, num);
+#else
     int ret = 1;
     unsigned char* idx;
 #if OPENSSL_VERSION_NUMBER >= 0x1010000fL
@@ -339,6 +349,7 @@ static int we_rand_add_weak_entropy(unsigned char* buf, int num)
     WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_add_weak_entropy", ret);
 
     return ret;
+#endif /* ADD_WEAK_ENTROPY_OVERRIDE */
 }
 #endif /* WE_STATIC_WOLFSSL */
 
