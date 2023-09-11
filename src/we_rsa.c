@@ -1177,7 +1177,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                         PRIVATE_KEY_UNLOCK();
                         ret = wc_RsaDirect(padded, paddedSz, to, &tLen,
                                            &rsa->key, RSA_PRIVATE_ENCRYPT, rng);
-                        PRIVATE_KEY_UNLOCK();
+                        PRIVATE_KEY_LOCK();
                         if (ret < 0) {
                             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect",
                                                   ret);
