@@ -73,23 +73,25 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
             err = 1;
         }
     }
-    if ((err == 0) && ccm) {
-        /* No AAD streaming available in OpenSSL CCM mode. */
-        err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad,
-                                (int)strlen((char *)aad)) != 1;
-        if (encLen != (int)strlen((char *)aad)) {
-            /* Should return length of AAD data added */
-            err = 1;
+    if (aad != NULL) {
+        if ((err == 0) && ccm) {
+            /* No AAD streaming available in OpenSSL CCM mode. */
+            err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad,
+                                    (int)strlen((char *)aad)) != 1;
+            if (encLen != (int)strlen((char *)aad)) {
+                /* Should return length of AAD data added */
+                err = 1;
+            }
         }
-    }
-    if ((err == 0) && !ccm) {
-        /* AAD streaming available in OpenSSL GCM mode - part 1. */
-        err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad, 1) != 1;
-    }
-    if ((err == 0) && !ccm) {
-        /* AAD streaming available in OpenSSL GCM mode - part 2. */
-        err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad + 1,
-                                (int)strlen((char *)aad) - 1) != 1;
+        if ((err == 0) && !ccm) {
+            /* AAD streaming available in OpenSSL GCM mode - part 1. */
+            err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad, 1) != 1;
+        }
+        if ((err == 0) && !ccm) {
+            /* AAD streaming available in OpenSSL GCM mode - part 2. */
+            err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad + 1,
+                                    (int)strlen((char *)aad) - 1) != 1;
+        }
     }
     if (err == 0 && len > 0) {
         /* Update with msg, if len > 0 (not GMAC) */
@@ -157,7 +159,7 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
         /* OpenSSL's CCM needs the length of plaintext set. */
         err = EVP_DecryptUpdate(ctx, NULL, &decLen, NULL, len) != 1;
     }
-    if (err == 0) {
+    if ((err == 0) && (aad != NULL)) {
         err = EVP_DecryptUpdate(ctx, NULL, &decLen, aad,
                                 (int)strlen((char *)aad)) != 1;
         if (err == 0 && (decLen != (int)strlen((char *)aad))) {
@@ -239,6 +241,28 @@ static int test_aes_tag(ENGINE *e, void *data, const EVP_CIPHER *cipher,
                                sizeof(msg), enc, tag, dec, ccm, ccmL);
     }
 
+    /* No AAD. */
+    if (err == 0) {
+        PRINT_MSG("Encrypt with OpenSSL - no AAD");
+        err = test_aes_tag_enc(NULL, cipher, key, iv, ivLen, NULL, msg,
+                               sizeof(msg), enc, tag, ccm, ccmL);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt with wolfengine - no AAD");
+        err = test_aes_tag_dec(e, cipher, key, iv, ivLen, NULL, msg,
+                               sizeof(msg), enc, tag, dec, ccm, ccmL);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Encrypt with wolfengine - no AAD");
+        err = test_aes_tag_enc(e, cipher, key, iv, ivLen, NULL, msg,
+                               sizeof(msg), enc, tag, ccm, ccmL);
+    }
+    if (err == 0) {
+        PRINT_MSG("Decrypt with OpenSSL - no AAD");
+        err = test_aes_tag_dec(NULL, cipher, key, iv, ivLen, NULL, msg,
+                               sizeof(msg), enc, tag, dec, ccm, ccmL);
+    }
     return err;
 }
 
