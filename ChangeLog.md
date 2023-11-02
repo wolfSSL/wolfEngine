@@ -1,3 +1,7 @@
+# wolfEngine Release 1.4.0 (November 2, 2023)
+* Added Call to PRIVATE_KEY_UNLOCK() and PRIVATE_KEY_LOCK() as needed.
+* Allow user to override weak entropy source.
+
 # wolfEngine Release 1.3.0 (January 16, 2023)
 * Added RPM package support
 * Added support and tests for OpenSSL HMAC to be called with -1 key length
