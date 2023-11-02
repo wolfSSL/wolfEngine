@@ -5,7 +5,7 @@
 
 AC_COPYRIGHT([Copyright (C) 2019-2023 wolfSSL Inc.])
 AC_PREREQ([2.69])
-AC_INIT([wolfengine], [1.3.0])
+AC_INIT([wolfengine], [1.4.0])
 AC_CONFIG_AUX_DIR([build-aux])
 
 AC_CONFIG_HEADERS([include/config.h])
@@ -33,8 +33,8 @@ AC_SUBST([WOLFENGINE_CONFIG_ARGS])
 # these numbers don't always line up nicely with the library version.
 WOLFENGINE_LIBRARY_VERSION_FIRST=1
 WOLFENGINE_LIBRARY_VERSION_SECOND=0
-WOLFENGINE_LIBRARY_VERSION_THIRD=3
-WOLFENGINE_LIBRARY_VERSION=1:3:0
+WOLFENGINE_LIBRARY_VERSION_THIRD=4
+WOLFENGINE_LIBRARY_VERSION=1:4:0
 #                          | | |
 #                   +------+ | +---+
 #                   |        |     |
