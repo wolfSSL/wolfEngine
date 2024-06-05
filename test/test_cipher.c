@@ -603,11 +603,16 @@ int test_aes_ctr_leftover_data_regression(ENGINE *e, void *data)
      * The EVP_CIPHER_CTX remembers any engine it was loaded with, meaning we
      * need to reset the ctxs before reuse or the decCtx will still pick up
      * wolfEngine */
+    if (encCtx != NULL)
+        EVP_CIPHER_CTX_free(encCtx);
+    if (decCtx != NULL)
+        EVP_CIPHER_CTX_free(decCtx);
+
     if (err == 0) {
-        err = EVP_CIPHER_CTX_reset(encCtx) != 1;
+        err = (encCtx = EVP_CIPHER_CTX_new()) == NULL;
     }
     if (err == 0) {
-        err = EVP_CIPHER_CTX_reset(decCtx) != 1;
+        err = (decCtx = EVP_CIPHER_CTX_new()) == NULL;
     }
 
     if (err == 0) {

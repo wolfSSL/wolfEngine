@@ -34,7 +34,7 @@ typedef struct we_AesCtr
 {
     /* The wolfSSL AES data object. */
     Aes aes;
-    word32 keyed;
+    word32 inited;
 } we_AesCtr;
 
 
@@ -69,12 +69,13 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     /* Do not reinitialize if already keyed, unless setting a new key */
-    if ((ret == 1) && ((aes->keyed == 0) || (key != NULL))) {
+    if ((ret == 1) && (aes->inited == 0)) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
+        aes->inited = 1;
     }
     if ((ret == 1) && (key != NULL)) {
         if (tmpIv == NULL) {
@@ -88,7 +89,6 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
             ret = 0;
         }
-        aes->keyed = 1;
     }
     if ((ret == 1) && (iv != NULL)) {
         rc = wc_AesSetIV(&aes->aes, iv);
