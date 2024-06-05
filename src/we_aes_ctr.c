@@ -34,6 +34,7 @@ typedef struct we_AesCtr
 {
     /* The wolfSSL AES data object. */
     Aes aes;
+    word32 keyed;
 } we_AesCtr;
 
 
@@ -67,7 +68,8 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
-    if (ret == 1) {
+    /* Do not reinitialize if already keyed, unless setting a new key */
+    if ((ret == 1) && ((aes->keyed == 0) || (key != NULL))) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
@@ -86,6 +88,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
             ret = 0;
         }
+        aes->keyed = 1;
     }
     if ((ret == 1) && (iv != NULL)) {
         rc = wc_AesSetIV(&aes->aes, iv);
@@ -94,7 +97,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             ret = -1;
         }
         else {
-            /* 
+            /*
              * wc_AesSetIV should clear this field, but it doesn't in some
              * wolfSSL versions.
              */
