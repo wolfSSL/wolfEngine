@@ -1449,6 +1449,7 @@ int we_init_hmac_pkey_asn1_meth(void)
     #endif
         /* Add our created asn1 method to the internal list of available
          * methods. */
+        /* Known, still-reachable memory leak from openssl internals on 1.0.2 */
         EVP_PKEY_asn1_add0(we_hmac_pkey_asn1_method);
     }
     /* No failure after allocation - no need to free on error. */
@@ -1966,6 +1967,7 @@ int we_init_cmac_pkey_asn1_meth(void)
                 we_cmac_pkey_asn1_size, 0);
         /* Add our created asn1 method to the internal list of available
          * methods. */
+        /* Known, still-reachable memory leak from openssl internals on 1.0.2 */
         EVP_PKEY_asn1_add0(we_cmac_pkey_asn1_method);
         EVP_PKEY_asn1_add_alias(EVP_PKEY_CMAC, NID_wolfengine_cmac);
 

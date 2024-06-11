@@ -45,6 +45,7 @@ static ENGINE *engine_wolfengine(void)
 
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "engine_wolfengine");
 
+    /* Known, still-reachable memory leak from openssl internals on 1.0.2 */
     ret = ENGINE_new();
     if (ret == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_ENGINE, "ENGINE_new", ret);
@@ -75,6 +76,7 @@ void ENGINE_load_wolfengine(void)
         return;
     ENGINE_add(toadd);
     ENGINE_free(toadd);
+    /* Known, still-reachable memory leak from openssl internals on 1.0.2 */
     ERR_clear_error();
 
     WOLFENGINE_LEAVE(WE_LOG_ENGINE, "ENGINE_load_wolfengine", 1);
