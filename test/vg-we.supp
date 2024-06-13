@@ -1,0 +1,525 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Cond
+   fun:*
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Value8
+   fun:*
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Value4
+   fun:*
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:RSA_new_method
+   fun:test_rsa_direct_key_gen
+   fun:run_tests
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_insert
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:RSA_new_method
+   fun:test_rsa_direct_key_gen
+   fun:run_tests
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:DH_new_method
+   fun:DH_new
+   fun:test_dh_pgen
+   fun:run_tests
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_insert
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:DH_new_method
+   fun:DH_new
+   fun:test_dh_pgen
+   fun:run_tests
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDH_DATA_new_method
+   fun:ecdh_data_new
+   fun:ecdh_check
+   fun:ECDH_compute_key
+   fun:test_ecdh_direct
+   fun:test_ecdh_direct_p192
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_insert
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDH_DATA_new_method
+   fun:ecdh_data_new
+   fun:ecdh_check
+   fun:ECDH_compute_key
+   fun:test_ecdh_direct
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDSA_DATA_new_method
+   fun:ecdsa_data_new
+   fun:ecdsa_check
+   fun:ECDSA_do_sign_ex
+   fun:ECDSA_sign_ex
+   fun:ECDSA_sign
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_insert
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDSA_DATA_new_method
+   fun:ecdsa_data_new
+   fun:ecdsa_check
+   fun:ECDSA_do_sign_ex
+   fun:ECDSA_sign_ex
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:sk_new
+   fun:sk_new_null
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:RSA_new_method
+   fun:test_rsa_direct_key_gen
+   fun:run_tests
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:sk_new
+   fun:sk_new_null
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:DH_new_method
+   fun:DH_new
+   fun:test_dh_pgen
+   fun:run_tests
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:sk_new
+   fun:sk_new_null
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDH_DATA_new_method
+   fun:ecdh_data_new
+   fun:ecdh_check
+   fun:ECDH_compute_key
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:sk_new
+   fun:sk_new_null
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDSA_DATA_new_method
+   fun:ecdsa_data_new
+   fun:ecdsa_check
+   fun:ECDSA_do_sign_ex
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:ERR_add_error_vdata
+   fun:ERR_add_error_data
+   fun:ASN1_item_ex_d2i
+   fun:ASN1_item_d2i
+   fun:d2i_RSAPrivateKey
+   fun:old_rsa_priv_decode
+   fun:d2i_PrivateKey
+   fun:load_static_rsa_key
+   fun:test_rsa_direct
+   fun:test_rsa_direct_pub_dec
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:ERR_add_error_vdata
+   fun:ERR_add_error_data
+   fun:ASN1_item_ex_d2i
+   fun:ASN1_item_d2i
+   fun:d2i_RSAPrivateKey
+   fun:old_rsa_priv_decode
+   fun:d2i_PrivateKey
+   fun:test_rsa_enc_dec
+   fun:test_rsa_enc_dec_pkcs1
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:ERR_add_error_vdata
+   fun:ERR_add_error_data
+   fun:ASN1_item_ex_d2i
+   fun:ASN1_item_d2i
+   fun:d2i_RSAPrivateKey
+   fun:old_rsa_priv_decode
+   fun:d2i_PrivateKey
+   fun:test_rsa_pkey_invalid_key_size
+   fun:run_tests
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:ERR_add_error_vdata
+   fun:ERR_add_error_data
+   fun:ASN1_item_ex_d2i
+   fun:ASN1_item_d2i
+   fun:d2i_ECDSA_SIG
+   fun:ECDSA_verify
+   fun:test_ecdsa_verify.constprop.0
+   fun:test_ecdsa_key
+   fun:test_ecdsa
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ENGINE_new
+   fun:engine_wolfengine
+   fun:ENGINE_load_wolfengine
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_insert
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ENGINE_new
+   fun:engine_wolfengine
+   fun:ENGINE_load_wolfengine
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_insert
+   fun:int_thread_set_item
+   fun:ERR_get_state
+   fun:ERR_clear_error
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:sk_new
+   fun:sk_new_null
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ENGINE_new
+   fun:engine_wolfengine
+   fun:ENGINE_load_wolfengine
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:sk_new
+   fun:EVP_PKEY_asn1_add0
+   fun:we_init_hmac_pkey_asn1_meth
+   fun:wolfengine_init
+   fun:wolfengine_bind
+   fun:engine_wolfengine
+   fun:ENGINE_load_wolfengine
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_new
+   fun:ex_data_check
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ENGINE_new
+   fun:engine_wolfengine
+   fun:ENGINE_load_wolfengine
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_new
+   fun:int_thread_get
+   fun:int_thread_set_item
+   fun:ERR_get_state
+   fun:ERR_clear_error
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:EVP_PKEY_asn1_new
+   fun:EVP_PKEY_asn1_add_alias
+   fun:we_init_cmac_pkey_asn1_meth
+   fun:wolfengine_init
+   fun:wolfengine_bind
+   fun:engine_wolfengine
+   fun:ENGINE_load_wolfengine
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:ERR_get_state
+   fun:ERR_clear_error
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDSA_DATA_new_method
+   fun:ecdsa_data_new
+   fun:ecdsa_check
+   fun:ECDSA_set_method
+   fun:test_ecdsa_key
+   fun:test_ecdsa
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_insert
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDSA_DATA_new_method
+   fun:ecdsa_data_new
+   fun:ecdsa_check
+   fun:ECDSA_set_method
+   fun:test_ecdsa_key
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:sk_new
+   fun:sk_new_null
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:ECDSA_DATA_new_method
+   fun:ecdsa_data_new
+   fun:ecdsa_check
+   fun:ECDSA_set_method
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:RSA_new_method
+   fun:RSA_new
+   fun:rsa_cb
+   fun:asn1_item_ex_combine_new
+   fun:ASN1_item_ex_new
+   fun:ASN1_item_ex_d2i
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:lh_insert
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:RSA_new_method
+   fun:RSA_new
+   fun:rsa_cb
+   fun:asn1_item_ex_combine_new
+   fun:ASN1_item_ex_new
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:default_malloc_ex
+   fun:CRYPTO_malloc
+   fun:sk_new
+   fun:sk_new_null
+   fun:def_get_class
+   fun:int_new_ex_data
+   fun:CRYPTO_new_ex_data
+   fun:RSA_new_method
+   fun:RSA_new
+   fun:rsa_cb
+   fun:asn1_item_ex_combine_new
+}
+
+
