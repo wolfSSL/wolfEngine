@@ -1,20 +1,20 @@
 {
-   <insert_a_suppression_name_here>
+   Suppress uninitialized value warning
    Memcheck:Cond
    fun:*
 }
 {
-   <insert_a_suppression_name_here>
+   Suppress uninitialized value warning
    Memcheck:Value8
    fun:*
 }
 {
-   <insert_a_suppression_name_here>
+   Suppress uninitialized value warning
    Memcheck:Value4
    fun:*
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -29,7 +29,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -45,7 +45,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -61,7 +61,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -78,7 +78,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -95,7 +95,7 @@
    fun:test_ecdh_direct_p192
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -112,7 +112,7 @@
    fun:test_ecdh_direct
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -129,7 +129,7 @@
    fun:ECDSA_sign
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -146,7 +146,7 @@
    fun:ECDSA_sign_ex
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -163,7 +163,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -181,7 +181,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -198,7 +198,7 @@
    fun:ECDH_compute_key
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -215,7 +215,7 @@
    fun:ECDSA_do_sign_ex
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -233,7 +233,7 @@
    fun:test_rsa_direct_pub_dec
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -250,7 +250,7 @@
    fun:test_rsa_enc_dec_pkcs1
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -268,7 +268,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -285,7 +285,7 @@
    fun:test_ecdsa
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -300,7 +300,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -316,7 +316,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -329,7 +329,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -346,7 +346,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -362,7 +362,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -379,7 +379,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -393,7 +393,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -409,7 +409,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -420,7 +420,7 @@
    fun:main
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -437,7 +437,7 @@
    fun:test_ecdsa
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -454,7 +454,7 @@
    fun:test_ecdsa_key
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -471,7 +471,7 @@
    fun:ECDSA_set_method
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -488,7 +488,7 @@
    fun:ASN1_item_ex_d2i
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
@@ -505,7 +505,7 @@
    fun:ASN1_item_ex_new
 }
 {
-   <insert_a_suppression_name_here>
+   Openssl internal leak
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
