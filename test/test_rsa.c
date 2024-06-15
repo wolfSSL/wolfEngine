@@ -400,6 +400,9 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
     int i = 0;
     int rsaSize = 0;
 
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(testVectors, 0, sizeof(testVectors));
+
     err = load_static_rsa_key(e, der, derLen, &weRsaKey, &osslRsaKey) != 1;
     if (err == 0) {
         rsaSize = RSA_size(weRsaKey);
@@ -408,14 +411,17 @@ static int test_rsa_direct(ENGINE *e, const unsigned char *der, size_t derLen,
     if (err == 0) {
         encryptedBuf = (unsigned char*)OPENSSL_zalloc(rsaSize);
         err = encryptedBuf == NULL;
+        XMEMSET(encryptedBuf, 0, rsaSize);
     }
     if (err == 0) {
         decryptedBuf = (unsigned char*)OPENSSL_zalloc(rsaSize);
         err = decryptedBuf == NULL;
+        XMEMSET(decryptedBuf, 0, rsaSize);
     }
     if (err == 0) {
         noPaddingBuf = (unsigned char*)OPENSSL_zalloc(rsaSize);
         err = noPaddingBuf == NULL;
+        XMEMSET(noPaddingBuf, 0, rsaSize);
     }
     if (err == 0) {
         err = RAND_bytes(noPaddingBuf, rsaSize) == 0;
@@ -976,6 +982,8 @@ int test_rsa_sign_sha1(ENGINE *e, void *data)
     unsigned char buf[20];
     const unsigned char *p = rsa_key_der_2048;
 
+    XMEMSET(buf, 0, sizeof(buf));
+
     PRINT_MSG("Load RSA key");
     pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
     err = pkey == NULL;
@@ -1102,6 +1110,7 @@ static int test_rsa_enc_dec(ENGINE *e, const unsigned char *der, size_t derLen,
         }
         buf = (unsigned char *)OPENSSL_zalloc(bufLen);
         err = buf == NULL;
+        XMEMSET(buf, 0, bufLen);
     }
     if (err == 0) {
         err = RAND_bytes(buf, (int)bufLen) == 0;
@@ -1309,6 +1318,8 @@ int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data) {
     (void)data;
     (void)rsa_key_der_256;
     (void)rsa_key_der_1024;
+
+    XMEMSET(buf, 0, sizeof(buf));
 
     pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, (long)pSize);
     err = pkey == NULL;

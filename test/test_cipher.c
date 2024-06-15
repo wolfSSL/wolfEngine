@@ -105,6 +105,10 @@ static int test_cipher_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
     (void)data;
 
+    /* Must memset to make valgrind happy */
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(iv, 0, sizeof(iv));
+
     if (RAND_bytes(key, keyLen) != 1) {
         err = 1;
     }
@@ -218,7 +222,7 @@ static int test_stream_dec(ENGINE *e, const EVP_CIPHER *cipher,
                            int encLen, unsigned char *dec)
 {
     int err;
-    EVP_CIPHER_CTX *ctx;
+    EVP_CIPHER_CTX *ctx = NULL;
     int dLen;
     int decLen;
     int i;
@@ -279,6 +283,12 @@ static int test_stream_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     }
 
     (void)data;
+
+    /* Must memset to make valgrind happy */
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(enc, 0, sizeof(enc));
+    XMEMSET(encExp, 0, sizeof(encExp));
 
     if (RAND_bytes(key, keyLen) != 1) {
         printf("generate key failed\n");
@@ -673,6 +683,9 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
     unsigned char decText[sizeof(plainText)];
 
     (void)data;
+
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(key, 0, sizeof(key));
 
     /* Generate a random IV and key. */
     err = RAND_bytes(iv, AES_BLOCK_SIZE) != 1;

@@ -79,6 +79,10 @@ static int test_create_digest(const EVP_MD *md, ENGINE *e, void *data)
 
     (void)data;
 
+    /* Must memset longMsg to make valgrind happy */
+    XMEMSET(digest, 0, sizeof(digest));
+    XMEMSET(longMsg, 0, sizeof(longMsg));
+
     RAND_bytes(longMsg, sizeof(longMsg));
 
     dLen = 0;

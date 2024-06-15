@@ -119,6 +119,8 @@ int test_hmac_create(ENGINE *e, void *data)
     unsigned char pswd[] = "My empire of dirt";
     unsigned char bigPswd[100];
 
+    XMEMSET(bigPswd, 0, sizeof(bigPswd));
+
     PRINT_MSG("Testing with SHA1");
     ret = test_hmac_create_helper(e, data, EVP_sha1(), pswd, sizeof(pswd));
     if (ret == 0) {
