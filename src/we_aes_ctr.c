@@ -204,9 +204,7 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
         switch (type) {
             case EVP_CTRL_INIT:
             {
-                if (aes != NULL) {
-                    XMEMSET(aes, 0, sizeof(we_AesCtr));
-                }
+                XMEMSET(aes, 0, sizeof(we_AesCtr));
                 break;
             }
             default:
