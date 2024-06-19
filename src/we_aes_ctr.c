@@ -195,13 +195,18 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
     /* Get the AES-CTR data to work with. */
     aes = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(ctx);
-    if (aes != NULL) {
+    if (aes == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_INIT:
+            {
+                XMEMSET(aes, 0, sizeof(we_AesCtr));
+                break;
+            }
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
@@ -219,6 +224,7 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 /** Flags for AES-CTR method. */
 #define AES_CTR_FLAGS              \
     (EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_CTRL_INIT          | \
      EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CTR_MODE)

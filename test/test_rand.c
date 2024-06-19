@@ -28,6 +28,8 @@ static int test_random_api(void)
     int err;
     unsigned char buf[128];
 
+    XMEMSET(buf, 0, sizeof(buf));
+
     err = RAND_status() != 1;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     if (err == 0) {

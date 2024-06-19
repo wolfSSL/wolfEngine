@@ -349,6 +349,9 @@ static int test_aes_tag_fixed(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
     (void)data;
 
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(iv, 0, sizeof(iv));
+
     if (RAND_bytes(key, keyLen) == 0) {
         err = 1;
     }
@@ -508,6 +511,10 @@ static int test_aes_tag_tls(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     int dataLen = sizeof(msg);
 
     (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(msg, 0, sizeof(msg));
 
     aad[8]  = 23; /* Content type */
     aad[9]  = 3;  /* Protocol major version */

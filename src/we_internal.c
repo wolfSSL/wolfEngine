@@ -1011,10 +1011,20 @@ static int wolfengine_destroy(ENGINE *e)
     we_rsa_method = NULL;
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_ECC
-    /* we_ec_method is freed by OpenSSL_cleanup(). */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ECDSA_METHOD_free(we_ecdsa_method);
+    we_ecdsa_method = NULL;
+#endif
+    /* For 1.1.1 and above we_ec_method is freed by OpenSSL_cleanup(). */
 #ifdef WE_HAVE_EC_KEY
     EC_KEY_METHOD_free(we_ec_key_method);
     we_ec_key_method = NULL;
+#endif
+#endif
+#if defined(WE_HAVE_ECDH)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    OPENSSL_free(we_ecdh_method);
+    we_ecdh_method = NULL;
 #endif
 #endif
 #ifdef WE_HAVE_DES3CBC

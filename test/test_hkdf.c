@@ -35,6 +35,10 @@ static int test_hkdf_calc(ENGINE *e, unsigned char *key, int keyLen,
 
     (void)mode;
 
+    XMEMSET(inKey, 0, sizeof(inKey));
+    XMEMSET(salt, 0, sizeof(salt));
+    XMEMSET(info, 0, sizeof(info));
+
     ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
     if (ctx == NULL) {
         err = 1;
@@ -276,6 +280,9 @@ static int test_hkdf_str_md(ENGINE *e, const char *md, const char *mode)
     int err = 0;
     unsigned char oKey[128];
     unsigned char wKey[128];
+
+    XMEMSET(oKey, 0, sizeof(oKey));
+    XMEMSET(wKey, 0, sizeof(wKey));
 
     PRINT_MSG("Calc with strings OpenSSL");
     err = test_hkdf_str_calc(NULL, oKey, sizeof(oKey), md, mode);

@@ -879,6 +879,9 @@ int test_ecdsa_p192_pkey(ENGINE *e, void *data)
 
     (void)data;
 
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
+
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
         pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_192));
@@ -946,6 +949,9 @@ int test_ecdsa_p224_pkey(ENGINE *e, void *data)
 
     (void)data;
 
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
+
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
         pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_224));
@@ -1000,6 +1006,9 @@ int test_ecdsa_p256_pkey(ENGINE *e, void *data)
     const unsigned char *p = ecc_key_der_256;
 
     (void)data;
+
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
 
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
@@ -1056,6 +1065,9 @@ int test_ecdsa_p384_pkey(ENGINE *e, void *data)
 
     (void)data;
 
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
+
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
         pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_384));
@@ -1111,6 +1123,8 @@ int test_ecdsa_p521_pkey(ENGINE *e, void *data)
 
     (void)data;
 
+    XMEMSET(buf, 0, sizeof(buf));
+
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
         pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_521));
@@ -1165,6 +1179,9 @@ int test_ecdsa_p192(ENGINE *e, void *data)
     const unsigned char *p = ecc_key_der_192;
 
     (void)data;
+
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
 
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
@@ -1234,6 +1251,9 @@ int test_ecdsa_p224(ENGINE *e, void *data)
 
     (void)data;
 
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
+
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
         pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_224));
@@ -1288,6 +1308,9 @@ int test_ecdsa_p256(ENGINE *e, void *data)
     const unsigned char *p = ecc_key_der_256;
 
     (void)data;
+
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
 
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
@@ -1344,6 +1367,9 @@ int test_ecdsa_p384(ENGINE *e, void *data)
 
     (void)data;
 
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
+
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
         pkey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_384));
@@ -1398,6 +1424,9 @@ int test_ecdsa_p521(ENGINE *e, void *data)
     const unsigned char *p = ecc_key_der_521;
 
     (void)data;
+
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
 
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
@@ -1546,6 +1575,9 @@ int test_ec_key_ecdh_keygen(ENGINE *e, int nid, int len)
     unsigned char secretA[66];
     unsigned char secretB[66];
 
+    XMEMSET(secretA, 0, sizeof(secretA));
+    XMEMSET(secretB, 0, sizeof(secretB));
+
     err = (group = EC_GROUP_new_by_curve_name(nid)) == NULL;
     if (err == 0) {
         err = (keyA = EC_KEY_new_method(e)) == NULL;
@@ -1666,6 +1698,9 @@ int test_ec_key_ecdh(ENGINE *e, const unsigned char *privKey, size_t len,
     unsigned char secretA[66];
     unsigned char secretB[66];
     const unsigned char *p;
+
+    XMEMSET(secretA, 0, sizeof(secretA));
+    XMEMSET(secretB, 0, sizeof(secretB));
 
     err = (keyA = EC_KEY_new_method(e)) == NULL;
     if (err == 0) {
@@ -1846,6 +1881,9 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
     ECDSA_SIG *eccSig;
     unsigned char buf[20];
     const unsigned char *p;
+
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
 
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {
@@ -2031,6 +2069,8 @@ static int test_ecdh_direct(ENGINE* e, const unsigned char* keyDer,
     if (method == NULL) {
         err = 1;
     }
+
+    XMEMSET(secret, 0, sizeof(secret));
 
     p = keyDer;
     peerPrivKey = keyPeerDer;
@@ -2245,6 +2285,9 @@ static int test_ecdsa_key(ENGINE *e, const unsigned char *privKey,
     const unsigned char *p;
 
     PRINT_MSG("ENTER: test_ecdsa");
+
+    XMEMSET(buf, 0, sizeof(buf));
+    XMEMSET(ecdsaSig, 0, sizeof(ecdsaSig));
 
     err = RAND_bytes(buf, sizeof(buf)) == 0;
     if (err == 0) {

@@ -745,6 +745,12 @@ int main(int argc, char* argv[])
         err = run_tests(e, runAll);
     }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    EVP_cleanup();
+    ENGINE_cleanup();
+    ERR_free_strings();
+#endif
+
     return err;
 }
 
