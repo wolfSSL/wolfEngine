@@ -12,7 +12,7 @@ printf "Running valgrind test on individual unit test:\n"
 printf "(note use -DPURIFY with OpenSSL 1.0.2h)\n"
 while [[ $i -le $END ]]; do
     printf "testing case $i ..."
-    valgrind --tool=memcheck --track-origins=yes --leak-check=full --suppressions=./test/vg-we.supp --error-exitcode=5 --log-fd=9 --leak-check=full --show-leak-kinds=all ./test/unit.test --valgrind --static $i &> $LOGFILE
+    valgrind --tool=memcheck --track-origins=yes --leak-check=full --error-exitcode=5 --log-fd=9 --leak-check=full --show-leak-kinds=all ./test/unit.test --valgrind --static $i &> $LOGFILE
     if [ $? != 0 ]; then
         printf "failed\n"
         cat $LOGFILE
