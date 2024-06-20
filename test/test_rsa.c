@@ -724,7 +724,7 @@ int test_rsa_direct_key_gen(ENGINE *e, void *data)
                                       NULL) != 0;
         }
     }
-#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+#if (defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)) && FIPS_VERSION3_LT(5,0,0)
     if (err == 0) {
         PRINT_MSG("Check that disabling FIPS checks allows 1024-bit key gen.");
         err = ENGINE_ctrl_cmd(e, "enable_fips_checks", 0, NULL, NULL, 0) == 0;
