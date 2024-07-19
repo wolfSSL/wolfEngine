@@ -48,6 +48,7 @@ AC_DEFUN([AX_CHECK_WOLFSSL], [
             # then use that information and don't search wolfssldirs
             AC_CHECK_TOOL([PKG_CONFIG], [pkg-config])
             if test x"$PKG_CONFIG" != x""; then
+                WOLFSSL_INSTALL_DIR=`$PKG_CONFIG wolfssl --cflags-only-I 2>/dev/null`"/.."
                 WOLFSSL_LDFLAGS=`$PKG_CONFIG wolfssl --libs-only-L 2>/dev/null`
                 if test $? = 0; then
                     WOLFSSL_LIBS=`$PKG_CONFIG wolfssl --libs-only-l 2>/dev/null`
@@ -72,6 +73,7 @@ AC_DEFUN([AX_CHECK_WOLFSSL], [
         for wolfssldir in $wolfssldirs; do
             AC_MSG_CHECKING([for include/wolfssl/ssl.h in $wolfssldir])
             if test -f "$wolfssldir/include/wolfssl/ssl.h"; then
+                WOLFSSL_INSTALL_DIR="$wolfssldir"
                 WOLFSSL_INCLUDES="-I$wolfssldir/include"
                 WOLFSSL_LDFLAGS="-L$wolfssldir/lib"
                 WOLFSSL_LIBS="-lwolfssl"
@@ -96,6 +98,7 @@ AC_DEFUN([AX_CHECK_WOLFSSL], [
         $2
     fi
 
+    AC_SUBST([WOLFSSL_INSTALL_DIR])
     AC_SUBST([WOLFSSL_INCLUDES])
     AC_SUBST([WOLFSSL_LIBS])
     AC_SUBST([WOLFSSL_LDFLAGS])
