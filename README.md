@@ -56,6 +56,13 @@ facts@wolfssl.com if you're interested in evaluating the wolfSSL provider.
 
 ## Building on \*nix
 
+### TL;DR>
+The quickest way to get up and running is to use the `scripts/util-*.sh`. There
+is a `scripts/test-sanity.sh` that will pull all the required dependencies,
+compile them as needed, and finally run a few tests to make sure things are
+working as they should. For a more detailed step-by-step instruction,
+continue reading.
+
 ### OpenSSL
 
 Assuming you've downloaded OpenSSL source code into a directory called openssl:
