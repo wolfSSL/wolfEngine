@@ -99,7 +99,7 @@ init_wolfengine() {
     install_wolfengine
     printf "\twolfEngine installed in: ${WOLFENGINE_INSTALL_DIR}\n"
 
-    export OPENSSL_MODULES=$WOLFENGINE_PATH
+    export OPENSSL_ENGINES=$WOLFENGINE_PATH
     export OPENSSL_CONF=${WOLFENGINE_CONFIG}
 }
 
