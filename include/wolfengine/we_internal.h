@@ -52,6 +52,7 @@
 #endif
 
 #include <openssl/engine.h>
+#include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
