@@ -26,7 +26,7 @@ function runSpotCheck() {
     SPOTCHECK_ARGS=$1
     unset OPENSSL_MODULES
     unset OPENSSL_CONF
-    rm -rf ${WOLFSSL_INSTALL_DIR} ${WOLFSSL_SOURCE_DIR} ${WOLFPROV_INSTALL_DIR}
+    rm -rf ${WOLFSSL_INSTALL_DIR} ${WOLFSSL_SOURCE_DIR} ${WOLFENGINE_INSTALL_DIR}
     doTestCmd init_wolfengine
 
     SET_POST=$( set )
