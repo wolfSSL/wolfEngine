@@ -52,7 +52,6 @@
 #endif
 
 #include <openssl/engine.h>
-#include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -139,10 +138,13 @@ WOLFENGINE_LOCAL void *we_memdup(const void *data, size_t siz);
 #endif
 
 #ifndef AES_BLOCK_SIZE
-    #ifdef WC_NO_COMPAT_AES_BLOCK_SIZE
-        #define AES_BLOCK_SIZE WC_AES_BLOCK_SIZE
-    #else
-        #error AES_BLOCK_SIZE not defined when it should be
+    #include <openssl/aes.h>
+    #ifndef AES_BLOCK_SIZE
+        #ifdef WC_NO_COMPAT_AES_BLOCK_SIZE
+            #define AES_BLOCK_SIZE WC_AES_BLOCK_SIZE
+        #else
+            #error AES_BLOCK_SIZE not defined when it should be
+        #endif
     #endif
 #endif
 
