@@ -85,9 +85,9 @@ install_wolfssl() {
         fi
         if [ "$WOLFSSL_ISFIPS" = "1" ]; then
             printf "with FIPS ... "
-            CONF_ARGS+=" --enable-engine=fips-ready"
+            CONF_ARGS+=" --enable-engine=fips-v5"
             if [ ! -e "XXX-fips-test" ]; then
-                ./fips-check.sh keep nomakecheck fips-ready >>$LOG_FILE 2>&1
+                ./fips-check.sh keep nomakecheck linuxv5 >>$LOG_FILE 2>&1
                 if [ $? != 0 ]; then
                     printf "ERROR checking out FIPS\n"
                     rm -rf ${WOLFSSL_INSTALL_DIR}
