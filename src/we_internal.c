@@ -766,6 +766,31 @@ static int we_pkey_asn1(ENGINE *e, EVP_PKEY_ASN1_METHOD **pkey,
 }
 #endif /* WE_HAVE_EVP_PKEY */
 
+#ifdef HAVE_FIPS
+    #include <wolfssl/wolfcrypt/fips_test.h>
+
+    static void we_fipsCb(int ok, int err, const char* hash)
+    {
+        WOLFENGINE_MSG(WE_LOG_ENGINE,
+           "%sin my Fips callback, ok = %d, err = %d\n",
+           ok ? info_prefix : err_prefix, ok, err);
+        WOLFENGINE_MSG(WE_LOG_ENGINE,
+           "%smessage = %s\n", ok ? info_prefix : err_prefix,
+           wc_GetErrorString(err));
+        WOLFENGINE_MSG(WE_LOG_ENGINE,
+           "%shash = %s\n", ok ? info_prefix : err_prefix, hash);
+
+        if (err == WC_NO_ERR_TRACE(IN_CORE_FIPS_E)) {
+            WOLFENGINE_MSG(WE_LOG_ENGINE,
+               "%sIn core integrity hash check failure, copy above hash\n",
+               err_prefix);
+            WOLFENGINE_MSG(WE_LOG_ENGINE,
+               "%sinto verifyCore[] in fips_test.c and rebuild\n",
+               err_prefix);
+        }
+    }
+#endif
+
 /**
  * Initialize all wolfengine global data.
  * This includes:
@@ -791,6 +816,10 @@ static int wolfengine_init(ENGINE *e)
     (void)e;
 
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_init");
+
+#ifdef HAVE_FIPS
+    wolfCrypt_SetCb_fips(we_fipsCb);
+#endif
 
 #if defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION == 5
     wolfCrypt_SetPrivateKeyReadEnable_fips(1, WC_KEYTYPE_ALL);
