@@ -771,22 +771,25 @@ static int we_pkey_asn1(ENGINE *e, EVP_PKEY_ASN1_METHOD **pkey,
 
     static void we_fipsCb(int ok, int err, const char* hash)
     {
+        (void)ok;
+        (void)err;
+        (void)hash;
         WOLFENGINE_MSG(WE_LOG_ENGINE,
-           "%sin my Fips callback, ok = %d, err = %d\n",
-           ok ? info_prefix : err_prefix, ok, err);
+           "in my Fips callback, ok = %d, err = %d\n", ok, err);
         WOLFENGINE_MSG(WE_LOG_ENGINE,
-           "%smessage = %s\n", ok ? info_prefix : err_prefix,
-           wc_GetErrorString(err));
+           "message = %s\n", wc_GetErrorString(err));
         WOLFENGINE_MSG(WE_LOG_ENGINE,
-           "%shash = %s\n", ok ? info_prefix : err_prefix, hash);
+           "hash = %s\n", hash);
 
+#ifdef WC_NO_ERR_TRACE
         if (err == WC_NO_ERR_TRACE(IN_CORE_FIPS_E)) {
+#else
+        if (err == IN_CORE_FIPS_E) {
+#endif
             WOLFENGINE_MSG(WE_LOG_ENGINE,
-               "%sIn core integrity hash check failure, copy above hash\n",
-               err_prefix);
+               "In core integrity hash check failure, copy above hash\n");
             WOLFENGINE_MSG(WE_LOG_ENGINE,
-               "%sinto verifyCore[] in fips_test.c and rebuild\n",
-               err_prefix);
+               "into verifyCore[] in fips_test.c and rebuild\n");
         }
     }
 #endif
