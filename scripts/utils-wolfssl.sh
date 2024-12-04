@@ -23,7 +23,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 source ${SCRIPT_DIR}/utils-general.sh
 
 WOLFSSL_GIT=${WOLFSSL_GIT:-"https://github.com/wolfSSL/wolfssl.git"}
-WOLFSSL_TAG=${WOLFSSL_TAG:-"v5.7.2-stable"}
+WOLFSSL_TAG=${WOLFSSL_TAG:-"v5.7.4-stable"}
 WOLFSSL_SOURCE_DIR=${SCRIPT_DIR}/../wolfssl-source
 WOLFSSL_INSTALL_DIR=${SCRIPT_DIR}/../wolfssl-install
 WOLFSSL_ISFIPS=${WOLFSSL_ISFIPS:-0}
