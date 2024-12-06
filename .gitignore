@@ -50,6 +50,7 @@
 /scripts/*.log
 *.gcno
 *.gcda
+*.swp
 
 # Visual Studio files to ignore
 .vs
@@ -67,3 +68,9 @@ test.aps
 .settings
 
 rpm/spec
+
+openssl-install/
+openssl-source/
+wolfssl-install/
+wolfssl-source/
+wolfengine-install/
