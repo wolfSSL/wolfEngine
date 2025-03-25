@@ -1440,7 +1440,7 @@ static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x1000212fL
 /**
  * Used to set the group
  *
@@ -1550,7 +1550,7 @@ int we_init_ecc_meths(void)
         EVP_PKEY_meth_set_copy(we_ec_method, we_ec_copy);
         EVP_PKEY_meth_set_cleanup(we_ec_method, we_ec_cleanup);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x1000212fL
         /* used in TLS 1.3 connections */
         EVP_PKEY_meth_set_paramgen(we_ec_method, NULL, wc_ec_paramgen);
 #endif
