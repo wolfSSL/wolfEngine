@@ -1509,6 +1509,8 @@ static int we_cmac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     #if OPENSSL_VERSION_NUMBER >= 0x10101000L
         /* Set alias to distinguish between OpenSSL and wolfEngine created. */
         ret = EVP_PKEY_set_alias_type(pkey, NID_wolfengine_cmac);
+    #else
+        pkey->type = NID_wolfengine_cmac;
     #endif
     }
 
@@ -1529,7 +1531,7 @@ static void we_cmac_pkey_free(EVP_PKEY *pkey)
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [pkey = %p]", pkey);
 
     /* Can be either local alias or CMAC with OpenSSL data. */
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x1000212fL
     if (EVP_PKEY_id(pkey) == NID_wolfengine_cmac)
 #endif
     {
@@ -1547,7 +1549,7 @@ static void we_cmac_pkey_free(EVP_PKEY *pkey)
             ret = 0;
         }
     }
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x1000212fL
     else {
         CMAC_CTX *cmac;
 
