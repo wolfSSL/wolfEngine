@@ -137,6 +137,17 @@ WOLFENGINE_LOCAL void *we_memdup(const void *data, size_t siz);
     #define WE_PRINTF_FUNC(s, v)
 #endif
 
+#ifndef AES_BLOCK_SIZE
+    #include <openssl/aes.h>
+    #ifndef AES_BLOCK_SIZE
+        #ifdef WC_NO_COMPAT_AES_BLOCK_SIZE
+            #define AES_BLOCK_SIZE WC_AES_BLOCK_SIZE
+        #else
+            #error AES_BLOCK_SIZE not defined when it should be
+        #endif
+    #endif
+#endif
+
 /*
  * Global random
  */
