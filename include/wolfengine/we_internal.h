@@ -67,6 +67,8 @@
 #ifndef WOLFENGINE_USER_SETTINGS
 #include <wolfssl/options.h>
 #endif
+#include <wolfssl/wolfcrypt/settings.h>
+#include <wolfssl/version.h>
 #include <wolfssl/wolfcrypt/hash.h>
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfssl/wolfcrypt/cmac.h>
@@ -88,6 +90,10 @@
 #endif
 #ifdef HAVE_FIPS
 #include <wolfssl/wolfcrypt/fips_test.h>
+#endif
+
+#if LIBWOLFSSL_VERSION_HEX < 0x05008002
+    #define WC_AES_BLOCK_SIZE 16
 #endif
 
 /* The DES3-CBC code won't compile unless wolfCrypt has support for it. */

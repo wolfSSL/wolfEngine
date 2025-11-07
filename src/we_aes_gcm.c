@@ -49,7 +49,7 @@ typedef struct we_AesGcm
     /** Length of IV data. */
     int            ivLen;
     /** Tag created when encrypting or tag set for decryption. */
-    unsigned char  tag[AES_BLOCK_SIZE];
+    unsigned char  tag[WC_AES_BLOCK_SIZE];
     /** Length of tag data stored.  */
     int            tagLen;
     /** Additional Authentication Data (AAD) - cumulative. */
@@ -681,7 +681,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] size of tag
                  *   ptr [in] tag data to copy
                  */
-                if ((arg <= 0) || (arg > AES_BLOCK_SIZE)) {
+                if ((arg <= 0) || (arg > WC_AES_BLOCK_SIZE)) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid tag size");
                     ret = 0;
                 }

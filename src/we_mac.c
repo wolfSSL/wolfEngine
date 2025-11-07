@@ -1599,11 +1599,11 @@ static int we_cmac_copy(we_Mac* mac, Cmac* dst, Cmac* src)
     if (ret == 1) {
         /* Copy over state of CMAC. */
         /* Partially stored block. */
-        XMEMCPY(dst->buffer, src->buffer, AES_BLOCK_SIZE);
+        XMEMCPY(dst->buffer, src->buffer, WC_AES_BLOCK_SIZE);
         /* Running digest. */
-        XMEMCPY(dst->digest, src->digest, AES_BLOCK_SIZE);
-        XMEMCPY(dst->k1, src->k1, AES_BLOCK_SIZE);
-        XMEMCPY(dst->k2, src->k2, AES_BLOCK_SIZE);
+        XMEMCPY(dst->digest, src->digest, WC_AES_BLOCK_SIZE);
+        XMEMCPY(dst->k1, src->k1, WC_AES_BLOCK_SIZE);
+        XMEMCPY(dst->k2, src->k2, WC_AES_BLOCK_SIZE);
         dst->bufferSz = src->bufferSz;
         dst->totalSz = src->totalSz;
     }

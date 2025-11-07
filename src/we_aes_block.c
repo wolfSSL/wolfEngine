@@ -31,7 +31,7 @@ typedef struct we_AesBlock
     /** The wolfSSL AES data object. */
     Aes            aes;
     /** Buffer for streaming. */
-    unsigned char  lastBlock[AES_BLOCK_SIZE];
+    unsigned char  lastBlock[WC_AES_BLOCK_SIZE];
     /** Number of buffered bytes.  */
     unsigned int   over;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
@@ -216,7 +216,7 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             ret = we_aes_cbc_decrypt(aes, out, in, len);
         }
 
-        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->aes.reg, AES_BLOCK_SIZE);
+        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->aes.reg, WC_AES_BLOCK_SIZE);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_cipher", ret);
@@ -328,7 +328,7 @@ int we_init_aescbc_meths()
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aescbc_meths");
 
     /* AES128-CBC */
-    we_aes128_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc, AES_BLOCK_SIZE,
+    we_aes128_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc, WC_AES_BLOCK_SIZE,
                                              AES_128_KEY_SIZE);
     if (we_aes128_cbc_ciph == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
@@ -343,7 +343,7 @@ int we_init_aescbc_meths()
     /* AES192-CBC */
     if (ret == 1) {
         we_aes192_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_192_cbc,
-                                                 AES_BLOCK_SIZE,
+                                                 WC_AES_BLOCK_SIZE,
                                                  AES_192_KEY_SIZE);
         if (we_aes192_cbc_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
@@ -359,7 +359,7 @@ int we_init_aescbc_meths()
     /* AES256-CBC */
     if (ret == 1) {
         we_aes256_cbc_ciph = EVP_CIPHER_meth_new(NID_aes_256_cbc,
-                                                 AES_BLOCK_SIZE,
+                                                 WC_AES_BLOCK_SIZE,
                                                  AES_256_KEY_SIZE);
         if (we_aes256_cbc_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
@@ -498,7 +498,7 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
                            "aes->over = %d", aes->over);
 
             /* Partial block not yet encrypted. */
-            l = AES_BLOCK_SIZE - aes->over;
+            l = WC_AES_BLOCK_SIZE - aes->over;
             if (l > len) {
                 l = (int)len;
             }
@@ -511,10 +511,10 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
                 len -= l;
             }
             /* Check if we have a complete block to encrypt. */
-            if (aes->over == AES_BLOCK_SIZE) {
+            if (aes->over == WC_AES_BLOCK_SIZE) {
                 /* Encrypt and return block. */
                 rc = wc_AesEcbEncrypt(&aes->aes, out, aes->lastBlock,
-                                      AES_BLOCK_SIZE);
+                                      WC_AES_BLOCK_SIZE);
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesEcbEncrypt", rc);
@@ -523,19 +523,19 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
                 else {
                     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                            "Encrypted %d bytes (AES-ECB)",
-                                           AES_BLOCK_SIZE);
-                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, AES_BLOCK_SIZE);
+                                           WC_AES_BLOCK_SIZE);
+                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, WC_AES_BLOCK_SIZE);
                 }
                 /* Data put to output. */
-                out += AES_BLOCK_SIZE;
+                out += WC_AES_BLOCK_SIZE;
                 /* No more cached data. */
                 aes->over = 0;
             }
         }
         /* Encrypt full blocks from remaining input. */
-        if ((ret == 1) && (len >= AES_BLOCK_SIZE)) {
+        if ((ret == 1) && (len >= WC_AES_BLOCK_SIZE)) {
             /* Calculate full blocks. */
-            l = (int)len & (~(AES_BLOCK_SIZE - 1));
+            l = (int)len & (~(WC_AES_BLOCK_SIZE - 1));
 
             rc = wc_AesEcbEncrypt(&aes->aes, out, in, l);
             if (rc != 0) {
@@ -599,7 +599,7 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
             WOLFENGINE_MSG(WE_LOG_CIPHER, "Decrypting leftover cached data, "
                            "aes->over = %d", aes->over);
             /* Calculate amount of input that can be used. */
-            l = AES_BLOCK_SIZE - aes->over;
+            l = WC_AES_BLOCK_SIZE - aes->over;
             if (l > len) {
                 l = (int)len;
             }
@@ -612,10 +612,10 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                 len -= l;
             }
             /* Padding and not last full block or not padding and full block. */
-            if ((aes->over == AES_BLOCK_SIZE) || len > 0) {
+            if ((aes->over == WC_AES_BLOCK_SIZE) || len > 0) {
                 /* Decrypt block cached block. */
                 rc = wc_AesEcbDecrypt(&aes->aes, out, aes->lastBlock,
-                                      AES_BLOCK_SIZE);
+                                      WC_AES_BLOCK_SIZE);
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
                                           "wc_AesEcbDecrypt", rc);
@@ -624,19 +624,19 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                 else {
                     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
                                            "Decrypted %d bytes (AES-ECB)",
-                                           AES_BLOCK_SIZE);
-                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, AES_BLOCK_SIZE);
+                                           WC_AES_BLOCK_SIZE);
+                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, WC_AES_BLOCK_SIZE);
                 }
                 /* Data put to output. */
-                out += AES_BLOCK_SIZE;
+                out += WC_AES_BLOCK_SIZE;
                 /* No more cached data. */
                 aes->over = 0;
             }
         }
         /* Decrypt full blocks from remaining input. */
-        if ((ret == 1) && (len >= AES_BLOCK_SIZE)) {
+        if ((ret == 1) && (len >= WC_AES_BLOCK_SIZE)) {
             /* Calculate full blocks. */
-            l = (int)len & (~(AES_BLOCK_SIZE - 1));
+            l = (int)len & (~(WC_AES_BLOCK_SIZE - 1));
 
             if (l > 0) {
                 rc = wc_AesEcbDecrypt(&aes->aes, out, in, l);
@@ -812,7 +812,7 @@ int we_init_aesecb_meths()
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_init_aesecb_meths");
 
     /* AES128-ECB */
-    we_aes128_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_128_ecb, AES_BLOCK_SIZE,
+    we_aes128_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_128_ecb, WC_AES_BLOCK_SIZE,
                                              AES_128_KEY_SIZE);
     if (we_aes128_ecb_ciph == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
@@ -827,7 +827,7 @@ int we_init_aesecb_meths()
     /* AES192-ECB */
     if (ret == 1) {
         we_aes192_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_192_ecb,
-            AES_BLOCK_SIZE, AES_192_KEY_SIZE);
+            WC_AES_BLOCK_SIZE, AES_192_KEY_SIZE);
         if (we_aes192_ecb_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                        "EVP_CIPHER_meth_new - AES-192-ECB",
@@ -842,7 +842,7 @@ int we_init_aesecb_meths()
     /* AES256-ECB */
     if (ret == 1) {
         we_aes256_ecb_ciph = EVP_CIPHER_meth_new(NID_aes_256_ecb,
-            AES_BLOCK_SIZE, AES_256_KEY_SIZE);
+            WC_AES_BLOCK_SIZE, AES_256_KEY_SIZE);
         if (we_aes256_ecb_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                        "EVP_CIPHER_meth_new - AES-256-ECB",
