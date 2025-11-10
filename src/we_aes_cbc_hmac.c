@@ -171,7 +171,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         /* When TLS v1.1 and v1.2 the IV is at the front. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV, aes->tls11 = %d",
                        aes->tls11);
-        off = AES_BLOCK_SIZE;
+        off = WC_AES_BLOCK_SIZE;
         rc = wc_AesSetIV(&aes->aes, in);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
@@ -262,7 +262,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* TLS v1.1 and v1.2 have IV before message. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV, aes->tls11 = %d",
                        aes->tls11);
-        off = AES_BLOCK_SIZE;
+        off = WC_AES_BLOCK_SIZE;
         rc = wc_AesSetIV(&aes->aes, in);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
@@ -289,7 +289,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* TODO: not constant time. */
         /* Remove padding. */
         pb = out[off + ret - 1];
-        if (pb >= AES_BLOCK_SIZE) {
+        if (pb >= WC_AES_BLOCK_SIZE) {
             ret = -1;
         }
         for (i = 1; (ret != -1) && (i <= pb); i++) {
@@ -464,12 +464,12 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                         aes->pLen = len;
                         if (aes->tls11) {
                             /* Must be space for IV. */
-                            if (len < AES_BLOCK_SIZE) {
+                            if (len < WC_AES_BLOCK_SIZE) {
                                 ret = -1;
                             }
                             else {
                                 /* Remove IV and update record header. */
-                                len -= AES_BLOCK_SIZE;
+                                len -= WC_AES_BLOCK_SIZE;
                                 tls[arg - 2] = len >> 8;
                                 tls[arg - 1] = len;
                             }
@@ -488,7 +488,7 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                         if (ret == 1) {
                             /* Calculate length with padding. */
                             ret = ((len + SHA256_DIGEST_LENGTH +
-                                    AES_BLOCK_SIZE) & -AES_BLOCK_SIZE) - len;
+                                    WC_AES_BLOCK_SIZE) & -WC_AES_BLOCK_SIZE) - len;
                         }
                     }
                     else {
@@ -576,7 +576,7 @@ int we_init_aescbc_hmac_meths()
 
     /* AES128-CBC HMAC-SHA256 */
     we_aes128_cbc_hmac_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc_hmac_sha256,
-        AES_BLOCK_SIZE, AES_128_KEY_SIZE);
+        WC_AES_BLOCK_SIZE, AES_128_KEY_SIZE);
     if (we_aes128_cbc_ciph == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_meth_new - AES-128-CBC "
@@ -590,7 +590,7 @@ int we_init_aescbc_hmac_meths()
     /* AES256-CBC HMAC-SHA256 */
     if (ret == 1) {
         we_aes256_cbc_hmac_ciph = EVP_CIPHER_meth_new(
-            NID_aes_256_cbc_hmac_sha256, AES_BLOCK_SIZE, AES_256_KEY_SIZE);
+            NID_aes_256_cbc_hmac_sha256, WC_AES_BLOCK_SIZE, AES_256_KEY_SIZE);
         if (we_aes256_cbc_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                        "EVP_CIPHER_meth_new - AES-256-CBC "
