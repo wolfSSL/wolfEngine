@@ -360,7 +360,7 @@ static int we_init_des3cbc_meth(EVP_CIPHER *cipher)
  *
  * @return  1 on success and 0 on failure.
  */
-int we_init_des3cbc_meths()
+int we_init_des3cbc_meths(void)
 {
     int ret = 1;
 

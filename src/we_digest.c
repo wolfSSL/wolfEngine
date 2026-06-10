@@ -135,7 +135,7 @@ EVP_MD *we_sha1_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha_meth()
+int we_init_sha_meth(void)
 {
     int ret;
 
@@ -288,7 +288,7 @@ EVP_MD *we_sha224_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha224_meth()
+int we_init_sha224_meth(void)
 {
     int ret;
 
@@ -441,7 +441,7 @@ EVP_MD *we_sha256_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha256_meth()
+int we_init_sha256_meth(void)
 {
     int ret;
 
@@ -1003,7 +1003,7 @@ EVP_MD *we_sha1_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha_meth()
+int we_init_sha_meth(void)
 {
     int ret;
 
@@ -1046,7 +1046,7 @@ EVP_MD *we_ecdsa_sha1_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_ecdsa_sha1_meth()
+int we_init_ecdsa_sha1_meth(void)
 {
     int ret;
 
@@ -1084,7 +1084,7 @@ EVP_MD *we_sha224_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha224_meth()
+int we_init_sha224_meth(void)
 {
     int ret;
 
@@ -1124,7 +1124,7 @@ EVP_MD *we_sha256_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha256_meth()
+int we_init_sha256_meth(void)
 {
     int ret;
 
@@ -1164,7 +1164,7 @@ EVP_MD *we_sha384_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha384_meth()
+int we_init_sha384_meth(void)
 {
     int ret;
 
@@ -1204,7 +1204,7 @@ EVP_MD *we_sha512_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha512_meth()
+int we_init_sha512_meth(void)
 {
     int ret = 1;
 
@@ -1244,7 +1244,7 @@ EVP_MD *we_sha3_224_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha3_224_meth()
+int we_init_sha3_224_meth(void)
 {
     int ret = 1;
 
@@ -1286,7 +1286,7 @@ EVP_MD *we_sha3_256_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha3_256_meth()
+int we_init_sha3_256_meth(void)
 {
     int ret = 1;
 
@@ -1328,7 +1328,7 @@ EVP_MD *we_sha3_384_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha3_384_meth()
+int we_init_sha3_384_meth(void)
 {
     int ret = 1;
 
@@ -1370,7 +1370,7 @@ EVP_MD *we_sha3_512_md = NULL;
  *
  * @return  1 on success else failure.
  */
-int we_init_sha3_512_meth()
+int we_init_sha3_512_meth(void)
 {
     int ret = 1;
 

@@ -300,12 +300,12 @@ typedef struct we_Ecc
     EC_GROUP      *group;
 #endif
     /** Indicates private key has been set into wolfSSL structure. */
-    int            privKeySet:1;
+    unsigned int   privKeySet:1;
     /** Indicates public key has been set into wolfSSL structure. */
-    int            pubKeySet:1;
+    unsigned int   pubKeySet:1;
 #ifdef WE_HAVE_ECDH
     /** Use co-factor with ECDH operation. */
-    int            coFactor:1;
+    unsigned int   coFactor:1;
     /** Type of KDF to use with ECDH derivation. */
     int            kdfType;
     /** Digest method to use with KDF. */

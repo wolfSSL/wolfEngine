@@ -44,7 +44,7 @@ void wolfEngine_SetFipsChecks(long checksMask)
  *
  * @return  The FIPS checks mask.
  */
-long wolfEngine_GetFipsChecks()
+long wolfEngine_GetFipsChecks(void)
 {
     return fipsChecks;
 }

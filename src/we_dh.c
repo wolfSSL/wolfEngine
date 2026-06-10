@@ -51,9 +51,9 @@ typedef struct we_Dh
     /** Length of "q" in bytes. */
     int qLen;
     /** Pad the secret output. */
-    int pad:1;
+    unsigned int pad:1;
     /** Named group set. */
-    int named:1;
+    unsigned int named:1;
 } we_Dh;
 
 /** DH key method - DH using wolfSSL for the implementation. */

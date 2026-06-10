@@ -78,10 +78,10 @@ typedef struct TEST_CASE {
     TEST_FUNC   func;
     void       *data;
     int         err;
-    int         run:1;
-    int         done:1;
+    unsigned int run:1;
+    unsigned int done:1;
 #ifdef TEST_MULTITHREADED
-    int         attempted:1;
+    unsigned int attempted:1;
     pthread_t   thread;
     int         cnt;
 #endif

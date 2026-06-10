@@ -68,11 +68,11 @@ typedef struct we_Rsa
     /** Length of salt to use with PSS. */
     int saltLen;
     /** Indicates private key has been set into wolfSSL structure. */
-    int privKeySet:1;
+    unsigned int privKeySet:1;
     /** Indicates public key has been set into wolfSSL structure. */
-    int pubKeySet:1;
+    unsigned int pubKeySet:1;
     /** Indicates message digest algorithm has been explicitly set. */
-    int mdSet:1;
+    unsigned int mdSet:1;
 } we_Rsa;
 
 
