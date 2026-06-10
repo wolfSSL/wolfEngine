@@ -673,7 +673,7 @@ static int we_init_aesccm_meth(EVP_CIPHER *cipher)
  *
  * @return  1 on success and 0 on failure.
  */
-int we_init_aesccm_meths()
+int we_init_aesccm_meths(void)
 {
     int ret = 1;
 

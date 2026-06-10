@@ -510,7 +510,7 @@ static int we_pbes2_keyivgen(EVP_CIPHER_CTX *ctx, const char *passwd,
  *
  * @returns  1 on success and 0 on failure.
  */
-int we_init_pbe_keygen()
+int we_init_pbe_keygen(void)
 {
 #ifndef NO_PWDBASED
     int ret;

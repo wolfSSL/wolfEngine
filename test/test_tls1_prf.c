@@ -29,7 +29,7 @@ static int test_tls1_prf_calc(ENGINE *e, unsigned char *key, int keyLen,
     int err = 0;
     EVP_PKEY_CTX *ctx = NULL;
     unsigned char secret[32] = { 0, };
-    unsigned char label[5] = "Label";
+    unsigned char label[5] = { 'L', 'a', 'b', 'e', 'l' };
     unsigned char seed[32] = { 0, };
     size_t len = keyLen;
 

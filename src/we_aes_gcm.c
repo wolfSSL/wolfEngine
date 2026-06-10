@@ -71,9 +71,9 @@ typedef struct we_AesGcm
     /** Flag to indicate whether dping this for TLS */
     unsigned int   tls:1;
     /** IV set. */
-    int            ivSet:1;
+    unsigned int   ivSet:1;
     /** IV increment. */
-    int            ivInc:1;
+    unsigned int   ivInc:1;
 } we_AesGcm;
 
 /**
@@ -828,7 +828,7 @@ static int we_init_aesgcm_meth(EVP_CIPHER *cipher)
  *
  * @return  1 on success and 0 on failure.
  */
-int we_init_aesgcm_meths()
+int we_init_aesgcm_meths(void)
 {
     int ret = 1;
 
