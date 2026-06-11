@@ -238,7 +238,9 @@ static int we_ec_export_key(ecc_key *ecc, int len, EC_KEY *key)
 
         d = y + len;
         /* Export public and private key data. */
+        PRIVATE_KEY_UNLOCK();
         rc = wc_ecc_export_private_raw(ecc, x, &xLen, y, &yLen, d, &dLen);
+        PRIVATE_KEY_LOCK();
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_export_private", rc);
             ret = 0;
