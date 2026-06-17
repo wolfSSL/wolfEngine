@@ -732,7 +732,7 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
     /* Get the AES-ECB data to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
-    if (aes != NULL) {
+    if (aes == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
