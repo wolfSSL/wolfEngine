@@ -1260,7 +1260,11 @@ static int we_dh_pkey_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
 
     if (ret == 1) {
         /* Assign OpenSSL DH object to PKEY. */
-        EVP_PKEY_assign_DH(pkey, dh);
+        if (EVP_PKEY_assign_DH(pkey, dh) != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "EVP_PKEY_assign_DH", 0);
+            DH_free(dh);
+            ret = 0;
+        }
     }
 
     if (ret == 1) {
