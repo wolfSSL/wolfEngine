@@ -290,9 +290,9 @@ static int we_mac_hmac_init(EVP_PKEY_CTX *ctx, we_Mac *mac)
         /* If the key is smaller than the block size of the underlying hash
          * algorithm, we need to pad the key with zeroes to the block
          * size. */
-        mac->key = OPENSSL_realloc(mac->key, blockSize);
+        mac->key = OPENSSL_clear_realloc(mac->key, mac->keySz, blockSize);
         if (mac->key == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_realloc", 
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_clear_realloc",
                 mac->key);
             ret = 0;
         }
