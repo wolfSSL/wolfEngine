@@ -747,7 +747,11 @@ static int we_hmac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     }
     if (ret == 1) {
         /* Assign algorithm and key to PKEY. */
-        EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, key);
+        if (EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, key) != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "EVP_PKEY_assign", 0);
+            ASN1_OCTET_STRING_free(key);
+            ret = 0;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_keygen", ret);
