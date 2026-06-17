@@ -1318,6 +1318,10 @@ static int we_hmac_pkey_asn1_set_priv_key(EVP_PKEY *pkey,
     if (EVP_PKEY_get0(pkey) != NULL) {
         ret = 0;
     }
+    /* Reject a NULL key or a length that would not fit in an int. */
+    if ((ret == 1) && ((priv == NULL) || (len > INT_MAX))) {
+        ret = 0;
+    }
     if (ret == 1) {
         /* Allocate a new ASN.1 octet string to assign to pkey. */
         asn1 = ASN1_OCTET_STRING_new();
