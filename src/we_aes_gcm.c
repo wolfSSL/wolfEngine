@@ -443,7 +443,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
 
     if (aes->ivInc) {
         int i;
-        for (i = aes->ivLen - 1; i >= aes->ivLen - 8; i--) {
+        for (i = aes->ivLen - 1; (i >= 0) && (i >= aes->ivLen - 8); i--) {
             if ((++aes->iv[i]) != 0) {
                 break;
             }
