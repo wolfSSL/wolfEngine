@@ -503,6 +503,14 @@ int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 
     (void)data;
 
+    /* OpenSSL only provides the stitched AES-CBC-HMAC-SHA256 cipher on
+     * platforms where it has a hand-written assembly implementation (e.g.
+     * AES-NI x86_64); elsewhere EVP_aes_128_cbc_hmac_sha256() returns NULL,
+     * so there is nothing to exercise. */
+    if (cipher == NULL) {
+        return 0;
+    }
+
     XMEMSET(key, 0, sizeof(key));
     XMEMSET(macKey, 0, sizeof(macKey));
     XMEMSET(iv, 0, sizeof(iv));
