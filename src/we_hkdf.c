@@ -101,7 +101,7 @@ static void we_hkdf_cleanup(EVP_PKEY_CTX *ctx)
         }
         /* Clear and free salt. */
         if (hkdf->salt != NULL) {
-            OPENSSL_free(hkdf->salt);
+            OPENSSL_clear_free(hkdf->salt, hkdf->saltSz);
         }
         /* Clear info - sensitive data. */
         OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
