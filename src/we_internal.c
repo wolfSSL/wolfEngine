@@ -1148,7 +1148,8 @@ static int wolfengine_destroy(ENGINE *e)
     EVP_MD_meth_free(we_ecdsa_sha1_md);
     we_ecdsa_sha1_md = NULL;
 #endif
-#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA)
+#if defined(WE_HAVE_ECC) || defined(WE_HAVE_AESGCM) || defined(WE_HAVE_RSA) || \
+    defined(WE_HAVE_DH) || defined(WE_HAVE_RANDOM)
     we_final_random();
 #endif
 
