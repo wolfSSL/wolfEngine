@@ -168,7 +168,7 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
             OPENSSL_free(aes->aad);
         }
         if (aes->tmp != NULL) {
-            OPENSSL_free(aes->tmp);
+            OPENSSL_clear_free(aes->tmp, aes->tmpLen);
             aes->tmp = NULL;
         }
         aes->tmpLen = 0;
@@ -433,7 +433,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
     }
 
     if (aes->tmp != NULL) {
-        OPENSSL_free(aes->tmp);
+        OPENSSL_clear_free(aes->tmp, aes->tmpLen);
         aes->tmp = NULL;
     }
     aes->tmpLen = 0;
