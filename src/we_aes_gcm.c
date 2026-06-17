@@ -652,7 +652,8 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] size of generated IV/nonce
                  *   ptr [in] generated IV/nonce data
                  */
-                if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ)) {
+                if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ) || (ptr == NULL) ||
+                        (arg > aes->ivLen)) {
                     XSNPRINTF(errBuff, sizeof(errBuff), "Invalid nonce length "
                               "%d", arg);
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
