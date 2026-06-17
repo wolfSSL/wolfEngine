@@ -1188,6 +1188,47 @@ int test_rsa_enc_dec_no_pad(ENGINE *e, void *data)
                             RSA_NO_PADDING, NULL, NULL);
 }
 
+int test_rsa_dec_no_pad_size_query(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    const unsigned char *der = rsa_key_der_1024;
+    unsigned char ct[128];
+    size_t ctLen = sizeof(ct);
+    size_t outLen = 0;
+
+    (void)data;
+
+    XMEMSET(ct, 0, sizeof(ct));
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_1024));
+    err = pkey == NULL;
+    if (err == 0) {
+        err = (ctx = EVP_PKEY_CTX_new(pkey, e)) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_decrypt_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_NO_PADDING) <= 0;
+    }
+    if (err == 0) {
+        /* NULL output is a length query: must return the RSA output size and
+         * succeed, not hand a NULL buffer to wolfCrypt. */
+        err = EVP_PKEY_decrypt(ctx, NULL, &outLen, ct, ctLen) != 1;
+    }
+    if (err == 0) {
+        err = outLen != (size_t)EVP_PKEY_size(pkey);
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data)
 {
     int err = 0;

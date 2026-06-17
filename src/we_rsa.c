@@ -3127,7 +3127,18 @@ static int we_rsa_pkey_decrypt(EVP_PKEY_CTX *ctx, unsigned char *plaintext,
     }
 #endif
 
-    if (ret == 1) {
+    if ((ret == 1) && (plaintext == NULL)) {
+        /* Only return the length when no output buffer passed in. */
+        rc = wc_RsaEncryptSize(&rsa->key);
+        if (rc < 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize", rc);
+            ret = 0;
+        }
+        else {
+            *plainLen = rc;
+        }
+    }
+    else if (ret == 1) {
         /* Perform decryption operation. */
         rc = we_rsa_priv_dec_int(cipherLen, ciphertext, *plainLen,
                                  plaintext, rsa);

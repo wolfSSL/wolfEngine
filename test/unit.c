@@ -187,6 +187,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_sign_verify_pss, NULL),
     TEST_DECL(test_rsa_enc_dec_pkcs1, NULL),
     TEST_DECL(test_rsa_enc_dec_no_pad, NULL),
+    TEST_DECL(test_rsa_dec_no_pad_size_query, NULL),
     TEST_DECL(test_rsa_enc_dec_oaep, NULL),
     TEST_DECL(test_rsa_pkey_keygen, NULL),
     TEST_DECL(test_rsa_pkey_invalid_key_size, NULL),
