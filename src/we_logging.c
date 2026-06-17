@@ -386,7 +386,7 @@ void WOLFENGINE_BUFFER(int component, const unsigned char* buffer,
         }
 
         XSNPRINTF(&line[bufidx], sizeof(line)-bufidx, "| ");
-        bufidx++;
+        bufidx += 2;
 
         for (i = 0; i < WOLFENGINE_LINE_LEN; i++) {
             if (i < buflen) {
