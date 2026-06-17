@@ -287,17 +287,22 @@ static int we_mac_hmac_init(EVP_PKEY_CTX *ctx, we_Mac *mac)
         }
     }
     if (ret == 1 && mac->keySz < blockSize) {
+        unsigned char *newKey;
         /* If the key is smaller than the block size of the underlying hash
-         * algorithm, we need to pad the key with zeroes to the block
-         * size. */
-        mac->key = OPENSSL_clear_realloc(mac->key, mac->keySz, blockSize);
-        if (mac->key == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_clear_realloc",
-                mac->key);
+         * algorithm, we need to pad the key with zeroes to the block size.
+         * Pad into a fresh buffer so the old key bytes can be wiped. */
+        newKey = (unsigned char *)OPENSSL_malloc(blockSize);
+        if (newKey == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_malloc", newKey);
             ret = 0;
         }
         else {
-            XMEMSET(mac->key + mac->keySz, 0, blockSize - mac->keySz);
+            if (mac->keySz > 0) {
+                XMEMCPY(newKey, mac->key, mac->keySz);
+            }
+            XMEMSET(newKey + mac->keySz, 0, blockSize - mac->keySz);
+            OPENSSL_clear_free(mac->key, mac->keySz);
+            mac->key = newKey;
             mac->keySz = blockSize;
         }
     }
