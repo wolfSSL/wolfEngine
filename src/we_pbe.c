@@ -485,8 +485,9 @@ static int we_pbes2_keyivgen(EVP_CIPHER_CTX *ctx, const char *passwd,
     if (ret == 1) {
         /* Set the BER encoded encryption parameters. */
         rc = EVP_CIPHER_asn1_to_param(ctx, pbe2->encryption->parameter);
-        if (rc < 0) {
+        if (rc <= 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PBE, "EVP_CIPHER_asn1_to_param", rc);
+            ret = 0;
         }
     }
     if (ret == 1) {
