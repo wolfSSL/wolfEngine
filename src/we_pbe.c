@@ -190,6 +190,7 @@ static int we_pbkdf2_keygen(EVP_CIPHER_CTX *ctx, const char *passwd,
 
     /* Free allocated data. */
     PBKDF2PARAM_free(kdf);
+    OPENSSL_cleanse(key, sizeof(key));
 
     WOLFENGINE_LEAVE(WE_LOG_PBE, "we_pbkdf2_keygen", ret);
 
@@ -395,6 +396,8 @@ static int we_pbe_keyivgen(EVP_CIPHER_CTX *ctx, const char *passwd,
         OPENSSL_clear_free(uniPass, uniLen);
     }
     PBEPARAM_free(params);
+    OPENSSL_cleanse(key, sizeof(key));
+    OPENSSL_cleanse(iv, sizeof(iv));
 
     WOLFENGINE_LEAVE(WE_LOG_PBE, "we_pbe_keyivgen", ret);
 
