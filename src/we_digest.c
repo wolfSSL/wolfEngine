@@ -981,9 +981,15 @@ static int we_init_digest_meth(EVP_MD *method)
     if (ret == 1) {
         const int *nids;
         int cnt;
+        int maxCnt;
 
+        maxCnt = (int)(sizeof(method->required_pkey_type) /
+                       sizeof(method->required_pkey_type[0]));
         cnt = we_pkey_get_nids(&nids);
-        XMEMCPY(method->required_pkey_type, nids, cnt);
+        if (cnt > maxCnt) {
+            cnt = maxCnt;
+        }
+        XMEMCPY(method->required_pkey_type, nids, cnt * sizeof(*nids));
         method->flags |= EVP_MD_FLAG_PKEY_METHOD_SIGNATURE;
     }
 #endif
