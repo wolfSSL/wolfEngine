@@ -2106,14 +2106,6 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         }
     }
 
-    if (err == 0) {
-        rc = mp_init_multi(&sig_r, &sig_s, NULL, NULL, NULL, NULL);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init_multi", rc);
-            err = 1;
-        }
-    }
-
     /* Sign hash with ECDSA */
     if (err == 0) {
 #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
