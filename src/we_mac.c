@@ -1689,8 +1689,10 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, data = %p, "
                            "dataSz = %zu]", ctx, data, dataSz);
 
-    /* Validate parameters. */
-    if ((ctx == NULL) || (data == NULL)) {
+    /* Validate parameters. A zero-length update is a no-op (matching OpenSSL
+     * and the HMAC path), so a NULL data pointer is only an error when there
+     * is data to process. */
+    if ((ctx == NULL) || ((data == NULL) && (dataSz != 0))) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_cmac_pkey_update, ctx: ", ctx);
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
@@ -1717,7 +1719,7 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
         }
     }
 
-    if (ret == 1) {
+    if ((ret == 1) && (dataSz != 0)) {
         /* Update the wolfCrypt CMAC object with more data. */
         rc = wc_CmacUpdate(&mac->state.cmac, (const byte*)data, (word32)dataSz);
         if (rc != 0) {
