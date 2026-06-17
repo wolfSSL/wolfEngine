@@ -1319,6 +1319,7 @@ static int we_dh_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         ret = EVP_PKEY_assign_DH(pkey, dh);
         if (ret != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "EVP_PKEY_assign_DH", ret);
+            DH_free(dh);
         }
     }
 
