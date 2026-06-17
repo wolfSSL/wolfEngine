@@ -2215,8 +2215,10 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                                          "when padding mode isn't PSS.");
                     ret = 0;
                 }
-                /* Store salt length to use with RSA-PSS. */
-                rsa->saltLen = num;
+                if (ret == 1) {
+                    /* Store salt length to use with RSA-PSS. */
+                    rsa->saltLen = num;
+                }
                 break;
             case EVP_PKEY_CTRL_GET_RSA_PSS_SALTLEN:
                 WOLFENGINE_MSG(WE_LOG_PK,
