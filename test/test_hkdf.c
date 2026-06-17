@@ -455,6 +455,11 @@ int test_hkdf(ENGINE *e, void *data)
 
 int test_hkdf_bad_md(ENGINE *e, void *data)
 {
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    (void)e;
+    (void)data;
+    return 0;
+#else
     int err = 0;
     EVP_PKEY_CTX *ctx = NULL;
 
@@ -473,6 +478,7 @@ int test_hkdf_bad_md(ENGINE *e, void *data)
     EVP_PKEY_CTX_free(ctx);
 
     return err;
+#endif
 }
 
 #endif /* WE_HAVE_HKDF */

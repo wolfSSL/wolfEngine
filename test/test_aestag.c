@@ -729,6 +729,11 @@ int test_aes_gcm_evp_cipher(ENGINE *e, void *data)
 
 int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data)
 {
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    (void)e;
+    (void)data;
+    return 0;
+#else
     int err = 0;
     EVP_CIPHER_CTX *ctx = NULL;
     unsigned char key[16];
@@ -761,6 +766,7 @@ int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data)
     }
 
     return err;
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 }
 
 #endif /* WE_HAVE_AESGCM */

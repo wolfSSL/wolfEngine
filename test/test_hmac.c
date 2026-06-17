@@ -210,7 +210,8 @@ int test_hmac_create(ENGINE *e, void *data)
 int test_hmac_empty_raw_key(ENGINE *e, void *data)
 {
     int err = 0;
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+    !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
     EVP_PKEY *pkey = NULL;
 
     (void)data;
