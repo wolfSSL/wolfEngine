@@ -298,7 +298,7 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     hkdf->salt = OPENSSL_memdup(ptr, num);
                     if (hkdf->salt == NULL) {
                         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
-                            "OPENSSL_memdup(salt)", hkdf->key);
+                            "OPENSSL_memdup(salt)", hkdf->salt);
                         ret = 0;
                     }
                 }
