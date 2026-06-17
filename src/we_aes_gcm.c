@@ -328,6 +328,9 @@ static int we_aes_gcm_update(we_AesGcm* aes, const unsigned char* in,
                            "out = %p]", aes, in, len, out);
 
     if (len != 0 && in != NULL) {
+        if (aes->tmp != NULL) {
+            OPENSSL_clear_free(aes->tmp, aes->tmpLen);
+        }
         aes->tmp = (unsigned char*)OPENSSL_malloc(len);
         if (aes->tmp == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_malloc",
