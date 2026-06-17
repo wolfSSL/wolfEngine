@@ -2032,6 +2032,7 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         ret = EVP_PKEY_assign_RSA(pkey, rsa);
         if (ret == 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "EVP_PKEY_assign_RSA", ret);
+            RSA_free(rsa);
         }
     }
 
