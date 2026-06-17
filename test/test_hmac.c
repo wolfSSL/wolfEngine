@@ -207,6 +207,27 @@ int test_hmac_create(ENGINE *e, void *data)
     return ret;
 }
 
+int test_hmac_empty_raw_key(ENGINE *e, void *data)
+{
+    int err = 0;
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    EVP_PKEY *pkey = NULL;
+
+    (void)data;
+
+    /* Importing an empty HMAC raw private key (NULL, 0) must succeed. */
+    pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_HMAC, e, NULL, 0);
+    err = pkey == NULL;
+
+    EVP_PKEY_free(pkey);
+#else
+    (void)e;
+    (void)data;
+#endif
+
+    return err;
+}
+
 #endif /* WE_HAVE_HMAC */
 
 

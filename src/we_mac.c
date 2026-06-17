@@ -1323,8 +1323,9 @@ static int we_hmac_pkey_asn1_set_priv_key(EVP_PKEY *pkey,
     if (EVP_PKEY_get0(pkey) != NULL) {
         ret = 0;
     }
-    /* Reject a NULL key or a length that would not fit in an int. */
-    if ((ret == 1) && ((priv == NULL) || (len > INT_MAX))) {
+    /* Reject a length that would not fit in an int, or a NULL key that claims
+     * a non-zero length. An empty key (NULL, 0) is valid for HMAC. */
+    if ((ret == 1) && ((len > INT_MAX) || ((priv == NULL) && (len != 0)))) {
         ret = 0;
     }
     if (ret == 1) {
