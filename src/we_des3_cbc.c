@@ -280,7 +280,7 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
     /* Get the DES3-CBC data to work with. */
     des3 = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
-    if (des3 != NULL) {
+    if (des3 == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", des3);
         ret = 0;
