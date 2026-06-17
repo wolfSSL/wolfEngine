@@ -328,22 +328,19 @@ static int we_aes_gcm_update(we_AesGcm* aes, const unsigned char* in,
                            "out = %p]", aes, in, len, out);
 
     if (len != 0 && in != NULL) {
-        if (aes->tmp != NULL) {
-            OPENSSL_clear_free(aes->tmp, aes->tmpLen);
-        }
-        aes->tmp = (unsigned char*)OPENSSL_malloc(len);
-        if (aes->tmp == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_malloc",
-                                       aes->tmp);
+        unsigned char *newTmp = (unsigned char*)OPENSSL_malloc(len);
+        if (newTmp == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_malloc", newTmp);
             ret = -1;
         }
         else {
-            /*
-             * All encryption/decryption is deferred to we_aes_gcm_final. We
-             * just save the input data and the address of the output buffer
-             * here.
-             */
-            XMEMCPY(aes->tmp, in, len);
+            /* Swap in the new buffer only on success so a failed allocation
+             * leaves the previously buffered state unchanged. */
+            if (aes->tmp != NULL) {
+                OPENSSL_clear_free(aes->tmp, aes->tmpLen);
+            }
+            XMEMCPY(newTmp, in, len);
+            aes->tmp = newTmp;
             aes->tmpLen = (int)len;
             aes->outputBuf = out;
             /* Return length of buffered input data. */
