@@ -358,7 +358,7 @@ void WOLFENGINE_BUFFER(int component, const unsigned char* buffer,
                        unsigned int length)
 {
     int i, buflen = (int)length, bufidx;
-    char line[(WOLFENGINE_LINE_LEN * 4) + 3]; /* \t00..0F | chars...chars\0 */
+    char line[(WOLFENGINE_LINE_LEN * 4) + 4]; /* \t00..0F | chars...chars\0 */
 
     if (!loggingEnabled) {
         return;
