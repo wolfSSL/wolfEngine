@@ -483,7 +483,8 @@ int test_aes256_cbc_stream(ENGINE *e, void *data)
 
 /******************************************************************************/
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 {
     int err = 0;
@@ -564,11 +565,13 @@ int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 #else
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 {
+    /* Stitched AES-CBC-HMAC is not a FIPS-validated cipher, so this path is
+     * not exercised under FIPS. */
     (void)e;
     (void)data;
     return 0;
 }
-#endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
+#endif
 
 #endif /* WE_HAVE_AESCBC */
 

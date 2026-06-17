@@ -1190,6 +1190,12 @@ int test_rsa_enc_dec_no_pad(ENGINE *e, void *data)
 
 int test_rsa_dec_no_pad_size_query(ENGINE *e, void *data)
 {
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    /* RSA_NO_PADDING with a sub-2048-bit key is not a FIPS-approved path. */
+    (void)e;
+    (void)data;
+    return 0;
+#else
     int err = 0;
     EVP_PKEY *pkey = NULL;
     EVP_PKEY_CTX *ctx = NULL;
@@ -1227,6 +1233,7 @@ int test_rsa_dec_no_pad_size_query(ENGINE *e, void *data)
     EVP_PKEY_free(pkey);
 
     return err;
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 }
 
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data)
