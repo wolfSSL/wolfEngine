@@ -94,7 +94,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         rc = wc_AesSetIV(&aes->aes, iv);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
-            ret = -1;
+            ret = 0;
         }
         else {
             /*
