@@ -349,6 +349,8 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     unsigned int pubLen = 0;
     BIGNUM *privBn = NULL;
     BIGNUM *pubBn = NULL;
+    unsigned char *gBuf = NULL;
+    int gBufLen = 0;
 #ifndef WE_DH_USE_GLOBAL_RNG
     WC_RNG *pRng = &engineDh->rng;
 #else
@@ -397,9 +399,6 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     if (ret == 1) {
         /* Check if private key already set. */
         if ((privBn = (BIGNUM *)DH_get0_priv_key(dh)) != NULL) {
-            unsigned char *gBuf;
-            int gBufLen;
-
             /* Get private key into buffer. */
             privLen = BN_bn2bin(privBn, priv);
             /* Get generator into buffer. */
@@ -493,6 +492,9 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     }
     if (pub != NULL) {
         OPENSSL_free(pub);
+    }
+    if (gBuf != NULL) {
+        OPENSSL_free(gBuf);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_generate_key_int", ret);
