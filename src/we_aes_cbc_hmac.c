@@ -297,8 +297,14 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
                 ret = -1;
         }
         if (ret != -1) {
-            /* Remove padding and MAC length. */
-            ret -= pb + 1 + SHA256_DIGEST_LENGTH;
+            /* Record must hold the padding and MAC or the length underflows. */
+            if (ret < pb + 1 + SHA256_DIGEST_LENGTH) {
+                ret = -1;
+            }
+            else {
+                /* Remove padding and MAC length. */
+                ret -= pb + 1 + SHA256_DIGEST_LENGTH;
+            }
         }
 
         /* Update record header to have correct message length. */
