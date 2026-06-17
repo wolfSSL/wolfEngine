@@ -89,9 +89,11 @@ TEST_CASE test_case[] = {
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
+    TEST_DECL(test_tls1_prf_bad_md, NULL),
 #endif
 #ifdef WE_HAVE_HKDF
     TEST_DECL(test_hkdf, NULL),
+    TEST_DECL(test_hkdf_bad_md, NULL),
 #endif
 #ifdef WE_HAVE_DES3CBC
     TEST_DECL(test_des3_cbc, NULL),

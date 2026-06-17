@@ -383,6 +383,28 @@ int test_tls1_prf(ENGINE *e, void *data)
     return err;
 }
 
+int test_tls1_prf_bad_md(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+
+    (void)data;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, e);
+    err = ctx == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_derive_init(ctx) != 1;
+    }
+    if (err == 0) {
+        /* Unknown digest name must fail, not dereference a NULL digest. */
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "md", "notadigest") > 0;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
 #endif /* WE_HAVE_TLS1_PRF */
 
 

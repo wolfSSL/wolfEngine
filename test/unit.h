@@ -118,10 +118,12 @@ int test_hmac_create(ENGINE *e, void *data);
 
 #ifdef WE_HAVE_TLS1_PRF
 int test_tls1_prf(ENGINE *e, void *data);
+int test_tls1_prf_bad_md(ENGINE *e, void *data);
 #endif
 
 #ifdef WE_HAVE_HKDF
 int test_hkdf(ENGINE *e, void *data);
+int test_hkdf_bad_md(ENGINE *e, void *data);
 #endif
 
 #ifdef WE_HAVE_DES3CBC

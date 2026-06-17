@@ -399,10 +399,16 @@ static int we_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     }
 #endif
     else if (XSTRNCMP(type, "md", 3) == 0) {
+        const EVP_MD *md = EVP_get_digestbyname(value);
         hkdf = (we_Hkdf *)EVP_PKEY_CTX_get_data(ctx);
         /* Cannot get here without initialization succeeding. */
-        hkdf->mdType =
-            we_nid_to_wc_hash_type(EVP_MD_type(EVP_get_digestbyname(value)));
+        if (md == NULL) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unsupported digest name");
+            ret = 0;
+        }
+        else {
+            hkdf->mdType = we_nid_to_wc_hash_type(EVP_MD_type(md));
+        }
     }
     else if (XSTRNCMP(type, "key", 4) == 0) {
         ret = EVP_PKEY_CTX_str2ctrl(ctx, EVP_PKEY_CTRL_HKDF_KEY, value);
