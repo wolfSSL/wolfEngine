@@ -577,10 +577,10 @@ int we_init_aescbc_hmac_meths(void)
     /* AES128-CBC HMAC-SHA256 */
     we_aes128_cbc_hmac_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc_hmac_sha256,
         WC_AES_BLOCK_SIZE, AES_128_KEY_SIZE);
-    if (we_aes128_cbc_ciph == NULL) {
+    if (we_aes128_cbc_hmac_ciph == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_meth_new - AES-128-CBC "
-                                   "HMAC SHA256", we_aes128_cbc_ciph);
+                                   "HMAC SHA256", we_aes128_cbc_hmac_ciph);
         ret = 0;
     }
     if (ret == 1) {
@@ -591,10 +591,10 @@ int we_init_aescbc_hmac_meths(void)
     if (ret == 1) {
         we_aes256_cbc_hmac_ciph = EVP_CIPHER_meth_new(
             NID_aes_256_cbc_hmac_sha256, WC_AES_BLOCK_SIZE, AES_256_KEY_SIZE);
-        if (we_aes256_cbc_ciph == NULL) {
+        if (we_aes256_cbc_hmac_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                        "EVP_CIPHER_meth_new - AES-256-CBC "
-                                       "HMAC SHA256", we_aes256_cbc_ciph);
+                                       "HMAC SHA256", we_aes256_cbc_hmac_ciph);
             ret = 0;
         }
     }
