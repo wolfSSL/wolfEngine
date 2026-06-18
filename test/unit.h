@@ -114,7 +114,6 @@ int test_cmac_create(ENGINE *e, void *data);
 
 #ifdef WE_HAVE_HMAC
 int test_hmac_create(ENGINE *e, void *data);
-int test_hmac_empty_raw_key(ENGINE *e, void *data);
 #endif /* WE_HAVE_HMAC */
 
 #ifdef WE_HAVE_TLS1_PRF

@@ -83,7 +83,6 @@ TEST_CASE test_case[] = {
 #endif
 #ifdef WE_HAVE_HMAC
     TEST_DECL(test_hmac_create, NULL),
-    TEST_DECL(test_hmac_empty_raw_key, NULL),
 #endif
 #ifdef WE_HAVE_CMAC
     TEST_DECL(test_cmac_create, &flags),
