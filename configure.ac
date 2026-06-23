@@ -721,6 +721,10 @@ AC_SUBST([AM_CPPFLAGS])
 AC_SUBST([AM_CFLAGS])
 AC_SUBST([AM_LDFLAGS])
 
+# SBOM generation tools
+AC_CHECK_PROG([PYTHON3], [python3], [python3])
+AC_CHECK_PROG([PYSPDXTOOLS], [pyspdxtools], [pyspdxtools])
+
 AC_CONFIG_FILES([Makefile
        rpm/spec])
 AC_OUTPUT
