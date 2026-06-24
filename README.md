@@ -189,6 +189,34 @@ Visual Studio.
 
 Example programs using wolfEngine can be found in the `examples/` subdirectory.
 
+## SBOM / EU CRA Compliance
+
+wolfEngine generates a Software Bill of Materials (SBOM) in CycloneDX 1.6 and
+SPDX 2.3 formats to support compliance with the EU Cyber Resilience Act (CRA).
+
+```sh
+make sbom WOLFSSL_DIR=/path/to/wolfssl
+```
+
+Requires `python3` and `pyspdxtools` (`pip install spdx-tools`). `WOLFSSL_DIR`
+must point to a wolfssl source tree containing `scripts/gen-sbom` (branch
+`feat/sbom-embedded`, or `master` once wolfSSL/wolfssl#10343 merges).
+
+Output files in the build directory:
+
+| File | Format |
+|------|--------|
+| `wolfengine-1.4.0.cdx.json` | CycloneDX 1.6 |
+| `wolfengine-1.4.0.spdx.json` | SPDX 2.3 JSON |
+| `wolfengine-1.4.0.spdx` | SPDX 2.3 tag-value |
+
+```sh
+make install-sbom    # installs to $(datadir)/doc/wolfengine/
+make uninstall-sbom
+```
+
+For further CRA guidance see [wolfssl/doc/CRA.md](https://github.com/wolfSSL/wolfssl/blob/master/doc/CRA.md).
+
 ## Need Help?
 
 Please reach out to support@wolfssl.com for technical support. If you're
