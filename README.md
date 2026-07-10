@@ -193,6 +193,13 @@ Example programs using wolfEngine can be found in the `examples/` subdirectory.
 
 wolfEngine generates a Software Bill of Materials (SBOM) in CycloneDX 1.6 and
 SPDX 2.3 formats to support compliance with the EU Cyber Resilience Act (CRA).
+The SBOM records the configured build options, hashes the built `libwolfengine`
+library artifact (shared or static; ELF, Mach-O, or PE), and (with a
+sufficiently new `gen-sbom`) lists both wolfSSL and OpenSSL as dependencies so
+vulnerability scanners can associate wolfSSL and OpenSSL advisories with a
+wolfEngine deployment. Output is reproducible: set `SOURCE_DATE_EPOCH` (or
+build from a git checkout, which uses the last commit time) and repeated runs
+are byte-identical.
 
 ```sh
 make sbom WOLFSSL_DIR=/path/to/wolfssl
@@ -200,20 +207,35 @@ make sbom WOLFSSL_DIR=/path/to/wolfssl
 
 Requires `python3` and `pyspdxtools` (`pip install spdx-tools`). `WOLFSSL_DIR`
 must point to a wolfssl source tree containing `scripts/gen-sbom` (branch
-`feat/sbom-embedded`, or `master` once wolfSSL/wolfssl#10343 merges).
+`feat/sbom-embedded`, or `master` once wolfSSL/wolfssl#10343 merges); note that
+`--with-wolfssl` normally points at an install prefix, which does not ship
+`gen-sbom`, so pass a source tree here.
 
-Output files in the build directory:
+Output: `wolfengine-<version>.cdx.json`, `wolfengine-<version>.spdx.json`, `wolfengine-<version>.spdx`
 
-| File | Format |
-|------|--------|
-| `wolfengine-1.4.0.cdx.json` | CycloneDX 1.6 |
-| `wolfengine-1.4.0.spdx.json` | SPDX 2.3 JSON |
-| `wolfengine-1.4.0.spdx` | SPDX 2.3 tag-value |
+Optional overrides:
+
+- `SBOM_LICENSE_OVERRIDE` - SPDX expression to use instead of the licence
+  parsed from `COPYING` (e.g. `LicenseRef-wolfSSL-Commercial` for commercial
+  licensees). Defaults to `GPL-3.0-or-later` (the per-file header licence).
+- `SBOM_LICENSE_TEXT` - path to the licence text for any `LicenseRef-*` used in
+  `SBOM_LICENSE_OVERRIDE` (required by SPDX 2.3).
+- `SBOM_WOLFSSL_VERSION` - version recorded for the wolfSSL dependency;
+  auto-detected from `WOLFSSL_DIR/wolfssl/version.h` (or wolfSSL's `pkg-config`
+  entry) when unset.
+- `SBOM_OPENSSL_VERSION` - version recorded for the OpenSSL dependency;
+  resolved via OpenSSL's `pkg-config` entry when unset.
 
 ```sh
 make install-sbom    # installs to $(datadir)/doc/wolfengine/
 make uninstall-sbom
 ```
+
+Note: recording wolfSSL and OpenSSL as dependencies and emitting
+wolfEngine-specific project URLs require the `gen-sbom` from
+wolfSSL/wolfssl#10343. Against an older `gen-sbom`, `make sbom` still succeeds
+and produces a valid SBOM, but omits the dependency entries and inherits
+wolfSSL's project URLs.
 
 For further CRA guidance see [wolfssl/doc/CRA.md](https://github.com/wolfSSL/wolfssl/blob/master/doc/CRA.md).
 
