@@ -68,6 +68,11 @@ SBOM_DEP_OPENSSL  = yes
 # (e.g. LicenseRef-wolfSSL-Commercial).
 SBOM_LICENSE_OVERRIDE ?= GPL-3.0-or-later
 
+# wolfEngine declares AC_CONFIG_HEADERS([include/config.h]) and carries its
+# feature macros (-DWE_HAVE_*, -DWE_NO_DYNAMIC_ENGINE, ...) in AM_CFLAGS, so
+# point the SBOM build-options capture at the real config header.
+SBOM_CONFIG_H = $(abs_builddir)/include/config.h
+
 EXTRA_DIST += scripts/sbom.am
 
 include scripts/sbom.am
