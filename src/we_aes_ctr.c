@@ -94,7 +94,7 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         rc = wc_AesSetIV(&aes->aes, iv);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);
-            ret = -1;
+            ret = 0;
         }
         else {
             /*
@@ -150,7 +150,7 @@ static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             }
             else {
                 unsigned int num = EVP_CIPHER_CTX_num(ctx);
-                num = (num + len) % AES_128_KEY_SIZE;
+                num = (num + len) % WC_AES_BLOCK_SIZE;
                 EVP_CIPHER_CTX_set_num(ctx, num);
 
                 XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->aes.reg,

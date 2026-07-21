@@ -168,7 +168,7 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
             OPENSSL_free(aes->aad);
         }
         if (aes->tmp != NULL) {
-            OPENSSL_free(aes->tmp);
+            OPENSSL_clear_free(aes->tmp, aes->tmpLen);
             aes->tmp = NULL;
         }
         aes->tmpLen = 0;
@@ -328,19 +328,19 @@ static int we_aes_gcm_update(we_AesGcm* aes, const unsigned char* in,
                            "out = %p]", aes, in, len, out);
 
     if (len != 0 && in != NULL) {
-        aes->tmp = (unsigned char*)OPENSSL_malloc(len);
-        if (aes->tmp == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_malloc",
-                                       aes->tmp);
+        unsigned char *newTmp = (unsigned char*)OPENSSL_malloc(len);
+        if (newTmp == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_malloc", newTmp);
             ret = -1;
         }
         else {
-            /*
-             * All encryption/decryption is deferred to we_aes_gcm_final. We
-             * just save the input data and the address of the output buffer
-             * here.
-             */
-            XMEMCPY(aes->tmp, in, len);
+            /* Swap in the new buffer only on success so a failed allocation
+             * leaves the previously buffered state unchanged. */
+            if (aes->tmp != NULL) {
+                OPENSSL_clear_free(aes->tmp, aes->tmpLen);
+            }
+            XMEMCPY(newTmp, in, len);
+            aes->tmp = newTmp;
             aes->tmpLen = (int)len;
             aes->outputBuf = out;
             /* Return length of buffered input data. */
@@ -430,7 +430,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
     }
 
     if (aes->tmp != NULL) {
-        OPENSSL_free(aes->tmp);
+        OPENSSL_clear_free(aes->tmp, aes->tmpLen);
         aes->tmp = NULL;
     }
     aes->tmpLen = 0;
@@ -443,7 +443,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
 
     if (aes->ivInc) {
         int i;
-        for (i = aes->ivLen - 1; i >= aes->ivLen - 8; i--) {
+        for (i = aes->ivLen - 1; (i >= 0) && (i >= aes->ivLen - 8); i--) {
             if ((++aes->iv[i]) != 0) {
                 break;
             }
@@ -649,7 +649,8 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] size of generated IV/nonce
                  *   ptr [in] generated IV/nonce data
                  */
-                if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ)) {
+                if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ) || (ptr == NULL) ||
+                        (arg > aes->ivLen)) {
                     XSNPRINTF(errBuff, sizeof(errBuff), "Invalid nonce length "
                               "%d", arg);
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);

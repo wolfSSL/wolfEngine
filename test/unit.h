@@ -118,10 +118,12 @@ int test_hmac_create(ENGINE *e, void *data);
 
 #ifdef WE_HAVE_TLS1_PRF
 int test_tls1_prf(ENGINE *e, void *data);
+int test_tls1_prf_bad_md(ENGINE *e, void *data);
 #endif
 
 #ifdef WE_HAVE_HKDF
 int test_hkdf(ENGINE *e, void *data);
+int test_hkdf_bad_md(ENGINE *e, void *data);
 #endif
 
 #ifdef WE_HAVE_DES3CBC
@@ -148,6 +150,7 @@ int test_aes256_cbc(ENGINE *e, void *data);
 int test_aes128_cbc_stream(ENGINE *e, void *data);
 int test_aes192_cbc_stream(ENGINE *e, void *data);
 int test_aes256_cbc_stream(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data);
 
 #endif
 
@@ -170,6 +173,7 @@ int test_aes256_gcm(ENGINE *e, void *data);
 int test_aes128_gcm_fixed(ENGINE *e, void *data);
 int test_aes128_gcm_tls(ENGINE *e, void *data);
 int test_aes_gcm_evp_cipher(ENGINE *e, void *data);
+int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_AESGCM */
 
@@ -236,6 +240,7 @@ int test_rsa_sign_verify_no_pad(ENGINE *e, void *data);
 int test_rsa_sign_verify_pss(ENGINE *e, void *data);
 int test_rsa_enc_dec_pkcs1(ENGINE *e, void *data);
 int test_rsa_enc_dec_no_pad(ENGINE *e, void *data);
+int test_rsa_dec_no_pad_size_query(ENGINE *e, void *data);
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data);
 int test_rsa_pkey_keygen(ENGINE *e, void *data);
 int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data);

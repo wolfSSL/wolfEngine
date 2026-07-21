@@ -101,7 +101,7 @@ static void we_hkdf_cleanup(EVP_PKEY_CTX *ctx)
         }
         /* Clear and free salt. */
         if (hkdf->salt != NULL) {
-            OPENSSL_free(hkdf->salt);
+            OPENSSL_clear_free(hkdf->salt, hkdf->saltSz);
         }
         /* Clear info - sensitive data. */
         OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
@@ -298,7 +298,7 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     hkdf->salt = OPENSSL_memdup(ptr, num);
                     if (hkdf->salt == NULL) {
                         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
-                            "OPENSSL_memdup(salt)", hkdf->key);
+                            "OPENSSL_memdup(salt)", hkdf->salt);
                         ret = 0;
                     }
                 }
@@ -399,10 +399,16 @@ static int we_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     }
 #endif
     else if (XSTRNCMP(type, "md", 3) == 0) {
+        const EVP_MD *md = EVP_get_digestbyname(value);
         hkdf = (we_Hkdf *)EVP_PKEY_CTX_get_data(ctx);
         /* Cannot get here without initialization succeeding. */
-        hkdf->mdType =
-            we_nid_to_wc_hash_type(EVP_MD_type(EVP_get_digestbyname(value)));
+        if (md == NULL) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unsupported digest name");
+            ret = 0;
+        }
+        else {
+            hkdf->mdType = we_nid_to_wc_hash_type(EVP_MD_type(md));
+        }
     }
     else if (XSTRNCMP(type, "key", 4) == 0) {
         ret = EVP_PKEY_CTX_str2ctrl(ctx, EVP_PKEY_CTRL_HKDF_KEY, value);

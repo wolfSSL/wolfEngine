@@ -305,8 +305,15 @@ static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     }
     else if (XSTRNCMP(type, "md", 3) == 0) {
         we_Tls1_Prf *tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
+        const EVP_MD *md = EVP_get_digestbyname(value);
         /* Cannot get here without initialization succeeding. */
-        tls1Prf->mdType = EVP_MD_type(EVP_get_digestbyname(value));
+        if (md == NULL) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unsupported digest name");
+            ret = 0;
+        }
+        else {
+            tls1Prf->mdType = EVP_MD_type(md);
+        }
     }
     else if (XSTRNCMP(type, "secret", 7) == 0) {
         ret = EVP_PKEY_CTX_str2ctrl(ctx, EVP_PKEY_CTRL_TLS_SECRET, value);

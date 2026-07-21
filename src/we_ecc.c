@@ -834,8 +834,12 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         }
     }
     /* wolfSSL FIPS is not checking SEQUENCE length. */
-    if ((ret == 1) && (sig[0] == 0x30)) {
-        size_t len;
+    if ((ret == 1) && ((sig == NULL) || (sigLen < 2))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature too short");
+        ret = -1;
+    }
+    else if ((ret == 1) && (sig[0] == 0x30)) {
+        size_t len = 0;
         int o = 1;
 
         /* Check for indefinite length - length not specified. */
@@ -846,10 +850,17 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         /* Check for multi-byte length. */
         else if (sig[o] > 0x80) {
             byte cnt = (sig[o++]) & 0x7f;
-            len = 0;
-            while ((cnt--) > 0) {
-                len <<= 8;
-                len += sig[o++];
+            /* Length bytes must be present and fit in the length variable. */
+            if ((cnt == 0) || (cnt > sizeof(len)) ||
+                    ((size_t)o + cnt > sigLen)) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature length invalid");
+                ret = -1;
+            }
+            else {
+                while ((cnt--) > 0) {
+                    len <<= 8;
+                    len += sig[o++];
+                }
             }
         }
         /* Length in byte. */
@@ -858,7 +869,7 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         }
         /* Check signature length is:
          *     SEQUENCE header length + SQUENCE data length */
-        if ((ret == 1) && (o + len != sigLen)) {
+        if ((ret == 1) && ((size_t)o + len != sigLen)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature length invalid");
             ret = -1;
         }
@@ -2102,14 +2113,6 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         rc = we_ec_set_private(&we_key, curveId, key);
         if (rc != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_ec_set_private", rc);
-            err = 1;
-        }
-    }
-
-    if (err == 0) {
-        rc = mp_init_multi(&sig_r, &sig_s, NULL, NULL, NULL, NULL);
-        if (rc != MP_OKAY) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init_multi", rc);
             err = 1;
         }
     }

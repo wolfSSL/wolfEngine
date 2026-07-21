@@ -727,6 +727,48 @@ int test_aes_gcm_evp_cipher(ENGINE *e, void *data)
     return err;
 }
 
+int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data)
+{
+#if defined(HAVE_FIPS) || defined(HAVE_FIPS_VERSION)
+    (void)e;
+    (void)data;
+    return 0;
+#else
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[16];
+    unsigned char gen[16];
+
+    (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(gen, 0, sizeof(gen));
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        /* Set an IV length shorter than the nonce we will ask to generate. */
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 1, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, NULL) != 1;
+    }
+    if (err == 0) {
+        /* Generating a nonce larger than the IV length must be rejected, not
+         * read from before the IV buffer. */
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN, 12, gen) > 0;
+    }
+
+    if (ctx != NULL) {
+        EVP_CIPHER_CTX_free(ctx);
+    }
+
+    return err;
+#endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
+}
+
 #endif /* WE_HAVE_AESGCM */
 
 /******************************************************************************/

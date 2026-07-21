@@ -287,17 +287,22 @@ static int we_mac_hmac_init(EVP_PKEY_CTX *ctx, we_Mac *mac)
         }
     }
     if (ret == 1 && mac->keySz < blockSize) {
+        unsigned char *newKey;
         /* If the key is smaller than the block size of the underlying hash
-         * algorithm, we need to pad the key with zeroes to the block
-         * size. */
-        mac->key = OPENSSL_realloc(mac->key, blockSize);
-        if (mac->key == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_realloc", 
-                mac->key);
+         * algorithm, we need to pad the key with zeroes to the block size.
+         * Pad into a fresh buffer so the old key bytes can be wiped. */
+        newKey = (unsigned char *)OPENSSL_malloc(blockSize);
+        if (newKey == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_malloc", newKey);
             ret = 0;
         }
         else {
-            XMEMSET(mac->key + mac->keySz, 0, blockSize - mac->keySz);
+            if (mac->keySz > 0) {
+                XMEMCPY(newKey, mac->key, mac->keySz);
+            }
+            XMEMSET(newKey + mac->keySz, 0, blockSize - mac->keySz);
+            OPENSSL_clear_free(mac->key, mac->keySz);
+            mac->key = newKey;
             mac->keySz = blockSize;
         }
     }
@@ -747,7 +752,11 @@ static int we_hmac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     }
     if (ret == 1) {
         /* Assign algorithm and key to PKEY. */
-        EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, key);
+        if (EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, key) != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "EVP_PKEY_assign", 0);
+            ASN1_OCTET_STRING_free(key);
+            ret = 0;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_keygen", ret);
@@ -1314,6 +1323,10 @@ static int we_hmac_pkey_asn1_set_priv_key(EVP_PKEY *pkey,
     if (EVP_PKEY_get0(pkey) != NULL) {
         ret = 0;
     }
+    /* Reject a NULL key or a length that would not fit in an int. */
+    if ((ret == 1) && ((priv == NULL) || (len > INT_MAX))) {
+        ret = 0;
+    }
     if (ret == 1) {
         /* Allocate a new ASN.1 octet string to assign to pkey. */
         asn1 = ASN1_OCTET_STRING_new();
@@ -1685,8 +1698,10 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, data = %p, "
                            "dataSz = %zu]", ctx, data, dataSz);
 
-    /* Validate parameters. */
-    if ((ctx == NULL) || (data == NULL)) {
+    /* Validate parameters. A zero-length update is a no-op (matching OpenSSL
+     * and the HMAC path), so a NULL data pointer is only an error when there
+     * is data to process. */
+    if ((ctx == NULL) || ((data == NULL) && (dataSz != 0))) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_cmac_pkey_update, ctx: ", ctx);
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
@@ -1713,7 +1728,7 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
         }
     }
 
-    if (ret == 1) {
+    if ((ret == 1) && (dataSz != 0)) {
         /* Update the wolfCrypt CMAC object with more data. */
         rc = wc_CmacUpdate(&mac->state.cmac, (const byte*)data, (word32)dataSz);
         if (rc != 0) {

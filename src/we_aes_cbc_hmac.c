@@ -297,8 +297,14 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
                 ret = -1;
         }
         if (ret != -1) {
-            /* Remove padding and MAC length. */
-            ret -= pb + 1 + SHA256_DIGEST_LENGTH;
+            /* Record must hold the padding and MAC or the length underflows. */
+            if (ret < pb + 1 + SHA256_DIGEST_LENGTH) {
+                ret = -1;
+            }
+            else {
+                /* Remove padding and MAC length. */
+                ret -= pb + 1 + SHA256_DIGEST_LENGTH;
+            }
         }
 
         /* Update record header to have correct message length. */
@@ -577,10 +583,10 @@ int we_init_aescbc_hmac_meths(void)
     /* AES128-CBC HMAC-SHA256 */
     we_aes128_cbc_hmac_ciph = EVP_CIPHER_meth_new(NID_aes_128_cbc_hmac_sha256,
         WC_AES_BLOCK_SIZE, AES_128_KEY_SIZE);
-    if (we_aes128_cbc_ciph == NULL) {
+    if (we_aes128_cbc_hmac_ciph == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_meth_new - AES-128-CBC "
-                                   "HMAC SHA256", we_aes128_cbc_ciph);
+                                   "HMAC SHA256", we_aes128_cbc_hmac_ciph);
         ret = 0;
     }
     if (ret == 1) {
@@ -591,10 +597,10 @@ int we_init_aescbc_hmac_meths(void)
     if (ret == 1) {
         we_aes256_cbc_hmac_ciph = EVP_CIPHER_meth_new(
             NID_aes_256_cbc_hmac_sha256, WC_AES_BLOCK_SIZE, AES_256_KEY_SIZE);
-        if (we_aes256_cbc_ciph == NULL) {
+        if (we_aes256_cbc_hmac_ciph == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                        "EVP_CIPHER_meth_new - AES-256-CBC "
-                                       "HMAC SHA256", we_aes256_cbc_ciph);
+                                       "HMAC SHA256", we_aes256_cbc_hmac_ciph);
             ret = 0;
         }
     }

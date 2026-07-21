@@ -89,9 +89,11 @@ TEST_CASE test_case[] = {
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
+    TEST_DECL(test_tls1_prf_bad_md, NULL),
 #endif
 #ifdef WE_HAVE_HKDF
     TEST_DECL(test_hkdf, NULL),
+    TEST_DECL(test_hkdf_bad_md, NULL),
 #endif
 #ifdef WE_HAVE_DES3CBC
     TEST_DECL(test_des3_cbc, NULL),
@@ -112,6 +114,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_cbc_stream, NULL),
     TEST_DECL(test_aes192_cbc_stream, NULL),
     TEST_DECL(test_aes256_cbc_stream, NULL),
+    TEST_DECL(test_aes128_cbc_hmac_tls_short, NULL),
 #endif
 #ifdef WE_HAVE_AESCTR
     TEST_DECL(test_aes128_ctr_stream, NULL),
@@ -127,6 +130,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_gcm_fixed, NULL),
     TEST_DECL(test_aes128_gcm_tls, NULL),
     TEST_DECL(test_aes_gcm_evp_cipher, NULL),
+    TEST_DECL(test_aes128_gcm_iv_gen_bounds, NULL),
 #endif
 #ifdef WE_HAVE_AESCCM
     TEST_DECL(test_aes128_ccm, NULL),
@@ -186,6 +190,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_sign_verify_pss, NULL),
     TEST_DECL(test_rsa_enc_dec_pkcs1, NULL),
     TEST_DECL(test_rsa_enc_dec_no_pad, NULL),
+    TEST_DECL(test_rsa_dec_no_pad_size_query, NULL),
     TEST_DECL(test_rsa_enc_dec_oaep, NULL),
     TEST_DECL(test_rsa_pkey_keygen, NULL),
     TEST_DECL(test_rsa_pkey_invalid_key_size, NULL),

@@ -446,4 +446,4 @@ RAND_METHOD we_rand_method ={
  */
 RAND_METHOD *we_random_method = &we_rand_method;
 
-#endif /* WE_HAVE_DH */
+#endif /* WE_HAVE_RANDOM */

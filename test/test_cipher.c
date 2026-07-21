@@ -481,6 +481,106 @@ int test_aes256_cbc_stream(ENGINE *e, void *data)
     return err;
 }
 
+/******************************************************************************/
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
+int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
+{
+    int err = 0;
+    int outLen = 0;
+    int decLen = 0;
+    EVP_CIPHER_CTX *encCtx = NULL;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = EVP_aes_128_cbc_hmac_sha256();
+    unsigned char key[16];
+    unsigned char macKey[SHA256_DIGEST_LENGTH];
+    unsigned char iv[16];
+    unsigned char zero[16];
+    unsigned char record[32];
+    unsigned char out[32];
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN];
+
+    (void)data;
+
+    /* OpenSSL only provides the stitched AES-CBC-HMAC-SHA256 cipher on
+     * platforms where it has a hand-written assembly implementation (e.g.
+     * AES-NI x86_64); elsewhere EVP_aes_128_cbc_hmac_sha256() returns NULL,
+     * so there is nothing to exercise. */
+    if (cipher == NULL) {
+        return 0;
+    }
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(macKey, 0, sizeof(macKey));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(zero, 0, sizeof(zero));
+    XMEMSET(out, 0, sizeof(out));
+    XMEMSET(aad, 0, sizeof(aad));
+
+    /* Explicit IV is the first block of the record. */
+    XMEMCPY(record, iv, sizeof(iv));
+
+    /* Craft a single ciphertext block that decrypts to all zeros so the
+     * recovered pad byte is 0 and the padding check passes. */
+    err = (encCtx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(encCtx, EVP_aes_128_cbc(), NULL, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(encCtx, 0) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(encCtx, record + 16, &outLen, zero,
+                                sizeof(zero)) != 1;
+    }
+    EVP_CIPHER_CTX_free(encCtx);
+
+    /* TLS 1.2 record header so the stitched cipher takes the explicit-IV
+     * path. */
+    aad[9]  = (unsigned char)(TLS1_2_VERSION >> 8);
+    aad[10] = (unsigned char)(TLS1_2_VERSION);
+    aad[11] = 0;
+    aad[12] = 16;
+
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad)
+              != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        /* Undersized, block-aligned record: explicit IV plus a single block,
+         * which is smaller than IV + pad + MAC. The engine must reject it and
+         * must not underflow the record length. */
+        decLen = EVP_Cipher(ctx, out, record, sizeof(record));
+        err = (decLen > 0);
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+#else
+int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
+{
+    /* Stitched AES-CBC-HMAC is not a FIPS-validated cipher, so this path is
+     * not exercised under FIPS. */
+    (void)e;
+    (void)data;
+    return 0;
+}
+#endif
+
 #endif /* WE_HAVE_AESCBC */
 
 /******************************************************************************/

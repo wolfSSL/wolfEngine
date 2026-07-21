@@ -248,7 +248,7 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
     /* Get the AES-CBC data to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
-    if (aes != NULL) {
+    if (aes == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
@@ -428,7 +428,7 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
-    if ((ret == 1) && (key == NULL)) {
+    if ((ret == 1) && (key != NULL)) {
         WOLFENGINE_MSG(WE_LOG_CIPHER,
                        "Initializing wolfCrypt Aes structure: %p", &aes->aes);
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
@@ -436,23 +436,22 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
+        if (ret == 1) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
+                           EVP_CIPHER_CTX_key_length(ctx));
+            rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
+                              NULL, enc ? AES_ENCRYPTION : AES_DECRYPTION);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
+                ret = 0;
+            }
+        }
     }
 
     if (ret == 1) {
         aes->over = 0;
         /* Store whether encrypting. */
         aes->enc = enc;
-    }
-
-    if ((ret == 1) && (key != NULL)) {
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
-                       EVP_CIPHER_CTX_key_length(ctx));
-        rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
-                          NULL, enc ? AES_ENCRYPTION : AES_DECRYPTION);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
-            ret = 0;
-        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ecb_init", ret);
@@ -732,7 +731,7 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
     /* Get the AES-ECB data to work with. */
     aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
-    if (aes != NULL) {
+    if (aes == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;

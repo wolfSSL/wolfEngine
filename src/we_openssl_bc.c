@@ -326,11 +326,11 @@ int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len)
         return 0;
 
     if (EC_KEY_set_private_key(eckey, priv_key) == 0) {
-        BN_free(priv_key);
+        BN_clear_free(priv_key);
         return 0;
     }
-    
-    BN_free(priv_key);
+
+    BN_clear_free(priv_key);
     return 1;
 }
 
@@ -626,7 +626,7 @@ int DH_set0_key(DH *dh, BIGNUM *pub_key, BIGNUM *priv_key)
         dh->pub_key = pub_key;
     }
     if (priv_key != NULL) {
-        BN_free(dh->priv_key);
+        BN_clear_free(dh->priv_key);
         dh->priv_key = priv_key;
     }
 
