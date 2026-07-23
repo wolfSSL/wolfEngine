@@ -5,6 +5,7 @@ noinst_HEADERS =
 check_PROGRAMS =
 dist_noinst_SCRIPTS =
 DISTCLEANFILES =
+CLEANFILES =
 pkginclude_HEADERS =
 EXTRA_DIST =
 
@@ -47,3 +48,31 @@ AM_DISTCHECK_CONFIGURE_FLAGS=CPPFLAGS="-I@abs_top_srcdir@/include" --with-openss
 EXTRA_DIST += README.md \
               engine.conf \
               ChangeLog.md
+
+# SBOM generation (CRA compliance).  The recipe is shared across the wolfSSL
+# stack's autotools products in scripts/sbom.am; wolfEngine just declares what
+# it is (a libwolfengine shared library that links both wolfSSL and OpenSSL) and
+# includes it.  WOLFSSL_DIR must point to a wolfssl source tree containing
+# scripts/gen-sbom; it defaults to the --with-wolfssl location, which is an
+# install prefix, so for `make sbom` pass a source tree:
+# make sbom WOLFSSL_DIR=/path/to/wolfssl.
+SBOM_PKGNAME      = wolfengine
+SBOM_LICENSE_FILE = $(srcdir)/COPYING
+SBOM_DEP_WOLFSSL  = yes
+SBOM_DEP_OPENSSL  = yes
+
+# wolfEngine is GPLv3-or-later (per the per-file source headers: "either version
+# 3 of the License, or (at your option) any later version") or commercial.  Pin
+# the header-accurate SPDX id here so the SBOM is correct regardless of the
+# gen-sbom version's licence detection; commercial licensees can override it
+# (e.g. LicenseRef-wolfSSL-Commercial).
+SBOM_LICENSE_OVERRIDE ?= GPL-3.0-or-later
+
+# wolfEngine declares AC_CONFIG_HEADERS([include/config.h]) and carries its
+# feature macros (-DWE_HAVE_*, -DWE_NO_DYNAMIC_ENGINE, ...) in AM_CFLAGS, so
+# point the SBOM build-options capture at the real config header.
+SBOM_CONFIG_H = $(abs_builddir)/include/config.h
+
+EXTRA_DIST += scripts/sbom.am
+
+include scripts/sbom.am
