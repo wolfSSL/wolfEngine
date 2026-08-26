@@ -173,7 +173,10 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
         }
         aes->tmpLen = 0;
         aes->outputBuf = NULL;
-        wc_AesFree(&aes->aes);
+        if (aes->init) {
+            wc_AesFree(&aes->aes);
+            aes->init = 0;
+        }
     }
 
     return ret;
