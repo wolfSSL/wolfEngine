@@ -208,8 +208,14 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_tls_cipher");
 
+    /* Reject records too short to hold the explicit IV and tag. */
+    if ((len != 0) &&
+        (len < EVP_GCM_TLS_EXPLICIT_IV_LEN + EVP_GCM_TLS_TAG_LEN)) {
+        ret = -1;
+    }
+
     /* Doing the TLS variation. */
-    if (aes->enc) {
+    if ((ret == 1) && aes->enc) {
         /* Plaintext is input buffer without IV and tag. */
         word32 encLen = (word32)len - EVP_GCM_TLS_EXPLICIT_IV_LEN
                                     - EVP_GCM_TLS_TAG_LEN;
@@ -243,7 +249,7 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
             ret = (int)len;
         }
     }
-    else {
+    else if (ret == 1) {
         /* Cipher text is input buffer without IV and tag. */
         word32 decLen = (word32)len - EVP_GCM_TLS_EXPLICIT_IV_LEN
                                     - EVP_GCM_TLS_TAG_LEN;
