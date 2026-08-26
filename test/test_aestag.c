@@ -575,6 +575,93 @@ static int test_aes_tag_tls(ENGINE *e, void *data, const EVP_CIPHER *cipher,
     return err;
 }
 
+static int test_aes_tag_tls_multi(ENGINE *e, void *data,
+                                  const EVP_CIPHER *cipher, int keyLen,
+                                  int ccm)
+{
+    int err;
+    int i;
+    int j;
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
+    unsigned char msg[24];
+    unsigned char rec[4][48];
+    unsigned char key[32];
+    unsigned char iv[EVP_GCM_TLS_FIXED_IV_LEN];
+    unsigned char expIv[EVP_GCM_TLS_EXPLICIT_IV_LEN];
+    int numRec = (int)(sizeof(rec) / sizeof(rec[0]));
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    (void)data;
+
+    aad[8]  = 23; /* Content type */
+    aad[9]  = 3;  /* Protocol major version */
+    aad[10] = 3;  /* Protocol minor version */
+    aad[12] = sizeof(rec[0]) - EVP_GCM_TLS_TAG_LEN;
+
+    err = (RAND_bytes(key, keyLen) != 1) ||
+          (RAND_bytes(iv, (int)sizeof(iv)) != 1) ||
+          (RAND_bytes(msg, (int)sizeof(msg)) != 1);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, ccm ? NULL : key, NULL) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, 16, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  (int)sizeof(iv), iv) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, NULL) != 1;
+    }
+
+    for (i = 0; (err == 0) && (i < numRec); i++) {
+        XMEMSET(rec[i], 0, sizeof(rec[i]));
+        XMEMCPY(rec[i] + EVP_GCM_TLS_EXPLICIT_IV_LEN, msg, sizeof(msg));
+        aad[7] = (unsigned char)i;
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) !=
+                                  EVP_GCM_TLS_TAG_LEN;
+        if (err == 0) {
+            err = EVP_Cipher(ctx, rec[i], rec[i], (int)sizeof(rec[i])) !=
+                  (int)sizeof(rec[i]);
+        }
+        if (err == 0) {
+            PRINT_BUFFER("Explicit IV", rec[i], EVP_GCM_TLS_EXPLICIT_IV_LEN);
+        }
+    }
+
+    for (i = 1; (err == 0) && (i < numRec); i++) {
+        XMEMCPY(expIv, rec[i - 1], sizeof(expIv));
+        for (j = (int)sizeof(expIv) - 1; (j >= 0) && (++expIv[j] == 0); j--) {
+            /* Nothing to do. */
+        }
+        err = memcmp(rec[i], expIv, sizeof(expIv)) != 0;
+    }
+
+    aad[12] = sizeof(rec[0]);
+    for (i = 0; (err == 0) && (i < numRec); i++) {
+        aad[7] = (unsigned char)i;
+        PRINT_MSG("Decrypt with OpenSSL - TLS");
+        err = test_aes_tag_tls_dec(NULL, cipher, key, iv, (int)sizeof(iv),
+                                   aad, rec[i], (int)sizeof(rec[i]), ccm);
+        if (err == 0) {
+            err = memcmp(rec[i] + EVP_GCM_TLS_EXPLICIT_IV_LEN, msg,
+                         sizeof(msg)) != 0;
+        }
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
 #endif /* WE_HAVE_AESGCM || WE_HAVE_AESCCM */
 
 #ifdef WE_HAVE_AESGCM
@@ -636,6 +723,13 @@ int test_aes128_gcm_tls(ENGINE *e, void *data)
 {
     return test_aes_tag_tls(e, data, EVP_aes_128_gcm(), 16,
                             EVP_GCM_TLS_FIXED_IV_LEN, 0);
+}
+
+/******************************************************************************/
+
+int test_aes_gcm_tls_multi_record(ENGINE *e, void *data)
+{
+    return test_aes_tag_tls_multi(e, data, EVP_aes_128_gcm(), 16, 0);
 }
 
 /* 
@@ -838,6 +932,11 @@ int test_aes128_ccm_tls(ENGINE *e, void *data)
 {
     return test_aes_tag_tls(e, data, EVP_aes_128_ccm(), 16,
                             EVP_CCM_TLS_FIXED_IV_LEN, 1);
+}
+
+int test_aes_ccm_tls_multi_record(ENGINE *e, void *data)
+{
+    return test_aes_tag_tls_multi(e, data, EVP_aes_128_ccm(), 16, 1);
 }
 #endif
 

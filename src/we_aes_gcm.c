@@ -180,6 +180,26 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
 }
 #endif
 
+/**
+ * Increment the 64-bit invocation field at the end of the IV/nonce.
+ *
+ * @param  aes  [in,out]  wolfEngine AES-GCM state object.
+ */
+static void we_aes_gcm_iv_inc(we_AesGcm *aes)
+{
+    int i;
+
+    /* Invocation field is the trailing 8 bytes; leave a too-short IV alone. */
+    if (aes->ivLen < EVP_GCM_TLS_EXPLICIT_IV_LEN) {
+        return;
+    }
+    for (i = aes->ivLen - 1; (i >= 0) && (i >= aes->ivLen - 8); i--) {
+        if ((++aes->iv[i]) != 0) {
+            break;
+        }
+    }
+}
+
 static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                                  const unsigned char *in, size_t len)
 {
@@ -211,6 +231,7 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex", rc);
                 ret = -1;
             }
+            we_aes_gcm_iv_inc(aes);
         }
         if (ret == 1) {
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %d bytes "
@@ -442,12 +463,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
     aes->aadLen = 0;
 
     if (aes->ivInc) {
-        int i;
-        for (i = aes->ivLen - 1; (i >= 0) && (i >= aes->ivLen - 8); i--) {
-            if ((++aes->iv[i]) != 0) {
-                break;
-            }
-        }
+        we_aes_gcm_iv_inc(aes);
         aes->ivInc = 0;
         aes->ivSet = 0;
     }
