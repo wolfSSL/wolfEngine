@@ -363,8 +363,18 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
 
     /* Public key is no larger than the prime. */
     pubLen = BN_num_bytes(DH_get0_p(dh));
+    /* When a private key is already set, size the buffer to it. Reject a
+     * private key encoded in more bytes than the prime. */
+    privBn = (BIGNUM *)DH_get0_priv_key(dh);
+    if (privBn != NULL) {
+        privLen = (unsigned int)BN_num_bytes(privBn);
+        if ((privLen == 0) || (privLen > pubLen)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_KE, "DH private key length invalid");
+            ret = 0;
+        }
+    }
     /* 'q' parameter is the size for private key - use it if available. */
-    if (DH_get0_q(dh) != NULL) {
+    else if (DH_get0_q(dh) != NULL) {
         privLen = BN_num_bytes(DH_get0_q(dh));
     }
     /* Otherwise use the length of the DH key. */
@@ -376,16 +386,18 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
     else {
         privLen = pubLen;
     }
-    if (privLen != pubLen) {
+    if ((privBn == NULL) && (privLen != pubLen)) {
         /* Add some for non-FIPS case (only buffer size not required length). */
         privLen += 8;
     }
 
-    /* Allocate memory for public key when generated. */
-    pub = (unsigned char*)OPENSSL_malloc(pubLen);
-    if (pub == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pub);
-        ret = 0;
+    if (ret == 1) {
+        /* Allocate memory for public key when generated. */
+        pub = (unsigned char*)OPENSSL_malloc(pubLen);
+        if (pub == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc", pub);
+            ret = 0;
+        }
     }
     if (ret == 1) {
         /* Allocate memory for private key when generated. */
@@ -398,7 +410,7 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
 
     if (ret == 1) {
         /* Check if private key already set. */
-        if ((privBn = (BIGNUM *)DH_get0_priv_key(dh)) != NULL) {
+        if (privBn != NULL) {
             /* Get private key into buffer. */
             privLen = BN_bn2bin(privBn, priv);
             /* Get generator into buffer. */

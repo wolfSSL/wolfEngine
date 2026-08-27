@@ -154,6 +154,7 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_DH
     TEST_DECL(test_dh_pgen, NULL),
     TEST_DECL(test_dh, NULL),
+    TEST_DECL(test_dh_priv_key_length, NULL),
 #ifdef WE_HAVE_EVP_PKEY
     TEST_DECL(test_dh_pgen_pkey, NULL),
     TEST_DECL(test_dh_pkey, NULL),
