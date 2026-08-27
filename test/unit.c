@@ -130,6 +130,9 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_gcm_fixed, NULL),
     TEST_DECL(test_aes128_gcm_tls, NULL),
     TEST_DECL(test_aes_gcm_tls_multi_record, NULL),
+    TEST_DECL(test_aes_gcm_tls_input_bounds, NULL),
+    TEST_DECL(test_aes_gcm_tls_bad_iv_len, NULL),
+    TEST_DECL(test_aes_gcm_tls_fixed_iv_required, NULL),
     TEST_DECL(test_aes_gcm_evp_cipher, NULL),
     TEST_DECL(test_aes128_gcm_iv_gen_bounds, NULL),
 #endif
@@ -140,6 +143,8 @@ TEST_CASE test_case[] = {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     TEST_DECL(test_aes128_ccm_tls, NULL),
     TEST_DECL(test_aes_ccm_tls_multi_record, NULL),
+    TEST_DECL(test_aes_ccm_tls_input_bounds, NULL),
+    TEST_DECL(test_aes_ccm_tls_bad_iv_len, NULL),
 #endif
 #endif
 #ifdef WE_HAVE_RANDOM

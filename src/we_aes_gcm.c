@@ -74,6 +74,8 @@ typedef struct we_AesGcm
     unsigned int   ivSet:1;
     /** IV increment. */
     unsigned int   ivInc:1;
+    /** Fixed IV/nonce established via EVP_CTRL_GCM_SET_IV_FIXED. */
+    unsigned int   ivFixed:1;
 } we_AesGcm;
 
 /**
@@ -104,7 +106,7 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
-    if ((ret == 1) && (key != NULL)) {
+    if ((ret == 1) && (key != NULL) && (!aes->init)) {
         rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
@@ -128,6 +130,8 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching IV into aes->iv");
         XMEMCPY(aes->iv, iv, aes->ivLen);
         aes->ivSet = 0;
+        /* A caller-installed IV must not authorize the TLS IV_GEN path. */
+        aes->ivFixed = 0;
     }
 
     if (ret == 1) {
@@ -211,37 +215,57 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_tls_cipher");
 
-    /* Reject records too short to hold the explicit IV and tag. */
-    if ((len != 0) &&
+    /* Match OpenSSL: in-place only, and the record must hold the explicit IV
+     * and tag. */
+    if ((in == NULL) || (out != in) ||
         (len < EVP_GCM_TLS_EXPLICIT_IV_LEN + EVP_GCM_TLS_TAG_LEN)) {
         ret = -1;
     }
 
+    /* TLS 1.2 AES-GCM uses a fixed 12-byte nonce; the explicit-IV window and
+     * the per-record counter window only coincide at that length. */
+    if ((ret == 1) && (aes->ivLen != GCM_NONCE_MID_SZ)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid AES-GCM TLS IV length");
+        ret = -1;
+    }
+
+    /* Encrypt needs the fixed IV/nonce set first, matching OpenSSL's
+     * EVP_CTRL_GCM_IV_GEN precondition, so the nonce is never all-zero. */
+    if ((ret == 1) && aes->enc && (!aes->ivFixed)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                             "Fixed IV not set before AES-GCM TLS encrypt");
+        ret = -1;
+    }
+    /* TLS AAD carries the record sequence number and must be set first. */
+    if ((ret == 1) && aes->enc && (aes->aad == NULL)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                             "TLS AAD not set before AES-GCM encrypt");
+        ret = -1;
+    }
     /* Doing the TLS variation. */
     if ((ret == 1) && aes->enc) {
         /* Plaintext is input buffer without IV and tag. */
         word32 encLen = (word32)len - EVP_GCM_TLS_EXPLICIT_IV_LEN
                                     - EVP_GCM_TLS_TAG_LEN;
-        if (len != 0) {
-            /* Copy the explicit part of the IV into out. */
-            XMEMCPY(out, aes->iv + EVP_GCM_TLS_FIXED_IV_LEN,
-                    EVP_GCM_TLS_EXPLICIT_IV_LEN);
+        /* Copy the explicit part of the IV into out. */
+        XMEMCPY(out, aes->iv + EVP_GCM_TLS_FIXED_IV_LEN,
+                EVP_GCM_TLS_EXPLICIT_IV_LEN);
 
-            /* Move to start of plaintext and cipher text. */
-            in += EVP_GCM_TLS_EXPLICIT_IV_LEN;
-            out += EVP_GCM_TLS_EXPLICIT_IV_LEN;
-            /* Encrypt the data except explicit IV.
-             * Tag goes at end of output buffer.
-             */
-            rc = wc_AesGcmEncrypt(&aes->aes, out, in, encLen, aes->iv,
-                aes->ivLen, out + encLen, EVP_GCM_TLS_TAG_LEN, aes->aad,
-                aes->aadLen);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex", rc);
-                ret = -1;
-            }
-            we_aes_gcm_iv_inc(aes);
+        /* Move to start of plaintext and cipher text. */
+        in += EVP_GCM_TLS_EXPLICIT_IV_LEN;
+        out += EVP_GCM_TLS_EXPLICIT_IV_LEN;
+        /* Encrypt the data except explicit IV.
+         * Tag goes at end of output buffer.
+         */
+        rc = wc_AesGcmEncrypt(&aes->aes, out, in, encLen, aes->iv,
+            aes->ivLen, out + encLen, EVP_GCM_TLS_TAG_LEN, aes->aad,
+            aes->aadLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex", rc);
+            ret = -1;
         }
+        /* Advance the explicit nonce for the next record, matching OpenSSL. */
+        we_aes_gcm_iv_inc(aes);
         if (ret == 1) {
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %d bytes "
                                    "(AES-GCM):", encLen);
@@ -256,24 +280,22 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
         /* Cipher text is input buffer without IV and tag. */
         word32 decLen = (word32)len - EVP_GCM_TLS_EXPLICIT_IV_LEN
                                     - EVP_GCM_TLS_TAG_LEN;
-        if (len != 0) {
-            /* Copy the explicit part of the IV from input. */
-            XMEMCPY(aes->iv + EVP_GCM_TLS_FIXED_IV_LEN, in,
-                    EVP_GCM_TLS_EXPLICIT_IV_LEN);
+        /* Copy the explicit part of the IV from input. */
+        XMEMCPY(aes->iv + EVP_GCM_TLS_FIXED_IV_LEN, in,
+                EVP_GCM_TLS_EXPLICIT_IV_LEN);
 
-            /* Decrypt the data except explicit IV.
-             * Tag is at end of input buffer.
-             */
-            rc = wc_AesGcmDecrypt(&aes->aes,
-                                  out + EVP_GCM_TLS_EXPLICIT_IV_LEN,
-                                  in + EVP_GCM_TLS_EXPLICIT_IV_LEN,
-                                  decLen, aes->iv, aes->ivLen,
-                                  in + len - EVP_GCM_TLS_TAG_LEN,
-                                  EVP_GCM_TLS_TAG_LEN, aes->aad, aes->aadLen);
-            if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt", rc);
-                ret = -1;
-            }
+        /* Decrypt the data except explicit IV.
+         * Tag is at end of input buffer.
+         */
+        rc = wc_AesGcmDecrypt(&aes->aes,
+                              out + EVP_GCM_TLS_EXPLICIT_IV_LEN,
+                              in + EVP_GCM_TLS_EXPLICIT_IV_LEN,
+                              decLen, aes->iv, aes->ivLen,
+                              in + len - EVP_GCM_TLS_TAG_LEN,
+                              EVP_GCM_TLS_TAG_LEN, aes->aad, aes->aadLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt", rc);
+            ret = -1;
         }
         if (ret == 1) {
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %d bytes "
@@ -537,10 +559,10 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 /**
  * Extra operations for AES-GCM.
  * Supported operations include:
- *  - EVP_CTRL_GET_IV (version 3.0+): get IV from wolfengine object
+ *  - EVP_CTRL_INIT: initialize the internal AES-GCM state
+ *  - EVP_CTRL_GET_IVLEN: get the total IV/nonce length
  *  - EVP_CTRL_AEAD_SET_IVLEN: set the length of an IV/nonce
  *  - EVP_CTRL_GCM_SET_IV_FIXED: set the fixed part of an IV/nonce
- *  - EVP_CTRL_GCM_GET_IVLEN: get the total IV/nonce length
  *  - EVP_CTRL_GCM_IV_GEN: set the generated IV/nonce
  *  - EVP_CTRL_AEAD_GET_TAG: get the tag value after encrypt
  *  - EVP_CTRL_AEAD_SET_TAG: set the tag value before decrypt
@@ -578,13 +600,14 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 aes->ivLen = GCM_NONCE_MID_SZ;
                 aes->ivSet = 0;
                 aes->ivInc = 0;
+                aes->ivFixed = 0;
                 /* No tag set. */
                 aes->tagLen = 0;
                 /* Start with no AAD. */
                 aes->aad = NULL;
                 aes->aadLen = 0;
-                /* Internal AES-GCM object initialized. */
-                aes->init = 1;
+                /* wolfCrypt AES object initialized only once a key is set. */
+                aes->init = 0;
                 /* Not doing GCM for TLS unless ctrl function called. */
                 aes->tls = 0;
                 aes->tmp = NULL;
@@ -623,6 +646,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                         aes->ivLen = GCM_NONCE_MID_SZ;
                     XMEMCPY(aes->iv, ptr, aes->ivLen);
                     XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), ptr, aes->ivLen);
+                    aes->ivFixed = 1;
                 }
                 else {
                     /* Set the fixed IV and have the rest generated. */
@@ -653,6 +677,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     }
                     if (ret == 1) {
                        aes->ivSet = 1;
+                       aes->ivFixed = 1;
                        XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
                        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->iv,
                                aes->ivLen);
@@ -675,7 +700,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   ptr [in] generated IV/nonce data
                  */
                 if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ) || (ptr == NULL) ||
-                        (arg > aes->ivLen)) {
+                        (arg > aes->ivLen) || (!aes->ivFixed)) {
                     XSNPRINTF(errBuff, sizeof(errBuff), "Invalid nonce length "
                               "%d", arg);
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
@@ -744,6 +769,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     if (aes->aad == NULL) {
                         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                                    "OPENSSL_malloc", aes->aad);
+                        aes->aadLen = 0;
                         ret = 0;
                     }
                     if (ret == 1) {
@@ -774,6 +800,11 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                         aes->aad[arg - 1] = len;
                         aes->tls = 1;
                         ret = EVP_GCM_TLS_TAG_LEN;
+                    }
+                    else if (aes->aad != NULL) {
+                        OPENSSL_free(aes->aad);
+                        aes->aad = NULL;
+                        aes->aadLen = 0;
                     }
                 }
                 break;

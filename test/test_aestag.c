@@ -585,6 +585,7 @@ static int test_aes_tag_tls_multi(ENGINE *e, void *data,
     unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
     unsigned char msg[24];
     unsigned char rec[4][48];
+    unsigned char cpy[48];
     unsigned char key[32];
     unsigned char iv[EVP_GCM_TLS_FIXED_IV_LEN];
     unsigned char expIv[EVP_GCM_TLS_EXPLICIT_IV_LEN];
@@ -645,15 +646,223 @@ static int test_aes_tag_tls_multi(ENGINE *e, void *data,
         err = memcmp(rec[i], expIv, sizeof(expIv)) != 0;
     }
 
+    /* For CCM the explicit nonce must equal the TLS sequence number, not an
+     * implementation-internal counter. The AAD seq number is zero but for
+     * its last byte, which the test set to the record index. */
+    for (i = 0; ccm && (err == 0) && (i < numRec); i++) {
+        XMEMSET(expIv, 0, sizeof(expIv));
+        expIv[sizeof(expIv) - 1] = (unsigned char)i;
+        err = memcmp(rec[i], expIv, sizeof(expIv)) != 0;
+    }
+
     aad[12] = sizeof(rec[0]);
     for (i = 0; (err == 0) && (i < numRec); i++) {
         aad[7] = (unsigned char)i;
+        XMEMCPY(cpy, rec[i], sizeof(cpy));
         PRINT_MSG("Decrypt with OpenSSL - TLS");
         err = test_aes_tag_tls_dec(NULL, cipher, key, iv, (int)sizeof(iv),
                                    aad, rec[i], (int)sizeof(rec[i]), ccm);
         if (err == 0) {
             err = memcmp(rec[i] + EVP_GCM_TLS_EXPLICIT_IV_LEN, msg,
                          sizeof(msg)) != 0;
+        }
+        if (err == 0) {
+            PRINT_MSG("Decrypt with wolfengine - TLS");
+            err = test_aes_tag_tls_dec(e, cipher, key, iv, (int)sizeof(iv),
+                                       aad, cpy, (int)sizeof(cpy), ccm);
+        }
+        if (err == 0) {
+            err = memcmp(cpy + EVP_GCM_TLS_EXPLICIT_IV_LEN, msg,
+                         sizeof(msg)) != 0;
+        }
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
+
+static int test_aes_tag_tls_input_bounds(ENGINE *e, void *data,
+                                         const EVP_CIPHER *cipher, int keyLen,
+                                         int ccm)
+{
+    int err;
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
+    unsigned char buf[48];
+    unsigned char sep[48];
+    unsigned char key[32];
+    unsigned char iv[EVP_GCM_TLS_FIXED_IV_LEN];
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    (void)data;
+
+    aad[8]  = 23; /* Content type */
+    aad[9]  = 3;  /* Protocol major version */
+    aad[10] = 3;  /* Protocol minor version */
+    aad[12] = sizeof(buf) - EVP_GCM_TLS_TAG_LEN;
+
+    err = (RAND_bytes(key, keyLen) != 1) ||
+          (RAND_bytes(iv, (int)sizeof(iv)) != 1) ||
+          (RAND_bytes(buf, (int)sizeof(buf)) != 1);
+    XMEMSET(sep, 0, sizeof(sep));
+    /* Attaching the cipher and freeing without a key must be safe. */
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
+        EVP_CIPHER_CTX_free(ctx);
+        ctx = NULL;
+    }
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, ccm ? NULL : key, NULL) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, 16, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  (int)sizeof(iv), iv) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, NULL) != 1;
+    }
+    /* A record shorter than the explicit IV plus tag must be rejected. */
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, 16) >= 0;
+    }
+    /* Output must alias the input for a TLS record. */
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, sep, buf, (int)sizeof(buf)) >= 0;
+    }
+    /* A valid record still encrypts after the rejections. */
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) !=
+              (int)sizeof(buf);
+    }
+    /* Encrypting again without a fresh TLS header must be rejected. */
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) >= 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    ctx = NULL;
+
+    /* The same guards protect the decrypt direction, which consumes
+     * attacker-controlled record lengths off the wire. */
+    aad[12] = (unsigned char)sizeof(buf);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, ccm ? NULL : key, NULL) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, 12, NULL) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, 16, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  (int)sizeof(iv), iv) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, NULL) != 1;
+    }
+    /* A record shorter than the explicit IV plus tag must be rejected. */
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, 16) >= 0;
+    }
+    /* Output must alias the input for a TLS record. */
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, sep, buf, (int)sizeof(buf)) >= 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
+static int test_aes_tag_tls_bad_iv_len(ENGINE *e, void *data,
+                                       const EVP_CIPHER *cipher, int keyLen,
+                                       int ccm)
+{
+    int err;
+    int badLen = ccm ? 13 : 16;
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
+    unsigned char buf[48];
+    unsigned char key[32];
+    unsigned char iv[EVP_GCM_TLS_FIXED_IV_LEN];
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    (void)data;
+
+    aad[8]  = 23;
+    aad[9]  = 3;
+    aad[10] = 3;
+    aad[12] = sizeof(buf) - EVP_GCM_TLS_TAG_LEN;
+
+    err = (RAND_bytes(key, keyLen) != 1) ||
+          (RAND_bytes(iv, (int)sizeof(iv)) != 1) ||
+          (RAND_bytes(buf, (int)sizeof(buf)) != 1);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, ccm ? NULL : key, NULL) != 1;
+    }
+    /* A TLS nonce length other than 12 (still a legal cipher IV length) must
+     * be rejected by the TLS record path. */
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, badLen,
+                                  NULL) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, 16, NULL) != 1;
+    }
+    if ((err == 0) && !ccm) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
+    }
+    if ((err == 0) && ccm) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) >= 0;
+        if (err) {
+            PRINT_MSG("TLS encrypt with illegal IV length should have failed");
         }
     }
 
@@ -730,6 +939,107 @@ int test_aes128_gcm_tls(ENGINE *e, void *data)
 int test_aes_gcm_tls_multi_record(ENGINE *e, void *data)
 {
     return test_aes_tag_tls_multi(e, data, EVP_aes_128_gcm(), 16, 0);
+}
+
+/******************************************************************************/
+
+int test_aes_gcm_tls_input_bounds(ENGINE *e, void *data)
+{
+    return test_aes_tag_tls_input_bounds(e, data, EVP_aes_128_gcm(), 16, 0);
+}
+
+/******************************************************************************/
+
+int test_aes_gcm_tls_bad_iv_len(ENGINE *e, void *data)
+{
+    return test_aes_tag_tls_bad_iv_len(e, data, EVP_aes_128_gcm(), 16, 0);
+}
+
+/******************************************************************************/
+
+int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data)
+{
+    int err;
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
+    unsigned char buf[48];
+    unsigned char key[16];
+    unsigned char iv[EVP_GCM_TLS_FIXED_IV_LEN + EVP_GCM_TLS_EXPLICIT_IV_LEN];
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    (void)data;
+
+    aad[8]  = 23;
+    aad[9]  = 3;
+    aad[10] = 3;
+    aad[12] = sizeof(buf) - EVP_GCM_TLS_TAG_LEN;
+
+    err = (RAND_bytes(key, (int)sizeof(key)) != 1) ||
+          (RAND_bytes(iv, (int)sizeof(iv)) != 1) ||
+          (RAND_bytes(buf, (int)sizeof(buf)) != 1);
+    /* Encrypt without ever setting the fixed IV must be rejected. */
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) >= 0;
+        if (err) {
+            PRINT_MSG("TLS encrypt without fixed IV should have failed");
+        }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+    ctx = NULL;
+
+    /* Restoring the whole IV via SET_IV_FIXED(-1) satisfies the precondition. */
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED, -1, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) != (int)sizeof(buf);
+        if (err) {
+            PRINT_MSG("TLS encrypt after SET_IV_FIXED(-1) should have worked");
+        }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+    ctx = NULL;
+
+    /* An IV supplied only to init must NOT satisfy the fixed-IV requirement,
+     * matching OpenSSL, which rejects a TLS encrypt without SET_IV_FIXED. */
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) >= 0;
+        if (err) {
+            PRINT_MSG("TLS encrypt with only an init IV should have failed");
+        }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
 }
 
 /* 
@@ -937,6 +1247,16 @@ int test_aes128_ccm_tls(ENGINE *e, void *data)
 int test_aes_ccm_tls_multi_record(ENGINE *e, void *data)
 {
     return test_aes_tag_tls_multi(e, data, EVP_aes_128_ccm(), 16, 1);
+}
+
+int test_aes_ccm_tls_input_bounds(ENGINE *e, void *data)
+{
+    return test_aes_tag_tls_input_bounds(e, data, EVP_aes_128_ccm(), 16, 1);
+}
+
+int test_aes_ccm_tls_bad_iv_len(ENGINE *e, void *data)
+{
+    return test_aes_tag_tls_bad_iv_len(e, data, EVP_aes_128_ccm(), 16, 1);
 }
 #endif
 
