@@ -129,6 +129,10 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes256_gcm, NULL),
     TEST_DECL(test_aes128_gcm_fixed, NULL),
     TEST_DECL(test_aes128_gcm_tls, NULL),
+    TEST_DECL(test_aes_gcm_tls_multi_record, NULL),
+    TEST_DECL(test_aes_gcm_tls_input_bounds, NULL),
+    TEST_DECL(test_aes_gcm_tls_bad_iv_len, NULL),
+    TEST_DECL(test_aes_gcm_tls_fixed_iv_required, NULL),
     TEST_DECL(test_aes_gcm_evp_cipher, NULL),
     TEST_DECL(test_aes128_gcm_iv_gen_bounds, NULL),
 #endif
@@ -138,6 +142,9 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes256_ccm, NULL),
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     TEST_DECL(test_aes128_ccm_tls, NULL),
+    TEST_DECL(test_aes_ccm_tls_multi_record, NULL),
+    TEST_DECL(test_aes_ccm_tls_input_bounds, NULL),
+    TEST_DECL(test_aes_ccm_tls_bad_iv_len, NULL),
 #endif
 #endif
 #ifdef WE_HAVE_RANDOM
@@ -154,6 +161,7 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_DH
     TEST_DECL(test_dh_pgen, NULL),
     TEST_DECL(test_dh, NULL),
+    TEST_DECL(test_dh_priv_key_length, NULL),
 #ifdef WE_HAVE_EVP_PKEY
     TEST_DECL(test_dh_pgen_pkey, NULL),
     TEST_DECL(test_dh_pkey, NULL),

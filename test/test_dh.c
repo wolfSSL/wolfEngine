@@ -209,6 +209,125 @@ int test_dh(ENGINE *e, void *data)
     return err;
 }
 
+int test_dh_priv_key_length(ENGINE *e, void *data)
+{
+    int err;
+    int i;
+    DH *dhWolfEngine = NULL;
+    DH *dhOpenSSL = NULL;
+    const DH_METHOD *method = NULL;
+    BIGNUM *p = NULL;
+    BIGNUM *g = NULL;
+    BIGNUM *priv = NULL;
+    unsigned char bigPriv[sizeof(dh_p) + 8];
+    unsigned char validPriv[64];
+
+    (void)data;
+
+    /* Larger than the prime "p". */
+    for (i = 0; i < (int)sizeof(bigPriv); i++) {
+        bigPriv[i] = 0xAB;
+    }
+    /* Smaller than the prime "p". */
+    for (i = 0; i < (int)sizeof(validPriv); i++) {
+        validPriv[i] = (unsigned char)(i + 1);
+    }
+
+    method = ENGINE_get_DH(e);
+    err = method == NULL;
+
+    /* A pre-set private key larger than the prime must be rejected. */
+    if (err == 0) {
+        dhWolfEngine = DH_new();
+        err = dhWolfEngine == NULL;
+    }
+    if (err == 0) {
+        DH_set_method(dhWolfEngine, method);
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
+        err = (p == NULL) || (g == NULL);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWolfEngine, p, NULL, g) == 0;
+    }
+    if (err == 0) {
+        p = NULL;
+        g = NULL;
+        priv = BN_bin2bn(bigPriv, sizeof(bigPriv), NULL);
+        err = priv == NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_key(dhWolfEngine, NULL, priv) != 1;
+    }
+    if (err == 0) {
+        priv = NULL;
+        PRINT_MSG("Reject a private key larger than the prime");
+        err = DH_generate_key(dhWolfEngine) != 0;
+    }
+
+    /* A valid pre-set private key must still match OpenSSL's public key. */
+    if (err == 0) {
+        DH_free(dhWolfEngine);
+        dhWolfEngine = DH_new();
+        dhOpenSSL = DH_new();
+        err = (dhWolfEngine == NULL) || (dhOpenSSL == NULL);
+    }
+    if (err == 0) {
+        DH_set_method(dhWolfEngine, method);
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
+        err = (p == NULL) || (g == NULL);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWolfEngine, p, NULL, g) == 0;
+    }
+    if (err == 0) {
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
+        err = (p == NULL) || (g == NULL);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhOpenSSL, p, NULL, g) == 0;
+    }
+    if (err == 0) {
+        p = NULL;
+        g = NULL;
+        priv = BN_bin2bn(validPriv, sizeof(validPriv), NULL);
+        err = priv == NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_key(dhWolfEngine, NULL, priv) != 1;
+    }
+    if (err == 0) {
+        priv = BN_bin2bn(validPriv, sizeof(validPriv), NULL);
+        err = priv == NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_key(dhOpenSSL, NULL, priv) != 1;
+    }
+    if (err == 0) {
+        priv = NULL;
+        PRINT_MSG("Accept a valid pre-set private key");
+        err = DH_generate_key(dhWolfEngine) != 1;
+    }
+    if (err == 0) {
+        err = DH_generate_key(dhOpenSSL) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("wolfEngine and OpenSSL public keys must match");
+        err = BN_cmp(DH_get0_pub_key(dhWolfEngine),
+                     DH_get0_pub_key(dhOpenSSL)) != 0;
+    }
+
+    BN_free(p);
+    BN_free(g);
+    BN_clear_free(priv);
+    DH_free(dhWolfEngine);
+    DH_free(dhOpenSSL);
+
+    return err;
+}
+
 #ifdef WE_HAVE_EVP_PKEY
 
 static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
