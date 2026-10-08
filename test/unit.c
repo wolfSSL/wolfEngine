@@ -140,6 +140,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_ccm, NULL),
     TEST_DECL(test_aes192_ccm, NULL),
     TEST_DECL(test_aes256_ccm, NULL),
+    TEST_DECL(test_aes128_ccm_set_l_bounds, NULL),
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     TEST_DECL(test_aes128_ccm_tls, NULL),
     TEST_DECL(test_aes_ccm_tls_multi_record, NULL),
