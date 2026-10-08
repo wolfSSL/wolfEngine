@@ -2042,6 +2042,63 @@ int test_ec_key_ecdsa_p521(ENGINE *e, void *data)
 }
 #endif /* WE_HAVE_EC_P521 */
 
+int test_ec_key_ecdsa_unsupported_curve(ENGINE *e, void *data)
+{
+    int err;
+    int res;
+    EC_KEY *key = NULL;
+    EC_KEY *keyOSSL = NULL;
+    ECDSA_SIG *eccSig = NULL;
+    unsigned char buf[20];
+
+    (void)data;
+
+    XMEMSET(buf, 0, sizeof(buf));
+
+    err = RAND_bytes(buf, sizeof(buf)) == 0;
+    if (err == 0) {
+        PRINT_MSG("Create secp256k1 key with OpenSSL");
+        err = (keyOSSL = EC_KEY_new_by_curve_name(NID_secp256k1)) == NULL;
+    }
+    if (err == 0) {
+        PRINT_MSG("Generate key with OpenSSL");
+        err = EC_KEY_generate_key(keyOSSL) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_sign: Sign with OpenSSL");
+        eccSig = ECDSA_do_sign(buf, (int)sizeof(buf), keyOSSL);
+        err = eccSig == NULL;
+    }
+    if (err == 0) {
+        PRINT_MSG("Create key with engine");
+        err = (key = EC_KEY_new_method(e)) == NULL;
+    }
+    if (err == 0) {
+        PRINT_MSG("Set group");
+        err = EC_KEY_set_group(key, EC_KEY_get0_group(keyOSSL)) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Set public key only");
+        err = EC_KEY_set_public_key(key,
+                                    EC_KEY_get0_public_key(keyOSSL)) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("ECDSA_do_verify: Verify with wolfEngine");
+        res = ECDSA_do_verify(buf, (int)sizeof(buf), eccSig, key);
+        if (res != -1) {
+            PRINT_MSG("ECDSA_do_verify succeeded, unexpected (secp256k1 not "
+                      "supported)");
+            err = 1;
+        }
+    }
+
+    ECDSA_SIG_free(eccSig);
+    EC_KEY_free(key);
+    EC_KEY_free(keyOSSL);
+
+    return err;
+}
+
 #endif /* WE_HAVE_ECDSA */
 
 #endif /* WE_HAVE_EC_KEY */

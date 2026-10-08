@@ -494,6 +494,7 @@ int test_ec_key_ecdsa_p384(ENGINE *e, void *data);
 #ifdef WE_HAVE_EC_P521
 int test_ec_key_ecdsa_p521(ENGINE *e, void *data);
 #endif /* WE_HAVE_EC_P521 */
+int test_ec_key_ecdsa_unsupported_curve(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_ECDSA */
 
