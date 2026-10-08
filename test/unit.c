@@ -355,6 +355,9 @@ TEST_CASE test_case[] = {
         TEST_DECL(test_ec_key_ecdsa_p521, NULL),
     #endif
 #endif
+#ifdef WE_HAVE_ECDSA
+    TEST_DECL(test_ec_key_ecdsa_unsupported_curve, NULL),
+#endif
 #endif /* WE_HAVE_EC_KEY */
 
 #ifdef WE_HAVE_ECDSA
