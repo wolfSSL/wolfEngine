@@ -47,6 +47,9 @@
 /test/unit.test
 /test/unit.log
 /test/unit.trs
+/test/cmac_cleanup*.test
+/test/cmac_cleanup*.log
+/test/cmac_cleanup*.trs
 /scripts/*.log
 *.gcno
 *.gcda

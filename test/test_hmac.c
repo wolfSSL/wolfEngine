@@ -307,20 +307,39 @@ int test_hmac_update_size(ENGINE *e, void *data)
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(TEST_MULTITHREADED)
 int test_hmac_raw_key_output_size(ENGINE *e, void *data)
 {
     int ret = 0;
     int i;
+    int registered = 0;
     unsigned char key[] = "My empire of dirt";
     unsigned char out[sizeof(key)];
     size_t outLen = 0;
-    EVP_PKEY *pkey;
+    EVP_PKEY *pkey = NULL;
 
     (void)data;
-    pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_HMAC, e, key, sizeof(key));
-    if (pkey == NULL)
+    if (ENGINE_register_pkey_asn1_meths(e) != 1)
         ret = -1;
+    else
+        registered = 1;
+    if (ret == 0) {
+        pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_HMAC, NULL, key,
+                sizeof(key));
+        if (pkey == NULL)
+            ret = -1;
+    }
+    if (registered)
+        ENGINE_unregister_pkey_asn1_meths(e);
+#if OPENSSL_VERSION_NUMBER >= 0x1010103fL
+    if ((ret == 0) && (EVP_PKEY_get0_engine(pkey) != e))
+        ret = -1;
+#else
+    if ((ret == 0) && ((EVP_PKEY_get0_asn1(pkey) == NULL) ||
+            (EVP_PKEY_get0_asn1(pkey) !=
+             ENGINE_get_pkey_asn1_meth(e, EVP_PKEY_HMAC))))
+        ret = -1;
+#endif
     if (ret == 0) {
         ret = EVP_PKEY_get_raw_private_key(pkey, NULL, &outLen) != 1;
     }
@@ -343,7 +362,7 @@ int test_hmac_raw_key_output_size(ENGINE *e, void *data)
 
     return ret;
 }
-#endif
+#endif /* OPENSSL_VERSION_NUMBER >= 0x10101000L && !TEST_MULTITHREADED */
 
 #endif /* WE_HAVE_HMAC */
 

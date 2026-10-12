@@ -5,6 +5,14 @@
 TEST_EXTENSIONS=.test
 TESTS += $(check_PROGRAMS)
 
+check_PROGRAMS += test/cmac_cleanup.test test/cmac_cleanup_inline.test \
+                  test/cmac_cleanup_buffered.test
+test_cmac_cleanup_test_SOURCES = test/test_cmac_compat.c
+test_cmac_cleanup_inline_test_SOURCES = test/test_cmac_compat.c
+test_cmac_cleanup_inline_test_CPPFLAGS = $(AM_CPPFLAGS) -DWE_TEST_CMAC_INLINE
+test_cmac_cleanup_buffered_test_SOURCES = test/test_cmac_compat.c
+test_cmac_cleanup_buffered_test_CPPFLAGS = $(AM_CPPFLAGS) -DWE_TEST_CMAC_BUFFERED
+
 check_PROGRAMS += test/unit.test
 noinst_PROGRAMS += test/unit.test
 DISTCLEANFILES += test/.libs/unit.test

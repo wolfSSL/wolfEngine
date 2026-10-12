@@ -25,6 +25,7 @@
 
 
 #include <wolfengine/we_wolfengine.h>
+#include <wolfengine/we_internal.h>
 #include <wolfengine/we_logging.h>
 
 #include "unit.h"
@@ -51,6 +52,27 @@ static int debug = 1;
 static int debug = 0;
 #endif /* WOLFENGINE_DEBUG */
 static unsigned long flags = 0;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    (defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC))
+static int mac_asn1_methods_cleared(void)
+{
+    int ret = 1;
+
+#ifdef WE_HAVE_HMAC
+    if (we_hmac_pkey_asn1_method != NULL)
+        ret = 0;
+#endif
+#ifdef WE_HAVE_CMAC
+    if ((we_cmac_pkey_asn1_method != NULL) ||
+            (we_cmac_we_pkey_asn1_method != NULL)) {
+        ret = 0;
+    }
+#endif
+
+    return ret;
+}
+#endif
 
 TEST_CASE test_case[] = {
     TEST_DECL(test_logging, &debug),
@@ -89,7 +111,8 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_hmac_output_size, NULL),
     TEST_DECL(test_hmac_pkey_size, NULL),
     TEST_DECL(test_hmac_update_size, NULL),
-    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    #if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+        !defined(TEST_MULTITHREADED)
     TEST_DECL(test_hmac_raw_key_output_size, NULL),
     #endif
 #endif
@@ -100,8 +123,15 @@ TEST_CASE test_case[] = {
     #ifndef TEST_MULTITHREADED
     TEST_DECL(test_cmac_copy_error, NULL),
     #endif
+    TEST_DECL(test_cmac_copy, NULL),
     TEST_DECL(test_cmac_keygen_reuse, NULL),
+    #ifndef TEST_MULTITHREADED
+    TEST_DECL(test_cmac_unregistered_engine, NULL),
+    #endif
     TEST_DECL(test_cmac_asn1_registry, NULL),
+#endif
+#if defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC)
+    TEST_DECL(test_mac_asn1_ownership, NULL),
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
@@ -536,6 +566,17 @@ static int run_tests(ENGINE *e, int runAll)
         }
     }
 
+    ENGINE_free(e);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    OPENSSL_cleanup();
+    #if defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC)
+    if (!mac_asn1_methods_cleared()) {
+        fprintf(stderr, "MAC ASN.1 methods not cleared at teardown\n");
+        err = 1;
+    }
+    #endif
+#endif
+
     if (err == 0) {
         printf("###### TESTSUITE SUCCESS\n");
     }
@@ -547,11 +588,6 @@ static int run_tests(ENGINE *e, int runAll)
         }
         printf("###### TESTSUITE FAILED\n");
     }
-
-    ENGINE_free(e);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    OPENSSL_cleanup();
-#endif
 
     return err;
 }
@@ -594,6 +630,17 @@ static int run_tests(ENGINE *e, int runAll)
         }
     }
 
+    ENGINE_free(e);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    OPENSSL_cleanup();
+    #if defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC)
+    if (!mac_asn1_methods_cleared()) {
+        fprintf(stderr, "MAC ASN.1 methods not cleared at teardown\n");
+        err = 1;
+    }
+    #endif
+#endif
+
     if (err == 0) {
         printf("###### TESTSUITE SUCCESS\n");
     }
@@ -605,11 +652,6 @@ static int run_tests(ENGINE *e, int runAll)
         }
         printf("###### TESTSUITE FAILED\n");
     }
-
-    ENGINE_free(e);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    OPENSSL_cleanup();
-#endif
 
     return err;
 }
@@ -777,6 +819,8 @@ int main(int argc, char* argv[])
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     EVP_cleanup();
     ENGINE_cleanup();
+    CRYPTO_cleanup_all_ex_data();
+    ERR_remove_thread_state(NULL);
     ERR_free_strings();
 #endif
 

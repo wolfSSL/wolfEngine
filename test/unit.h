@@ -117,16 +117,22 @@ int test_cmac_create(ENGINE *e, void *data);
 int test_cmac_output_size(ENGINE *e, void *data);
 int test_cmac_update_size(ENGINE *e, void *data);
 int test_cmac_copy_error(ENGINE *e, void *data);
+int test_cmac_copy(ENGINE *e, void *data);
 int test_cmac_keygen_reuse(ENGINE *e, void *data);
+int test_cmac_unregistered_engine(ENGINE *e, void *data);
 int test_cmac_asn1_registry(ENGINE *e, void *data);
-#endif /* WE_HAVE_HMAC */
+#endif /* WE_HAVE_CMAC */
+
+#if defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC)
+int test_mac_asn1_ownership(ENGINE *e, void *data);
+#endif
 
 #ifdef WE_HAVE_HMAC
 int test_hmac_create(ENGINE *e, void *data);
 int test_hmac_output_size(ENGINE *e, void *data);
 int test_hmac_pkey_size(ENGINE *e, void *data);
 int test_hmac_update_size(ENGINE *e, void *data);
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(TEST_MULTITHREADED)
 int test_hmac_raw_key_output_size(ENGINE *e, void *data);
 #endif
 #endif /* WE_HAVE_HMAC */
