@@ -1290,8 +1290,8 @@ int we_init_hmac_pkey_meth(void)
  */
 static int we_hmac_pkey_asn1_size(const EVP_PKEY *pkey)
 {
-    /* Return wolfCrypt's maximum HMAC block size that is the output size. */
-    int ret = WC_HMAC_BLOCK_SIZE;
+    /* Return wolfCrypt's maximum HMAC output size. */
+    int ret = WC_MAX_DIGEST_SIZE;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_asn1_size");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [pkey = %p]", pkey);

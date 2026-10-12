@@ -252,6 +252,24 @@ int test_hmac_output_size(ENGINE *e, void *data)
     return ret;
 }
 
+int test_hmac_pkey_size(ENGINE *e, void *data)
+{
+    int ret = 0;
+    unsigned char key[] = "My empire of dirt";
+    EVP_PKEY *pkey;
+
+    (void)data;
+    pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, e, key, sizeof(key));
+    if (pkey == NULL)
+        ret = -1;
+    if ((ret == 0) && (EVP_PKEY_size(pkey) != WC_MAX_DIGEST_SIZE))
+        ret = -1;
+
+    EVP_PKEY_free(pkey);
+
+    return ret;
+}
+
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 int test_hmac_raw_key_output_size(ENGINE *e, void *data)
 {
