@@ -20,6 +20,7 @@
  */
 
 #include "unit.h"
+#include <openssl/hmac.h>
 
 #if defined(WE_HAVE_DES3CBC) || defined(WE_HAVE_AESCBC)
 
@@ -766,6 +767,110 @@ int test_aes128_cbc_hmac_ctrl_error(ENGINE *e, void *data)
 
     return err;
 }
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_tls_empty(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    int engineLen = 0;
+    int finalLen = 0;
+    int i;
+    EVP_CIPHER_CTX *engineCtx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned int macLen = 0;
+    unsigned char key[16];
+    unsigned char macKey[SHA256_DIGEST_LENGTH];
+    unsigned char iv[16];
+    unsigned char engineAAD[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char rejectedAAD[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char plain[48];
+    unsigned char in[48];
+    unsigned char expected[48];
+    unsigned char engineOut[80];
+
+    (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(macKey, 0, sizeof(macKey));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(engineAAD, 0, sizeof(engineAAD));
+    XMEMSET(plain, 0, sizeof(plain));
+    XMEMSET(in, 0, sizeof(in));
+    XMEMSET(engineOut, 0xa5, sizeof(engineOut));
+
+    engineAAD[9] = (unsigned char)(TLS1_VERSION >> 8);
+    engineAAD[10] = (unsigned char)TLS1_VERSION;
+
+    if (err == 0) {
+        err = HMAC(EVP_sha256(), macKey, sizeof(macKey), engineAAD,
+                   sizeof(engineAAD), plain, &macLen) == NULL;
+    }
+    if (err == 0)
+        err = macLen != SHA256_DIGEST_LENGTH;
+    if (err == 0) {
+        XMEMSET(plain + macLen, 15, sizeof(plain) - macLen);
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(plain), expected, 0);
+    }
+    if (err == 0)
+        err = (engineCtx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(engineCtx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(engineCtx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        len = EVP_CIPHER_CTX_ctrl(engineCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(engineAAD), engineAAD);
+        err = len != (int)sizeof(in);
+    }
+    if (err == 0) {
+        XMEMCPY(rejectedAAD, engineAAD, sizeof(rejectedAAD));
+        rejectedAAD[9] = (unsigned char)(TLS1_1_VERSION >> 8);
+        rejectedAAD[10] = (unsigned char)TLS1_1_VERSION;
+        err = EVP_CIPHER_CTX_ctrl(engineCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(rejectedAAD), rejectedAAD) != 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(engineCtx, engineOut, in, 0) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(engineCtx, engineOut, in, AES_BLOCK_SIZE) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(engineCtx, engineOut, in,
+                          2 * AES_BLOCK_SIZE) >= 0;
+    }
+    for (i = 0; (err == 0) && (i < (int)sizeof(engineOut)); i++) {
+        err = engineOut[i] != 0xa5;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(engineCtx, engineOut, &engineLen, in,
+                                sizeof(in)) != 1;
+    }
+    if (err == 0)
+        err = engineLen != (int)sizeof(expected);
+    if (err == 0)
+        err = XMEMCMP(expected, engineOut, sizeof(expected)) != 0;
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(engineCtx, engineOut + engineLen,
+                                  &finalLen) != 1;
+    }
+    if (err == 0)
+        err = finalLen != 0;
+    for (i = engineLen; (err == 0) && (i < (int)sizeof(engineOut)); i++) {
+        err = engineOut[i] != 0xa5;
+    }
+
+    EVP_CIPHER_CTX_free(engineCtx);
+
+    return err;
+}
 #else
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 {
@@ -798,6 +903,13 @@ int test_aes128_cbc_hmac_encrypt_error(ENGINE *e, void *data)
 }
 
 int test_aes128_cbc_hmac_ctrl_error(ENGINE *e, void *data)
+{
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_tls_empty(ENGINE *e, void *data)
 {
     (void)e;
     (void)data;
