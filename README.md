@@ -28,6 +28,8 @@ having to touch the OpenSSL code itself.
 * DRBG
 * RSA
 * DH
+    * With wolfCrypt FIPS, use named or imported parameters for key generation
+      and agreement. Legacy `DH_generate_parameters_ex()` returns 0.
 * ECC
     * ECDSA
     * ECDH
