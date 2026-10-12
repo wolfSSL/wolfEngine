@@ -28,6 +28,10 @@
 
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
+#if !defined(_MSC_VER) && !defined(__MINGW32__) && !defined(__CYGWIN__) && \
+    !defined(_WIN32_WCE)
+#define WE_TEST_INTERNAL_GLOBALS
+#endif
 #include <wolfengine/we_logging.h>
 
 #include "unit.h"
@@ -353,6 +357,83 @@ static int test_engine(ENGINE *e, void *data)
 
     return err;
 }
+
+#ifdef WE_TEST_INTERNAL_GLOBALS
+static int test_engine_destroyed(void)
+{
+    int err = 0;
+
+#ifdef WE_HAVE_HMAC
+    if (we_hmac_pkey_method != NULL) {
+        err = 1;
+    }
+#endif
+#ifdef WE_HAVE_CMAC
+    if ((we_cmac_pkey_method != NULL) ||
+            (we_cmac_we_pkey_method != NULL)) {
+        err = 1;
+    }
+#endif
+#if defined(WE_HAVE_TLS1_PRF) && defined(WE_HAVE_EVP_PKEY)
+    if (we_tls1_prf_method != NULL) {
+        err = 1;
+    }
+#endif
+#if defined(WE_HAVE_HKDF) && defined(WE_HAVE_EVP_PKEY)
+    if (we_hkdf_method != NULL) {
+        err = 1;
+    }
+#endif
+#if defined(WE_HAVE_DH) && defined(WE_HAVE_EVP_PKEY)
+    if (we_dh_pkey_method != NULL) {
+        err = 1;
+    }
+#endif
+#if defined(WE_HAVE_RSA) && defined(WE_HAVE_EVP_PKEY)
+    if (we_rsa_pkey_method != NULL) {
+        err = 1;
+    }
+#endif
+#if defined(WE_HAVE_ECC) && defined(WE_HAVE_EVP_PKEY)
+    if (we_ec_method != NULL) {
+        err = 1;
+    }
+#ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+    if (we_ec_p192_method != NULL) {
+        err = 1;
+    }
+#endif
+#ifdef WE_HAVE_EC_P224
+    if (we_ec_p224_method != NULL) {
+        err = 1;
+    }
+#endif
+#ifdef WE_HAVE_EC_P256
+    if (we_ec_p256_method != NULL) {
+        err = 1;
+    }
+#endif
+#ifdef WE_HAVE_EC_P384
+    if (we_ec_p384_method != NULL) {
+        err = 1;
+    }
+#endif
+#ifdef WE_HAVE_EC_P521
+    if (we_ec_p521_method != NULL) {
+        err = 1;
+    }
+#endif
+#endif /* WE_HAVE_ECKEYGEN */
+#endif /* WE_HAVE_ECC && WE_HAVE_EVP_PKEY */
+
+    if (err != 0) {
+        PRINT_ERR_MSG("Engine PKEY methods remain allocated after teardown");
+    }
+
+    return err;
+}
+#endif
 
 TEST_CASE test_case[] = {
     TEST_DECL(test_logging, &debug),
@@ -856,6 +937,11 @@ static int run_tests(ENGINE *e, int runAll)
         err = 1;
     }
     #endif
+#ifdef WE_TEST_INTERNAL_GLOBALS
+    if (test_engine_destroyed() != 0) {
+        err = 1;
+    }
+#endif
 #endif
 
     if (err == 0) {
@@ -920,6 +1006,11 @@ static int run_tests(ENGINE *e, int runAll)
         err = 1;
     }
     #endif
+#ifdef WE_TEST_INTERNAL_GLOBALS
+    if (test_engine_destroyed() != 0) {
+        err = 1;
+    }
+#endif
 #endif
 
     if (err == 0) {
@@ -1128,6 +1219,11 @@ int main(int argc, char* argv[])
     CRYPTO_cleanup_all_ex_data();
     ERR_remove_thread_state(NULL);
     ERR_free_strings();
+#ifdef WE_TEST_INTERNAL_GLOBALS
+    if (test_engine_destroyed() != 0) {
+        err = 1;
+    }
+#endif
 #endif
 
     return err;

@@ -1105,6 +1105,52 @@ static int wolfengine_destroy(ENGINE *e)
 #endif
     bound = NULL;
 
+#ifdef WE_HAVE_HMAC
+#ifndef WE_HAVE_EVP_PKEY
+    EVP_PKEY_meth_free(we_hmac_pkey_method);
+#endif
+    we_hmac_pkey_method = NULL;
+#endif
+#ifdef WE_HAVE_CMAC
+#ifndef WE_HAVE_EVP_PKEY
+    EVP_PKEY_meth_free(we_cmac_pkey_method);
+    EVP_PKEY_meth_free(we_cmac_we_pkey_method);
+#endif
+    we_cmac_pkey_method = NULL;
+    we_cmac_we_pkey_method = NULL;
+#endif
+#if defined(WE_HAVE_TLS1_PRF) && defined(WE_HAVE_EVP_PKEY)
+    we_tls1_prf_method = NULL;
+#endif
+#if defined(WE_HAVE_HKDF) && defined(WE_HAVE_EVP_PKEY)
+    we_hkdf_method = NULL;
+#endif
+#if defined(WE_HAVE_DH) && defined(WE_HAVE_EVP_PKEY)
+    we_dh_pkey_method = NULL;
+#endif
+#if defined(WE_HAVE_RSA) && defined(WE_HAVE_EVP_PKEY)
+    we_rsa_pkey_method = NULL;
+#endif
+#if defined(WE_HAVE_ECC) && defined(WE_HAVE_EVP_PKEY)
+    we_ec_method = NULL;
+#ifdef WE_HAVE_ECKEYGEN
+#ifdef WE_HAVE_EC_P192
+    we_ec_p192_method = NULL;
+#endif
+#ifdef WE_HAVE_EC_P224
+    we_ec_p224_method = NULL;
+#endif
+#ifdef WE_HAVE_EC_P256
+    we_ec_p256_method = NULL;
+#endif
+#ifdef WE_HAVE_EC_P384
+    we_ec_p384_method = NULL;
+#endif
+#ifdef WE_HAVE_EC_P521
+    we_ec_p521_method = NULL;
+#endif
+#endif /* WE_HAVE_ECKEYGEN */
+#endif /* WE_HAVE_ECC && WE_HAVE_EVP_PKEY */
 #ifdef WE_HAVE_DH
     DH_meth_free(we_dh_method);
     we_dh_method = NULL;
