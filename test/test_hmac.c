@@ -252,6 +252,44 @@ int test_hmac_output_size(ENGINE *e, void *data)
     return ret;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+int test_hmac_raw_key_output_size(ENGINE *e, void *data)
+{
+    int ret = 0;
+    int i;
+    unsigned char key[] = "My empire of dirt";
+    unsigned char out[sizeof(key)];
+    size_t outLen = 0;
+    EVP_PKEY *pkey;
+
+    (void)data;
+    pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_HMAC, e, key, sizeof(key));
+    if (pkey == NULL)
+        ret = -1;
+    if (ret == 0) {
+        ret = EVP_PKEY_get_raw_private_key(pkey, NULL, &outLen) != 1;
+    }
+    if ((ret == 0) && (outLen != sizeof(key)))
+        ret = -1;
+    if (ret == 0) {
+        XMEMSET(out, 0xa5, sizeof(out));
+        outLen = 1;
+        if (EVP_PKEY_get_raw_private_key(pkey, out, &outLen) == 1)
+            ret = -1;
+    }
+    if ((ret == 0) && (outLen != sizeof(key)))
+        ret = -1;
+    for (i = 0; (ret == 0) && (i < (int)sizeof(out)); i++) {
+        if (out[i] != 0xa5)
+            ret = -1;
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return ret;
+}
+#endif
+
 #endif /* WE_HAVE_HMAC */
 
 
