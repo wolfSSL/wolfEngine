@@ -68,6 +68,7 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     int ret = 1;
     int rc;
     we_AesCbcHmac *aes;
+    unsigned char digest[SHA256_DIGEST_LENGTH];
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_init");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, iv = %p, "
@@ -82,6 +83,14 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     if ((ret == 1) && aes->keySet && (key == NULL) &&
         (aes->enc != (unsigned int)enc)) {
         ret = 0;
+    }
+    if ((ret == 1) && aes->init && aes->hmacKeySet) {
+        rc = wc_HmacFinal(&aes->hmac, digest);
+        OPENSSL_cleanse(digest, sizeof(digest));
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacFinal", rc);
+            ret = 0;
+        }
     }
 
     /* Initialize the wolfSSL AES object. */
@@ -113,6 +122,7 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         /* No payload yet. */
         aes->pLen = 0;
         aes->tls = 0;
+        aes->tls11 = 0;
 
         /* EVP restores the effective CBC IV before calling init. */
         if (iv == NULL) {
@@ -281,7 +291,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
     /* Get payload length. */
     pLen = aes->pLen;
     tls = (pLen != 0);
-    if (aes->tls11) {
+    if (tls && aes->tls11) {
         /* TLS v1.1 and v1.2 have IV before message. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV, aes->tls11 = %d",
                        aes->tls11);
@@ -375,6 +385,12 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
             WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "MAC check failed");
             ret = -1;
         }
+    }
+
+    if (tls) {
+        aes->pLen = 0;
+        aes->tls = 0;
+        aes->tls11 = 0;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_hmac_dec", ret);
