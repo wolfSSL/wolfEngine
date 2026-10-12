@@ -304,6 +304,22 @@ static int we_dh_set_parameters(const DH *dh, we_Dh *engineDh)
             engineDh->qLen = qBufLen;
         }
     }
+    else if (ret == 1) {
+        if (engineDh->q != NULL) {
+            OPENSSL_free(engineDh->q);
+            engineDh->q = NULL;
+        }
+        engineDh->qLen = 0;
+
+        /* Reinitialize the key because setting q to NULL does not clear an
+         * existing q on every supported wolfCrypt version. */
+        wc_FreeDhKey(&engineDh->key);
+        rc = wc_InitDhKey(&engineDh->key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_InitDhKey", rc);
+            ret = 0;
+        }
+    }
 
     if (ret == 1) {
         /* Set p, g and q parameters into wolfSSL DH key. */

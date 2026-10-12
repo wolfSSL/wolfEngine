@@ -23,6 +23,10 @@
 
 #ifdef WE_HAVE_DH
 
+#ifndef WE_DH_EX_DATA_IDX
+#define WE_DH_EX_DATA_IDX 0
+#endif
+
 /* dh1024 p */
 static const unsigned char dh_p[] =
 {
@@ -161,6 +165,115 @@ static int test_dh_keygen(DH *dhOpenSSL, DH *dhWolfEngine)
     return err;
 }
 
+static int test_dh_parameter_refresh(ENGINE *e)
+{
+    int err;
+    DH *dhWithQ = NULL;
+    DH *dhWithoutQ = NULL;
+    const DH_METHOD *method = ENGINE_get_DH(e);
+    BIGNUM *p = NULL;
+    BIGNUM *q = NULL;
+    BIGNUM *g = NULL;
+    BIGNUM *priv = NULL;
+    BIGNUM *peerPub = NULL;
+    void *withQData = NULL;
+    void *withoutQData = NULL;
+    unsigned char secret[sizeof(dh_p)];
+    unsigned char privateKey[64];
+    int i;
+
+    for (i = 0; i < (int)sizeof(privateKey); i++)
+        privateKey[i] = (unsigned char)(i + 1);
+
+    err = method == NULL;
+    if (err == 0) {
+        dhWithQ = DH_new();
+        dhWithoutQ = DH_new();
+        err = (dhWithQ == NULL) || (dhWithoutQ == NULL);
+    }
+    if (err == 0) {
+        err = (DH_set_method(dhWithQ, method) != 1) ||
+              (DH_set_method(dhWithoutQ, method) != 1);
+    }
+    if (err == 0) {
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        q = BN_dup(p);
+        g = BN_new();
+        err = (p == NULL) || (q == NULL) || (g == NULL);
+    }
+    if (err == 0) {
+        err = (BN_sub_word(q, 1) != 1) || (BN_rshift1(q, q) != 1) ||
+              (BN_set_word(g, 4) != 1);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWithQ, p, q, g) != 1;
+        if (err == 0) {
+            p = NULL;
+            q = NULL;
+            g = NULL;
+        }
+    }
+    if (err == 0) {
+        priv = BN_bin2bn(privateKey, sizeof(privateKey), NULL);
+        err = priv == NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_key(dhWithQ, NULL, priv) != 1;
+        if (err == 0)
+            priv = NULL;
+    }
+    if (err == 0)
+        err = DH_generate_key(dhWithQ) != 1;
+
+    if (err == 0) {
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
+        err = (p == NULL) || (g == NULL);
+    }
+    if (err == 0) {
+        peerPub = BN_new();
+        err = (peerPub == NULL) || (BN_set_word(peerPub, 2) != 1);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWithoutQ, p, NULL, g) != 1;
+        if (err == 0) {
+            p = NULL;
+            g = NULL;
+        }
+    }
+    if (err == 0)
+        err = DH_generate_key(dhWithoutQ) != 1;
+
+    if (err == 0) {
+        withQData = DH_get_ex_data(dhWithQ, WE_DH_EX_DATA_IDX);
+        withoutQData = DH_get_ex_data(dhWithoutQ, WE_DH_EX_DATA_IDX);
+        err = (withQData == NULL) || (withoutQData == NULL);
+    }
+    if (err == 0) {
+        err = DH_set_ex_data(dhWithQ, WE_DH_EX_DATA_IDX, withoutQData) != 1;
+    }
+    if (err == 0) {
+        if (DH_set_ex_data(dhWithoutQ, WE_DH_EX_DATA_IDX, withQData) != 1) {
+            (void)DH_set_ex_data(dhWithQ, WE_DH_EX_DATA_IDX, withQData);
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("Clear cached q when refreshing q-less DH parameters");
+        err = DH_compute_key(secret, peerPub, dhWithoutQ) <= 0;
+    }
+
+    BN_free(peerPub);
+    BN_clear_free(priv);
+    BN_free(g);
+    BN_free(q);
+    BN_free(p);
+    DH_free(dhWithoutQ);
+    DH_free(dhWithQ);
+
+    return err;
+}
+
 int test_dh_pgen(ENGINE *e, void *data)
 {
     int err;
@@ -209,6 +322,9 @@ int test_dh_pgen(ENGINE *e, void *data)
 
     if (err == 0) {
         err = test_dh_keygen(dhOpenSSL, dhWolfEngine);
+    }
+    if (err == 0) {
+        err = test_dh_parameter_refresh(e);
     }
 
     DH_free(dhOpenSSL);
