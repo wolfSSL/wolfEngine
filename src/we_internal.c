@@ -1069,12 +1069,13 @@ static int wolfengine_init(ENGINE *e)
     }
 #endif
 #endif
+
+#endif /* WE_HAVE_ECC */
+
 #ifdef WE_HAVE_PBE
     if (ret == 1) {
         ret = we_init_pbe_keygen();
     }
-#endif
-
 #endif
 
     WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_init", ret);
