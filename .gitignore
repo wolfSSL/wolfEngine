@@ -44,6 +44,9 @@
 /test/.deps
 /test/.libs
 /test/.dirstamp
+/test/dh_alloc.test
+/test/dh_alloc.log
+/test/dh_alloc.trs
 /test/unit.test
 /test/unit.log
 /test/unit.trs

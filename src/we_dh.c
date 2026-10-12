@@ -774,7 +774,7 @@ static int we_dh_convert_params(DhKey *wolfDh, DH *osslDh)
     }
     if (ret == 1) {
         /* Allocate buffer for generator. */
-        g = (unsigned char*)OPENSSL_malloc(pLen);
+        g = (unsigned char*)OPENSSL_malloc(gLen == 0 ? 1 : gLen);
         if (g == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(g)", g);
             ret = 0;

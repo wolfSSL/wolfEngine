@@ -69,3 +69,10 @@ test_unit_test_SOURCES = \
 	test/unit.c
 test_unit_test_LDADD = libwolfengine.la
 noinst_HEADERS += test/unit.h
+
+check_PROGRAMS += test/dh_alloc.test
+noinst_PROGRAMS += test/dh_alloc.test
+DISTCLEANFILES += test/.libs/dh_alloc.test
+
+test_dh_alloc_test_SOURCES = test/test_dh_alloc.c
+test_dh_alloc_test_LDADD = libwolfengine.la
