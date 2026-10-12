@@ -348,6 +348,40 @@ int test_cmac_copy_error(ENGINE *e, void *data)
     return ret;
 }
 
+int test_cmac_keygen_reuse(ENGINE *e, void *data)
+{
+    int ret = 0;
+    unsigned char key[16] = { 0 };
+    unsigned char oldKey[16] = { 1 };
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+
+    (void)data;
+    pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, e, oldKey, sizeof(oldKey));
+    if (pkey == NULL)
+        ret = -1;
+    if (ret == 0) {
+        ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_CMAC, e);
+        if (ctx == NULL)
+            ret = -1;
+    }
+    if (ret == 0)
+        ret = EVP_PKEY_keygen_init(ctx) != 1;
+    if (ret == 0) {
+        ret = EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_KEYGEN,
+                EVP_PKEY_CTRL_SET_MAC_KEY, sizeof(key), key) != 1;
+    }
+    if (ret == 0)
+        ret = EVP_PKEY_keygen(ctx, &pkey) != 1;
+    if ((ret == 0) && (EVP_PKEY_base_id(pkey) != EVP_PKEY_CMAC))
+        ret = -1;
+
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
+
+    return ret;
+}
+
 #endif /* WE_HAVE_CMAC */
 
 
