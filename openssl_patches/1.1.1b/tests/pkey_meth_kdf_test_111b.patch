@@ -45,3 +45,24 @@ index f2abcf3e..2b24b00e 100644
          };
          if (!TEST_mem_eq(out, sizeof(out), expected, sizeof(expected))) {
              return 0;
+diff --git a/crypto/kdf/tls1_prf.c b/crypto/kdf/tls1_prf.c
+index 49f7ecc..78129b3 100644
+--- a/crypto/kdf/tls1_prf.c
++++ b/crypto/kdf/tls1_prf.c
+@@ -205,2 +205,3 @@ static int tls1_prf_P_hash(const EVP_MD *md,
+         goto err;
++    A1_len = sizeof(A1);
+     if (!EVP_DigestSignFinal(ctx, A1, &A1_len))
+@@ -221,2 +222,3 @@ static int tls1_prf_P_hash(const EVP_MD *md,
+             size_t mac_len;
++            mac_len = olen;
+             if (!EVP_DigestSignFinal(ctx, out, &mac_len))
+@@ -226,2 +228,3 @@ static int tls1_prf_P_hash(const EVP_MD *md,
+             /* calc the next A1 value */
++            A1_len = sizeof(A1);
+             if (!EVP_DigestSignFinal(ctx_tmp, A1, &A1_len))
+@@ -229,3 +232,3 @@ static int tls1_prf_P_hash(const EVP_MD *md,
+         } else {                /* last one */
+-
++            A1_len = sizeof(A1);
+             if (!EVP_DigestSignFinal(ctx, A1, &A1_len))

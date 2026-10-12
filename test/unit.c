@@ -86,9 +86,11 @@ TEST_CASE test_case[] = {
 #endif
 #ifdef WE_HAVE_HMAC
     TEST_DECL(test_hmac_create, NULL),
+    TEST_DECL(test_hmac_output_size, NULL),
 #endif
 #ifdef WE_HAVE_CMAC
     TEST_DECL(test_cmac_create, &flags),
+    TEST_DECL(test_cmac_output_size, NULL),
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
