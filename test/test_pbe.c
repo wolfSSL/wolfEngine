@@ -23,6 +23,8 @@
 
 #ifdef WE_HAVE_PBE
 
+#include <openssl/pkcs12.h>
+
 static const unsigned char pbeData[] = {
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -339,6 +341,9 @@ static int test_pbe_pbes2_aes256_cbc(void)
 int test_pbe(ENGINE *e, void *data)
 {
     int err;
+    int cipherNid = NID_undef;
+    int digestNid = NID_undef;
+    EVP_PBE_KEYGEN *keygen = NULL;
 
     (void)e;
     (void)data;
@@ -347,8 +352,20 @@ int test_pbe(ENGINE *e, void *data)
     PRINT_MSG("Not using wolfEngine - PBKDF not available in wolfCrypt");
 #endif
 
-    PRINT_MSG("PBE DES-EDE3-CBC SHA-1");
-    err = test_pbe_sha1_des3_pbkdf1();
+#ifndef NO_PWDBASED
+    if ((EVP_PBE_find(EVP_PBE_TYPE_OUTER,
+            NID_pbe_WithSHA1And3_Key_TripleDES_CBC, &cipherNid, &digestNid,
+            &keygen) != 1) || (keygen == NULL) ||
+            (keygen == PKCS12_PBE_keyivgen)) {
+        PRINT_MSG("wolfEngine PBE key generation is not registered");
+        err = 1;
+    }
+    else
+#endif
+    {
+        PRINT_MSG("PBE DES-EDE3-CBC SHA-1");
+        err = test_pbe_sha1_des3_pbkdf1();
+    }
     if (err == 0) {
         PRINT_MSG("PBES2 AES128-CBC HMAC-SHA-256");
         err = test_pbe_pbes2_aes128_cbc();
