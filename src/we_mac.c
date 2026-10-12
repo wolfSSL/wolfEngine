@@ -756,7 +756,7 @@ static int we_hmac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         /* Assign algorithm and key to PKEY. */
         if (EVP_PKEY_assign(pkey, EVP_PKEY_HMAC, key) != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "EVP_PKEY_assign", 0);
-            ASN1_OCTET_STRING_free(key);
+            ASN1_STRING_clear_free((ASN1_STRING*)key);
             ret = 0;
         }
     }
@@ -785,7 +785,7 @@ static void we_hmac_pkey_free(EVP_PKEY *pkey)
     }
     if (ret == 1) {
         /* Dispose of key. */
-        ASN1_OCTET_STRING_free(key);
+        ASN1_STRING_clear_free((ASN1_STRING*)key);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_free", ret);
@@ -1355,7 +1355,7 @@ static int we_hmac_pkey_asn1_set_priv_key(EVP_PKEY *pkey,
 
     /* Dispose of ASN.1 object on failure. */
     if ((ret == 0) && (asn1 != NULL)) {
-        ASN1_OCTET_STRING_free(asn1);
+        ASN1_STRING_clear_free((ASN1_STRING*)asn1);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_asn1_set_priv_key", ret);
@@ -1534,7 +1534,7 @@ static int we_cmac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         /* Assign algorithm and key to PKEY. */
         if (EVP_PKEY_assign(pkey, EVP_PKEY_CMAC, key) != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "EVP_PKEY_assign", 0);
-            ASN1_OCTET_STRING_free(key);
+            ASN1_STRING_clear_free((ASN1_STRING*)key);
             ret = 0;
         }
     }
@@ -1576,7 +1576,7 @@ static void we_cmac_pkey_free(EVP_PKEY *pkey)
         key = (ASN1_OCTET_STRING*)EVP_PKEY_get0(pkey);
         if (key != NULL) {
             /* Dispose of object. */
-            ASN1_OCTET_STRING_free(key);
+            ASN1_STRING_clear_free((ASN1_STRING*)key);
         }
         else {
             ret = 0;
