@@ -1619,7 +1619,7 @@ static int we_cmac_copy(we_Mac* mac, Cmac* dst, Cmac* src)
     /* Initialize the wolfCrypt CMAC object for AES. */
     rc = wc_InitCmac(dst, (const byte*)mac->key, mac->keySz, WC_CMAC_AES, NULL);
     if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_InitCmac", ret);
+        WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_InitCmac", rc);
         ret = 0;
     }
 

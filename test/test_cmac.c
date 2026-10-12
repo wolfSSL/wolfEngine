@@ -26,8 +26,24 @@
 #include <wolfssl/options.h>
 #endif
 #include <wolfssl/wolfcrypt/cmac.h>
+#include <wolfengine/we_logging.h>
 
 #ifdef WE_HAVE_CMAC
+
+#ifdef WOLFENGINE_DEBUG
+static char cmacLog[WOLFENGINE_MAX_LOG_WIDTH];
+
+static void test_cmac_logging_cb(const int level, const int component,
+        const char *const message)
+{
+    (void)component;
+
+    if ((level == WE_LOG_ERROR) && (XSTRSTR(message, "wc_InitCmac") != NULL)) {
+        XSTRNCPY(cmacLog, message, sizeof(cmacLog) - 1);
+        cmacLog[sizeof(cmacLog) - 1] = '\0';
+    }
+}
+#endif
 
 static int test_cmac_generation(ENGINE *e, const EVP_CIPHER *c,
     unsigned char *key, int keySz, unsigned char *msg, int len,
@@ -279,6 +295,55 @@ int test_cmac_update_size(ENGINE *e, void *data)
     EVP_PKEY_free(pkey);
     EVP_PKEY_CTX_free(pctx);
     EVP_MD_CTX_free(ctx);
+
+    return ret;
+}
+
+int test_cmac_copy_error(ENGINE *e, void *data)
+{
+    int ret = 0;
+#ifdef WOLFENGINE_DEBUG
+    unsigned char key = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY_CTX *copy = NULL;
+
+    (void)data;
+    XMEMSET(cmacLog, 0, sizeof(cmacLog));
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_CMAC, e);
+    if (ctx == NULL)
+        ret = -1;
+    if (ret == 0)
+        ret = EVP_PKEY_keygen_init(ctx) != 1;
+    if (ret == 0) {
+        ret = EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_KEYGEN,
+                EVP_PKEY_CTRL_SET_MAC_KEY, sizeof(key), &key) != 1;
+    }
+    if (ret == 0) {
+        ret = wolfEngine_SetLoggingCb(test_cmac_logging_cb) != 0;
+        ret |= wolfEngine_SetLogLevel(WE_LOG_ERROR) != 0;
+        ret |= wolfEngine_SetLogComponents(WE_LOG_MAC) != 0;
+        ret |= wolfEngine_Debugging_ON() != 0;
+    }
+    if (ret == 0) {
+        copy = EVP_PKEY_CTX_dup(ctx);
+        if (copy != NULL)
+            ret = -1;
+    }
+    wolfEngine_Debugging_OFF();
+    wolfEngine_SetLoggingCb(NULL);
+    wolfEngine_SetLogLevel(WE_LOG_LEVEL_DEFAULT);
+    wolfEngine_SetLogComponents(WE_LOG_COMPONENTS_DEFAULT);
+
+    if ((ret == 0) && (XSTRSTR(cmacLog, "ret = -") == NULL))
+        ret = -1;
+
+    EVP_PKEY_CTX_free(copy);
+    EVP_PKEY_CTX_free(ctx);
+#else
+    (void)e;
+    (void)data;
+#endif
 
     return ret;
 }

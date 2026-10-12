@@ -97,6 +97,9 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_cmac_create, &flags),
     TEST_DECL(test_cmac_output_size, NULL),
     TEST_DECL(test_cmac_update_size, NULL),
+    #ifndef TEST_MULTITHREADED
+    TEST_DECL(test_cmac_copy_error, NULL),
+    #endif
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
