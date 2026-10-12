@@ -981,6 +981,43 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
     return err;
 }
 
+#ifdef WE_HAVE_RSA_X931
+static int test_rsa_x931_fixed_width(ENGINE *e)
+{
+    int err = 0;
+    EVP_PKEY *pkey = NULL;
+    const unsigned char *p = rsa_key_der_2048;
+    unsigned char buf[20] = { 0 };
+    unsigned char *rsaSig = NULL;
+    size_t rsaSigLen = 0;
+
+    buf[sizeof(buf) - 2] = 0x01;
+    buf[sizeof(buf) - 1] = 0x6c;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        rsaSigLen = (size_t)EVP_PKEY_size(pkey);
+        rsaSig = (unsigned char *)OPENSSL_malloc(rsaSigLen);
+        err = rsaSig == NULL;
+    }
+
+    if (err == 0) {
+        err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha256(),
+                               rsaSig, &rsaSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha256(),
+                                 rsaSig, rsaSigLen, RSA_X931_PADDING);
+    }
+
+    EVP_PKEY_free(pkey);
+    OPENSSL_free(rsaSig);
+
+    return err;
+}
+#endif
+
 int test_rsa_sign_sha1(ENGINE *e, void *data)
 {
     int err = 0;
@@ -1089,9 +1126,16 @@ int test_rsa_sign_verify_pss(ENGINE *e, void *data)
 #ifdef WE_HAVE_RSA_X931
 int test_rsa_sign_verify_x931(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
 
-    return test_rsa_sign_verify_pad(e, RSA_X931_PADDING, NULL, NULL);
+    err = test_rsa_sign_verify_pad(e, RSA_X931_PADDING, NULL, NULL);
+    if (err == 0) {
+        err = test_rsa_x931_fixed_width(e);
+    }
+
+    return err;
 }
 #endif /* WE_HAVE_RSA_X931 */
 
