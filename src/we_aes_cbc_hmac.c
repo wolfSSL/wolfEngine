@@ -224,7 +224,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
         rc = wc_AesCbcEncrypt(&aes->aes, out + off, in + off, (int)len - off);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
-            ret = 0;
+            ret = -1;
         }
         else {
             ret = (int)len;
