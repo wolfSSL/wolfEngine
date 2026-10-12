@@ -100,6 +100,7 @@ TEST_CASE test_case[] = {
     #ifndef TEST_MULTITHREADED
     TEST_DECL(test_cmac_copy_error, NULL),
     #endif
+    TEST_DECL(test_cmac_keygen_reuse, NULL),
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),

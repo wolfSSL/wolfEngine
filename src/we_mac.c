@@ -1532,7 +1532,13 @@ static int we_cmac_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
     }
     if (ret == 1) {
         /* Assign algorithm and key to PKEY. */
-        EVP_PKEY_assign(pkey, EVP_PKEY_CMAC, key);
+        if (EVP_PKEY_assign(pkey, EVP_PKEY_CMAC, key) != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "EVP_PKEY_assign", 0);
+            ASN1_OCTET_STRING_free(key);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
     #if OPENSSL_VERSION_NUMBER >= 0x10101000L
         /* Set alias to distinguish between OpenSSL and wolfEngine created. */
         ret = EVP_PKEY_set_alias_type(pkey, NID_wolfengine_cmac);
