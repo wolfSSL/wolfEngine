@@ -45,6 +45,64 @@ static const unsigned char dh_g[] =
   0x02,
 };
 
+#if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    !defined(TEST_MULTITHREADED) && !defined(_WIN32)
+extern wolfSSL_Mutex* we_rng_mutex;
+
+static int test_dh_failed_rng_lock(DH* dh)
+{
+    int err = 0;
+    int attrInit = 0;
+    int mutexInit = 0;
+    int mutexLocked = 0;
+    int rc;
+    pthread_mutexattr_t attr;
+    wolfSSL_Mutex mutex;
+    wolfSSL_Mutex* savedMutex = we_rng_mutex;
+
+    rc = pthread_mutexattr_init(&attr);
+    err = rc != 0;
+    attrInit = rc == 0;
+    if (err == 0) {
+        rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+        err = rc != 0;
+    }
+    if (err == 0) {
+        rc = pthread_mutex_init(&mutex, &attr);
+        err = rc != 0;
+        mutexInit = rc == 0;
+    }
+    if (err == 0) {
+        rc = pthread_mutex_lock(&mutex);
+        err = rc != 0;
+        mutexLocked = rc == 0;
+    }
+    if (err == 0) {
+        we_rng_mutex = &mutex;
+        rc = DH_generate_parameters_ex(dh, 1024, DH_GENERATOR_5, NULL);
+        we_rng_mutex = savedMutex;
+        err = rc != 0;
+    }
+    if (err == 0) {
+        rc = pthread_mutex_trylock(&mutex);
+        if (rc == 0) {
+            pthread_mutex_unlock(&mutex);
+            mutexLocked = 0;
+            err = 1;
+        }
+    }
+    if (mutexInit) {
+        if (mutexLocked)
+            pthread_mutex_unlock(&mutex);
+        pthread_mutex_destroy(&mutex);
+    }
+    if (attrInit)
+        pthread_mutexattr_destroy(&attr);
+
+    return err;
+}
+#endif
+
 static int test_dh_keygen(DH *dhOpenSSL, DH *dhWolfEngine)
 {
     int err = 0;
@@ -126,6 +184,13 @@ int test_dh_pgen(ENGINE *e, void *data)
     if (err == 0) {
         DH_set_method(dhWolfEngine, method);
     }
+#if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    !defined(TEST_MULTITHREADED) && !defined(_WIN32)
+    if (err == 0) {
+        PRINT_MSG("Keep RNG mutex ownership when locking fails");
+        err = test_dh_failed_rng_lock(dhWolfEngine);
+    }
+#endif
     if (err == 0) {
         /* Generator and callback (last param) ignored by wolfEngine. */
         err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_5,
