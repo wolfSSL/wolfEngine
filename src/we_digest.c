@@ -866,6 +866,7 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
         }
 
         if (tmp != NULL) {
+            OPENSSL_cleanse(tmp, WC_SHA512_BLOCK_SIZE);
             XFREE(tmp, NULL, DYNAMIC_TYPE_TMP_BUFFER);
         }
     }
