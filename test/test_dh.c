@@ -549,6 +549,7 @@ int test_dh_ctrl(ENGINE* e, void* data)
 {
     int err;
     EVP_PKEY_CTX* ctx = NULL;
+    EVP_PKEY* key = NULL;
     int primeLengths[] = {1024, 2048, 3072};
     word32 i;
 
@@ -604,6 +605,15 @@ int test_dh_ctrl(ENGINE* e, void* data)
     if (err == 0) {
         err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe2048") <= 0;
     }
+    #ifndef HAVE_FFDHE_Q
+    if (err == 0) {
+        PRINT_MSG("Generate a key with named DH parameters");
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &key) != 1;
+    }
+    #endif
     #else
     if (err == 0) {
         err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe2048") > 0;
@@ -631,6 +641,7 @@ int test_dh_ctrl(ENGINE* e, void* data)
     #endif /* HAVE_FFDHE_4096 */
 #endif /* HAVE_PUBLIC_FFDHE */
 
+    EVP_PKEY_free(key);
     EVP_PKEY_CTX_free(ctx);
 
     return err;
