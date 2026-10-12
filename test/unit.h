@@ -115,12 +115,14 @@ int test_sha3_512(ENGINE *e, void *data);
 #ifdef WE_HAVE_CMAC
 int test_cmac_create(ENGINE *e, void *data);
 int test_cmac_output_size(ENGINE *e, void *data);
+int test_cmac_update_size(ENGINE *e, void *data);
 #endif /* WE_HAVE_HMAC */
 
 #ifdef WE_HAVE_HMAC
 int test_hmac_create(ENGINE *e, void *data);
 int test_hmac_output_size(ENGINE *e, void *data);
 int test_hmac_pkey_size(ENGINE *e, void *data);
+int test_hmac_update_size(ENGINE *e, void *data);
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
 int test_hmac_raw_key_output_size(ENGINE *e, void *data);
 #endif

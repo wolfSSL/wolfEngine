@@ -88,6 +88,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_hmac_create, NULL),
     TEST_DECL(test_hmac_output_size, NULL),
     TEST_DECL(test_hmac_pkey_size, NULL),
+    TEST_DECL(test_hmac_update_size, NULL),
     #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     TEST_DECL(test_hmac_raw_key_output_size, NULL),
     #endif
@@ -95,6 +96,7 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_CMAC
     TEST_DECL(test_cmac_create, &flags),
     TEST_DECL(test_cmac_output_size, NULL),
+    TEST_DECL(test_cmac_update_size, NULL),
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
