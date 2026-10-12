@@ -787,7 +787,7 @@ static int we_sha3_512_init(EVP_MD_CTX *ctx)
  * Digest some more data using wolfSSL.
  *
  * @param  ctx   [in]  EVP digest context of operation.
- * @param  data  [in]  More data to digest with SHA-256.
+ * @param  data  [in]  More data to digest with the selected algorithm.
  * @param  len   [in]  Length of data to digest.
  * @return  1 on success and 0 on failure.
  */
@@ -886,7 +886,7 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
  * Finalize the digest operation.
  *
  * @param  ctx  [in]  EVP digest context of operation.
- * @param  md   [in]  SHA-256 digest of data.
+ * @param  md   [out]  Digest output for the selected algorithm.
  * @return  1 on success and 0 on failure.
  */
 static int we_digest_final(EVP_MD_CTX *ctx, unsigned char *md)
