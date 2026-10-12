@@ -76,21 +76,25 @@ static int test_create_digest(const EVP_MD *md, ENGINE *e, void *data)
 {
     int err = 0;
     unsigned char *msg = (unsigned char *)"Test pattern";
-    unsigned char longMsg[1300];
+    const size_t longMsgLen = (2U * 1024U * 1024U) + 2U;
+    unsigned char *longMsg = NULL;
     unsigned char digest[64];
     unsigned int dLen;
 
     (void)data;
 
-    /* Must memset longMsg to make valgrind happy */
     XMEMSET(digest, 0, sizeof(digest));
-    XMEMSET(longMsg, 0, sizeof(longMsg));
-
-    RAND_bytes(longMsg, sizeof(longMsg));
+    err = (longMsg = OPENSSL_malloc(longMsgLen)) == NULL;
+    if (err == 0) {
+        err = RAND_bytes(longMsg, (int)longMsgLen) != 1;
+    }
 
     dLen = 0;
-    PRINT_MSG("Digest with OpenSSL");
-    err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest, &dLen);
+    if (err == 0) {
+        PRINT_MSG("Digest with OpenSSL");
+        err = test_digest_op(md, NULL, msg, strlen((char*)msg), digest,
+            &dLen);
+    }
     if (err == 0) {
         PRINT_MSG("Digest With wolfengine");
         err = test_digest_op(md, e, msg, strlen((char*)msg), digest, &dLen);
@@ -98,12 +102,14 @@ static int test_create_digest(const EVP_MD *md, ENGINE *e, void *data)
     if (err == 0) {
         dLen = 0;
         PRINT_MSG("Digest with OpenSSL");
-        err = test_digest_op(md, NULL, longMsg, sizeof(longMsg), digest, &dLen);
+        err = test_digest_op(md, NULL, longMsg, longMsgLen, digest, &dLen);
     }
     if (err == 0) {
         PRINT_MSG("Digest With wolfengine");
-        err = test_digest_op(md, e, longMsg, sizeof(longMsg), digest, &dLen);
+        err = test_digest_op(md, e, longMsg, longMsgLen, digest, &dLen);
     }
+
+    OPENSSL_free(longMsg);
 
     return err;
 }
