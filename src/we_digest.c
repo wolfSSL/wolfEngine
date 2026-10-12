@@ -141,7 +141,7 @@ int we_init_sha_meth(void)
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_init_sha_meth");
 
-    ret = (we_sha1_md = EVP_MD_meth_new(NID_sha, EVP_PKEY_NONE)) != NULL;
+    ret = (we_sha1_md = EVP_MD_meth_new(NID_sha1, EVP_PKEY_NONE)) != NULL;
     if (ret == 1) {
         ret = EVP_MD_meth_set_init(we_sha1_md, we_sha_init);
     }
