@@ -191,6 +191,7 @@ int test_aes128_cbc_hmac_plain_encrypt(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_encrypt_error(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_ctrl_error(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_tls_empty(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_reinit_state(ENGINE *e, void *data);
 
 #endif
 

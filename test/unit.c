@@ -888,6 +888,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_cbc_hmac_encrypt_error, NULL),
     TEST_DECL(test_aes128_cbc_hmac_ctrl_error, NULL),
     TEST_DECL(test_aes128_cbc_hmac_tls_empty, NULL),
+    TEST_DECL(test_aes128_cbc_hmac_reinit_state, NULL),
 #endif
 #ifdef WE_HAVE_AESCTR
     TEST_DECL(test_aes128_ctr_stream, NULL),
