@@ -135,6 +135,23 @@ do_config() {
     if [ "$VERBOSE" = "yes" ]; then
         cat $TMP_FILE
     fi
+
+    echo -n "  dh_alloc.test ... "
+    LD_LIBRARY_PATH=$OPENSSL_DIR ./test/dh_alloc.test >$TMP_FILE 2>&1
+    DH_ALLOC_RESULT=$?
+    case $DH_ALLOC_RESULT in
+        0) echo "PASS" ;;
+        77) echo "SKIP" ;;
+        *)
+            cat $TMP_FILE
+            echo "DH allocation test failed for wolfSSL engine"
+            do_cleanup
+            exit 1
+            ;;
+    esac
+    if [ "$VERBOSE" = "yes" ]; then
+        cat $TMP_FILE
+    fi
 }
 
 while [ $# -gt 0 ]
