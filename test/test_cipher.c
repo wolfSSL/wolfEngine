@@ -733,6 +733,39 @@ int test_aes128_cbc_hmac_encrypt_error(ENGINE *e, void *data)
 
     return err;
 }
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_ctrl_error(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = EVP_aes_128_cbc_hmac_sha256();
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN];
+
+    (void)data;
+
+    if (cipher == NULL)
+        return 0;
+
+    XMEMSET(aad, 0, sizeof(aad));
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        ERR_clear_error();
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad) - 1, aad) != 0;
+    }
+    if (err == 0)
+        err = ERR_peek_last_error() != 0;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
 #else
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 {
@@ -758,6 +791,13 @@ int test_aes128_cbc_hmac_plain_encrypt(ENGINE *e, void *data)
 }
 
 int test_aes128_cbc_hmac_encrypt_error(ENGINE *e, void *data)
+{
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_ctrl_error(ENGINE *e, void *data)
 {
     (void)e;
     (void)data;
