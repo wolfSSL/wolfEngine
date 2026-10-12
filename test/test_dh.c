@@ -395,6 +395,109 @@ int test_dh_priv_key_length(ENGINE *e, void *data)
 
 #ifdef WE_HAVE_EVP_PKEY
 
+static int test_dh_pkey_nonzero_padding(ENGINE *e, EVP_PKEY *params,
+                                        int useStringControl)
+{
+    static const unsigned char privateKey[] = {
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+        0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20,
+        0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+        0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30,
+        0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+        0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x00, 0x64
+    };
+    int err;
+    DH *ourDh = NULL;
+    DH *peerDh = NULL;
+    BIGNUM *priv = NULL;
+    BIGNUM *pub = NULL;
+    EVP_PKEY *ourKey = NULL;
+    EVP_PKEY *peerKey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char *secret = NULL;
+    size_t secretLen = 0;
+    DH *paramsDh = (DH *)EVP_PKEY_get0_DH(params);
+
+    err = paramsDh == NULL;
+    if (err == 0) {
+        ourDh = DHparams_dup(paramsDh);
+        peerDh = DHparams_dup(paramsDh);
+        err = (ourDh == NULL) || (peerDh == NULL);
+    }
+    if (err == 0) {
+        priv = BN_bin2bn(privateKey, sizeof(privateKey), NULL);
+        pub = BN_new();
+        err = (priv == NULL) || (pub == NULL);
+    }
+    if (err == 0) {
+        err = BN_set_word(pub, 2) != 1;
+    }
+    if (err == 0) {
+        err = DH_set0_key(ourDh, NULL, priv) != 1;
+        if (err == 0)
+            priv = NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_key(peerDh, pub, NULL) != 1;
+        if (err == 0)
+            pub = NULL;
+    }
+    if (err == 0) {
+        ourKey = EVP_PKEY_new();
+        peerKey = EVP_PKEY_new();
+        err = (ourKey == NULL) || (peerKey == NULL);
+    }
+    if (err == 0) {
+        err = EVP_PKEY_assign_DH(ourKey, ourDh) != 1;
+        if (err == 0)
+            ourDh = NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_assign_DH(peerKey, peerDh) != 1;
+        if (err == 0)
+            peerDh = NULL;
+    }
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(ourKey, e);
+        err = ctx == NULL;
+    }
+    if (err == 0)
+        err = EVP_PKEY_derive_init(ctx) <= 0;
+    if (err == 0)
+        err = EVP_PKEY_derive_set_peer(ctx, peerKey) <= 0;
+    if ((err == 0) && useStringControl) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_pad", "2") <= 0;
+    }
+    else if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_DERIVE,
+                               EVP_PKEY_CTRL_DH_PAD, 2, NULL) <= 0;
+    }
+    if (err == 0) {
+        secretLen = (size_t)EVP_PKEY_size(ourKey);
+        secret = (unsigned char *)OPENSSL_malloc(secretLen);
+        err = secret == NULL;
+    }
+    if (err == 0)
+        err = EVP_PKEY_derive(ctx, secret, &secretLen) <= 0;
+    if (err == 0)
+        err = secretLen != (size_t)EVP_PKEY_size(ourKey);
+    if (err == 0)
+        err = secret[0] != 0;
+
+    OPENSSL_free(secret);
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(peerKey);
+    EVP_PKEY_free(ourKey);
+    BN_free(pub);
+    BN_clear_free(priv);
+    DH_free(peerDh);
+    DH_free(ourDh);
+
+    return err;
+}
+
 static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
 {
     int err;
@@ -653,6 +756,13 @@ int test_dh_pkey(ENGINE* e, void* data)
 
     if (err == 0) {
         err = test_dh_pkey_keygen(e, params);
+    }
+    if (err == 0) {
+        PRINT_MSG("Treat every nonzero DH padding control value as enabled");
+        err = test_dh_pkey_nonzero_padding(e, params, 0);
+    }
+    if (err == 0) {
+        err = test_dh_pkey_nonzero_padding(e, params, 1);
     }
 
     EVP_PKEY_free(params);

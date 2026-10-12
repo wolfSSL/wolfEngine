@@ -1086,7 +1086,7 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 ret = 0;
                 break;
             case EVP_PKEY_CTRL_DH_PAD:
-                dh->pad = num;
+                dh->pad = num != 0;
                 break;
             case EVP_PKEY_CTRL_PEER_KEY:
                 WOLFENGINE_MSG(WE_LOG_KE, "EVP_PKEY_CTRL_PEER_KEY");
@@ -1220,7 +1220,7 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         }
         /* Set padding requirement for secret output. */
         else if (XSTRCMP(type, "dh_pad") == 0) {
-            dh->pad = XATOI(value);
+            dh->pad = XATOI(value) != 0;
         }
         else if (XSTRCMP(type, "dh_paramgen_prime_len") == 0) {
             ret = we_dh_pkey_ctrl(ctx, EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN,
