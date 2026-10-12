@@ -382,6 +382,32 @@ int test_cmac_keygen_reuse(ENGINE *e, void *data)
     return ret;
 }
 
+int test_cmac_asn1_registry(ENGINE *e, void *data)
+{
+    int ret = 0;
+    int i;
+    int count;
+    const int *nids = NULL;
+    EVP_PKEY_ASN1_METHOD *method = NULL;
+    ENGINE_PKEY_ASN1_METHS_PTR methods;
+
+    (void)data;
+    methods = ENGINE_get_pkey_asn1_meths(e);
+    if (methods == NULL)
+        ret = -1;
+    if (ret == 0) {
+        count = methods(e, NULL, &nids, 0);
+        if ((count <= 0) || (nids == NULL))
+            ret = -1;
+    }
+    for (i = 0; (ret == 0) && (i < count); i++) {
+        if ((methods(e, &method, NULL, nids[i]) != 1) || (method == NULL))
+            ret = -1;
+    }
+
+    return ret;
+}
+
 #endif /* WE_HAVE_CMAC */
 
 

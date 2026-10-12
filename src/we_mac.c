@@ -2002,16 +2002,6 @@ int we_init_cmac_pkey_asn1_meth(void)
         ret = 0;
     }
     if (ret == 1) {
-        /* Set with CMAC methods. */
-        EVP_PKEY_asn1_set_free(we_cmac_pkey_asn1_method, we_cmac_pkey_free);
-        EVP_PKEY_asn1_set_public(we_cmac_pkey_asn1_method, 0, 0, 0, 0,
-                we_cmac_pkey_asn1_size, 0);
-        /* Add our created asn1 method to the internal list of available
-         * methods. */
-        /* Known, still-reachable memory leak from openssl internals on 1.0.2 */
-        EVP_PKEY_asn1_add0(we_cmac_pkey_asn1_method);
-        EVP_PKEY_asn1_add_alias(EVP_PKEY_CMAC, NID_wolfengine_cmac);
-
         /* Create alternative ASN.1 method object for local NID.
          * (See comment at top.) */
         we_cmac_we_pkey_asn1_method = EVP_PKEY_asn1_new(NID_wolfengine_cmac, 0,
@@ -2023,12 +2013,21 @@ int we_init_cmac_pkey_asn1_meth(void)
         }
     }
     if (ret == 1) {
-        /* Set with same CMAC methods. */
+        /* Set with CMAC methods. */
+        EVP_PKEY_asn1_set_free(we_cmac_pkey_asn1_method, we_cmac_pkey_free);
+        EVP_PKEY_asn1_set_public(we_cmac_pkey_asn1_method, 0, 0, 0, 0,
+                we_cmac_pkey_asn1_size, 0);
+        /* Set alternative with same CMAC methods. */
         EVP_PKEY_asn1_copy(we_cmac_we_pkey_asn1_method,
                            we_cmac_pkey_asn1_method);
+        /* Add our created asn1 method to the internal list of available
+         * methods. */
+        /* Known, still-reachable memory leak from openssl internals on 1.0.2 */
+        EVP_PKEY_asn1_add0(we_cmac_pkey_asn1_method);
+        EVP_PKEY_asn1_add_alias(EVP_PKEY_CMAC, NID_wolfengine_cmac);
     }
 
-    /* No failure after alias creation - no need to free on error. */
+    /* No failure after registration - no need to free on error. */
     if ((ret == 0) && (we_cmac_pkey_asn1_method != NULL)) {
         /* Free the CMAC method object and reset pointer to NULL. */
         EVP_PKEY_asn1_free(we_cmac_pkey_asn1_method);

@@ -101,6 +101,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_cmac_copy_error, NULL),
     #endif
     TEST_DECL(test_cmac_keygen_reuse, NULL),
+    TEST_DECL(test_cmac_asn1_registry, NULL),
 #endif
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
