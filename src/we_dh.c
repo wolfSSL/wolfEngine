@@ -784,7 +784,7 @@ static int we_dh_convert_params(DhKey *wolfDh, DH *osslDh)
             ret = 0;
         }
     }
-    if (ret == 1) {
+    if ((ret == 1) && (qLen > 0)) {
         /* Allocate a big number and set value to be: Group prime. */
         qBn = BN_bin2bn(q, qLen, NULL);
         if (qBn == NULL) {
