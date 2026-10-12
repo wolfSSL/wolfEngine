@@ -87,6 +87,7 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_HMAC
     TEST_DECL(test_hmac_create, NULL),
     TEST_DECL(test_hmac_output_size, NULL),
+    TEST_DECL(test_hmac_pkey_size, NULL),
     #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     TEST_DECL(test_hmac_raw_key_output_size, NULL),
     #endif
