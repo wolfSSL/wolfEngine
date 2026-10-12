@@ -352,6 +352,15 @@ int test_dh_pgen(ENGINE *e, void *data)
         PRINT_MSG("Reject unsupported DH parameter generators");
         err = DH_generate_parameters_ex(dhWolfEngine, 1024, 1, NULL) > 0;
     }
+    if (err == 0) {
+        PRINT_MSG("Reject unsupported DH prime lengths before generation");
+        err = DH_generate_parameters_ex(dhWolfEngine, 512, DH_GENERATOR_2,
+                                        NULL) > 0;
+    }
+    if (err == 0) {
+        PRINT_MSG("Check rejected DH parameter generation left no prime");
+        err = DH_get0_p(dhWolfEngine) != NULL;
+    }
 #ifdef HAVE_FIPS
     if (err == 0) {
         PRINT_MSG("Reject legacy DH parameter generation in FIPS mode");

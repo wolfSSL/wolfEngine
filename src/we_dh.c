@@ -33,6 +33,11 @@
 
 #define DEFAULT_PRIME_LEN 1024
 
+static int we_dh_prime_len_valid(int primeLen)
+{
+    return (primeLen == 1024) || (primeLen == 2048) || (primeLen == 3072);
+}
+
 /**
  * Data required to complete DH operations.
  */
@@ -942,6 +947,10 @@ static int we_dh_generate_params(DH *dh, int primeLen, int g, BN_GENCB *cb)
                          "supported in FIPS mode");
 #else
     ret = 1;
+    if (!we_dh_prime_len_valid(primeLen)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Invalid DH prime bit length");
+        ret = 0;
+    }
     if ((ret == 1) && (DH_get0_q(dh) != NULL)) {
         WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Cannot replace DH parameters with q");
         ret = 0;
@@ -1151,7 +1160,7 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN");
                 /* These are the sizes allowed by wolfCrypt. */
-                if (num != 1024 && num != 2048 && num != 3072) {
+                if (!we_dh_prime_len_valid(num)) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_KE,
                                          "Invalid DH prime bit length.");
                     ret = 0;
