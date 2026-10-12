@@ -37,6 +37,9 @@ int test_digest_op(const EVP_MD *md, ENGINE *e, unsigned char *msg,
         err = EVP_DigestInit_ex(ctx, md, e) != 1;
     }
     if (err == 0) {
+        err = EVP_MD_CTX_type(ctx) != EVP_MD_type(md);
+    }
+    if (err == 0) {
         err = EVP_DigestUpdate(ctx, msg, len/2) != 1;
     }
     if (err == 0) {
