@@ -1369,6 +1369,7 @@ static int we_hmac_pkey_asn1_get_priv_key(const EVP_PKEY *pkey,
 {
     int ret = 1;
     const unsigned char* privTmp;
+    size_t bufferLen = 0;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_asn1_get_priv_key");
 
@@ -1378,14 +1379,17 @@ static int we_hmac_pkey_asn1_get_priv_key(const EVP_PKEY *pkey,
     }
 
     if (ret == 1) {
+        if (priv != NULL)
+            bufferLen = *len;
         privTmp = EVP_PKEY_get0_hmac(pkey, len);
         if (privTmp == NULL) {
             ret = 0;
         }
-        else {
-            if (priv != NULL) {
-                XMEMCPY(priv, privTmp, *len);
-            }
+        else if ((priv != NULL) && (bufferLen < *len)) {
+            ret = 0;
+        }
+        else if (priv != NULL) {
+            XMEMCPY(priv, privTmp, *len);
         }
     }
 

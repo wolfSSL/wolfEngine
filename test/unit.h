@@ -120,6 +120,9 @@ int test_cmac_output_size(ENGINE *e, void *data);
 #ifdef WE_HAVE_HMAC
 int test_hmac_create(ENGINE *e, void *data);
 int test_hmac_output_size(ENGINE *e, void *data);
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+int test_hmac_raw_key_output_size(ENGINE *e, void *data);
+#endif
 #endif /* WE_HAVE_HMAC */
 
 #ifdef WE_HAVE_TLS1_PRF
