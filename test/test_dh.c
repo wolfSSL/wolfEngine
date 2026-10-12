@@ -49,11 +49,12 @@ static const unsigned char dh_g[] =
   0x02,
 };
 
-#if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
-    !defined(TEST_MULTITHREADED) && !defined(_WIN32)
+#if defined(WE_DH_USE_GLOBAL_RNG) && defined(WE_HAVE_EVP_PKEY) && \
+    !defined(WE_SINGLE_THREADED) && !defined(TEST_MULTITHREADED) && \
+    !defined(_WIN32)
 extern wolfSSL_Mutex* we_rng_mutex;
 
-static int test_dh_failed_rng_lock(DH* dh)
+static int test_dh_failed_rng_lock(ENGINE* e)
 {
     int err = 0;
     int attrInit = 0;
@@ -63,10 +64,19 @@ static int test_dh_failed_rng_lock(DH* dh)
     pthread_mutexattr_t attr;
     wolfSSL_Mutex mutex;
     wolfSSL_Mutex* savedMutex = we_rng_mutex;
+    EVP_PKEY_CTX* ctx = NULL;
+    EVP_PKEY* params = NULL;
 
-    rc = pthread_mutexattr_init(&attr);
-    err = rc != 0;
-    attrInit = rc == 0;
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, e);
+    err = ctx == NULL;
+    if (err == 0)
+        err = EVP_PKEY_paramgen_init(ctx) != 1;
+
+    if (err == 0) {
+        rc = pthread_mutexattr_init(&attr);
+        err = rc != 0;
+        attrInit = rc == 0;
+    }
     if (err == 0) {
         rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
         err = rc != 0;
@@ -83,7 +93,7 @@ static int test_dh_failed_rng_lock(DH* dh)
     }
     if (err == 0) {
         we_rng_mutex = &mutex;
-        rc = DH_generate_parameters_ex(dh, 1024, DH_GENERATOR_5, NULL);
+        rc = EVP_PKEY_paramgen(ctx, &params);
         we_rng_mutex = savedMutex;
         err = rc != 0;
     }
@@ -102,6 +112,8 @@ static int test_dh_failed_rng_lock(DH* dh)
     }
     if (attrInit)
         pthread_mutexattr_destroy(&attr);
+    EVP_PKEY_free(params);
+    EVP_PKEY_CTX_free(ctx);
 
     return err;
 }
@@ -274,15 +286,46 @@ static int test_dh_parameter_refresh(ENGINE *e)
     return err;
 }
 
+#ifndef HAVE_FIPS
+static int test_dh_paramgen_cb(int event, int iteration, BN_GENCB *cb)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    int *count = (int *)cb->arg;
+#else
+    int *count = (int *)BN_GENCB_get_arg(cb);
+#endif
+
+    (void)event;
+    (void)iteration;
+    (*count)++;
+
+    return 1;
+}
+#endif
+
 int test_dh_pgen(ENGINE *e, void *data)
 {
     int err;
-    DH *dhWolfEngine;
     DH *dhOpenSSL = NULL;
+    DH *dhWolfEngine;
     const DH_METHOD *method = NULL;
+#ifndef HAVE_FIPS
     const BIGNUM *p = NULL;
     const BIGNUM *q = NULL;
     const BIGNUM *g = NULL;
+    const BIGNUM *oldP = NULL;
+    const BIGNUM *oldQ = NULL;
+    const BIGNUM *oldG = NULL;
+    BIGNUM *copyP = NULL;
+    BIGNUM *copyQ = NULL;
+    BIGNUM *copyG = NULL;
+    BIGNUM *existingQ = NULL;
+    BN_GENCB *cb = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    BN_GENCB cbData;
+#endif
+    int callbackCount = 0;
+#endif
 
     (void)data;
 
@@ -297,36 +340,107 @@ int test_dh_pgen(ENGINE *e, void *data)
     if (err == 0) {
         DH_set_method(dhWolfEngine, method);
     }
-#if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
-    !defined(TEST_MULTITHREADED) && !defined(_WIN32)
+#if defined(WE_DH_USE_GLOBAL_RNG) && defined(WE_HAVE_EVP_PKEY) && \
+    !defined(WE_SINGLE_THREADED) && !defined(TEST_MULTITHREADED) && \
+    !defined(_WIN32)
     if (err == 0) {
         PRINT_MSG("Keep RNG mutex ownership when locking fails");
-        err = test_dh_failed_rng_lock(dhWolfEngine);
+        err = test_dh_failed_rng_lock(e);
     }
 #endif
     if (err == 0) {
-        /* Generator and callback (last param) ignored by wolfEngine. */
-        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_5,
-                                        NULL) != 1;
+        PRINT_MSG("Reject unsupported DH parameter generators");
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, 1, NULL) > 0;
     }
-
+#ifdef HAVE_FIPS
+    if (err == 0) {
+        PRINT_MSG("Reject legacy DH parameter generation in FIPS mode");
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_2,
+                                        NULL) > 0;
+    }
+#else
+    if (err == 0) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+        cb = &cbData;
+#else
+        cb = BN_GENCB_new();
+        err = cb == NULL;
+#endif
+    }
+    if (err == 0) {
+        BN_GENCB_set(cb, test_dh_paramgen_cb, &callbackCount);
+        PRINT_MSG("Honor the requested DH generator");
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_2,
+                                        cb) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Forward the DH parameter generation callback");
+        err = callbackCount == 0;
+    }
     if (err == 0) {
         DH_get0_pqg(dhWolfEngine, &p, &q, &g);
-
+        PRINT_MSG("Check generated DH parameters");
+        err = (p == NULL) || (g == NULL) ||
+              (BN_get_word(g) != DH_GENERATOR_2);
+    }
+    if (err == 0) {
         dhOpenSSL = DH_new();
-        err = (dhOpenSSL == NULL);
+        err = dhOpenSSL == NULL;
     }
     if (err == 0) {
-        err = DH_set0_pqg(dhOpenSSL, BN_dup(p), BN_dup(q), BN_dup(g)) != 1;
+        PRINT_MSG("Copy generated DH parameters");
+        copyP = BN_dup(p);
+        if (q != NULL)
+            copyQ = BN_dup(q);
+        copyG = BN_dup(g);
+        err = (copyP == NULL) || ((q != NULL) && (copyQ == NULL)) ||
+              (copyG == NULL);
     }
-
     if (err == 0) {
+        err = DH_set0_pqg(dhOpenSSL, copyP, copyQ, copyG) != 1;
+        if (err == 0) {
+            copyP = NULL;
+            copyQ = NULL;
+            copyG = NULL;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("Use generated DH parameters");
         err = test_dh_keygen(dhOpenSSL, dhWolfEngine);
     }
+    if (err == 0) {
+        existingQ = BN_new();
+        err = (existingQ == NULL) || (BN_set_word(existingQ, 23) != 1);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWolfEngine, NULL, existingQ, NULL) != 1;
+        if (err == 0)
+            existingQ = NULL;
+    }
+    if (err == 0) {
+        DH_get0_pqg(dhWolfEngine, &oldP, &oldQ, &oldG);
+        PRINT_MSG("Reject replacing DH parameters that contain q");
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_2,
+                                        NULL) > 0;
+    }
+    if (err == 0) {
+        DH_get0_pqg(dhWolfEngine, &p, &q, &g);
+        err = (p != oldP) || (q != oldQ) || (g != oldG);
+    }
+#endif
     if (err == 0) {
         err = test_dh_parameter_refresh(e);
     }
 
+#ifndef HAVE_FIPS
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    BN_GENCB_free(cb);
+#endif
+    BN_free(existingQ);
+    BN_free(copyG);
+    BN_free(copyQ);
+    BN_free(copyP);
+#endif
     DH_free(dhOpenSSL);
     DH_free(dhWolfEngine);
 

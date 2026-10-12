@@ -1,0 +1,32 @@
+diff --git a/test/dhtest.c b/test/dhtest.c
+--- a/test/dhtest.c
++++ b/test/dhtest.c
+@@ -25,4 +25,6 @@
+ static int cb(int p, int n, BN_GENCB *arg);
+-
+-
++
++extern ENGINE *e;
++
++
+ static const unsigned char dhtest_1024_p[] =
+@@ -193,5 +193,17 @@
+     BN_GENCB_set(_cb, &cb, NULL);
+     if (!TEST_ptr(a = DH_new())
+-            || !TEST_true(DH_generate_parameters_ex(a, 1024,
+-                                                    DH_GENERATOR_5, _cb)))
++            || !TEST_ptr_eq(DH_get0_engine(a), e)
++            || !TEST_int_eq(DH_generate_parameters_ex(a, 1024,
++                                                     DH_GENERATOR_5, _cb), 0)
++            || !TEST_ptr_null(DH_get0_p(a))
++            || !TEST_ptr_null(DH_get0_q(a))
++            || !TEST_ptr_null(DH_get0_g(a))
++            || !TEST_ptr_eq(DH_get0_engine(a), e))
++        goto err3;
++    TEST_info("Legacy DH parameter generation rejected in FIPS mode");
++    ERR_clear_error();
++    DH_free(a);
++    a = NULL;
++    if (!TEST_ptr(a = DH_get_2048_256())
++            || !TEST_ptr_eq(DH_get0_engine(a), e))
+         goto err3;

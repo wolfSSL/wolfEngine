@@ -911,35 +911,105 @@ static int we_dh_paramgen_int(DH *dh, we_Dh *engineDh)
  *
  * @param  dh        [in,out]  OpenSSL DH object.
  * @param  primeLen  [in]      Length of prime.
- * @param  g         [in]      Generator to use. (ignored)
- * @param  cb        [in]      Callback to show generation progress. (ignored)
+ * @param  g         [in]      Generator to use.
+ * @param  cb        [in]      Callback to show generation progress.
  * @returns  1 on success and 0 on failure.
  */
 static int we_dh_generate_params(DH *dh, int primeLen, int g, BN_GENCB *cb)
 {
-    int ret = 1;
-    we_Dh *engineDh;
+    int ret = 0;
+#ifndef HAVE_FIPS
+    we_Dh *engineDh = NULL;
+    DH *params = NULL;
+    const BIGNUM *paramP = NULL;
+    const BIGNUM *paramQ = NULL;
+    const BIGNUM *paramG = NULL;
+    BIGNUM *p = NULL;
+    BIGNUM *q = NULL;
+    BIGNUM *generator = NULL;
+#endif
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_generate_parameters");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [dh = %p, primeLen = %d, g = %d, "
                            "cb = %p]", dh, primeLen, g, cb);
 
-    /* Cannot set g or callback to wolfSSL parameter generation. */
+#ifdef HAVE_FIPS
+    (void)dh;
+    (void)primeLen;
     (void)g;
     (void)cb;
-
-    /* Retrieve internal DH object. */
-    engineDh = (we_Dh *)DH_get_ex_data(dh, WE_DH_EX_DATA_IDX);
-    if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get_ex_data", engineDh);
+    WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Legacy DH parameter generation is not "
+                         "supported in FIPS mode");
+#else
+    ret = 1;
+    if ((ret == 1) && (DH_get0_q(dh) != NULL)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Cannot replace DH parameters with q");
         ret = 0;
     }
 
     if (ret == 1) {
-        engineDh->primeLen = primeLen;
-        /* Generate the parameters with wolfSSL and copy into OpenSSL object. */
-        ret = we_dh_paramgen_int(dh, engineDh);
+        engineDh = (we_Dh *)DH_get_ex_data(dh, WE_DH_EX_DATA_IDX);
+        if (engineDh == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get_ex_data", engineDh);
+            ret = 0;
+        }
     }
+
+    if (ret == 1) {
+        params = DH_new_method(NULL);
+        if (params == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_new_method", params);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        ret = DH_set_method(params, DH_OpenSSL());
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_set_method", ret);
+        }
+    }
+    if (ret == 1) {
+        ret = DH_generate_parameters_ex(params, primeLen, g, cb);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_generate_parameters_ex",
+                                  ret);
+        }
+    }
+    if (ret == 1) {
+        DH_get0_pqg(params, &paramP, &paramQ, &paramG);
+        p = BN_dup(paramP);
+        if (paramQ != NULL)
+            q = BN_dup(paramQ);
+        generator = BN_dup(paramG);
+        if ((p == NULL) || ((paramQ != NULL) && (q == NULL)) ||
+            (generator == NULL)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Failed to duplicate DH params");
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        ret = DH_set0_pqg(dh, p, q, generator);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_set0_pqg", ret);
+        }
+        else {
+            p = NULL;
+            q = NULL;
+            generator = NULL;
+        }
+    }
+    if (ret == 1) {
+        ret = we_dh_set_parameters(dh, engineDh);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_set_parameters", ret);
+        }
+    }
+
+    BN_free(generator);
+    BN_free(q);
+    BN_free(p);
+    DH_free(params);
+#endif
 
     WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_generate_parameters", ret);
 
