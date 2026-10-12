@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <stdint.h>
+
 #include <wolfengine/we_internal.h>
 
 
@@ -1027,6 +1029,11 @@ int we_hmac_update(Hmac* hmac, const void *data, size_t dataSz) {
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [hmac = %p, data = %p, "
                            "dataSz = %zu]", hmac, data, dataSz);
 
+    if (dataSz > UINT32_MAX) {
+        WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_update", 0);
+        return 0;
+    }
+
 #ifdef WE_ALIGNMENT_SAFETY
     const word32 ALIGNMENT_REQ = 8;
     word32 add = 0;
@@ -1713,6 +1720,9 @@ static int we_cmac_pkey_update(EVP_MD_CTX *ctx, const void *data, size_t dataSz)
                                    "we_cmac_pkey_update, ctx: ", ctx);
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC,
                                    "we_cmac_pkey_update, data:", (void*)data);
+        ret = 0;
+    }
+    else if (dataSz > UINT32_MAX) {
         ret = 0;
     }
 
