@@ -227,7 +227,7 @@ static int we_init_random(void)
             rc = wc_InitMutex(&we_global_rng_mutex);
             if (rc != 0) {
                 wc_FreeRng(&we_globalRng);
-                WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wc_InitRng", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wc_InitMutex", rc);
                 ret = 0;
             }
         }
