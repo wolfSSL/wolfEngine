@@ -404,6 +404,13 @@ int test_tls1_prf_bad_md(ENGINE *e, void *data)
         /* Unknown digest name must fail, not dereference a NULL digest. */
         err = EVP_PKEY_CTX_ctrl_str(ctx, "md", "notadigest") > 0;
     }
+    if (err == 0) {
+        /* Digests unsupported by TLS1-PRF must be rejected. */
+        err = EVP_PKEY_CTX_set_tls1_prf_md(ctx, EVP_sha512()) > 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "md", "sha512") > 0;
+    }
 
     EVP_PKEY_CTX_free(ctx);
 

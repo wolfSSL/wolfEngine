@@ -155,7 +155,8 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
              ret = 0;
          }
     }
-    else if (ret == 1) {
+    else if ((ret == 1) && ((tls1Prf->mdType == NID_sha256) ||
+                            (tls1Prf->mdType == NID_sha384))) {
         PRIVATE_KEY_UNLOCK();
         rc = wc_PRF_TLS(key, (word32)*keySz, tls1Prf->secret,
                         (word32)(tls1Prf->secretSz), (byte*)"", 0,
@@ -167,6 +168,10 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
              WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_PRF_TLS", rc);
              ret = 0;
          }
+    }
+    else if (ret == 1) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unsupported digest");
+        ret = 0;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_tls1_prf_derive", ret);
@@ -193,6 +198,7 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
     we_Tls1_Prf *tls1Prf;
     int ret = 1;
+    int mdType;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_tls1_prf_ctrl");
@@ -207,7 +213,15 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         case EVP_PKEY_CTRL_TLS_MD:
             WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_TLS_MD");
             /* ptr: EVP md object. */
-            tls1Prf->mdType = EVP_MD_type(ptr);
+            mdType = EVP_MD_type(ptr);
+            if ((mdType != NID_md5_sha1) && (mdType != NID_sha256) &&
+                    (mdType != NID_sha384)) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unsupported digest");
+                ret = 0;
+            }
+            else {
+                tls1Prf->mdType = mdType;
+            }
             break;
 
         case EVP_PKEY_CTRL_TLS_SECRET:
@@ -306,7 +320,6 @@ static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         ret = 0;
     }
     else if (XSTRNCMP(type, "md", 3) == 0) {
-        we_Tls1_Prf *tls1Prf = (we_Tls1_Prf *)EVP_PKEY_CTX_get_data(ctx);
         const EVP_MD *md = EVP_get_digestbyname(value);
         /* Cannot get here without initialization succeeding. */
         if (md == NULL) {
@@ -314,7 +327,7 @@ static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             ret = 0;
         }
         else {
-            tls1Prf->mdType = EVP_MD_type(md);
+            ret = we_tls1_prf_ctrl(ctx, EVP_PKEY_CTRL_TLS_MD, 0, (void *)md);
         }
     }
     else if (XSTRNCMP(type, "secret", 7) == 0) {
