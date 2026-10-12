@@ -38,6 +38,9 @@ typedef struct we_AesCbcHmac
     int            pLen;
     /** Flag to indicate whether wolfSSL AES object initialized. */
     unsigned int   init:1;
+    /** Flags indicating installed AES and HMAC keys. */
+    unsigned int   keySet:1;
+    unsigned int   hmacKeySet:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
     /** Flag to indicate whether we are doing TLS 1.1 or above. */
@@ -68,18 +71,15 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, iv = %p, "
                            "enc = %d]", ctx, key, iv, enc);
 
-    if ((iv == NULL) && (key == NULL)) {
-        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "iv == NULL && key == NULL");
+    aes = (we_AesCbcHmac *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+    if (aes == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = 0;
     }
-
-    if (ret == 1) {
-        aes = (we_AesCbcHmac *)EVP_CIPHER_CTX_get_cipher_data(ctx);
-        if (aes == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
-                                       "EVP_CIPHER_CTX_get_cipher_data", aes);
-            ret = 0;
-        }
+    if ((ret == 1) && aes->keySet && (key == NULL) &&
+        (aes->enc != (unsigned int)enc)) {
+        ret = 0;
     }
 
     /* Initialize the wolfSSL AES object. */
@@ -111,18 +111,24 @@ static int we_aes_cbc_hmac_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         /* No payload yet. */
         aes->pLen = 0;
 
+        /* EVP restores the effective CBC IV before calling init. */
+        if (iv == NULL) {
+            iv = EVP_CIPHER_CTX_iv(ctx);
+        }
+
         if (key != NULL) {
             /* Set the key into wolfSSL AES object. */
             WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
                            EVP_CIPHER_CTX_key_length(ctx));
             rc = wc_AesSetKey(&aes->aes, key, EVP_CIPHER_CTX_key_length(ctx),
                               iv, enc ? AES_ENCRYPTION : AES_DECRYPTION);
+            aes->keySet = (rc == 0);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
                 ret = 0;
             }
         }
-        else {
+        else if (iv != NULL) {
             /* Set the IV into wolfSSL AES object. */
             WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV");
             rc = wc_AesSetIV(&aes->aes, iv);
@@ -389,10 +395,14 @@ static int we_aes_cbc_hmac_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
-    else if (aes->enc) {
+    else if ((ret != 0) && ((!aes->keySet) || (in == NULL) ||
+             (out == NULL))) {
+        ret = -1;
+    }
+    else if ((ret != 0) && aes->enc) {
         ret = we_aes_cbc_hmac_enc(aes, out, in, len);
     }
-    else {
+    else if (ret != 0) {
         ret = we_aes_cbc_hmac_dec(aes, out, in, len);
     }
 
@@ -437,11 +447,15 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_INIT:
+                XMEMSET(aes, 0, sizeof(*aes));
+                break;
             case EVP_CTRL_AEAD_SET_MAC_KEY:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_SET_MAC_KEY");
                 /* Set the HMAC key. */
                 rc = wc_HmacSetKey(&aes->hmac, WC_SHA256, (const byte*)ptr,
                         arg);
+                aes->hmacKeySet = (rc == 0);
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacSetKey", rc);
                     ret = 0;
@@ -526,6 +540,7 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
 #define AES_CBC_HMAC_FLAGS                \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER        | \
      EVP_CIPH_ALWAYS_CALL_INIT          | \
+     EVP_CIPH_CTRL_INIT                 | \
      EVP_CIPH_CBC_MODE                  | \
      EVP_CIPH_FLAG_DEFAULT_ASN1         | \
      EVP_CIPH_FLAG_AEAD_CIPHER)

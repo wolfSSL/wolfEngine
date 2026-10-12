@@ -186,6 +186,7 @@ int test_aes128_cbc_stream(ENGINE *e, void *data);
 int test_aes192_cbc_stream(ENGINE *e, void *data);
 int test_aes256_cbc_stream(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_staged_init(ENGINE *e, void *data);
 
 #endif
 
