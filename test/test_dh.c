@@ -405,6 +405,11 @@ static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
     size_t secretLenOpenSSL = 0;
     unsigned char *secretWolfEngine = NULL;
     size_t secretLenWolfEngine = 0;
+    unsigned char *paddedSecret = NULL;
+    unsigned char *shortSecret = NULL;
+    size_t paddedSecretLen = 0;
+    size_t shortSecretLen = 0;
+    size_t expectedSecretLen = 0;
 
     ctx = EVP_PKEY_CTX_new(params, e);
     err = ctx == NULL;
@@ -485,6 +490,48 @@ static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
         err = memcmp(secretOpenSSL, secretWolfEngine, secretLenOpenSSL) != 0;
     }
 
+    if (err == 0) {
+        PRINT_MSG("Pad DH secret to the modulus size");
+        EVP_PKEY_CTX_free(ctx);
+        ctx = EVP_PKEY_CTX_new(keyWolfEngine, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_init(ctx) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_set_peer(ctx, keyOpenSSL) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_DERIVE,
+                  EVP_PKEY_CTRL_DH_PAD, 1, NULL) <= 0;
+    }
+    if (err == 0) {
+        expectedSecretLen = (size_t)EVP_PKEY_size(keyWolfEngine);
+        paddedSecretLen = expectedSecretLen + 8;
+        paddedSecret = (unsigned char*)OPENSSL_malloc(paddedSecretLen);
+        err = paddedSecret == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive(ctx, paddedSecret, &paddedSecretLen) <= 0;
+    }
+    if (err == 0) {
+        err = paddedSecretLen != expectedSecretLen;
+    }
+    if (err == 0) {
+        shortSecret = (unsigned char*)OPENSSL_malloc(expectedSecretLen + 1);
+        err = shortSecret == NULL;
+    }
+    if (err == 0) {
+        XMEMSET(shortSecret, 0xa5, expectedSecretLen + 1);
+        shortSecretLen = expectedSecretLen - 1;
+        PRINT_MSG("Reject a short padded DH secret buffer");
+        err = EVP_PKEY_derive(ctx, shortSecret + 1, &shortSecretLen) > 0;
+    }
+    if (err == 0) {
+        err = (shortSecret[0] != 0xa5) ||
+              (shortSecret[expectedSecretLen] != 0xa5);
+    }
     EVP_PKEY_CTX_free(ctx);
     EVP_PKEY_free(keyOpenSSL);
     EVP_PKEY_free(keyWolfEngine);
@@ -493,6 +540,10 @@ static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
         OPENSSL_free(secretWolfEngine);
     if (secretOpenSSL != NULL)
         OPENSSL_free(secretOpenSSL);
+    if (paddedSecret != NULL)
+        OPENSSL_free(paddedSecret);
+    if (shortSecret != NULL)
+        OPENSSL_free(shortSecret);
 
     return err;
 }
