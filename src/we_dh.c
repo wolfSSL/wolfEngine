@@ -1028,7 +1028,7 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
  *  - EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR: intended to set the generator, "g",
  *    but doesn't actually do this, as wolfCrypt doesn't allow you to specify
  *    the generator used in DH key creation.
- *  - EVP_PKEY_CTRL_DH_PAD: pad out secret to input length.
+ *  - EVP_PKEY_CTRL_DH_PAD: pad secret to the DH modulus size.
  *  - EVP_PKEY_CTRL_PEER_KEY: intended to set the peer key, but doesn't actually
  *    do this, as we can get the peer key directly from the ctx when needed.
  *
@@ -1113,7 +1113,7 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  * Extra operations for working with DH.
  * Supported operations include:
  *  - "dh_param": set the named parameters.
- *  - "dh_pad": pad out secret to input length.
+ *  - "dh_pad": pad secret to the DH modulus size.
  *  - "dh_paramgen_prime_len": set the length of the prime, "p."
  *
  * @param  ctx    [in]  Public key context of operation.
@@ -1405,6 +1405,7 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     DH *peerDh = NULL;
     const BIGNUM *peerPub = NULL;
     size_t totalLen = *secretLen;
+    size_t dhLen = 0;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_derive");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p, secret = %p, "
@@ -1435,16 +1436,25 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "EVP_PKEY_get0_DH", ourDh);
             ret = 0;
         }
+        else {
+            dhLen = (size_t)DH_size(ourDh);
+        }
     }
 
     if ((ret == 1) && (secret == NULL)) {
         /* Return the length of the secret only. */
-        *secretLen = DH_size(ourDh);
+        *secretLen = dhLen;
     }
     else if (ret == 1) {
+        if (engineDh->pad && (totalLen < dhLen)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_KE, "DH secret buffer too small");
+            ret = 0;
+        }
+
         /* Get the peer's key. */
-        peerKey = EVP_PKEY_CTX_get0_peerkey(ctx);
-        if (peerKey == NULL) {
+        if (ret == 1)
+            peerKey = EVP_PKEY_CTX_get0_peerkey(ctx);
+        if ((ret == 1) && (peerKey == NULL)) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
                                        "EVP_PKEY_CTX_get0_peerkey", peerKey);
             ret = 0;
@@ -1482,13 +1492,11 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
             }
         }
 
-        /* When padding required and total buffer size is bigger than secret
-         * generated, ensure the buffer is zero padded at the front. */
-        if ((ret == 1) && engineDh->pad && (totalLen != *secretLen)) {
-            XMEMMOVE(secret + totalLen - *secretLen, secret, *secretLen);
-            XMEMSET(secret, 0, totalLen - *secretLen);
-            /* Return the original length. */
-            *secretLen = (int)totalLen;
+        /* Pad the generated secret to the DH modulus size. */
+        if ((ret == 1) && engineDh->pad && (dhLen > *secretLen)) {
+            XMEMMOVE(secret + dhLen - *secretLen, secret, *secretLen);
+            XMEMSET(secret, 0, dhLen - *secretLen);
+            *secretLen = dhLen;
         }
     }
 
