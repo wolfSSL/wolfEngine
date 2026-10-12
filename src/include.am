@@ -18,6 +18,7 @@ libwolfengine_la_SOURCES += src/we_hkdf.c
 libwolfengine_la_SOURCES += src/we_internal.c
 libwolfengine_la_SOURCES += src/we_logging.c
 libwolfengine_la_SOURCES += src/we_mac.c
+libwolfengine_la_SOURCES += src/we_cmac_compat.h
 libwolfengine_la_SOURCES += src/we_openssl_bc.c
 libwolfengine_la_SOURCES += src/we_pbe.c
 libwolfengine_la_SOURCES += src/we_random.c

@@ -58,7 +58,7 @@
 #include <openssl/kdf.h>
 #endif
 #include <openssl/tls1.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#ifdef WE_HAVE_CMAC
 #include <openssl/cmac.h>
 #endif
 #include <openssl/pkcs12.h>
@@ -257,11 +257,13 @@ WOLFENGINE_LOCAL int we_hmac_update(Hmac*, const void*, size_t);
 #ifdef WE_HAVE_CMAC
 
 #define NID_wolfengine_cmac 101
+extern EVP_CIPHER *we_cmac_ciph;
 extern EVP_PKEY_METHOD *we_cmac_pkey_method;
 extern EVP_PKEY_METHOD *we_cmac_we_pkey_method;
 extern EVP_PKEY_ASN1_METHOD *we_cmac_pkey_asn1_method;
 extern EVP_PKEY_ASN1_METHOD *we_cmac_we_pkey_asn1_method;
 
+WOLFENGINE_LOCAL int we_init_cmac_cipher_meth(void);
 WOLFENGINE_LOCAL int we_init_cmac_pkey_meth(void);
 WOLFENGINE_LOCAL int we_init_cmac_pkey_asn1_meth(void);
 
@@ -358,5 +360,6 @@ WOLFENGINE_LOCAL int we_init_pbe_keygen(void);
 #endif
 
 WOLFENGINE_LOCAL int wolfengine_bind(ENGINE *e, const char *id);
+WOLFENGINE_LOCAL ENGINE *wolfengine_get_bound_engine(void);
 
 #endif /* INTERNAL_H */
