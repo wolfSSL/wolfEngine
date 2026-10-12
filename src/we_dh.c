@@ -874,10 +874,10 @@ static int we_dh_paramgen_int(DH *dh, we_Dh *engineDh)
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateParams", rc);
             ret = 0;
         }
-    }
 #if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
-    wc_UnLockMutex(we_rng_mutex);
+        wc_UnLockMutex(we_rng_mutex);
 #endif
+    }
 
     if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_KE, "Converting DH params to OpenSSL DH");
