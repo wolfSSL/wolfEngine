@@ -1695,6 +1695,7 @@ int test_aes_ctr_leftover_data_regression(ENGINE *e, void *data)
 int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
 {
     int err = 0;
+    int outLen;
     unsigned char iv[AES_BLOCK_SIZE];
     unsigned char key[16];
     EVP_CIPHER_CTX* encCtx = NULL;
@@ -1735,6 +1736,11 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
     }
     if (err == 0) {
         err = EVP_CipherInit_ex(decCtx, NULL, e, key, NULL, -1) != 1;
+    }
+
+    if (err == 0) {
+        outLen = EVP_Cipher(decCtx, decText, decText, 0);
+        err = outLen != 0;
     }
 
     /* Encrypt. */

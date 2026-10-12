@@ -159,7 +159,7 @@ static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 ret = (int)len;
             }
         }
-        else if (in == NULL)  {
+        else {
             ret = 0;
         }
     }
