@@ -1243,10 +1243,11 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                             ret = -1;
                         }
                         else if (mp_cmp(&toMp, &nMinusTo) == MP_GT) {
-                            rc = mp_to_unsigned_bin(&nMinusTo, to);
+                            rc = mp_to_unsigned_bin_len(&nMinusTo, to,
+                                                        (int)toLen);
                             if (rc != MP_OKAY) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                    "mp_to_unsigned_bin", rc);
+                                    "mp_to_unsigned_bin_len", rc);
                                 ret = -1;
                             }
                         }
@@ -1505,10 +1506,11 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                                     ret = -1;
                                 }
                                 else {
-                                    rc = mp_to_unsigned_bin(&nMinusTo, to);
+                                    rc = mp_to_unsigned_bin_len(&nMinusTo, to,
+                                                                (int)toLen);
                                     if (rc != MP_OKAY) {
                                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                            "mp_to_unsigned_bin", rc);
+                                            "mp_to_unsigned_bin_len", rc);
                                         ret = -1;
                                     }
                                 }
