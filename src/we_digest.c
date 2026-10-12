@@ -21,6 +21,7 @@
 
 #include <wolfengine/we_internal.h>
 
+#define WE_DIGEST_UPDATE_MAX (1024U * 1024U)
 
 #if defined(WE_HAVE_SHA1) && defined(WE_SHA1_DIRECT)
 
@@ -63,16 +64,26 @@ static int we_sha_init(EVP_MD_CTX *ctx)
 static int we_sha_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
     int ret = 1, rc;
+    const byte *input = (const byte *)data;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha_update");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, data = %p, "
                            "len = %zu]", ctx, data, len);
 
-    rc = wc_ShaUpdate((wc_Sha*)EVP_MD_CTX_md_data(ctx),
-                         (const byte*)data, (word32)len);
-    if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_ShaUpdate", rc);
-        ret = 0;
+    while ((ret == 1) && (len > 0)) {
+        word32 chunkLen = len > WE_DIGEST_UPDATE_MAX ?
+            WE_DIGEST_UPDATE_MAX : (word32)len;
+
+        rc = wc_ShaUpdate((wc_Sha*)EVP_MD_CTX_md_data(ctx), input,
+            chunkLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_ShaUpdate", rc);
+            ret = 0;
+        }
+        else {
+            input += chunkLen;
+            len -= chunkLen;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha_update", ret);
@@ -217,16 +228,26 @@ static int we_sha224_init(EVP_MD_CTX *ctx)
 static int we_sha224_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
     int ret = 1, rc;
+    const byte *input = (const byte *)data;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha224_update");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, data = %p, "
                            "len = %zu]", ctx, data, len);
 
-    rc = wc_Sha224Update((wc_Sha224*)EVP_MD_CTX_md_data(ctx),
-                         (const byte*)data, (word32)len);
-    if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha224Update", rc);
-        ret = 0;
+    while ((ret == 1) && (len > 0)) {
+        word32 chunkLen = len > WE_DIGEST_UPDATE_MAX ?
+            WE_DIGEST_UPDATE_MAX : (word32)len;
+
+        rc = wc_Sha224Update((wc_Sha224*)EVP_MD_CTX_md_data(ctx), input,
+            chunkLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha224Update", rc);
+            ret = 0;
+        }
+        else {
+            input += chunkLen;
+            len -= chunkLen;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha224_update", ret);
@@ -372,16 +393,26 @@ static int we_sha256_init(EVP_MD_CTX *ctx)
 static int we_sha256_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
     int ret = 1, rc;
+    const byte *input = (const byte *)data;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_sha256_update");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, data = %p, "
                            "len = %zu]", ctx, data, len);
 
-    rc = wc_Sha256Update((wc_Sha256*)EVP_MD_CTX_md_data(ctx),
-                         (const byte*)data, (word32)len);
-    if (rc != 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha256Update", rc);
-        ret = 0;
+    while ((ret == 1) && (len > 0)) {
+        word32 chunkLen = len > WE_DIGEST_UPDATE_MAX ?
+            WE_DIGEST_UPDATE_MAX : (word32)len;
+
+        rc = wc_Sha256Update((wc_Sha256*)EVP_MD_CTX_md_data(ctx), input,
+            chunkLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_Sha256Update", rc);
+            ret = 0;
+        }
+        else {
+            input += chunkLen;
+            len -= chunkLen;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_sha256_update", ret);
@@ -799,6 +830,7 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 {
     int ret = 1, rc;
     we_Digest *digest;
+    const byte *input = (const byte *)data;
 
     WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_update");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [ctx = %p, data = %p, "
@@ -872,12 +904,18 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
     }
     else
 #endif
-    if (ret == 1) {
-        rc = wc_HashUpdate(&digest->hash, digest->hashType, (const byte*)data,
-                           (word32)len);
+    while ((ret == 1) && (len > 0)) {
+        word32 chunkLen = len > WE_DIGEST_UPDATE_MAX ?
+            WE_DIGEST_UPDATE_MAX : (word32)len;
+
+        rc = wc_HashUpdate(&digest->hash, digest->hashType, input, chunkLen);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashUpdate", rc);
             ret = 0;
+        }
+        else {
+            input += chunkLen;
+            len -= chunkLen;
         }
     }
 
