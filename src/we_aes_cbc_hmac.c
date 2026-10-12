@@ -184,7 +184,7 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
             ret = -1;
         }
     }
-    if (ret != -1) {
+    if ((ret != -1) && tls) {
         /* Record layer MACed in ctrl function. */
         /* MAC the handshake message/data. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "MAC handshake message/data: len = %d",
