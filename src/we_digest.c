@@ -166,6 +166,7 @@ int we_init_sha_meth(void)
 
     if ((ret != 1) && (we_sha1_md != NULL)) {
         EVP_MD_meth_free(we_sha1_md);
+        we_sha1_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha_meth", ret);
@@ -320,6 +321,7 @@ int we_init_sha224_meth(void)
 
     if ((ret != 1) && (we_sha224_md != NULL)) {
         EVP_MD_meth_free(we_sha224_md);
+        we_sha224_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha224_meth", ret);
@@ -473,6 +475,7 @@ int we_init_sha256_meth(void)
 
     if ((ret != 1) && (we_sha256_md != NULL)) {
         EVP_MD_meth_free(we_sha256_md);
+        we_sha256_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha256_meth", ret);
@@ -1031,6 +1034,7 @@ int we_init_sha_meth(void)
 
     if ((ret != 1) && (we_sha1_md != NULL)) {
         EVP_MD_meth_free(we_sha1_md);
+        we_sha1_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha_meth", ret);
@@ -1076,6 +1080,7 @@ int we_init_ecdsa_sha1_meth(void)
 
     if ((ret != 1) && (we_ecdsa_sha1_md != NULL)) {
         EVP_MD_meth_free(we_ecdsa_sha1_md);
+        we_ecdsa_sha1_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_ecdsa_sha1_meth", ret);
@@ -1117,6 +1122,7 @@ int we_init_sha224_meth(void)
 
     if ((ret != 1) && (we_sha224_md != NULL)) {
         EVP_MD_meth_free(we_sha224_md);
+        we_sha224_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha224_meth", ret);
@@ -1157,6 +1163,7 @@ int we_init_sha256_meth(void)
 
     if ((ret != 1) && (we_sha256_md != NULL)) {
         EVP_MD_meth_free(we_sha256_md);
+        we_sha256_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha256_meth", ret);
@@ -1197,6 +1204,7 @@ int we_init_sha384_meth(void)
 
     if ((ret != 1) && (we_sha384_md != NULL)) {
         EVP_MD_meth_free(we_sha384_md);
+        we_sha384_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha384_meth", ret);
@@ -1237,6 +1245,7 @@ int we_init_sha512_meth(void)
 
     if ((ret != 1) && (we_sha512_md != NULL)) {
         EVP_MD_meth_free(we_sha512_md);
+        we_sha512_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha512_meth", ret);
@@ -1279,6 +1288,7 @@ int we_init_sha3_224_meth(void)
 
     if ((ret != 1) && (we_sha3_224_md != NULL)) {
         EVP_MD_meth_free(we_sha3_224_md);
+        we_sha3_224_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha3_224_meth", ret);
@@ -1321,6 +1331,7 @@ int we_init_sha3_256_meth(void)
 
     if ((ret != 1) && (we_sha3_256_md != NULL)) {
         EVP_MD_meth_free(we_sha3_256_md);
+        we_sha3_256_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha3_256_meth", ret);
@@ -1363,6 +1374,7 @@ int we_init_sha3_384_meth(void)
 
     if ((ret != 1) && (we_sha3_384_md != NULL)) {
         EVP_MD_meth_free(we_sha3_384_md);
+        we_sha3_384_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha3_384_meth", ret);
@@ -1405,6 +1417,7 @@ int we_init_sha3_512_meth(void)
 
     if ((ret != 1) && (we_sha3_512_md != NULL)) {
         EVP_MD_meth_free(we_sha3_512_md);
+        we_sha3_512_md = NULL;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_init_sha3_512_meth", ret);
