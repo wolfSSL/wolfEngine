@@ -319,8 +319,44 @@ static int mac_asn1_methods_cleared(void)
 }
 #endif
 
+static int test_engine(ENGINE *e, void *data)
+{
+    int err = 0;
+
+    (void)data;
+
+#if defined(WE_HAVE_ECC) && !defined(WE_HAVE_ECDSA) && \
+    defined(WE_HAVE_SHA1)
+    {
+        ENGINE_DIGESTS_PTR digests = ENGINE_get_digests(e);
+        const int *nids = NULL;
+        int count;
+        int i;
+
+        if (digests == NULL) {
+            PRINT_ERR_MSG("Engine digest callback is not set");
+            err = 1;
+        }
+        if (err == 0) {
+            count = digests(e, NULL, &nids, 0);
+            for (i = 0; i < count; i++) {
+                if (nids[i] == NID_ecdsa_with_SHA1) {
+                    PRINT_ERR_MSG("ECDSA-with-SHA1 advertised without ECDSA");
+                    err = 1;
+                }
+            }
+        }
+    }
+#else
+    (void)e;
+#endif
+
+    return err;
+}
+
 TEST_CASE test_case[] = {
     TEST_DECL(test_logging, &debug),
+    TEST_DECL(test_engine, NULL),
 #ifdef WE_HAVE_SHA1
     TEST_DECL(test_sha, NULL),
 #endif

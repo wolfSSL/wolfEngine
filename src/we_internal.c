@@ -291,7 +291,7 @@ static const int we_digest_nids[] = {
 #ifdef WE_HAVE_SHA3_512
     NID_sha3_512,
 #endif
-#if defined(WE_HAVE_ECC) && defined(WE_HAVE_SHA1)
+#if defined(WE_HAVE_ECDSA) && defined(WE_HAVE_SHA1)
     NID_ecdsa_with_SHA1,
 #endif
 };
