@@ -112,7 +112,21 @@ static int test_create_digest(const EVP_MD *md, ENGINE *e, void *data)
 
 int test_sha(ENGINE *e, void *data)
 {
-    return test_create_digest(EVP_sha1(), e, data);
+    int err = 0;
+
+#ifdef WE_HAVE_ECDSA
+    const EVP_MD *md = ENGINE_get_digest(e, NID_ecdsa_with_SHA1);
+
+    err = md == NULL;
+    if (err == 0) {
+        err = EVP_MD_block_size(md) != WC_SHA_BLOCK_SIZE;
+    }
+#endif
+    if (err == 0) {
+        err = test_create_digest(EVP_sha1(), e, data);
+    }
+
+    return err;
 }
 #endif /* WE_HAVE_SHA1 */
 

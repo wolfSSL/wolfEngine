@@ -1067,6 +1067,10 @@ int we_init_ecdsa_sha1_meth(void)
         ret = EVP_MD_meth_set_result_size(we_ecdsa_sha1_md, WC_SHA_DIGEST_SIZE);
     }
     if (ret == 1) {
+        ret = EVP_MD_meth_set_input_blocksize(we_ecdsa_sha1_md,
+            WC_SHA_BLOCK_SIZE);
+    }
+    if (ret == 1) {
         ret = we_init_digest_meth(we_ecdsa_sha1_md);
     }
 
