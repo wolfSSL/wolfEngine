@@ -1196,6 +1196,7 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
 {
     int ret = 1, rc;
     we_Mac *mac;
+    size_t len = 0;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_signctx");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, sig = %p, "
@@ -1222,9 +1223,11 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
         }
     }
 
-    /* Input signature length ignored - set to algorithm output size. */
     if (ret == 1) {
-        *sigLen = (size_t)mac->size;
+        len = (size_t)mac->size;
+        if ((sig != NULL) && (*sigLen < len))
+            ret = 0;
+        *sigLen = len;
     }
 
     if ((ret == 1) && (sig != NULL)) {
@@ -1805,11 +1808,12 @@ static int we_cmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
         }
     }
 
-    if ((ret == 1) && (sig == NULL)) {
-        /* Set to full CMAC output size. */
+    if (ret == 1) {
+        if ((sig != NULL) && (*sigLen < WC_CMAC_TAG_MAX_SZ))
+            ret = 0;
         *sigLen = WC_CMAC_TAG_MAX_SZ;
     }
-    else if ((ret == 1) && (sig != NULL)) {
+    if ((ret == 1) && (sig != NULL)) {
         word32 len = WC_CMAC_TAG_MAX_SZ;
 
         /* Calculate MAC output. */

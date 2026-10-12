@@ -25,3 +25,24 @@ index 1db84ad..ba68a5e 100644
 diff --git a/test/testenc b/test/testenc
 old mode 100644
 new mode 100755
+diff --git a/ssl/t1_enc.c b/ssl/t1_enc.c
+index 514fcb3..e7d1de0 100644
+--- a/ssl/t1_enc.c
++++ b/ssl/t1_enc.c
+@@ -192,2 +192,3 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
+         goto err;
++    A1_len = sizeof(A1);
+     if (!EVP_DigestSignFinal(&ctx, A1, &A1_len))
+@@ -215,2 +216,3 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
+         if (olen > chunk) {
++            j = (size_t)olen;
+             if (!EVP_DigestSignFinal(&ctx, out, &j))
+@@ -220,2 +222,3 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
+             /* calc the next A1 value */
++            A1_len = sizeof(A1);
+             if (!EVP_DigestSignFinal(&ctx_tmp, A1, &A1_len))
+@@ -223,3 +226,3 @@ static int tls1_P_hash(const EVP_MD *md, const unsigned char *sec,
+         } else {                /* last one */
+-
++            A1_len = sizeof(A1);
+             if (!EVP_DigestSignFinal(&ctx, A1, &A1_len))

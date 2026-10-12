@@ -207,6 +207,51 @@ int test_hmac_create(ENGINE *e, void *data)
     return ret;
 }
 
+int test_hmac_output_size(ENGINE *e, void *data)
+{
+    int ret = 0;
+    int i;
+    unsigned char key[] = "My empire of dirt";
+    unsigned char msg[] = "Test message";
+    unsigned char mac[EVP_MAX_MD_SIZE];
+    size_t macLen = 1;
+    EVP_MD_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+
+    (void)data;
+    XMEMSET(mac, 0xa5, sizeof(mac));
+
+    ctx = EVP_MD_CTX_new();
+    if (ctx == NULL)
+        ret = -1;
+    if (ret == 0) {
+        pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, e, key, sizeof(key));
+        if (pkey == NULL)
+            ret = -1;
+    }
+    if (ret == 0) {
+        ret = EVP_DigestSignInit(ctx, NULL, EVP_sha256(), e, pkey) != 1;
+    }
+    if (ret == 0) {
+        ret = EVP_DigestSignUpdate(ctx, msg, sizeof(msg)) != 1;
+    }
+    if (ret == 0) {
+        if (EVP_DigestSignFinal(ctx, mac, &macLen) == 1)
+            ret = -1;
+    }
+    if ((ret == 0) && (macLen != SHA256_DIGEST_LENGTH))
+        ret = -1;
+    for (i = 0; (ret == 0) && (i < (int)sizeof(mac)); i++) {
+        if (mac[i] != 0xa5)
+            ret = -1;
+    }
+
+    EVP_PKEY_free(pkey);
+    EVP_MD_CTX_free(ctx);
+
+    return ret;
+}
+
 #endif /* WE_HAVE_HMAC */
 
 
