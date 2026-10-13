@@ -45,6 +45,7 @@ static void *testClearPtr = NULL;
 static int testClearResult = -1;
 static size_t testFailSize = 0;
 static int testFailCount = 0;
+static size_t testActiveAllocs = 0;
 
 static void *test_openssl_malloc(size_t size, const char *file, int line)
 {
@@ -62,6 +63,7 @@ static void *test_openssl_malloc(size_t size, const char *file, int line)
     if (header != NULL) {
         header->size = size;
         header++;
+        testActiveAllocs++;
     }
 
     return header;
@@ -159,6 +161,7 @@ static void test_openssl_free(void *ptr, const char *file, int line)
         testClearResult = test_openssl_mem_is_clear(ptr, header->size);
         testClearPtr = NULL;
     }
+    testActiveAllocs--;
     free(header);
 }
 
@@ -185,6 +188,11 @@ int test_openssl_mem_failure_triggered(void)
 
     testFailCount = 0;
     return triggered;
+}
+
+size_t test_openssl_mem_active(void)
+{
+    return testActiveAllocs;
 }
 #endif
 
