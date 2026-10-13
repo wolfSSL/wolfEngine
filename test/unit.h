@@ -26,6 +26,7 @@
 #define OPENSSL_API_COMPAT      10101
 
 #include <string.h>
+#include <stddef.h>
 
 #ifdef WOLFENGINE_USER_SETTINGS
 #include <user_settings.h>
@@ -94,6 +95,9 @@ int test_aes_ccm_keyed_reinit(ENGINE *e, void *data);
 int test_logging(ENGINE *e, void *data);
 
 #define WE_VALGRIND_TEST 0x1
+
+void test_openssl_mem_expect_clear(void *ptr);
+int test_openssl_mem_clear_result(void);
 
 #ifdef WE_HAVE_DIGEST
 

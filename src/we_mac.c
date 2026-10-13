@@ -935,7 +935,8 @@ static void we_mac_pkey_cleanup(EVP_PKEY_CTX *ctx)
             /* Safely dispose of key memory. */
             OPENSSL_clear_free(mac->key, mac->keySz);
         }
-        /* Dispose of internal MAC object memory. */
+        /* Safely dispose of MAC state and internal object memory. */
+        OPENSSL_cleanse(mac, sizeof(*mac));
         OPENSSL_free(mac);
     }
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_cleanup", ret);
