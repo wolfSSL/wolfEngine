@@ -63,47 +63,74 @@ void *we_memdup(const void *data, size_t siz)
 
 /** Engine bound to. */
 static ENGINE *bound = NULL;
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-static CRYPTO_ONCE we_bound_lock_once = CRYPTO_ONCE_STATIC_INIT;
-static CRYPTO_RWLOCK *we_bound_lock = NULL;
+static int we_binding = 0;
 
-static void wolfengine_bound_lock_init(void)
+#ifndef WE_SINGLE_THREADED
+#if defined(_MSC_VER)
+#include <windows.h>
+static volatile LONG we_bind_lock = 0;
+#elif defined(__GNUC__) || defined(__clang__)
+static int we_bind_lock = 0;
+#else
+#error Threaded engine binding requires compiler atomic operations
+#endif
+#endif /* !WE_SINGLE_THREADED */
+
+static void we_lock_bind(void)
 {
-    we_bound_lock = CRYPTO_THREAD_lock_new();
+#ifndef WE_SINGLE_THREADED
+#if defined(_MSC_VER)
+    while (InterlockedCompareExchange(&we_bind_lock, 1, 0) != 0) {
+        YieldProcessor();
+    }
+#else
+    while (__atomic_exchange_n(&we_bind_lock, 1, __ATOMIC_ACQUIRE) != 0) {
+    }
+#endif
+#endif /* !WE_SINGLE_THREADED */
 }
 
-/* Lock the bound engine state. */
-static int wolfengine_bound_lock(void)
+static void we_unlock_bind(void)
 {
-    int ret;
+#ifndef WE_SINGLE_THREADED
+#if defined(_MSC_VER)
+    InterlockedExchange(&we_bind_lock, 0);
+#else
+    __atomic_store_n(&we_bind_lock, 0, __ATOMIC_RELEASE);
+#endif
+#endif
+}
 
-    ret = CRYPTO_THREAD_run_once(&we_bound_lock_once,
-            wolfengine_bound_lock_init);
-    if (ret == 1)
-        ret = (we_bound_lock != NULL) &&
-                CRYPTO_THREAD_write_lock(we_bound_lock);
+int we_engine_bind_available(void)
+{
+    int available;
 
-    return ret;
+    we_lock_bind();
+    available = (we_binding == 0) && (bound == NULL);
+    we_unlock_bind();
+    return available;
 }
 
 /**
- * Acquire the engine currently bound to wolfEngine.
+ * Acquire the bound engine during an active engine PKEY operation.
+ *
+ * The caller must already hold a functional engine reference.
  *
  * @returns  Referenced engine to release with ENGINE_finish(), or NULL.
  */
 ENGINE *wolfengine_get_bound_engine(void)
 {
-    ENGINE *engine = NULL;
+    ENGINE *engine;
 
-    if (wolfengine_bound_lock() == 1) {
-        if ((bound != NULL) && (ENGINE_init(bound) == 1))
-            engine = bound;
-        CRYPTO_THREAD_unlock(we_bound_lock);
-    }
+    we_lock_bind();
+    engine = (we_binding == 0) ? bound : NULL;
+    we_unlock_bind();
+
+    if ((engine != NULL) && (ENGINE_init(engine) != 1))
+        engine = NULL;
 
     return engine;
 }
-#endif
 
 #if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
 /** List of public key types supported as ids. */
@@ -810,20 +837,6 @@ static int we_pkey_asn1(ENGINE *e, EVP_PKEY_ASN1_METHOD **pkey,
 
     return ret;
 }
-
-/**
- * Clear ASN.1 method pointers after OpenSSL releases the engine-owned methods.
- */
-static void we_pkey_asn1_methods_clear_after_openssl_free(void)
-{
-#ifdef WE_HAVE_HMAC
-    we_hmac_pkey_asn1_method = NULL;
-#endif
-#ifdef WE_HAVE_CMAC
-    we_cmac_pkey_asn1_method = NULL;
-    we_cmac_we_pkey_asn1_method = NULL;
-#endif
-}
 #endif /* WE_HAVE_EVP_PKEY */
 
 #ifdef HAVE_FIPS
@@ -1083,19 +1096,15 @@ static int wolfengine_init(ENGINE *e)
     return ret;
 }
 
-/**
- * Destroy all data allocated by wolfengine.
- *
- * @param  e  [in]  Engine object.
- * @returns  1 for success always.
- */
-static void wolfengine_cleanup(void)
+/** Clear engine-owned PKEY method pointers after OpenSSL releases them. */
+static void wolfengine_pkey_methods_clear(void)
 {
 #ifdef WE_HAVE_HMAC
 #ifndef WE_HAVE_EVP_PKEY
     EVP_PKEY_meth_free(we_hmac_pkey_method);
 #endif
     we_hmac_pkey_method = NULL;
+    we_hmac_pkey_asn1_method = NULL;
 #endif
 #ifdef WE_HAVE_CMAC
 #ifndef WE_HAVE_EVP_PKEY
@@ -1104,6 +1113,8 @@ static void wolfengine_cleanup(void)
 #endif
     we_cmac_pkey_method = NULL;
     we_cmac_we_pkey_method = NULL;
+    we_cmac_pkey_asn1_method = NULL;
+    we_cmac_we_pkey_asn1_method = NULL;
 #endif
 #if defined(WE_HAVE_TLS1_PRF) && defined(WE_HAVE_EVP_PKEY)
     we_tls1_prf_method = NULL;
@@ -1137,6 +1148,44 @@ static void wolfengine_cleanup(void)
 #endif
 #endif /* WE_HAVE_ECKEYGEN */
 #endif /* WE_HAVE_ECC && WE_HAVE_EVP_PKEY */
+}
+
+/** Release key methods before a failed bind can publish another owner. */
+static void wolfengine_pkey_methods_rollback(ENGINE *e)
+{
+#ifdef WE_HAVE_EVP_PKEY
+    const int *nids;
+    EVP_PKEY_METHOD *method;
+    EVP_PKEY_ASN1_METHOD *asn1;
+    int count;
+    int i;
+
+    /* OpenSSL must not release these methods when the failed engine is freed. */
+    ENGINE_set_pkey_meths(e, NULL);
+    ENGINE_set_pkey_asn1_meths(e, NULL);
+    count = we_pkey_get_nids(&nids);
+    for (i = 0; i < count; i++) {
+        method = NULL;
+        if (we_pkey(e, &method, NULL, nids[i]) == 1) {
+            EVP_PKEY_meth_free(method);
+        }
+    }
+    count = we_pkey_asn1_get_nids(&nids);
+    for (i = 0; i < count; i++) {
+        asn1 = NULL;
+        if (we_pkey_asn1(e, &asn1, NULL, nids[i]) == 1) {
+            EVP_PKEY_asn1_free(asn1);
+        }
+    }
+#else
+    (void)e;
+#endif
+    wolfengine_pkey_methods_clear();
+}
+
+/** Free all global data allocated by wolfengine. */
+static void wolfengine_cleanup(void)
+{
 #ifdef WE_HAVE_DH
     DH_meth_free(we_dh_method);
     we_dh_method = NULL;
@@ -1266,69 +1315,42 @@ static void wolfengine_cleanup(void)
     we_final_random();
 #endif
 
-#if defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC)
-    we_pkey_asn1_methods_clear_after_openssl_free();
-#endif
-
 }
 
-/** Release key methods before a failed bind can publish another owner. */
-static void wolfengine_pkey_methods_rollback(ENGINE *e)
-{
-#ifdef WE_HAVE_EVP_PKEY
-    const int *nids;
-    EVP_PKEY_METHOD *method;
-    EVP_PKEY_ASN1_METHOD *asn1;
-    int count;
-    int i;
-
-    /* OpenSSL must not release these methods when the failed engine is freed. */
-    ENGINE_set_pkey_meths(e, NULL);
-    ENGINE_set_pkey_asn1_meths(e, NULL);
-    count = we_pkey_get_nids(&nids);
-    for (i = 0; i < count; i++) {
-        method = NULL;
-        if (we_pkey(e, &method, NULL, nids[i]) == 1) {
-            EVP_PKEY_meth_free(method);
-        }
-    }
-    count = we_pkey_asn1_get_nids(&nids);
-    for (i = 0; i < count; i++) {
-        asn1 = NULL;
-        if (we_pkey_asn1(e, &asn1, NULL, nids[i]) == 1) {
-            EVP_PKEY_asn1_free(asn1);
-        }
-    }
-#else
-    (void)e;
-#endif
-}
-
+/**
+ * Destroy all data allocated by wolfengine.
+ *
+ * @param  e  [in]  Engine object.
+ * @returns  1 on success and 0 while binding is in progress.
+ */
 static int wolfengine_destroy(ENGINE *e)
 {
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-    int locked = 0;
-#endif
+    int ret = 1;
+
+    we_lock_bind();
+    if (bound != e) {
+        we_unlock_bind();
+        return 1;
+    }
+    if (we_binding != 0) {
+        we_unlock_bind();
+        return 0;
+    }
+    we_binding = 1;
+    we_unlock_bind();
 
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_destroy");
-
-    (void)e;
-
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-    if (wolfengine_bound_lock() == 1)
-        locked = 1;
-#endif
-    bound = NULL;
     wolfengine_cleanup();
+    wolfengine_pkey_methods_clear();
 
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-    if (locked == 1)
-        CRYPTO_THREAD_unlock(we_bound_lock);
-#endif
+    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_destroy", ret);
 
-    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_destroy", 1);
+    we_lock_bind();
+    bound = NULL;
+    we_binding = 0;
+    we_unlock_bind();
 
-    return 1;
+    return ret;
 }
 
 #define WOLFENGINE_CMD_ENABLE_DEBUG           ENGINE_CMD_BASE
@@ -1567,29 +1589,22 @@ static const ECDSA_METHOD *we_ecdsa(void)
 int wolfengine_bind(ENGINE *e, const char *id)
 {
     int ret = 1;
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-    int locked = 0;
-#endif
     int initialized = 0;
 
+    if ((e == NULL) ||
+        ((id != NULL) && (XSTRCMP(id, wolfengine_id) != 0))) {
+        return 0;
+    }
+    we_lock_bind();
+    if ((we_binding != 0) || (bound != NULL)) {
+        we_unlock_bind();
+        return 0;
+    }
+    /* Keep user callbacks outside the state lock. */
+    we_binding = 1;
+    we_unlock_bind();
+
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_bind");
-
-    if ((id != NULL) && (XSTRCMP(id, wolfengine_id) != 0)) {
-        ret = 0;
-    }
-
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-    if (ret == 1) {
-        ret = wolfengine_bound_lock();
-        if (ret == 1)
-            locked = 1;
-    }
-#endif
-
-    if ((ret == 1) && (bound != NULL)) {
-        /* Don't add methods a second time. */
-        ret = 0;
-    }
 
     if (ret == 1) {
         ret = ENGINE_set_id(e, wolfengine_id);
@@ -1664,21 +1679,18 @@ int wolfengine_bind(ENGINE *e, const char *id)
         ret = we_init_cmac_cipher_meth();
     }
 #endif
-    if (ret == 1) {
-        /* Successfully bound the methods to the engine. */
-        bound = e;
-    }
-    else if (initialized == 1) {
+    if ((ret == 0) && (initialized == 1)) {
         wolfengine_pkey_methods_rollback(e);
         wolfengine_cleanup();
     }
 
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-    if (locked == 1)
-        CRYPTO_THREAD_unlock(we_bound_lock);
-#endif
-
     WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_bind", ret);
+
+    we_lock_bind();
+    if (ret == 1)
+        bound = e;
+    we_binding = 0;
+    we_unlock_bind();
 
     return ret;
 }
