@@ -143,7 +143,7 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         ret = 0;
     }
     /* Check a key was set - no point otherwise! */
-    if ((ret == 1) && (hkdf->keySz == 0)) {
+    if ((ret == 1) && ((hkdf->key == NULL) || (hkdf->keySz == 0))) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No key from app.");
         ret = 0;
     }
@@ -268,10 +268,12 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Key size must be positive");
                 ret = 0;
             }
-            if ((ret == 1) && (hkdf->key != NULL)) {
+            if (hkdf->key != NULL) {
                 /* Setting key - dispose of old key. */
                 OPENSSL_clear_free(hkdf->key, hkdf->keySz);
             }
+            hkdf->key = NULL;
+            hkdf->keySz = 0;
             if (ret == 1) {
                 /* Clear info as this is a new operation. */
                 OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
