@@ -2353,7 +2353,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  * @param  ctx    [in]  Public key context of operation.
  * @param  type   [in]  Type of operation to perform.
  * @param  value  [in]  Control string dependent value.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 on success or a non-positive OpenSSL control error code.
  */
 static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                                 const char *value)
@@ -2497,12 +2497,12 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             rsa->pubExp = e;
         }
     }
-    else {
+    else if (ret == 1) {
         /* Unsupported string. */
         XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl string: %s",
                   type);
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-        ret = 0;
+        ret = -2;
     }
 
     return ret;
