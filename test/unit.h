@@ -541,6 +541,7 @@ int test_ecdsa(ENGINE *e, void *data);
 #endif /* WE_HAVE_ECC */
 
 #ifdef WE_HAVE_PBE
+int test_pbe_invalid_params(ENGINE *e, void *data);
 int test_pbe(ENGINE *e, void *data);
 #endif /* WE_HAVE_PBE */
 
