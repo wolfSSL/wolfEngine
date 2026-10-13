@@ -728,6 +728,91 @@ int test_aes128_cbc_hmac_tls_extended_padding(ENGINE *e, void *data)
     EVP_CIPHER_CTX_free(ctx);
     return err;
 }
+
+int test_aes128_cbc_hmac_tls_retry_after_bad_padding(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    unsigned int macLen = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = EVP_aes_128_cbc_hmac_sha256();
+    int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                    const unsigned char *, size_t) = NULL;
+    unsigned char key[16] = {0};
+    unsigned char macKey[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char iv[16] = {0};
+    unsigned char msg[16] = {1, 2, 3, 4};
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0};
+    unsigned char hmacInput[EVP_AEAD_TLS1_AAD_LEN + sizeof(msg)] = {0};
+    unsigned char mac[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char plain[sizeof(msg) + SHA256_DIGEST_LENGTH + 16] = {0};
+    unsigned char validRecord[sizeof(iv) + sizeof(plain)] = {0};
+    unsigned char badRecord[sizeof(validRecord)] = {0};
+    unsigned char out[sizeof(validRecord)] = {0};
+
+    (void)data;
+
+    if (cipher == NULL) {
+        return 0;
+    }
+    aad[9] = (unsigned char)(TLS1_2_VERSION >> 8);
+    aad[10] = (unsigned char)TLS1_2_VERSION;
+    XMEMCPY(hmacInput, aad, sizeof(aad));
+    hmacInput[sizeof(aad) - 1] = sizeof(msg);
+    XMEMCPY(hmacInput + sizeof(aad), msg, sizeof(msg));
+    err = HMAC(EVP_sha256(), macKey, sizeof(macKey), hmacInput,
+               sizeof(hmacInput), mac, &macLen) == NULL;
+    if (err == 0) {
+        err = macLen != sizeof(mac);
+    }
+    if (err == 0) {
+        XMEMCPY(plain, msg, sizeof(msg));
+        XMEMCPY(plain + sizeof(msg), mac, sizeof(mac));
+        XMEMSET(plain + sizeof(msg) + sizeof(mac), 15, 16);
+        XMEMCPY(validRecord, iv, sizeof(iv));
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(plain), validRecord + sizeof(iv), 0);
+    }
+    if (err == 0) {
+        plain[sizeof(plain) - 2] ^= 1;
+        XMEMCPY(badRecord, iv, sizeof(iv));
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(plain), badRecord + sizeof(iv), 0);
+    }
+
+    aad[sizeof(aad) - 1] = sizeof(validRecord);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        doCipher = EVP_CIPHER_meth_get_do_cipher(EVP_CIPHER_CTX_cipher(ctx));
+        err = doCipher == NULL;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, badRecord, sizeof(badRecord)) >= 0;
+    }
+    if (err == 0) {
+        len = doCipher(ctx, out, validRecord, sizeof(validRecord));
+        err = len != sizeof(msg);
+    }
+    if (err == 0) {
+        err = XMEMCMP(out + sizeof(iv), msg, sizeof(msg)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
 #else
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 {
@@ -753,6 +838,13 @@ int test_aes128_cbc_hmac_no_tls_mac(ENGINE *e, void *data)
 }
 
 int test_aes128_cbc_hmac_tls_extended_padding(ENGINE *e, void *data)
+{
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_tls_retry_after_bad_padding(ENGINE *e, void *data)
 {
     (void)e;
     (void)data;
