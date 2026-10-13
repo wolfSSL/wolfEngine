@@ -170,6 +170,55 @@ static int test_hmac_copy_without_key(ENGINE *e)
 #endif
 }
 
+static int test_hmac_key_replacement_failure(ENGINE *e)
+{
+#ifndef TEST_MULTITHREADED
+    int err = 0;
+    unsigned char oldKey[] = "original key";
+    unsigned char newKey[] = "replacement key";
+    const unsigned char *key = NULL;
+    size_t keySz = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_KEYGEN,
+            EVP_PKEY_CTRL_SET_MAC_KEY, sizeof(oldKey), oldKey) != 1;
+    }
+    if (err == 0) {
+        test_openssl_mem_fail_once(sizeof(newKey) + 1);
+        err = EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_KEYGEN,
+            EVP_PKEY_CTRL_SET_MAC_KEY, sizeof(newKey), newKey) > 0;
+        if (!test_openssl_mem_failure_triggered()) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &pkey) != 1;
+    }
+    if (err == 0) {
+        key = EVP_PKEY_get0_hmac(pkey, &keySz);
+        err = (key == NULL) || (keySz != sizeof(oldKey)) ||
+            (XMEMCMP(key, oldKey, sizeof(oldKey)) != 0);
+    }
+
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    return 0;
+#endif
+}
+
 int test_hmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
@@ -266,6 +315,9 @@ int test_hmac_create(ENGINE *e, void *data)
     }
     if (ret == 0) {
         ret = test_hmac_copy_without_key(e);
+    }
+    if (ret == 0) {
+        ret = test_hmac_key_replacement_failure(e);
     }
     return ret;
 }
