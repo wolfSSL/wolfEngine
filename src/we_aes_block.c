@@ -30,13 +30,111 @@ typedef struct we_AesBlock
 {
     /** The wolfSSL AES data object. */
     Aes            aes;
+    /** Raw key used to recreate the AES object when copying the context. */
+    unsigned char  key[AES_256_KEY_SIZE];
+    /** Number of bytes in the raw key. */
+    unsigned int   keyLen;
     /** Buffer for streaming. */
     unsigned char  lastBlock[WC_AES_BLOCK_SIZE];
     /** Number of buffered bytes.  */
     unsigned int   over;
+    /** Flag to indicate whether the AES object is initialized. */
+    unsigned int   inited:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
 } we_AesBlock;
+
+/**
+ * Cleanup the internal AES block object. Does not free object.
+ *
+ * @param  ctx  [in]  EVP cipher context.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_aes_block_cleanup(EVP_CIPHER_CTX *ctx)
+{
+    int ret = 1;
+    we_AesBlock *aes;
+
+    aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+    if (aes == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        if (aes->inited != 0) {
+            wc_AesFree(&aes->aes);
+        }
+        XMEMSET(aes, 0, sizeof(we_AesBlock));
+    }
+
+    return ret;
+}
+
+static int we_aes_block_copy(EVP_CIPHER_CTX *srcCtx,
+                             EVP_CIPHER_CTX *dstCtx)
+{
+    int ret = 1;
+    int rc;
+    we_AesBlock *src;
+    we_AesBlock *dst;
+
+    src = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(srcCtx);
+    dst = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(dstCtx);
+    if ((src == NULL) || (dst == NULL)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                             "AES block cipher data is NULL");
+        ret = 0;
+    }
+
+    if (ret == 1) {
+        XMEMSET(dst, 0, sizeof(we_AesBlock));
+        XMEMCPY(dst->key, src->key, sizeof(dst->key));
+        XMEMCPY(dst->lastBlock, src->lastBlock, sizeof(dst->lastBlock));
+        dst->keyLen = src->keyLen;
+        dst->over = src->over;
+        dst->enc = src->enc;
+    }
+    if ((ret == 1) && (src->inited != 0)) {
+        if ((src->keyLen == 0) || (src->keyLen > sizeof(src->key))) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                 "Invalid AES block key length");
+            ret = 0;
+        }
+    }
+    if ((ret == 1) && (src->inited != 0)) {
+        rc = wc_AesInit(&dst->aes, NULL, INVALID_DEVID);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
+            ret = 0;
+        }
+        else {
+            dst->inited = 1;
+        }
+    }
+    if ((ret == 1) && (src->inited != 0)) {
+        rc = wc_AesSetKey(&dst->aes, dst->key, dst->keyLen,
+                          (const unsigned char *)src->aes.reg,
+                          src->enc ? AES_ENCRYPTION : AES_DECRYPTION);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
+            ret = 0;
+        }
+    }
+    if (ret == 0) {
+        if ((dst != NULL) && (dst->inited != 0)) {
+            wc_AesFree(&dst->aes);
+        }
+        if (dst != NULL) {
+            XMEMSET(dst, 0, sizeof(we_AesBlock));
+        }
+    }
+
+    return ret;
+}
+
+#define AES_BLOCK_COPY_FLAG EVP_CIPH_CUSTOM_COPY
 
 #endif
 
@@ -77,12 +175,18 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if ((ret == 1) && (key != NULL)) {
-        WOLFENGINE_MSG(WE_LOG_CIPHER,
-                       "Initializing wolfCrypt Aes structure: %p", &aes->aes);
-        rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
-            ret = 0;
+        if (aes->inited == 0) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER,
+                           "Initializing wolfCrypt Aes structure: %p",
+                           &aes->aes);
+            rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
+                ret = 0;
+            }
+            else {
+                aes->inited = 1;
+            }
         }
         if (ret == 1) {
             WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
@@ -92,6 +196,11 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
                 ret = 0;
+            }
+            else {
+                XMEMSET(aes->key, 0, sizeof(aes->key));
+                XMEMCPY(aes->key, key, EVP_CIPHER_CTX_key_length(ctx));
+                aes->keyLen = EVP_CIPHER_CTX_key_length(ctx);
             }
         }
     }
@@ -227,7 +336,7 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 /**
  * Extra operations for AES-CBC.
  *
- * No supported operations yet.
+ * Handles initialization and context copies.
  *
  * @param  ctx   [in]  EVP cipher context of operation.
  * @param  type  [in]  Type of operation to perform.
@@ -255,6 +364,12 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_INIT:
+                XMEMSET(aes, 0, sizeof(we_AesBlock));
+                break;
+            case EVP_CTRL_COPY:
+                ret = we_aes_block_copy(ctx, (EVP_CIPHER_CTX *)ptr);
+                break;
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
@@ -273,6 +388,8 @@ static int we_aes_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define AES_CBC_FLAGS              \
     (EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CBC_MODE           | \
+     EVP_CIPH_CTRL_INIT          | \
+     AES_BLOCK_COPY_FLAG         | \
      EVP_CIPH_ALWAYS_CALL_INIT)
 
 /** AES128-CBC EVP cipher method. */
@@ -301,6 +418,15 @@ static int we_init_aescbc_meth(EVP_CIPHER *cipher)
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_aes_cbc_init);
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (ret == 1) {
+        ret = EVP_CIPHER_meth_set_cleanup(cipher, we_aes_block_cleanup);
+    }
+#else
+    if (ret == 1) {
+        cipher->cleanup = we_aes_block_cleanup;
+    }
+#endif
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_aes_cbc_cipher);
     }
@@ -429,12 +555,18 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if ((ret == 1) && (key != NULL)) {
-        WOLFENGINE_MSG(WE_LOG_CIPHER,
-                       "Initializing wolfCrypt Aes structure: %p", &aes->aes);
-        rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
-            ret = 0;
+        if (aes->inited == 0) {
+            WOLFENGINE_MSG(WE_LOG_CIPHER,
+                           "Initializing wolfCrypt Aes structure: %p",
+                           &aes->aes);
+            rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
+                ret = 0;
+            }
+            else {
+                aes->inited = 1;
+            }
         }
         if (ret == 1) {
             WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES key (%d bytes)",
@@ -444,6 +576,11 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
                 ret = 0;
+            }
+            else {
+                XMEMSET(aes->key, 0, sizeof(aes->key));
+                XMEMCPY(aes->key, key, EVP_CIPHER_CTX_key_length(ctx));
+                aes->keyLen = EVP_CIPHER_CTX_key_length(ctx);
             }
         }
     }
@@ -710,7 +847,7 @@ static int we_aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 /**
  * Extra operations for AES-ECB.
  *
- * No supported operations yet.
+ * Handles initialization and context copies.
  *
  * @param  ctx   [in]  EVP cipher context of operation.
  * @param  type  [in]  Type of operation to perform.
@@ -738,6 +875,12 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_INIT:
+                XMEMSET(aes, 0, sizeof(we_AesBlock));
+                break;
+            case EVP_CTRL_COPY:
+                ret = we_aes_block_copy(ctx, (EVP_CIPHER_CTX *)ptr);
+                break;
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
@@ -756,6 +899,8 @@ static int we_aes_ecb_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define AES_ECB_FLAGS              \
     (EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_FLAG_DEFAULT_ASN1  | \
+     EVP_CIPH_CTRL_INIT          | \
+     AES_BLOCK_COPY_FLAG         | \
      EVP_CIPH_ECB_MODE)
 
 /** AES128-ECB EVP cipher method. */
@@ -784,6 +929,15 @@ static int we_init_aesecb_meth(EVP_CIPHER *cipher)
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_aes_ecb_init);
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (ret == 1) {
+        ret = EVP_CIPHER_meth_set_cleanup(cipher, we_aes_block_cleanup);
+    }
+#else
+    if (ret == 1) {
+        cipher->cleanup = we_aes_block_cleanup;
+    }
+#endif
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_aes_ecb_cipher);
     }

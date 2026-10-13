@@ -358,11 +358,86 @@ int test_des3_cbc_stream(ENGINE *e, void *data)
 
 /******************************************************************************/
 
+#if defined(WE_HAVE_AESCBC) || defined(WE_HAVE_AESECB)
+static int test_aes_block_lifecycle(ENGINE *e, const EVP_CIPHER *cipher,
+                                    const unsigned char *iv)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    EVP_CIPHER_CTX *copyCtx = NULL;
+    unsigned char key[32] = { 0 };
+    unsigned char input[32] = { 0 };
+    unsigned char output[16];
+    unsigned char copyOutput[16];
+    int outputLen = 0;
+    int copyOutputLen = 0;
+
+    ctx = EVP_CIPHER_CTX_new();
+    err = ctx == NULL;
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, cipher, e, key, iv, 1) != 1;
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (err == 0) {
+        err = EVP_CIPHER_meth_get_cleanup(EVP_CIPHER_CTX_cipher(ctx)) == NULL;
+    }
+#else
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_cipher(ctx)->cleanup == NULL;
+    }
+#endif
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, NULL, e, key, iv, -1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ctx, 0) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherUpdate(ctx, output, &outputLen, input,
+                               sizeof(output)) != 1;
+    }
+    if (err == 0) {
+        copyCtx = EVP_CIPHER_CTX_new();
+        err = copyCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_copy(copyCtx, ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherUpdate(ctx, output, &outputLen,
+                               input + sizeof(output), sizeof(output)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherUpdate(copyCtx, copyOutput, &copyOutputLen,
+                               input + sizeof(output),
+                               sizeof(copyOutput)) != 1;
+    }
+    if (err == 0) {
+        err = (outputLen != copyOutputLen) ||
+              (memcmp(output, copyOutput, outputLen) != 0);
+    }
+
+    EVP_CIPHER_CTX_free(copyCtx);
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+#endif
+
+/******************************************************************************/
+
 #ifdef WE_HAVE_AESECB
 
 int test_aes128_ecb(ENGINE *e, void *data)
 {
-    return test_cipher_enc_dec(e, data, EVP_aes_128_ecb(), 16, 16);
+    int err;
+
+    err = test_cipher_enc_dec(e, data, EVP_aes_128_ecb(), 16, 16);
+    if (err == 0) {
+        err = test_aes_block_lifecycle(e, EVP_aes_128_ecb(), NULL);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
@@ -466,6 +541,12 @@ int test_aes128_cbc(ENGINE *e, void *data)
             err = doCipher(ctx, NULL, in, sizeof(in)) != 0;
         }
         EVP_CIPHER_CTX_free(ctx);
+    }
+
+    if (err == 0) {
+        unsigned char iv[16] = { 0 };
+
+        err = test_aes_block_lifecycle(e, EVP_aes_128_cbc(), iv);
     }
 
     return err;
