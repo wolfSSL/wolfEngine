@@ -1180,6 +1180,86 @@ int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data)
 #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 }
 
+int test_aes_gcm_ctx_copy_rejected(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    int finalLen;
+    EVP_CIPHER_CTX *src = NULL;
+    EVP_CIPHER_CTX *dst = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad[4] = {1, 2, 3, 4};
+    unsigned char msg[4] = {5, 6, 7, 8};
+    unsigned char enc[sizeof(msg)];
+    unsigned char tag[16];
+
+    (void)data;
+
+    err = (src = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = (dst = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(src, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(src, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_copy(dst, src) == 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(src, enc, &len, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(src, enc + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(src, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+
+    EVP_CIPHER_CTX_free(dst);
+    EVP_CIPHER_CTX_free(src);
+
+    return err;
+}
+
+int test_aes_gcm_cleanup_empty_ctx(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *active = NULL;
+    EVP_CIPHER_CTX *empty = NULL;
+    const EVP_CIPHER *cipher = NULL;
+    int (*cleanup)(EVP_CIPHER_CTX *) = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+
+    (void)data;
+
+    err = (active = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = (empty = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(active, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        cipher = EVP_CIPHER_CTX_cipher(active);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        cleanup = EVP_CIPHER_meth_get_cleanup(cipher);
+#else
+        cleanup = cipher->cleanup;
+#endif
+        err = (cleanup == NULL) || (cleanup(empty) != 1);
+    }
+
+    EVP_CIPHER_CTX_free(empty);
+    EVP_CIPHER_CTX_free(active);
+    return err;
+}
+
 #endif /* WE_HAVE_AESGCM */
 
 /******************************************************************************/
