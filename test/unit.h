@@ -195,6 +195,7 @@ int test_aes128_cbc_hmac_reinit_state(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_cleanup(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_tls_lengths(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_no_tls_mac(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_extended_padding(ENGINE *e, void *data);
 
 #endif
 
