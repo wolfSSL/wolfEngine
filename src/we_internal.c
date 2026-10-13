@@ -1089,22 +1089,8 @@ static int wolfengine_init(ENGINE *e)
  * @param  e  [in]  Engine object.
  * @returns  1 for success always.
  */
-static int wolfengine_destroy(ENGINE *e)
+static void wolfengine_cleanup(void)
 {
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-    int locked = 0;
-#endif
-
-    WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_destroy");
-
-    (void)e;
-
-#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
-    if (wolfengine_bound_lock() == 1)
-        locked = 1;
-#endif
-    bound = NULL;
-
 #ifdef WE_HAVE_HMAC
 #ifndef WE_HAVE_EVP_PKEY
     EVP_PKEY_meth_free(we_hmac_pkey_method);
@@ -1161,15 +1147,19 @@ static int wolfengine_destroy(ENGINE *e)
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_ECDSA
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-    ECDSA_METHOD_free(we_ecdsa_method);
-    we_ecdsa_method = NULL;
+    if (we_ecdsa_method != NULL) {
+        ECDSA_METHOD_free(we_ecdsa_method);
+        we_ecdsa_method = NULL;
+    }
 #endif
 #endif
 #ifdef WE_HAVE_ECC
     /* For 1.1.1 and above we_ec_method is freed by OpenSSL_cleanup(). */
 #ifdef WE_HAVE_EC_KEY
-    EC_KEY_METHOD_free(we_ec_key_method);
-    we_ec_key_method = NULL;
+    if (we_ec_key_method != NULL) {
+        EC_KEY_METHOD_free(we_ec_key_method);
+        we_ec_key_method = NULL;
+    }
 #endif
 #endif
 #if defined(WE_HAVE_ECDH)
@@ -1279,6 +1269,57 @@ static int wolfengine_destroy(ENGINE *e)
 #if defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC)
     we_pkey_asn1_methods_clear_after_openssl_free();
 #endif
+
+}
+
+/** Release key methods before a failed bind can publish another owner. */
+static void wolfengine_pkey_methods_rollback(ENGINE *e)
+{
+#ifdef WE_HAVE_EVP_PKEY
+    const int *nids;
+    EVP_PKEY_METHOD *method;
+    EVP_PKEY_ASN1_METHOD *asn1;
+    int count;
+    int i;
+
+    /* OpenSSL must not release these methods when the failed engine is freed. */
+    ENGINE_set_pkey_meths(e, NULL);
+    ENGINE_set_pkey_asn1_meths(e, NULL);
+    count = we_pkey_get_nids(&nids);
+    for (i = 0; i < count; i++) {
+        method = NULL;
+        if (we_pkey(e, &method, NULL, nids[i]) == 1) {
+            EVP_PKEY_meth_free(method);
+        }
+    }
+    count = we_pkey_asn1_get_nids(&nids);
+    for (i = 0; i < count; i++) {
+        asn1 = NULL;
+        if (we_pkey_asn1(e, &asn1, NULL, nids[i]) == 1) {
+            EVP_PKEY_asn1_free(asn1);
+        }
+    }
+#else
+    (void)e;
+#endif
+}
+
+static int wolfengine_destroy(ENGINE *e)
+{
+#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
+    int locked = 0;
+#endif
+
+    WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_destroy");
+
+    (void)e;
+
+#if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (wolfengine_bound_lock() == 1)
+        locked = 1;
+#endif
+    bound = NULL;
+    wolfengine_cleanup();
 
 #if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
     if (locked == 1)
@@ -1529,6 +1570,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
 #if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
     int locked = 0;
 #endif
+    int initialized = 0;
 
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "wolfengine_bind");
 
@@ -1553,6 +1595,7 @@ int wolfengine_bind(ENGINE *e, const char *id)
         ret = ENGINE_set_id(e, wolfengine_id);
     }
     if (ret == 1) {
+        initialized = 1;
         ret = wolfengine_init(e);
     }
     if (ret == 1 && ENGINE_set_name(e, wolfengine_name) == 0) {
@@ -1606,13 +1649,13 @@ int wolfengine_bind(ENGINE *e, const char *id)
     }
 #endif /* WE_HAVE_ECC && WE_HAVE_ECDH */
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
-    if (ret == 1 && ENGINE_set_destroy_function(e, wolfengine_destroy) == 0) {
-        ret = 0;
-    }
     if (ret == 1 && ENGINE_set_cmd_defns(e, wolfengine_cmd_defns) == 0) {
         ret = 0;
     }
     if (ret == 1 && ENGINE_set_ctrl_function(e, wolfengine_ctrl) == 0) {
+        ret = 0;
+    }
+    if (ret == 1 && ENGINE_set_destroy_function(e, wolfengine_destroy) == 0) {
         ret = 0;
     }
 
@@ -1624,6 +1667,10 @@ int wolfengine_bind(ENGINE *e, const char *id)
     if (ret == 1) {
         /* Successfully bound the methods to the engine. */
         bound = e;
+    }
+    else if (initialized == 1) {
+        wolfengine_pkey_methods_rollback(e);
+        wolfengine_cleanup();
     }
 
 #if defined(WE_HAVE_CMAC) && defined(WE_HAVE_AESCBC) && OPENSSL_VERSION_NUMBER >= 0x10100000L
