@@ -27,15 +27,24 @@
 
 #ifdef WE_HAVE_RANDOM
 
-#if defined(WOLFENGINE_DEBUG) && !defined(WE_STATIC_WOLFSSL)
+#ifdef WOLFENGINE_DEBUG
+#ifndef WE_STATIC_WOLFSSL
 static int seedMixCount;
+#endif
+static int entropyLogSeen;
 
 static void test_random_logging_cb(const int logLevel, const int component,
                                    const char *const logMessage)
 {
+#ifndef WE_STATIC_WOLFSSL
     if (logLevel == WE_LOG_ENTER && component == WE_LOG_RNG &&
             strcmp(logMessage, "wolfEngine Entering we_rand_mix_seed") == 0) {
         seedMixCount++;
+    }
+#endif
+    if (logLevel == WE_LOG_VERBOSE && component == WE_LOG_RNG &&
+            strstr(logMessage, "entropy = 12.500000]") != NULL) {
+        entropyLogSeen = 1;
     }
 }
 #endif
@@ -133,6 +142,40 @@ static int test_random_cleanup(ENGINE *e)
 #endif
 }
 
+static int test_random_entropy_logging(ENGINE *e)
+{
+#ifdef WOLFENGINE_DEBUG
+    const RAND_METHOD *method = ENGINE_get_RAND(e);
+    unsigned char buf[16] = { 0 };
+    int err = 0;
+
+    if (method == NULL || method->add == NULL) {
+        err = 1;
+    }
+    if (err == 0 && (wolfEngine_Debugging_ON() != 0 ||
+            wolfEngine_SetLoggingCb(test_random_logging_cb) != 0 ||
+            wolfEngine_SetLogLevel(WE_LOG_VERBOSE) != 0 ||
+            wolfEngine_SetLogComponents(WE_LOG_RNG) != 0)) {
+        err = 1;
+    }
+    if (err == 0) {
+        entropyLogSeen = 0;
+        method->add(buf, sizeof(buf), 12.5);
+        err = !entropyLogSeen;
+    }
+
+    (void)wolfEngine_SetLoggingCb(NULL);
+    (void)wolfEngine_SetLogLevel(WE_LOG_ERROR | WE_LOG_INFO);
+    (void)wolfEngine_SetLogComponents(WE_LOG_COMPONENTS_DEFAULT);
+    wolfEngine_Debugging_OFF();
+
+    return err;
+#else
+    (void)e;
+    return 0;
+#endif
+}
+
 static int test_random_api(void)
 {
     int err;
@@ -201,6 +244,9 @@ int test_random(ENGINE *e, void *data)
     }
     if (err == 0) {
         err = test_random_cleanup(e);
+    }
+    if (err == 0) {
+        err = test_random_entropy_logging(e);
     }
     if (err == 0) {
         err = test_random_status_after_teardown(e);
