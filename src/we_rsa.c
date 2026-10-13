@@ -1378,6 +1378,9 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     int ret = 1;
     unsigned int tLen = (unsigned int)toLen;
     const EVP_MD *mdMGF1;
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    int lockRet;
+#endif
 #ifndef WE_RSA_USE_GLOBAL_RNG
     WC_RNG *rng = &rsa->rng;
 #else
@@ -1418,8 +1421,9 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
             case RSA_NO_PADDING:
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
             #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
-                if (wc_LockMutex(we_rng_mutex) != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", ret);
+                lockRet = wc_LockMutex(we_rng_mutex);
+                if (lockRet != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", lockRet);
                     ret = -1;
                 }
                 else
