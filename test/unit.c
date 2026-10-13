@@ -985,6 +985,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_pkey_large_exponent, NULL),
     TEST_DECL(test_rsa_pkey_sign_missing_data, NULL),
     TEST_DECL(test_rsa_pkey_sign_digest_length, NULL),
+    TEST_DECL(test_rsa_verify_recover_digest, NULL),
     TEST_DECL(test_rsa_pkey_invalid_key_size, NULL),
 #endif /* WE_HAVE_RSA */
 #ifdef WE_HAVE_EC_P192
