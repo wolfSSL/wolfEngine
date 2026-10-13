@@ -24,6 +24,138 @@
 
 #ifdef WE_HAVE_HMAC
 
+#if defined(WOLF_CRYPTO_CB) && defined(WOLF_CRYPTO_CB_FIND) && \
+    !defined(TEST_MULTITHREADED)
+#include <openssl/hmac.h>
+#include <stdint.h>
+#include <wolfssl/wolfcrypt/cryptocb.h>
+
+#define TEST_HMAC_CB_DEVID 27182
+
+typedef struct TestHmacCallback {
+    byte expectedKey[64];
+    uintptr_t sourceKey;
+    int stage;
+} TestHmacCallback;
+
+static TestHmacCallback* testHmacCallback;
+
+static int test_hmac_find_device(int devId, int algoType)
+{
+    if (testHmacCallback != NULL && algoType == WC_ALGO_TYPE_HMAC &&
+            devId == INVALID_DEVID) {
+        return TEST_HMAC_CB_DEVID;
+    }
+    return devId;
+}
+
+static int test_hmac_crypto_callback(int devId, wc_CryptoInfo* info,
+    void* context)
+{
+    static const byte message[] = "Hi There";
+    TestHmacCallback* state = (TestHmacCallback*)context;
+    const byte* key;
+    unsigned int macLen = 0;
+
+    if (info == NULL || info->algo_type != WC_ALGO_TYPE_HMAC)
+        return CRYPTOCB_UNAVAILABLE;
+    if (devId != TEST_HMAC_CB_DEVID || state == NULL ||
+            info->hmac.hmac == NULL || info->hmac.macType != WC_SHA256)
+        return BAD_FUNC_ARG;
+
+    key = info->hmac.hmac->keyRaw;
+    if (key == NULL || info->hmac.hmac->keyLen != sizeof(state->expectedKey) ||
+            memcmp(key, state->expectedKey, sizeof(state->expectedKey)) != 0)
+        return BAD_FUNC_ARG;
+
+    if (state->stage == 0 && info->hmac.digest == NULL &&
+            info->hmac.inSz == 3 && memcmp(info->hmac.in, "Hi ", 3) == 0) {
+        state->sourceKey = (uintptr_t)key;
+        state->stage = 1;
+        return 0;
+    }
+    if (state->stage == 1 && info->hmac.digest == NULL &&
+            info->hmac.inSz == 5 && memcmp(info->hmac.in, "There", 5) == 0 &&
+            (uintptr_t)key != state->sourceKey) {
+        state->stage = 2;
+        return 0;
+    }
+    if (state->stage == 2 && info->hmac.in == NULL &&
+            info->hmac.digest != NULL &&
+            HMAC(EVP_sha256(), key, info->hmac.hmac->keyLen, message,
+                sizeof(message) - 1, info->hmac.digest, &macLen) != NULL &&
+            macLen == 32) {
+        state->stage = 3;
+        return 0;
+    }
+    return BAD_FUNC_ARG;
+}
+
+static int test_hmac_callback_copy(ENGINE* e, void* data)
+{
+    static const byte expected[32] = {
+        0xb0, 0x34, 0x4c, 0x61, 0xd8, 0xdb, 0x38, 0x53,
+        0x5c, 0xa8, 0xaf, 0xce, 0xaf, 0x0b, 0xf1, 0x2b,
+        0x88, 0x1d, 0xc2, 0x00, 0xc9, 0x83, 0x3d, 0xa7,
+        0x26, 0xe9, 0x37, 0x6c, 0x2e, 0x32, 0xcf, 0xf7
+    };
+    byte key[20];
+    byte mac[sizeof(expected)];
+    size_t macLen = sizeof(mac);
+    TestHmacCallback state;
+    EVP_MD_CTX *source = NULL, *copy = NULL;
+    EVP_PKEY* pkey = NULL;
+    int registered = 0, ret = -1;
+
+    (void)data;
+    if (e == NULL)
+        return -1;
+    memset(&state, 0, sizeof(state));
+    memset(key, 0x0b, sizeof(key));
+    memset(state.expectedKey, 0x0b, sizeof(key));
+
+    if (wc_CryptoCb_RegisterDevice(TEST_HMAC_CB_DEVID,
+            test_hmac_crypto_callback, &state) != 0) {
+        goto exit;
+    }
+    registered = 1;
+    testHmacCallback = &state;
+    wc_CryptoCb_SetDeviceFindCb(test_hmac_find_device);
+
+    source = EVP_MD_CTX_new();
+    copy = EVP_MD_CTX_new();
+    pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, e, key, sizeof(key));
+    if (source == NULL || copy == NULL || pkey == NULL ||
+            EVP_DigestSignInit(source, NULL, EVP_sha256(), e, pkey) != 1 ||
+            EVP_DigestSignUpdate(source, "Hi ", 3) != 1 ||
+            EVP_MD_CTX_copy_ex(copy, source) != 1) {
+        goto exit;
+    }
+
+    EVP_MD_CTX_free(source);
+    source = NULL;
+    EVP_PKEY_free(pkey);
+    pkey = NULL;
+
+    if (EVP_DigestSignUpdate(copy, "There", 5) == 1 &&
+            EVP_DigestSignFinal(copy, mac, &macLen) == 1 &&
+            state.stage == 3 && macLen == sizeof(expected) &&
+            memcmp(mac, expected, sizeof(expected)) == 0)
+        ret = 0;
+
+exit:
+    EVP_MD_CTX_free(copy);
+    EVP_MD_CTX_free(source);
+    EVP_PKEY_free(pkey);
+    if (registered) {
+        wc_CryptoCb_SetDeviceFindCb(NULL);
+        testHmacCallback = NULL;
+        wc_CryptoCb_UnRegisterDevice(TEST_HMAC_CB_DEVID);
+    }
+    return ret;
+}
+#endif
+
 static int test_mac_generation(ENGINE *e, const EVP_MD *md, int pkeyType,
                            unsigned char *pswd, int pswdSz, unsigned char *msg,
                            int len, unsigned char *mac, int *macLen)
@@ -219,6 +351,42 @@ static int test_hmac_key_replacement_failure(ENGINE *e)
 #endif
 }
 
+static int test_hmac_short_key_init(ENGINE *e)
+{
+#ifndef TEST_MULTITHREADED
+    int err = 0;
+    int allocationFailed;
+    unsigned char key[] = "short HMAC key";
+    EVP_MD_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+
+    ctx = EVP_MD_CTX_new();
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, e, key, sizeof(key));
+        err = pkey == NULL;
+    }
+    if (err == 0) {
+        test_openssl_mem_fail_once(64);
+        err = EVP_DigestSignInit(ctx, NULL, EVP_sha256(), e, pkey) != 1;
+        allocationFailed = test_openssl_mem_failure_triggered();
+        if (allocationFailed) {
+            err = 1;
+        }
+    }
+
+    EVP_PKEY_free(pkey);
+    EVP_MD_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    return 0;
+#endif
+}
+
 int test_hmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
@@ -319,6 +487,15 @@ int test_hmac_create(ENGINE *e, void *data)
     if (ret == 0) {
         ret = test_hmac_key_replacement_failure(e);
     }
+    if (ret == 0) {
+        ret = test_hmac_short_key_init(e);
+    }
+#if defined(WOLF_CRYPTO_CB) && defined(WOLF_CRYPTO_CB_FIND) && \
+    !defined(TEST_MULTITHREADED)
+    if (ret == 0) {
+        ret = test_hmac_callback_copy(e, data);
+    }
+#endif
     return ret;
 }
 
