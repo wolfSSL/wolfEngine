@@ -566,11 +566,69 @@ int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
     return err;
 }
 
+int test_aes128_cbc_hmac_tls_lengths(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = EVP_aes_128_cbc_hmac_sha256();
+    int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                    const unsigned char *, size_t) = NULL;
+    unsigned char key[16] = {0};
+    unsigned char macKey[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char iv[16] = {0};
+    unsigned char record[64] = {0};
+    unsigned char out[64] = {0};
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0};
+
+    (void)data;
+
+    if (cipher == NULL) {
+        return 0;
+    }
+    aad[9] = (unsigned char)(TLS1_2_VERSION >> 8);
+    aad[10] = (unsigned char)TLS1_2_VERSION;
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        doCipher = EVP_CIPHER_meth_get_do_cipher(EVP_CIPHER_CTX_cipher(ctx));
+        err = doCipher == NULL;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, record, 0) >= 0;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, record, 17) >= 0;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, record, (size_t)INT_MAX + 1U) >= 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
 #else
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 {
     /* Stitched AES-CBC-HMAC is not a FIPS-validated cipher, so this path is
      * not exercised under FIPS. */
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_tls_lengths(ENGINE *e, void *data)
+{
     (void)e;
     (void)data;
     return 0;
