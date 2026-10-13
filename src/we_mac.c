@@ -266,6 +266,10 @@ typedef struct we_Mac
     int size;
     /** Type of digest to use. */
     int type;
+#ifdef WE_HAVE_HMAC
+    /** Context-owned storage for normalized short HMAC keys. */
+    byte hmacKey[WC_MAX_BLOCK_SIZE];
+#endif
 #ifdef WE_HAVE_CMAC
     /** Selected CMAC cipher. */
     int cipherNid;
@@ -484,43 +488,41 @@ static int we_mac_hmac_init(EVP_PKEY_CTX *ctx, we_Mac *mac)
     int ret;
     int rc;
     int blockSize;
+    const byte *key;
+    word32 keySz;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_hmac_init");
 
     /* Get key into cache. */
     ret = we_mac_cache_key(ctx, mac);
+#ifdef HAVE_FIPS
+    if ((ret == 1) && (mac->keySz < HMAC_FIPS_MIN_KEY)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_MAC, "HMAC key is below the FIPS minimum");
+        ret = 0;
+    }
+#endif
     if (ret == 1) {
         /* Set HMAC key into wolfSSL HMAC object. */
         WOLFENGINE_MSG(WE_LOG_MAC, "Setting HMAC key");
         blockSize = wc_HashGetBlockSize(mac->type);
-        if (blockSize <= 0) {
+        if ((blockSize <= 0) || (blockSize > (int)sizeof(mac->hmacKey))) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HashGetBlockSize", blockSize);
             ret = 0;
         }
     }
-    if (ret == 1 && mac->keySz < blockSize) {
-        unsigned char *newKey;
-        /* If the key is smaller than the block size of the underlying hash
-         * algorithm, we need to pad the key with zeroes to the block size.
-         * Pad into a fresh buffer so the old key bytes can be wiped. */
-        newKey = (unsigned char *)OPENSSL_malloc(blockSize);
-        if (newKey == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_malloc", newKey);
-            ret = 0;
-        }
-        else {
-            if (mac->keySz > 0) {
-                XMEMCPY(newKey, mac->key, mac->keySz);
-            }
-            XMEMSET(newKey + mac->keySz, 0, blockSize - mac->keySz);
-            OPENSSL_clear_free(mac->key, mac->keySz);
-            mac->key = newKey;
-            mac->keySz = blockSize;
-        }
-    }
     if (ret == 1) {
-        rc = wc_HmacSetKey(&mac->state.hmac, mac->type,
-                 (const byte*)mac->key, (word32)mac->keySz);
+        key = mac->key;
+        keySz = (word32)mac->keySz;
+        if (mac->keySz < blockSize) {
+            /* Keep short-key compatibility without changing the cached key. */
+            XMEMSET(mac->hmacKey, 0, sizeof(mac->hmacKey));
+            if (keySz > 0) {
+                XMEMCPY(mac->hmacKey, key, keySz);
+            }
+            key = mac->hmacKey;
+            keySz = (word32)blockSize;
+        }
+        rc = wc_HmacSetKey(&mac->state.hmac, mac->type, key, keySz);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacSetKey", rc);
             ret = 0;
@@ -866,6 +868,11 @@ static int we_mac_dup(we_Mac *src, we_Mac **dst)
         else {
             mac->key = NULL;
         }
+#ifdef WE_HAVE_HMAC
+        if (ret == 1) {
+            XMEMCPY(mac->hmacKey, src->hmacKey, sizeof(mac->hmacKey));
+        }
+#endif
     }
 
     if ((ret != 1) && (mac != NULL)) {
@@ -1243,6 +1250,15 @@ static int we_hmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
     }
     if (ret == 1) {
         /* Set the internal MAC object against context. */
+#ifdef WOLF_CRYPTO_CB
+        if (mac->state.hmac.keyRaw == mac->hmacKey) {
+            dupl->state.hmac.keyRaw = dupl->hmacKey;
+        }
+        else if (mac->state.hmac.keyRaw == mac->key) {
+            dupl->state.hmac.keyRaw = dupl->key;
+        }
+        dupl->state.hmac.keyLen = mac->state.hmac.keyLen;
+#endif
         EVP_PKEY_CTX_set_data(dst, dupl);
     }
 
