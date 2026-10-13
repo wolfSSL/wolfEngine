@@ -518,6 +518,81 @@ static int test_hkdf_fail_calc(ENGINE *e)
     return err;
 }
 
+static int test_hkdf_key_failure_state(ENGINE *e)
+{
+    int err = 0;
+    int i;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char key[1] = { 0 };
+    unsigned char out[32];
+    unsigned char unchanged[sizeof(out)];
+    size_t len = 0;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive_init(ctx) != 1)) {
+        err = 1;
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_hkdf_mode(ctx,
+                EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY) != 1)) {
+        err = 1;
+    }
+#endif
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set_hkdf_md(ctx, EVP_sha256()) != 1)) {
+        err = 1;
+    }
+    memset(unchanged, 0xa5, sizeof(unchanged));
+    for (i = 0; (err == 0) && (i < 2); i++) {
+        if (EVP_PKEY_CTX_set1_hkdf_key(ctx, key, sizeof(key)) != 1) {
+            err = 1;
+        }
+        len = sizeof(out);
+        if ((err == 0) && (EVP_PKEY_derive(ctx, out, &len) != 1)) {
+            err = 1;
+        }
+        if ((err == 0) &&
+                (EVP_PKEY_CTX_set1_hkdf_key(ctx, i == 0 ? NULL : key,
+                                           i == 0 ? 1 : -1) != 0)) {
+            err = 1;
+        }
+        len = 0;
+        if ((err == 0) && (EVP_PKEY_derive(ctx, NULL, &len) != 0)) {
+            err = 1;
+        }
+        memcpy(out, unchanged, sizeof(out));
+        len = sizeof(out);
+        if ((err == 0) && ((EVP_PKEY_derive(ctx, out, &len) != 0) ||
+                (len != sizeof(out)) ||
+                (memcmp(out, unchanged, sizeof(out)) != 0))) {
+            err = 1;
+        }
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set1_hkdf_key(ctx, key, sizeof(key)) != 1)) {
+        err = 1;
+    }
+    len = sizeof(out);
+    if ((err == 0) && ((EVP_PKEY_derive(ctx, out, &len) != 1) ||
+            (len != sizeof(out)))) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set1_hkdf_key(ctx, NULL, 0) == 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive(ctx, NULL, &len) == 1)) {
+        err = 1;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    return err;
+}
+
 static int test_hkdf_fail(ENGINE *e)
 {
     int err;
@@ -527,6 +602,10 @@ static int test_hkdf_fail(ENGINE *e)
     if (err == 0) {
         PRINT_MSG("Failure cases with wolfSSL");
         err = test_hkdf_fail_calc(e);
+    }
+    if (err == 0) {
+        PRINT_MSG("Key failure state with wolfSSL");
+        err = test_hkdf_key_failure_state(e);
     }
 
     return err;
