@@ -47,6 +47,13 @@
 /test/unit.test
 /test/unit.log
 /test/unit.trs
+/test/unit_static.log
+/test/unit_static.trs
+/test/engine_lifetime.test
+/test/engine_lifetime.log
+/test/engine_lifetime.trs
+/test/engine_bind.log
+/test/engine_bind.trs
 /test/cmac_cleanup*.test
 /test/cmac_cleanup*.log
 /test/cmac_cleanup*.trs
