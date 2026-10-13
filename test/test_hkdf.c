@@ -754,6 +754,7 @@ int test_hkdf_bad_md(ENGINE *e, void *data)
 #else
     int err = 0;
     EVP_PKEY_CTX *ctx = NULL;
+    const EVP_MD *unsupported = NULL;
 
     (void)data;
 
@@ -765,6 +766,20 @@ int test_hkdf_bad_md(ENGINE *e, void *data)
     if (err == 0) {
         /* Unknown digest name must fail, not dereference a NULL digest. */
         err = EVP_PKEY_CTX_ctrl_str(ctx, "md", "notadigest") > 0;
+    }
+    if (err == 0) {
+        unsupported = EVP_md_null();
+        err = unsupported == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "md", "SHA512-224") > 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_hkdf_md(ctx, unsupported) > 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_DERIVE,
+                                EVP_PKEY_CTRL_HKDF_MD, 0, NULL) > 0;
     }
 
     EVP_PKEY_CTX_free(ctx);

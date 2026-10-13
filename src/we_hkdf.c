@@ -222,6 +222,7 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
     we_Hkdf *hkdf;
     int ret = 1;
+    int mdType;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_hkdf_ctrl");
@@ -255,8 +256,20 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         case EVP_PKEY_CTRL_HKDF_MD:
             WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_HKDF_MD");
             /* ptr: EVP md object. */
-            /* Convert EVP_MD to  */
-            hkdf->mdType = we_nid_to_wc_hash_type(EVP_MD_type(ptr));
+            if (ptr == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest must not be NULL");
+                ret = 0;
+            }
+            else {
+                mdType = we_nid_to_wc_hash_type(EVP_MD_type(ptr));
+                if (mdType == WC_HASH_TYPE_NONE) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not supported");
+                    ret = 0;
+                }
+                else {
+                    hkdf->mdType = mdType;
+                }
+            }
             break;
 
         case EVP_PKEY_CTRL_HKDF_KEY:
@@ -384,6 +397,7 @@ static int we_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                                 const char *value)
 {
     int ret = 1;
+    int mdType;
     we_Hkdf *hkdf;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
@@ -426,7 +440,14 @@ static int we_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             ret = 0;
         }
         else {
-            hkdf->mdType = we_nid_to_wc_hash_type(EVP_MD_type(md));
+            mdType = we_nid_to_wc_hash_type(EVP_MD_type(md));
+            if (mdType == WC_HASH_TYPE_NONE) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not supported");
+                ret = 0;
+            }
+            else {
+                hkdf->mdType = mdType;
+            }
         }
     }
     else if (XSTRNCMP(type, "key", 4) == 0) {
