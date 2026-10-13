@@ -99,6 +99,10 @@ int test_aes_ccm_keyed_reinit(ENGINE *e, void *data);
 
 int test_logging(ENGINE *e, void *data);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+int test_openssl_bc_method_name(ENGINE *e, void *data);
+#endif
+
 #define WE_VALGRIND_TEST 0x1
 
 void test_openssl_mem_expect_clear(void *ptr);

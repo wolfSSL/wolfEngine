@@ -412,17 +412,17 @@ int RSA_meth_set_keygen(RSA_METHOD *meth,
 
 RSA_METHOD *RSA_meth_new(const char *name, int flags)
 {
-    RSA_METHOD *meth = OPENSSL_zalloc(sizeof(*meth));
+    RSA_METHOD *meth = NULL;
 
+    if (name != NULL) {
+        meth = OPENSSL_zalloc(sizeof(*meth));
+    }
     if (meth != NULL) {
         meth->flags = flags;
-        if (name != NULL) {
-            meth->name = name;
-            return meth;
-        }
+        meth->name = name;
     }
 
-    return NULL;
+    return meth;
 }
 
 void RSA_meth_free(RSA_METHOD *meth)
@@ -538,17 +538,17 @@ int RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp)
 
 DH_METHOD *DH_meth_new(const char *name, int flags)
 {
-    DH_METHOD *dhm = OPENSSL_zalloc(sizeof(*dhm));
+    DH_METHOD *dhm = NULL;
 
+    if (name != NULL) {
+        dhm = OPENSSL_zalloc(sizeof(*dhm));
+    }
     if (dhm != NULL) {
         dhm->flags = flags;
-        if (name != NULL) {
-            dhm->name = name;
-            return dhm;
-        }
+        dhm->name = name;
     }
 
-    return NULL;
+    return dhm;
 }
 
 void DH_meth_free(DH_METHOD *dhm)
