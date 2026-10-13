@@ -772,6 +772,7 @@ TEST_CASE test_case[] = {
 #endif /* WE_HAVE_ECDSA */
 
 #ifdef WE_HAVE_PBE
+    TEST_DECL(test_pbe_invalid_params, NULL),
     TEST_DECL(test_pbe, NULL),
 #endif
 };

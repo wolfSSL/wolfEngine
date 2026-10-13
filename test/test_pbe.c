@@ -216,6 +216,58 @@ static int test_pbe_sha1_des3_pbkdf1_op(const unsigned char *in, size_t inLen,
         sizeof(pbeParamPbe), in, inLen, out, outLen, enc_dec);
 }
 
+int test_pbe_invalid_params(ENGINE *e, void *data)
+{
+#ifdef NO_PWDBASED
+    (void)e;
+    (void)data;
+    PRINT_MSG("Not using wolfEngine - PBKDF not available in wolfCrypt");
+    return 0;
+#else
+    int err = 0;
+    int cipherNid = 0;
+    int digestNid = 0;
+    EVP_PBE_KEYGEN *keygen = NULL;
+    EVP_CIPHER_CTX *ctx = NULL;
+    ASN1_TYPE *param = NULL;
+
+    (void)e;
+    (void)data;
+
+    if (EVP_PBE_find(EVP_PBE_TYPE_OUTER, NID_id_pbkdf2, &cipherNid,
+                     &digestNid, &keygen) != 1 || keygen == NULL) {
+        PRINT_MSG("Failed to find PBKDF2 callback");
+        err = 1;
+    }
+    ctx = EVP_CIPHER_CTX_new();
+    if ((err == 0) && (ctx == NULL)) {
+        PRINT_MSG("Failed to create PBKDF2 cipher context");
+        err = 1;
+    }
+    if ((err == 0) && (keygen(ctx, "password", 8, NULL, NULL, NULL, 1) != 0)) {
+        PRINT_MSG("PBKDF2 callback accepted missing parameters");
+        err = 1;
+    }
+    param = ASN1_TYPE_new();
+    if ((err == 0) && (param == NULL)) {
+        PRINT_MSG("Failed to create PBKDF2 parameters");
+        err = 1;
+    }
+    if (err == 0) {
+        ASN1_TYPE_set(param, V_ASN1_NULL, NULL);
+        if (keygen(ctx, "password", 8, param, NULL, NULL, 1) != 0) {
+            PRINT_MSG("PBKDF2 callback accepted non-sequence parameters");
+            err = 1;
+        }
+    }
+
+    ASN1_TYPE_free(param);
+    EVP_CIPHER_CTX_free(ctx);
+    ERR_clear_error();
+    return err;
+#endif
+}
+
 static int test_pbe_sha1_des3_pbkdf1(void)
 {
     int err;

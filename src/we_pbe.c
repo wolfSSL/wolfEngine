@@ -131,11 +131,19 @@ static int we_pbkdf2_keygen(EVP_CIPHER_CTX *ctx, const char *passwd,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
         kdf = ASN1_TYPE_unpack_sequence(ASN1_ITEM_rptr(PBKDF2PARAM), param);
 #else
-        const unsigned char *pBuf = param->value.sequence->data;
-        int pLen = param->value.sequence->length;
-        kdf = d2i_PBKDF2PARAM(NULL, &pBuf, pLen);
+        if ((param == NULL) || (param->type != V_ASN1_SEQUENCE) ||
+            (param->value.sequence == NULL)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PBE, "Invalid PBKDF2 parameters");
+            ret = 0;
+        }
+        else {
+            const unsigned char *pBuf = param->value.sequence->data;
+            int pLen = param->value.sequence->length;
+
+            kdf = d2i_PBKDF2PARAM(NULL, &pBuf, pLen);
+        }
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
-        if (kdf == NULL) {
+        if ((ret == 1) && (kdf == NULL)) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PBE, "ASN1_TYPE_unpack_sequence",
                                        kdf);
             ret = 0;
