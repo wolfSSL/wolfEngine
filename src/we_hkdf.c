@@ -115,6 +115,32 @@ static void we_hkdf_cleanup(EVP_PKEY_CTX *ctx)
 }
 
 /**
+ * Reset the HKDF parameters for a new derive operation.
+ *
+ * @param  ctx  [in]  PKEY context.
+ * @returns  1 on success.
+ */
+static int we_hkdf_derive_init(EVP_PKEY_CTX *ctx)
+{
+    we_Hkdf *hkdf;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_hkdf_derive_init");
+
+    hkdf = (we_Hkdf *)EVP_PKEY_CTX_get_data(ctx);
+    if (hkdf->key != NULL) {
+        OPENSSL_clear_free(hkdf->key, hkdf->keySz);
+    }
+    if (hkdf->salt != NULL) {
+        OPENSSL_clear_free(hkdf->salt, hkdf->saltSz);
+    }
+    OPENSSL_cleanse(hkdf, sizeof(*hkdf));
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_hkdf_derive_init", 1);
+
+    return 1;
+}
+
+/**
  * Derive the key from the key and info.
  *
  * @param  ctx    [in]      PKEY context.
@@ -305,9 +331,6 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             hkdf->keySz = 0;
             hkdf->keySet = 0;
             if (ret == 1) {
-                /* Clear info as this is a new operation. */
-                OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
-                hkdf->infoSz = 0;
                 /* Copy the key when it is not empty. */
                 if (num != 0) {
                     hkdf->key = OPENSSL_memdup(ptr, num);
@@ -341,9 +364,6 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             hkdf->salt = NULL;
             hkdf->saltSz = 0;
             if (ret == 1) {
-                /* Clear info as this is a new operation. */
-                OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
-                hkdf->infoSz = 0;
                 /* Copy the salt if there not 0 length. */
                 if (num != 0) {
                     hkdf->salt = OPENSSL_memdup(ptr, num);
@@ -525,7 +545,8 @@ int we_init_hkdf_meth(void)
         EVP_PKEY_meth_set_init(we_hkdf_method, we_hkdf_init);
         EVP_PKEY_meth_set_cleanup(we_hkdf_method, we_hkdf_cleanup);
         EVP_PKEY_meth_set_ctrl(we_hkdf_method, we_hkdf_ctrl, we_hkdf_ctrl_str);
-        EVP_PKEY_meth_set_derive(we_hkdf_method, NULL, we_hkdf_derive);
+        EVP_PKEY_meth_set_derive(we_hkdf_method, we_hkdf_derive_init,
+                               we_hkdf_derive);
     }
 
     if (ret == 0 && we_hkdf_method != NULL) {

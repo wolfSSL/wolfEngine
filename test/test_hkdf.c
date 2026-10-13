@@ -343,6 +343,144 @@ static int test_hkdf_empty_key(ENGINE *e)
     return test_hkdf_empty_key_calc(e, key, sizeof(key));
 }
 
+static int test_hkdf_setter_order_calc(ENGINE *e, int lastCtrl,
+                                       unsigned char *out, size_t outSz)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char key[32] = { 1 };
+    unsigned char salt[32] = { 2 };
+    unsigned char info[32] = { 3 };
+    size_t len = outSz;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive_init(ctx) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set_hkdf_md(ctx, EVP_sha256()) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (lastCtrl != EVP_PKEY_CTRL_HKDF_KEY) &&
+            (EVP_PKEY_CTX_set1_hkdf_key(ctx, key, sizeof(key)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (lastCtrl != EVP_PKEY_CTRL_HKDF_SALT) &&
+            (EVP_PKEY_CTX_set1_hkdf_salt(ctx, salt, sizeof(salt)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (lastCtrl != EVP_PKEY_CTRL_HKDF_INFO) &&
+            (EVP_PKEY_CTX_add1_hkdf_info(ctx, info, sizeof(info)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (lastCtrl == EVP_PKEY_CTRL_HKDF_KEY) &&
+            (EVP_PKEY_CTX_set1_hkdf_key(ctx, key, sizeof(key)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (lastCtrl == EVP_PKEY_CTRL_HKDF_SALT) &&
+            (EVP_PKEY_CTX_set1_hkdf_salt(ctx, salt, sizeof(salt)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (lastCtrl == EVP_PKEY_CTRL_HKDF_INFO) &&
+            (EVP_PKEY_CTX_add1_hkdf_info(ctx, info, sizeof(info)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive(ctx, out, &len) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (len != outSz)) {
+        err = 1;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    return err;
+}
+
+static int test_hkdf_setter_order(ENGINE *e)
+{
+    int err;
+    unsigned char expected[32];
+    unsigned char actual[32];
+
+    err = test_hkdf_setter_order_calc(NULL, EVP_PKEY_CTRL_HKDF_INFO,
+                                      expected, sizeof(expected));
+    if (err == 0) {
+        err = test_hkdf_setter_order_calc(e, EVP_PKEY_CTRL_HKDF_KEY,
+                                          actual, sizeof(actual));
+    }
+    if ((err == 0) && (memcmp(expected, actual, sizeof(expected)) != 0)) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = test_hkdf_setter_order_calc(e, EVP_PKEY_CTRL_HKDF_SALT,
+                                          actual, sizeof(actual));
+    }
+    if ((err == 0) && (memcmp(expected, actual, sizeof(expected)) != 0)) {
+        err = 1;
+    }
+
+    return err;
+}
+
+static int test_hkdf_reuse(ENGINE *e)
+{
+    int err = 0;
+    int i;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char key[32] = { 1 };
+    unsigned char salt[32] = { 2 };
+    unsigned char info[32] = { 3 };
+    unsigned char expected[32];
+    unsigned char actual[32];
+    size_t len;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    for (i = 0; (err == 0) && (i < 2); i++) {
+        len = sizeof(actual);
+        if (EVP_PKEY_derive_init(ctx) != 1) {
+            err = 1;
+        }
+        if ((err == 0) &&
+                (EVP_PKEY_CTX_set_hkdf_md(ctx, EVP_sha256()) != 1)) {
+            err = 1;
+        }
+        if ((err == 0) &&
+                (EVP_PKEY_CTX_set1_hkdf_key(ctx, key, sizeof(key)) != 1)) {
+            err = 1;
+        }
+        if ((err == 0) &&
+                (EVP_PKEY_CTX_set1_hkdf_salt(ctx, salt, sizeof(salt)) != 1)) {
+            err = 1;
+        }
+        if ((err == 0) &&
+                (EVP_PKEY_CTX_add1_hkdf_info(ctx, info, sizeof(info)) != 1)) {
+            err = 1;
+        }
+        if ((err == 0) && (EVP_PKEY_derive(ctx, actual, &len) != 1)) {
+            err = 1;
+        }
+        if ((err == 0) && (len != sizeof(actual))) {
+            err = 1;
+        }
+        if ((err == 0) && (i == 0)) {
+            XMEMCPY(expected, actual, sizeof(expected));
+        }
+        else if ((err == 0) &&
+                (memcmp(expected, actual, sizeof(expected)) != 0)) {
+            err = 1;
+        }
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    return err;
+}
+
 static int test_hkdf_str_calc(ENGINE *e, unsigned char *key, int keyLen,
                                   const char *md, const char *mode)
 {
@@ -806,6 +944,13 @@ int test_hkdf(ENGINE *e, void *data)
     }
     if (err == 0) {
         err = test_hkdf_empty_key(e);
+    }
+    if (err == 0) {
+        err = test_hkdf_setter_order(e);
+    }
+    if (err == 0) {
+        PRINT_MSG("Context reuse with wolfSSL");
+        err = test_hkdf_reuse(e);
     }
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     if (err == 0) {
