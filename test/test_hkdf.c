@@ -23,6 +23,15 @@
 
 #ifdef WE_HAVE_HKDF
 
+typedef struct test_HkdfState {
+    int mode;
+    int mdType;
+    unsigned char *key;
+    size_t keySz;
+    unsigned char *salt;
+    size_t saltSz;
+} test_HkdfState;
+
 static int test_hkdf_calc(ENGINE *e, unsigned char *key, int keyLen,
                           const EVP_MD *md, int mode)
 {
@@ -593,6 +602,71 @@ static int test_hkdf_key_failure_state(ENGINE *e)
     return err;
 }
 
+static int test_hkdf_salt_failure_state(ENGINE *e)
+{
+    int err = 0;
+    int i;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY_CTX *reference = NULL;
+    test_HkdfState *state = NULL;
+    unsigned char key[32] = { 0 };
+    unsigned char salt[32] = { 1 };
+    unsigned char out[32];
+    unsigned char expected[sizeof(out)];
+    size_t len = sizeof(out);
+
+    reference = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
+    if ((reference == NULL) || (EVP_PKEY_derive_init(reference) != 1) ||
+            (EVP_PKEY_CTX_set_hkdf_md(reference, EVP_sha256()) != 1) ||
+            (EVP_PKEY_CTX_set1_hkdf_key(reference, key, sizeof(key)) != 1) ||
+            (EVP_PKEY_derive(reference, expected, &len) != 1) ||
+            (len != sizeof(expected))) {
+        err = 1;
+    }
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive_init(ctx) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set_hkdf_md(ctx, EVP_sha256()) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set1_hkdf_key(ctx, key, sizeof(key)) != 1)) {
+        err = 1;
+    }
+    for (i = 0; (err == 0) && (i < 2); i++) {
+        if (EVP_PKEY_CTX_set1_hkdf_salt(ctx, salt, sizeof(salt)) != 1) {
+            err = 1;
+        }
+        if ((err == 0) &&
+                (EVP_PKEY_CTX_set1_hkdf_salt(ctx, i == 0 ? NULL : salt,
+                                            i == 0 ? 1 : -1) != 0)) {
+            err = 1;
+        }
+        if (err == 0) {
+            state = (test_HkdfState *)EVP_PKEY_CTX_get_data(ctx);
+            if ((state == NULL) || (state->salt != NULL) ||
+                    (state->saltSz != 0)) {
+                err = 1;
+            }
+        }
+        len = sizeof(out);
+        if ((err == 0) && ((EVP_PKEY_derive(ctx, out, &len) != 1) ||
+                (len != sizeof(out)) ||
+                (memcmp(out, expected, sizeof(out)) != 0))) {
+            err = 1;
+        }
+    }
+
+    EVP_PKEY_CTX_free(reference);
+    EVP_PKEY_CTX_free(ctx);
+    return err;
+}
+
 static int test_hkdf_fail(ENGINE *e)
 {
     int err;
@@ -606,6 +680,10 @@ static int test_hkdf_fail(ENGINE *e)
     if (err == 0) {
         PRINT_MSG("Key failure state with wolfSSL");
         err = test_hkdf_key_failure_state(e);
+    }
+    if (err == 0) {
+        PRINT_MSG("Salt failure state with wolfSSL");
+        err = test_hkdf_salt_failure_state(e);
     }
 
     return err;

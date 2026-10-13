@@ -301,11 +301,12 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Seed size must be positive");
                 ret = 0;
             }
-            if ((ret == 1) && (hkdf->salt != NULL)) {
+            if (hkdf->salt != NULL) {
                 /* Setting salt - dispose of old salt. */
                 OPENSSL_clear_free(hkdf->salt, hkdf->saltSz);
-                hkdf->salt = NULL;
             }
+            hkdf->salt = NULL;
+            hkdf->saltSz = 0;
             if (ret == 1) {
                 /* Clear info as this is a new operation. */
                 OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
