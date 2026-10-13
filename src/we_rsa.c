@@ -2205,6 +2205,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 }
                 if (ret == 1) {
                     rsa->pubExp = e;
+                    BN_free(bn);
                 }
                 break;
             case EVP_PKEY_CTRL_RSA_PSS_SALTLEN:
