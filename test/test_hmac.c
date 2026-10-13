@@ -114,6 +114,28 @@ static int test_hmac_create_helper(ENGINE *e, void *data, const EVP_MD *md,
     return ret;
 }
 
+static int test_hmac_cipher_ctrl(ENGINE *e)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_KEYGEN,
+            EVP_PKEY_CTRL_CIPHER, 0, (void *)EVP_aes_128_cbc()) != 1;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
 int test_hmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
@@ -205,6 +227,9 @@ int test_hmac_create(ENGINE *e, void *data)
         }
     }
 #endif
+    if (ret == 0) {
+        ret = test_hmac_cipher_ctrl(e);
+    }
     return ret;
 }
 
