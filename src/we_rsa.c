@@ -1486,14 +1486,31 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                 }
                 else {
                     tLen = (unsigned int)outputSz;
-                    PRIVATE_KEY_UNLOCK();
-                    ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
-                                       &tLen, &rsa->key, RSA_PUBLIC_DECRYPT,
-                                       rng);
-                    PRIVATE_KEY_LOCK();
-                    if (ret < 0) {
-                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
+                #if defined(WE_RSA_USE_GLOBAL_RNG) && \
+                    !defined(WE_SINGLE_THREADED)
+                    lockRet = wc_LockMutex(we_rng_mutex);
+                    if (lockRet != 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex",
+                                              lockRet);
                         ret = -1;
+                    }
+                    else
+                #endif
+                    {
+                        PRIVATE_KEY_UNLOCK();
+                        ret = wc_RsaDirect((byte*)from,
+                            (unsigned int)fromLen, to, &tLen, &rsa->key,
+                            RSA_PUBLIC_DECRYPT, rng);
+                        PRIVATE_KEY_LOCK();
+                        if (ret < 0) {
+                            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect",
+                                                  ret);
+                            ret = -1;
+                        }
+                #if defined(WE_RSA_USE_GLOBAL_RNG) && \
+                    !defined(WE_SINGLE_THREADED)
+                        wc_UnLockMutex(we_rng_mutex);
+                #endif
                     }
                 }
                 if (ret != -1) {
