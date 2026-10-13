@@ -241,11 +241,14 @@ extern RAND_METHOD* we_random_method;
 
 #ifdef WE_HAVE_HMAC
 
+typedef int (*we_HmacInitCb)(Hmac*, void*, int);
+
 extern EVP_PKEY_METHOD *we_hmac_pkey_method;
 extern EVP_PKEY_ASN1_METHOD *we_hmac_pkey_asn1_method;
 
 WOLFENGINE_LOCAL int we_init_hmac_pkey_meth(void);
 WOLFENGINE_LOCAL int we_init_hmac_pkey_asn1_meth(void);
+WOLFENGINE_LOCAL int we_hmac_pkey_init_ex(EVP_PKEY_CTX*, we_HmacInitCb);
 WOLFENGINE_LOCAL int we_hmac_update(Hmac*, const void*, size_t);
 
 #endif /* WE_HAVE_HMAC */

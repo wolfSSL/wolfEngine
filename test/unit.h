@@ -22,6 +22,11 @@
 #ifndef UNIT_H
 #define UNIT_H
 
+/* Archive-only test builds can enable hidden internal MAC checks. */
+#if defined(WE_MAC_STATIC_TEST) && defined(WOLFENGINE_DLL)
+#error WE_MAC_STATIC_TEST requires archive-only linkage
+#endif
+
 /* OpenSSL 3.0.0 has deprecated the ENGINE API. */
 #define OPENSSL_API_COMPAT      10101
 
@@ -102,6 +107,7 @@ int test_openssl_mem_clear_result(void);
 void test_openssl_mem_fail_once(size_t size);
 int test_openssl_mem_failure_triggered(void);
 size_t test_openssl_mem_active(void);
+int test_openssl_mem_has_source(void);
 
 #ifdef WE_HAVE_DIGEST
 

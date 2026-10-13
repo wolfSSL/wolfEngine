@@ -36,8 +36,14 @@
 #if OPENSSL_VERSION_NUMBER < 0x1000209fL
 #include <stdint.h>
 #endif
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+#include <stdint.h>
+#include <valgrind/memcheck.h>
+#endif
+
 typedef union test_MemHeader {
-    max_align_t align;
+    long double align;
+    void *ptr;
     size_t size;
 } test_MemHeader;
 
@@ -48,42 +54,81 @@ static size_t testFailSize = 0;
 static int testFailCount = 0;
 static size_t testActiveAllocs = 0;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+static int test_mac_allocation_source(const char *file)
+{
+    const char *name = file;
+
+    if (file == NULL)
+        return 0;
+    while (*file != '\0') {
+        if ((*file == '/') || (*file == '\\')) {
+            name = file + 1;
+        }
+        file++;
+    }
+    return strcmp(name, "we_mac.c") == 0;
+}
+
 static void *test_openssl_malloc(size_t size, const char *file, int line)
+#else
+static void *test_openssl_malloc(size_t size)
+#endif
 {
     test_MemHeader *header;
 
-    (void)file;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     (void)line;
 
-    if ((testFailCount > 0) && (size == testFailSize)) {
+    if ((testFailCount > 0) && (size == testFailSize) &&
+            test_mac_allocation_source(file)) {
         testFailCount--;
         return NULL;
     }
+#endif
 
     header = (test_MemHeader *)malloc(sizeof(*header) + size);
     if (header != NULL) {
         header->size = size;
         header++;
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+        VALGRIND_MEMPOOL_ALLOC(&testActiveAllocs, header, size);
+#endif
         testActiveAllocs++;
-        if (size == testClearNextSize) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        if ((size == testClearNextSize) && test_mac_allocation_source(file)) {
             testClearPtr = header;
             testClearNextSize = 0;
         }
+#endif
     }
 
     return header;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 static void *test_openssl_realloc(void *ptr, size_t size, const char *file,
     int line)
+#else
+static void *test_openssl_realloc(void *ptr, size_t size)
+#endif
 {
     test_MemHeader *header;
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+    uintptr_t oldAddress = (uintptr_t)ptr;
+#endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     (void)file;
     (void)line;
+#endif
 
     if (ptr == NULL) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
         return test_openssl_malloc(size, file, line);
+#else
+        return test_openssl_malloc(size);
+#endif
     }
 
     header = (test_MemHeader *)ptr - 1;
@@ -91,6 +136,10 @@ static void *test_openssl_realloc(void *ptr, size_t size, const char *file,
     if (header != NULL) {
         header->size = size;
         header++;
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+        /* realloc preserves the payload's definedness when it moves. */
+        VALGRIND_MEMPOOL_CHANGE(&testActiveAllocs, oldAddress, header, size);
+#endif
     }
 
     return header;
@@ -150,12 +199,18 @@ static int test_openssl_mem_clear_check(void)
     return !test_openssl_mem_is_clear(data, sizeof(data));
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 static void test_openssl_free(void *ptr, const char *file, int line)
+#else
+static void test_openssl_free(void *ptr)
+#endif
 {
     test_MemHeader *header;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     (void)file;
     (void)line;
+#endif
 
     if (ptr == NULL) {
         return;
@@ -166,6 +221,9 @@ static void test_openssl_free(void *ptr, const char *file, int line)
         testClearResult = test_openssl_mem_is_clear(ptr, header->size);
         testClearPtr = NULL;
     }
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+    VALGRIND_MEMPOOL_FREE(&testActiveAllocs, ptr);
+#endif
     testActiveAllocs--;
     free(header);
 }
@@ -206,7 +264,16 @@ size_t test_openssl_mem_active(void)
 {
     return testActiveAllocs;
 }
+
+int test_openssl_mem_has_source(void)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    return OPENSSL_FILE[0] != '\0';
+#else
+    return 0;
 #endif
+}
+#endif /* !TEST_MULTITHREADED */
 
 #ifdef WOLFENGINE_DEBUG
 void print_buffer(const char *desc, const unsigned char *buffer, size_t len)
@@ -856,6 +923,19 @@ int main(int argc, char* argv[])
         fprintf(stderr, "Memory clearing observer failed\n");
         return 1;
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (!test_mac_allocation_source("src/we_mac.c") ||
+        !test_mac_allocation_source("..\\src\\we_mac.c") ||
+        !test_mac_allocation_source("we_mac.c") ||
+        test_mac_allocation_source("other_we_mac.c") ||
+        test_mac_allocation_source("") || test_mac_allocation_source(NULL)) {
+        fprintf(stderr, "Allocation callsite matching failed\n");
+        return 1;
+    }
+#endif
+#ifdef HAVE_VALGRIND_MEMCHECK_H
+    VALGRIND_CREATE_MEMPOOL(&testActiveAllocs, 0, 0);
+#endif
     if (CRYPTO_set_mem_functions(test_openssl_malloc, test_openssl_realloc,
             test_openssl_free) != 1) {
         fprintf(stderr, "Unable to install test memory functions\n");

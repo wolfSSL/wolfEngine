@@ -183,7 +183,7 @@ static int test_cmac_bad_cipher(ENGINE *e)
 
 static int test_cmac_cleanup(ENGINE *e)
 {
-#ifndef TEST_MULTITHREADED
+#if !defined(TEST_MULTITHREADED) && !defined(WE_NO_OPENSSL_MALLOC)
     int err = 0;
     unsigned char key[16] = { 0 };
     unsigned char msg[16] = { 1 };
@@ -246,12 +246,18 @@ static int test_cmac_cleanup(ENGINE *e)
 
 static int test_cmac_failed_copy_cleanup(ENGINE *e)
 {
-#ifndef TEST_MULTITHREADED
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(TEST_MULTITHREADED) && !defined(WE_NO_OPENSSL_MALLOC)
     int err = 0;
+    unsigned char key = 1;
     size_t allocations;
     EVP_PKEY_CTX *ctx = NULL;
     EVP_PKEY_CTX *copy = NULL;
 
+    if (!test_openssl_mem_has_source()) {
+        PRINT_MSG("Skipping allocation-callsite check without source filenames");
+        return 0;
+    }
     ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_CMAC, e);
     if (ctx == NULL) {
         err = 1;
@@ -260,10 +266,16 @@ static int test_cmac_failed_copy_cleanup(ENGINE *e)
         err = EVP_PKEY_keygen_init(ctx) != 1;
     }
     if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_KEYGEN,
+            EVP_PKEY_CTRL_SET_MAC_KEY, sizeof(key), &key) != 1;
+    }
+    if (err == 0) {
         allocations = test_openssl_mem_active();
+        test_openssl_mem_expect_next_clear(sizeof(key) + 1);
         copy = EVP_PKEY_CTX_dup(ctx);
         err = (copy != NULL) ||
-            (test_openssl_mem_active() != allocations);
+            (test_openssl_mem_active() != allocations) ||
+            (test_openssl_mem_clear_result() != 1);
     }
 
     EVP_PKEY_CTX_free(copy);
