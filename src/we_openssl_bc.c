@@ -162,6 +162,13 @@ int EVP_CIPHER_meth_set_init(EVP_CIPHER *cipher,
     return 1;
 }
 
+int EVP_CIPHER_meth_set_cleanup(EVP_CIPHER *cipher,
+                                int (*cleanup)(EVP_CIPHER_CTX *ctx))
+{
+    cipher->cleanup = cleanup;
+    return 1;
+}
+
 int EVP_CIPHER_meth_set_do_cipher(EVP_CIPHER *cipher,
                                   int (*do_cipher) (EVP_CIPHER_CTX *ctx,
                                   unsigned char *out,

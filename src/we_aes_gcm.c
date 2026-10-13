@@ -147,7 +147,6 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 /**
  * Cleanup the internal AES-GCM object. Does not free object.
  *
@@ -165,9 +164,7 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
     /* Get the AES-GCM data to work with. */
     aes = (we_AesGcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
-                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
-        ret = 0;
+        return 1;
     }
 
     if (ret == 1) {
@@ -189,7 +186,6 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
 
     return ret;
 }
-#endif
 
 /**
  * Increment the 64-bit invocation field at the end of the IV/nonce.
@@ -620,6 +616,23 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 aes->outputBuf = NULL;
                 break;
 
+            case EVP_CTRL_COPY:
+                /* OpenSSL passes the live source as ctx and the copied
+                 * destination as ptr. Clear only the destination's copied
+                 * pointers before rejecting the unsupported copy. */
+                if (ptr != NULL) {
+                    we_AesGcm *dst = (we_AesGcm *)
+                        EVP_CIPHER_CTX_get_cipher_data((EVP_CIPHER_CTX *)ptr);
+
+                    if (dst != NULL) {
+                        OPENSSL_cleanse(dst, sizeof(*dst));
+                    }
+                }
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "AES-GCM context copy not supported");
+                ret = 0;
+                break;
+
             case EVP_CTRL_AEAD_SET_IVLEN:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_SET_IVLEN");
                 /* Set the IV/nonce length to use
@@ -832,6 +845,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define AES_GCM_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_CUSTOM_IV          | \
+     EVP_CIPH_CUSTOM_COPY        | \
      EVP_CIPH_CUSTOM_IV_LENGTH   | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_CTRL_INIT          | \
@@ -865,11 +879,9 @@ static int we_init_aesgcm_meth(EVP_CIPHER *cipher)
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_aes_gcm_init);
     }
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_cleanup(cipher, we_aes_gcm_cleanup);
     }
-#endif
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_aes_gcm_cipher);
     }

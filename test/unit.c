@@ -915,6 +915,8 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes_gcm_tls_fixed_iv_required, NULL),
     TEST_DECL(test_aes_gcm_evp_cipher, NULL),
     TEST_DECL(test_aes128_gcm_iv_gen_bounds, NULL),
+    TEST_DECL(test_aes_gcm_ctx_copy_rejected, NULL),
+    TEST_DECL(test_aes_gcm_cleanup_empty_ctx, NULL),
 #endif
 #ifdef WE_HAVE_AESCCM
     TEST_DECL(test_aes128_ccm, NULL),
