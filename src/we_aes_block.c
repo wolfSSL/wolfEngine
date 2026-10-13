@@ -52,7 +52,7 @@ typedef struct we_AesBlock
  *
  * @param  ctx  [in,out]  EVP cipher context of operation.
  * @param  key  [in]      AES key - 16/24/32 bytes.
- * @param  iv   [in]      Initialization Vector - 12 bytes.
+ * @param  iv   [in]      Initialization Vector - 16 bytes.
  * @param  enc  [in]      1 when initializing for encrypt and 0 when decrypt.
  * @return  1 on success and 0 on failure.
  */
