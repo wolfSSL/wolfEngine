@@ -1509,14 +1509,14 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                                            NULL);
                         if (rc != MP_OKAY) {
                             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init_multi",
-                                ret);
+                                rc);
                             ret = -1;
                         }
                         else {
                             rc = mp_read_unsigned_bin(&toMp, to, (int)tLen);
                             if (rc != MP_OKAY) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                    "mp_read_unsigned_bin", ret);
+                                    "mp_read_unsigned_bin", rc);
                                 ret = -1;
                             }
                             else {
