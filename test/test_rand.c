@@ -23,6 +23,21 @@
 
 #ifdef WE_HAVE_RANDOM
 
+static int test_random_seed_failure(ENGINE *e)
+{
+    const RAND_METHOD *method = ENGINE_get_RAND(e);
+
+    if (method == NULL || method->seed == NULL) {
+        return 1;
+    }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    return method->seed(NULL, 1) != 0;
+#else
+    return 0;
+#endif
+}
+
 static int test_random_api(void)
 {
     int err;
@@ -82,6 +97,9 @@ int test_random(ENGINE *e, void *data)
     err = test_random_api();
     if (err == 0) {
         err = RAND_set_rand_engine(e) != 1;
+    }
+    if (err == 0) {
+        err = test_random_seed_failure(e);
     }
     if (err == 0) {
         err = test_random_api();
