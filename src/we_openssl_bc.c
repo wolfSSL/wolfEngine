@@ -54,6 +54,19 @@ int EVP_MD_meth_set_update(EVP_MD *md, int (*update)(EVP_MD_CTX *ctx,
     return 1;
 }
 
+int EVP_MD_meth_set_copy(EVP_MD *md, int (*copy)(EVP_MD_CTX *to,
+                                                 const EVP_MD_CTX *from))
+{
+    md->copy = copy;
+    return 1;
+}
+
+int (*EVP_MD_meth_get_copy(const EVP_MD *md))(EVP_MD_CTX *to,
+                                              const EVP_MD_CTX *from)
+{
+    return md->copy;
+}
+
 int EVP_MD_meth_set_final(EVP_MD *md, int (*final)(EVP_MD_CTX *ctx,
                                                    unsigned char *md))
 {

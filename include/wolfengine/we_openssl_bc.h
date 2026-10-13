@@ -70,6 +70,12 @@ WOLFENGINE_LOCAL
 int EVP_MD_meth_set_update(EVP_MD *md, int (*update)(EVP_MD_CTX *ctx,
                            const void *data,
                            size_t count));
+WOLFENGINE_LOCAL
+int EVP_MD_meth_set_copy(EVP_MD *md, int (*copy)(EVP_MD_CTX *to,
+                         const EVP_MD_CTX *from));
+WOLFENGINE_LOCAL
+int (*EVP_MD_meth_get_copy(const EVP_MD *md))(EVP_MD_CTX *to,
+                                              const EVP_MD_CTX *from);
 WOLFENGINE_LOCAL 
 int EVP_MD_meth_set_final(EVP_MD *md, int (*final)(EVP_MD_CTX *ctx,
                           unsigned char *md));
