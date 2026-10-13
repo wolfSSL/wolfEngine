@@ -354,6 +354,55 @@ int test_des3_cbc_stream(ENGINE *e, void *data)
     return err;
 }
 
+/******************************************************************************/
+
+int test_des3_cbc_iv_bounds(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[24] = { 0 };
+    unsigned char iv[8] = { 0 };
+    unsigned char in[8] = { 0 };
+    unsigned char out[8];
+    unsigned char *ctxIv;
+    int outLen;
+
+    (void)data;
+
+    ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_des_ede3_cbc(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ctx, 0) != 1;
+    }
+    if (err == 0) {
+        ctxIv = EVP_CIPHER_CTX_iv_noconst(ctx);
+        XMEMSET(ctxIv + sizeof(iv), 0xa5, EVP_MAX_IV_LENGTH - sizeof(iv));
+        err = EVP_EncryptUpdate(ctx, out, &outLen, in, sizeof(in)) != 1;
+    }
+    if (err == 0) {
+        err = outLen != (int)sizeof(out);
+    }
+    if (err == 0) {
+        size_t i;
+
+        for (i = sizeof(iv); i < EVP_MAX_IV_LENGTH; i++) {
+            if (ctxIv[i] != 0xa5) {
+                err = 1;
+                break;
+            }
+        }
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
 #endif /* WE_HAVE_DES3CBC */
 
 /******************************************************************************/
