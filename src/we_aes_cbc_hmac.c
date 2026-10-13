@@ -421,6 +421,7 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         }
     }
 
+    OPENSSL_cleanse(mac, sizeof(mac));
     if (tls) {
         aes->pLen = 0;
         aes->tls = 0;
