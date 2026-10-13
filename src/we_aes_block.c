@@ -115,7 +115,7 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
- * @return  -1 on failure.
+ * @return  0 on failure.
  * @return  1 on success.
  */
 static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
@@ -130,7 +130,7 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
     rc = wc_AesCbcEncrypt(&aes->aes, out, in, (unsigned int)len);
     if (rc != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCbcEncrypt", rc);
-        ret = -1;
+        ret = 0;
     }
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_encrypt", ret);
 
@@ -146,7 +146,7 @@ static int we_aes_cbc_encrypt(we_AesBlock* aes, unsigned char *out,
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
- * @return  -1 on failure.
+ * @return  0 on failure.
  * @return  Number of bytes put in out on success.
  */
 static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
@@ -163,7 +163,7 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
         ret = (int)len;
     }
     else {
-        ret = -1;
+        ret = 0;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_cbc_decrypt", ret);
@@ -179,7 +179,7 @@ static int we_aes_cbc_decrypt(we_AesBlock* aes, unsigned char *out,
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
- * @return  -1 on failure.
+ * @return  0 on failure.
  * @return  Number of bytes put in out on success.
  */
 static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
@@ -198,7 +198,7 @@ static int we_aes_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     if (aes == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
-        ret = -1;
+        ret = 0;
     }
     if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV");
@@ -468,7 +468,7 @@ static int we_aes_ecb_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
- * @return  -1 on failure.
+ * @return  0 on failure.
  * @return  1 on success.
  */
 static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
@@ -571,7 +571,7 @@ static int we_aes_ecb_encrypt(we_AesBlock* aes, unsigned char *out,
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
- * @return  -1 on failure.
+ * @return  0 on failure.
  * @return  1 on success.
  */
 static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
@@ -675,7 +675,7 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
  * @param  out  [out]     Buffer to store enciphered result.
  * @param  in   [in]      Data to encrypt/decrypt.
  * @param  len  [in]      Length of data to encrypt/decrypt.
- * @return  -1 on failure.
+ * @return  0 on failure.
  * @return  1 on success.
  */
 static int we_aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
@@ -693,7 +693,7 @@ static int we_aes_ecb_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     if (aes == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
-        ret = -1;
+        ret = 0;
     }
     else if (aes->enc) {
         ret = we_aes_ecb_encrypt(aes, out, in, len);
