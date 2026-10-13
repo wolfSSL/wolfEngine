@@ -96,6 +96,124 @@ static int test_hkdf_calc(ENGINE *e, unsigned char *key, int keyLen,
     return err;
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+static int test_hkdf_extract_size_calc(ENGINE *e)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char inKey[32] = { 0, };
+    size_t len = 0;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive_init(ctx) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_hkdf_mode(ctx,
+                EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set_hkdf_md(ctx, EVP_sha256()) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set1_hkdf_key(ctx, inKey, sizeof(inKey)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive(ctx, NULL, &len) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (len != (size_t)EVP_MD_size(EVP_sha256()))) {
+        err = 1;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    return err;
+}
+
+static int test_hkdf_extract_size(ENGINE *e)
+{
+    int err;
+
+    PRINT_MSG("Extract size with OpenSSL");
+    err = test_hkdf_extract_size_calc(NULL);
+    if (err == 0) {
+        PRINT_MSG("Extract size with wolfSSL");
+        err = test_hkdf_extract_size_calc(e);
+    }
+
+    return err;
+}
+
+#if defined(WE_HAVE_SHA256) || defined(WE_HAVE_SHA512)
+static int test_hkdf_extract_capacity(ENGINE *e, const EVP_MD *md)
+{
+    int err = 0;
+    int i;
+    int rc;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char inKey[32] = { 0 };
+    unsigned char salt[32] = { 0 };
+    unsigned char reference[EVP_MAX_MD_SIZE];
+    unsigned char out[EVP_MAX_MD_SIZE + 3];
+    unsigned char expected[sizeof(out)];
+    size_t digestSz = (size_t)EVP_MD_size(md);
+    size_t capacities[4];
+    size_t len = 0;
+
+    capacities[0] = 0;
+    capacities[1] = digestSz - 1;
+    capacities[2] = digestSz;
+    capacities[3] = digestSz + 1;
+    err = test_hkdf_calc(NULL, reference, (int)digestSz, md,
+                        EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY);
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
+    if ((ctx == NULL) || (EVP_PKEY_derive_init(ctx) != 1) ||
+        (EVP_PKEY_CTX_hkdf_mode(ctx,
+            EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY) != 1) ||
+        (EVP_PKEY_CTX_set_hkdf_md(ctx, md) != 1) ||
+        (EVP_PKEY_CTX_set1_hkdf_key(ctx, inKey, sizeof(inKey)) != 1) ||
+        (EVP_PKEY_CTX_set1_hkdf_salt(ctx, salt, sizeof(salt)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+        ((EVP_PKEY_derive(ctx, NULL, &len) != 1) || (len != digestSz))) {
+        err = 1;
+    }
+    for (i = 0; (err == 0) && (i < 4); i++) {
+        memset(out, 0xa5, sizeof(out));
+        memset(expected, 0xa5, sizeof(expected));
+        len = capacities[i];
+        rc = EVP_PKEY_derive(ctx, out + 1, &len);
+        if (capacities[i] < digestSz) {
+            if ((rc != 0) || (len != capacities[i])) {
+                PRINT_MSG("Extract accepted insufficient output capacity");
+                err = 1;
+            }
+        }
+        else {
+            memcpy(expected + 1, reference, digestSz);
+            if ((rc != 1) || (len != digestSz)) {
+                err = 1;
+            }
+        }
+        if (memcmp(out, expected, sizeof(out)) != 0) {
+            PRINT_MSG("Extract changed data outside its output capacity");
+            err = 1;
+        }
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    return err;
+}
+#endif
+
+#endif
+
 static int test_hkdf_md(ENGINE *e, const EVP_MD *md, int mode)
 {
     int err = 0;
@@ -449,6 +567,23 @@ int test_hkdf(ENGINE *e, void *data)
     if (err == 0) {
         err = test_hkdf_fail(e);
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    if (err == 0) {
+        err = test_hkdf_extract_size(e);
+    }
+#ifdef WE_HAVE_SHA256
+    if (err == 0) {
+        PRINT_MSG("Extract capacity with SHA-256");
+        err = test_hkdf_extract_capacity(e, EVP_sha256());
+    }
+#endif
+#ifdef WE_HAVE_SHA512
+    if (err == 0) {
+        PRINT_MSG("Extract capacity with SHA-512");
+        err = test_hkdf_extract_capacity(e, EVP_sha512());
+    }
+#endif
+#endif
 
     return err;
 }
