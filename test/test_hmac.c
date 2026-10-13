@@ -271,12 +271,17 @@ static int test_hmac_cipher_ctrl(ENGINE *e)
 
 static int test_hmac_copy_without_key(ENGINE *e)
 {
-#ifndef TEST_MULTITHREADED
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(TEST_MULTITHREADED) && !defined(WE_NO_OPENSSL_MALLOC)
     int err = 0;
     int allocationFailed;
     EVP_PKEY_CTX *ctx = NULL;
     EVP_PKEY_CTX *copy = NULL;
 
+    if (!test_openssl_mem_has_source()) {
+        PRINT_MSG("Skipping allocation-callsite check without source filenames");
+        return 0;
+    }
     ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, e);
     if (ctx == NULL) {
         err = 1;
@@ -305,7 +310,8 @@ static int test_hmac_copy_without_key(ENGINE *e)
 
 static int test_hmac_key_replacement_failure(ENGINE *e)
 {
-#ifndef TEST_MULTITHREADED
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(TEST_MULTITHREADED) && !defined(WE_NO_OPENSSL_MALLOC)
     int err = 0;
     unsigned char oldKey[] = "original key";
     unsigned char newKey[] = "replacement key";
@@ -314,6 +320,10 @@ static int test_hmac_key_replacement_failure(ENGINE *e)
     EVP_PKEY_CTX *ctx = NULL;
     EVP_PKEY *pkey = NULL;
 
+    if (!test_openssl_mem_has_source()) {
+        PRINT_MSG("Skipping allocation-callsite check without source filenames");
+        return 0;
+    }
     ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, e);
     if (ctx == NULL) {
         err = 1;
@@ -354,13 +364,18 @@ static int test_hmac_key_replacement_failure(ENGINE *e)
 
 static int test_hmac_short_key_init(ENGINE *e)
 {
-#ifndef TEST_MULTITHREADED
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(TEST_MULTITHREADED) && !defined(WE_NO_OPENSSL_MALLOC)
     int err = 0;
     int allocationFailed;
     unsigned char key[] = "short HMAC key";
     EVP_MD_CTX *ctx = NULL;
     EVP_PKEY *pkey = NULL;
 
+    if (!test_openssl_mem_has_source()) {
+        PRINT_MSG("Skipping allocation-callsite check without source filenames");
+        return 0;
+    }
     ctx = EVP_MD_CTX_new();
     if (ctx == NULL) {
         err = 1;
@@ -390,12 +405,18 @@ static int test_hmac_short_key_init(ENGINE *e)
 
 static int test_hmac_failed_copy_cleanup(ENGINE *e)
 {
-#ifndef TEST_MULTITHREADED
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(TEST_MULTITHREADED) && !defined(WE_NO_OPENSSL_MALLOC)
     int err = 0;
+    unsigned char key[] = "duplicate key";
     size_t allocations;
     EVP_PKEY_CTX *ctx = NULL;
     EVP_PKEY_CTX *copy = NULL;
 
+    if (!test_openssl_mem_has_source()) {
+        PRINT_MSG("Skipping allocation-callsite check without source filenames");
+        return 0;
+    }
     ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, e);
     if (ctx == NULL) {
         err = 1;
@@ -404,10 +425,16 @@ static int test_hmac_failed_copy_cleanup(ENGINE *e)
         err = EVP_PKEY_keygen_init(ctx) != 1;
     }
     if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, -1, EVP_PKEY_OP_KEYGEN,
+            EVP_PKEY_CTRL_SET_MAC_KEY, sizeof(key), key) != 1;
+    }
+    if (err == 0) {
         allocations = test_openssl_mem_active();
+        test_openssl_mem_expect_next_clear(sizeof(key) + 1);
         copy = EVP_PKEY_CTX_dup(ctx);
         err = (copy != NULL) ||
-            (test_openssl_mem_active() != allocations);
+            (test_openssl_mem_active() != allocations) ||
+            (test_openssl_mem_clear_result() != 1);
     }
 
     EVP_PKEY_CTX_free(copy);
@@ -422,12 +449,20 @@ static int test_hmac_failed_copy_cleanup(ENGINE *e)
 
 static int test_hmac_alignment_buffer_cleanup(void)
 {
-#if defined(WE_ALIGNMENT_SAFETY) && !defined(TEST_MULTITHREADED)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    defined(WE_ALIGNMENT_SAFETY) && !defined(TEST_MULTITHREADED) && \
+    !defined(WE_NO_OPENSSL_MALLOC) && \
+    ((!defined(WOLFENGINE_DLL) && !defined(HAVE_VISIBILITY)) || \
+     defined(WE_MAC_STATIC_TEST))
     int err = 0;
     unsigned char key[32] = { 0 };
     unsigned char data[257] = { 0 };
     Hmac hmac;
 
+    if (!test_openssl_mem_has_source()) {
+        PRINT_MSG("Skipping allocation-callsite check without source filenames");
+        return 0;
+    }
     err = wc_HmacInit(&hmac, NULL, INVALID_DEVID) != 0;
     if (err == 0) {
         err = wc_HmacSetKey(&hmac, WC_SHA512, key, sizeof(key)) != 0;
@@ -447,6 +482,61 @@ static int test_hmac_alignment_buffer_cleanup(void)
 #endif
 }
 
+#if !defined(TEST_MULTITHREADED) && !defined(WE_NO_OPENSSL_MALLOC) && \
+    ((!defined(WOLFENGINE_DLL) && !defined(HAVE_VISIBILITY)) || \
+     defined(WE_MAC_STATIC_TEST))
+static int test_hmac_init_failure(Hmac *hmac, void *heap, int devId)
+{
+    (void)hmac;
+    (void)heap;
+    (void)devId;
+
+    return MEMORY_E;
+}
+#endif
+
+static int test_hmac_failed_init_cleanup(void)
+{
+#if !defined(TEST_MULTITHREADED) && !defined(WE_NO_OPENSSL_MALLOC) && \
+    ((!defined(WOLFENGINE_DLL) && !defined(HAVE_VISIBILITY)) || \
+     defined(WE_MAC_STATIC_TEST))
+    int err = 0;
+    size_t allocations;
+    void *data = NULL;
+    void *originalData = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        originalData = EVP_PKEY_CTX_get_data(ctx);
+        EVP_PKEY_CTX_set_data(ctx, NULL);
+        allocations = test_openssl_mem_active();
+        err = we_hmac_pkey_init_ex(ctx, test_hmac_init_failure) != 0;
+        data = EVP_PKEY_CTX_get_data(ctx);
+        if ((data != NULL) ||
+                (test_openssl_mem_active() != allocations)) {
+            err = 1;
+        }
+    }
+
+    if (data != NULL) {
+        EVP_PKEY_CTX_set_data(ctx, NULL);
+        OPENSSL_free(data);
+    }
+    if (ctx != NULL) {
+        EVP_PKEY_CTX_set_data(ctx, originalData);
+    }
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+#else
+    return 0;
+#endif
+}
+
 int test_hmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
@@ -457,10 +547,12 @@ int test_hmac_create(ENGINE *e, void *data)
 
     PRINT_MSG("Testing with SHA1");
     ret = test_hmac_create_helper(e, data, EVP_sha1(), pswd, sizeof(pswd));
+#ifndef HAVE_FIPS
     if (ret == 0) {
         PRINT_MSG("Testing with SHA1, 0 length key");
         ret = test_hmac_create_helper(e, data, EVP_sha1(), pswd, 0);
     }
+#endif
     if (ret == 0) {
         PRINT_MSG("Testing with SHA1, key length larger than block size");
         RAND_bytes(bigPswd, sizeof(bigPswd));
@@ -555,6 +647,9 @@ int test_hmac_create(ENGINE *e, void *data)
     }
     if (ret == 0) {
         ret = test_hmac_alignment_buffer_cleanup();
+    }
+    if (ret == 0) {
+        ret = test_hmac_failed_init_cleanup();
     }
 #if defined(WOLF_CRYPTO_CB) && defined(WOLF_CRYPTO_CB_FIND) && \
     !defined(TEST_MULTITHREADED)

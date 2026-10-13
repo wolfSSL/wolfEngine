@@ -1278,35 +1278,56 @@ static int we_hmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 /**
  * Initialize for HMAC operation using wolfSSL.
  *
- * @param  ctx  [in]  EVP_PKEY context of operation.
+ * @param  ctx       [in]  EVP_PKEY context of operation.
+ * @param  hmacInit  [in]  HMAC initialization function.
  * @return  1 on success and 0 on failure.
  */
-static int we_hmac_pkey_init(EVP_PKEY_CTX *ctx)
+int we_hmac_pkey_init_ex(EVP_PKEY_CTX *ctx, we_HmacInitCb hmacInit)
 {
     int ret = 1, rc;
     we_Mac *mac = NULL;
 
-    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_init");
+    WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_init_ex");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p]", ctx);
 
+    if (hmacInit == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "hmacInit", hmacInit);
+        ret = 0;
+    }
+
     /* Initialize the internal MAC object. */
-    ret = we_mac_pkey_init(ctx, &mac);
     if (ret == 1) {
+        ret = we_mac_pkey_init(ctx, &mac);
+    }
+    if (ret == 1) {
+        /* Set the algorithm before initialization so cleanup is safe when
+         * initialization fails. */
+        mac->algo = WE_HMAC_ALGO;
+
         /* Initialize the wolfCrypt HMAC object. */
-        rc = wc_HmacInit(&mac->state.hmac, NULL, INVALID_DEVID);
+        rc = hmacInit(&mac->state.hmac, NULL, INVALID_DEVID);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacInit", rc);
+            WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "hmacInit", rc);
             ret = 0;
+        }
+        else {
+            mac->state.hmac.macType = WC_HASH_TYPE_NONE;
         }
     }
 
-    if (ret == 1) {
-        /* Set the algorithm to HMAC. */
-        mac->algo = WE_HMAC_ALGO;
+    if ((ret == 0) && (mac != NULL)) {
+        /* OpenSSL does not call the method cleanup when initialization fails.
+         * Release the partially initialized state here. */
+        we_mac_pkey_cleanup(ctx);
     }
 
-    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_init", ret);
+    WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_init_ex", ret);
     return ret;
+}
+
+static int we_hmac_pkey_init(EVP_PKEY_CTX *ctx)
+{
+    return we_hmac_pkey_init_ex(ctx, wc_HmacInit);
 }
 
 /**
