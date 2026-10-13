@@ -164,6 +164,7 @@ int test_hkdf_bad_md(ENGINE *e, void *data);
 #ifdef WE_HAVE_DES3CBC
 int test_des3_cbc(ENGINE *e, void *data);
 int test_des3_cbc_stream(ENGINE *e, void *data);
+int test_des3_cbc_iv_bounds(ENGINE *e, void *data);
 #endif
 
 #ifdef WE_HAVE_AESECB

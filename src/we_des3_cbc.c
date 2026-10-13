@@ -246,7 +246,8 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         }
     }
     if (ret == 1) {
-        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), des3->des3.reg, DES_IV_SIZE);
+        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), des3->des3.reg,
+                DES_BLOCK_SIZE);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_cipher", ret);
