@@ -181,6 +181,69 @@ static int test_cmac_bad_cipher(ENGINE *e)
     return err;
 }
 
+static int test_cmac_cleanup(ENGINE *e)
+{
+#ifndef TEST_MULTITHREADED
+    int err = 0;
+    unsigned char key[16] = { 0 };
+    unsigned char msg[16] = { 1 };
+    EVP_MD_CTX *ctx = NULL;
+    EVP_PKEY_CTX *pctx = NULL;
+    EVP_PKEY_CTX *signCtx = NULL;
+    EVP_PKEY *pkey = NULL;
+    void *mac = NULL;
+
+    ctx = EVP_MD_CTX_new();
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_CMAC, e);
+        err = pctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(pctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_KEYGEN,
+            EVP_PKEY_CTRL_CIPHER, 0, (void *)EVP_aes_128_cbc()) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(pctx, -1, EVP_PKEY_OP_KEYGEN,
+            EVP_PKEY_CTRL_SET_MAC_KEY, sizeof(key), key) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(pctx, &pkey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestSignInit(ctx, &signCtx, NULL, e, pkey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestSignUpdate(ctx, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        mac = EVP_PKEY_CTX_get_data(signCtx);
+        err = mac == NULL;
+    }
+    if (err == 0) {
+        test_openssl_mem_expect_clear(mac);
+    }
+
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(pctx);
+
+    if (err == 0) {
+        err = test_openssl_mem_clear_result() != 1;
+    }
+
+    return err;
+#else
+    (void)e;
+    return 0;
+#endif
+}
+
 int test_cmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
@@ -240,6 +303,9 @@ int test_cmac_create(ENGINE *e, void *data)
     }
     if (ret == 0) {
         ret = test_cmac_bad_cipher(e);
+    }
+    if (ret == 0) {
+        ret = test_cmac_cleanup(e);
     }
 
     return ret;

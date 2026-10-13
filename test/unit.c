@@ -23,12 +23,149 @@
 #include <unistd.h>
 #endif
 
+#include <stdlib.h>
+
 
 #include <wolfengine/we_wolfengine.h>
 #include <wolfengine/we_internal.h>
 #include <wolfengine/we_logging.h>
 
 #include "unit.h"
+
+#ifndef TEST_MULTITHREADED
+#if OPENSSL_VERSION_NUMBER < 0x1000209fL
+#include <stdint.h>
+#endif
+typedef union test_MemHeader {
+    max_align_t align;
+    size_t size;
+} test_MemHeader;
+
+static void *testClearPtr = NULL;
+static int testClearResult = -1;
+
+static void *test_openssl_malloc(size_t size, const char *file, int line)
+{
+    test_MemHeader *header;
+
+    (void)file;
+    (void)line;
+
+    header = (test_MemHeader *)malloc(sizeof(*header) + size);
+    if (header != NULL) {
+        header->size = size;
+        header++;
+    }
+
+    return header;
+}
+
+static void *test_openssl_realloc(void *ptr, size_t size, const char *file,
+    int line)
+{
+    test_MemHeader *header;
+
+    (void)file;
+    (void)line;
+
+    if (ptr == NULL) {
+        return test_openssl_malloc(size, file, line);
+    }
+
+    header = (test_MemHeader *)ptr - 1;
+    header = (test_MemHeader *)realloc(header, sizeof(*header) + size);
+    if (header != NULL) {
+        header->size = size;
+        header++;
+    }
+
+    return header;
+}
+
+static int test_openssl_mem_is_clear(const void *ptr, size_t size)
+{
+    const unsigned char *data = (const unsigned char *)ptr;
+    size_t i;
+#if OPENSSL_VERSION_NUMBER < 0x1000209fL
+    unsigned char ctr;
+#endif
+
+    for (i = 0; i < size; i++) {
+        if (data[i] != 0)
+            break;
+    }
+    if (i == size)
+        return 1;
+
+#if OPENSSL_VERSION_NUMBER < 0x1000209fL
+    /* Before 1.0.2i, portable OPENSSL_cleanse used a counter pattern. */
+    if (size < 2)
+        return 0;
+    ctr = data[0];
+    for (i = 0; i < size; i++) {
+        if (data[i] != ctr)
+            return 0;
+        ctr = (unsigned char)(ctr + 17 +
+                ((uintptr_t)(data + i + 1) & 0xf));
+    }
+    return 1;
+#else
+    return 0;
+#endif
+}
+
+static int test_openssl_mem_clear_check(void)
+{
+    unsigned char data[32];
+
+    memset(data, 0xa5, sizeof(data));
+    if (test_openssl_mem_is_clear(data, sizeof(data)) ||
+            test_openssl_mem_is_clear(data, 1)) {
+        return 0;
+    }
+    OPENSSL_cleanse(data, sizeof(data));
+    if (!test_openssl_mem_is_clear(data, sizeof(data)))
+        return 0;
+    data[sizeof(data) / 2] ^= 1;
+    if (test_openssl_mem_is_clear(data, sizeof(data)))
+        return 0;
+    memset(data, 0, sizeof(data));
+    if (!test_openssl_mem_is_clear(data, sizeof(data)))
+        return 0;
+    data[sizeof(data) / 2] = 1;
+    return !test_openssl_mem_is_clear(data, sizeof(data));
+}
+
+static void test_openssl_free(void *ptr, const char *file, int line)
+{
+    test_MemHeader *header;
+
+    (void)file;
+    (void)line;
+
+    if (ptr == NULL) {
+        return;
+    }
+
+    header = (test_MemHeader *)ptr - 1;
+    if (ptr == testClearPtr) {
+        testClearResult = test_openssl_mem_is_clear(ptr, header->size);
+        testClearPtr = NULL;
+    }
+    free(header);
+}
+
+void test_openssl_mem_expect_clear(void *ptr)
+{
+    testClearPtr = ptr;
+    testClearResult = -1;
+}
+
+int test_openssl_mem_clear_result(void)
+{
+    return testClearResult;
+}
+#endif
 
 #ifdef WOLFENGINE_DEBUG
 void print_buffer(const char *desc, const unsigned char *buffer, size_t len)
@@ -672,6 +809,18 @@ int main(int argc, char* argv[])
     int i;
     int runAll = 1;
     int runTests = 1;
+
+#ifndef TEST_MULTITHREADED
+    if (!test_openssl_mem_clear_check()) {
+        fprintf(stderr, "Memory clearing observer failed\n");
+        return 1;
+    }
+    if (CRYPTO_set_mem_functions(test_openssl_malloc, test_openssl_realloc,
+            test_openssl_free) != 1) {
+        fprintf(stderr, "Unable to install test memory functions\n");
+        return 1;
+    }
+#endif
 
     for (--argc, ++argv; argc > 0; argc--, argv++) {
         if (strncmp(*argv, "--help", 6) == 0) {
