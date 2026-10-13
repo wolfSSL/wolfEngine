@@ -297,6 +297,7 @@ int test_rsa_enc_dec_no_pad(ENGINE *e, void *data);
 int test_rsa_dec_no_pad_size_query(ENGINE *e, void *data);
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data);
 int test_rsa_pkey_keygen(ENGINE *e, void *data);
+int test_rsa_pkey_sign_missing_data(ENGINE *e, void *data);
 int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 

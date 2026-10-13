@@ -1344,6 +1344,44 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
     return err;
 }
 
+int test_rsa_pkey_sign_missing_data(ENGINE *e, void *data)
+{
+    int err = 0;
+    const unsigned char *der = rsa_key_der_1024;
+    unsigned char digest[20] = {0};
+    size_t sigLen = 0;
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    void *engineData = NULL;
+
+    (void)data;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_1024));
+    err = pkey == NULL;
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(pkey, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(ctx) != 1;
+    }
+    if (err == 0) {
+        engineData = EVP_PKEY_CTX_get_data(ctx);
+        err = engineData == NULL;
+    }
+    if (err == 0) {
+        EVP_PKEY_CTX_set_data(ctx, NULL);
+        err = EVP_PKEY_sign(ctx, NULL, &sigLen, digest, sizeof(digest)) > 0;
+        EVP_PKEY_CTX_set_data(ctx, engineData);
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
 int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data) {
     int err;
     EVP_PKEY *pkey = NULL;
