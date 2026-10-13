@@ -503,6 +503,64 @@ static int test_engine_id_match(const char *dir)
     ERR_clear_error();
     return err;
 }
+
+static int test_engine_bind_rollback(const char *dir)
+{
+    int err = 0;
+    int len;
+    int rc;
+    ENGINE *engine = NULL;
+    const char *name;
+    char path[256];
+
+#ifdef __APPLE__
+    len = snprintf(path, sizeof(path), "%s/libwolfengine.dylib", dir);
+#else
+    len = snprintf(path, sizeof(path), "%s/libwolfengine.so", dir);
+#endif
+    if ((len < 0) || ((size_t)len >= sizeof(path))) {
+        PRINT_ERR_MSG("Failed to construct engine library path");
+        err = 1;
+    }
+    if (err == 0) {
+        engine = ENGINE_by_id("dynamic");
+    }
+    if ((err == 0) && (engine == NULL)) {
+        PRINT_ERR_MSG("Failed to load dynamic engine support");
+        err = 1;
+    }
+    if ((err == 0) &&
+        (ENGINE_ctrl_cmd_string(engine, "SO_PATH", path, 0) != 1)) {
+        PRINT_ERR_MSG("Failed to set engine library path");
+        err = 1;
+    }
+    if ((err == 0) &&
+        (ENGINE_ctrl_cmd_string(engine, "ID", wolfengine_id, 0) != 1)) {
+        PRINT_ERR_MSG("Failed to set engine identifier");
+        err = 1;
+    }
+    if ((err == 0) &&
+        (ENGINE_ctrl_cmd_string(engine, "LIST_ADD", "0", 0) != 1)) {
+        PRINT_ERR_MSG("Failed to configure dynamic engine loading");
+        err = 1;
+    }
+    if (err == 0) {
+        name = wolfengine_name;
+        wolfengine_name = NULL;
+        rc = ENGINE_ctrl_cmd_string(engine, "LOAD", NULL, 0);
+        wolfengine_name = name;
+        if (rc != 0) {
+            PRINT_ERR_MSG("Accepted an incomplete engine binding");
+            err = 1;
+        }
+    }
+
+    if (engine != NULL) {
+        ENGINE_free(engine);
+    }
+    ERR_clear_error();
+    return err;
+}
 #endif /* !WE_NO_DYNAMIC_ENGINE */
 
 TEST_CASE test_case[] = {
@@ -1238,7 +1296,10 @@ int main(int argc, char* argv[])
             printf("Running tests using static engine.\n");
         #ifndef WE_NO_DYNAMIC_ENGINE
             ENGINE_load_dynamic();
-            err = test_engine_id_match(dir);
+            err = test_engine_bind_rollback(dir);
+            if (err == 0) {
+                err = test_engine_id_match(dir);
+            }
         #endif
             if (err == 0) {
                 ENGINE_load_wolfengine();
