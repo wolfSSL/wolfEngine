@@ -226,7 +226,9 @@ int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data);
 int test_aes_gcm_evp_cipher(ENGINE *e, void *data);
 int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data);
 int test_aes_gcm_ctx_copy_rejected(ENGINE *e, void *data);
+int test_aes_gcm_keyed_reinit(ENGINE *e, void *data);
 int test_aes_gcm_cleanup_empty_ctx(ENGINE *e, void *data);
+int test_aes_gcm_aad_length_bounds(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_AESGCM */
 

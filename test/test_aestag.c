@@ -21,6 +21,8 @@
 
 #include "unit.h"
 
+#include <limits.h>
+
 #ifndef EVP_CCM_TLS_FIXED_IV_LEN
 #define EVP_CCM_TLS_FIXED_IV_LEN        EVP_GCM_TLS_FIXED_IV_LEN
 #endif
@@ -1258,6 +1260,54 @@ int test_aes_gcm_cleanup_empty_ctx(ENGINE *e, void *data)
     EVP_CIPHER_CTX_free(empty);
     EVP_CIPHER_CTX_free(active);
     return err;
+}
+
+int test_aes_gcm_aad_length_bounds(ENGINE *e, void *data)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    int err = 0;
+    int len;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = NULL;
+    int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                    const unsigned char *, size_t) = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad = 0;
+
+    (void)data;
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        cipher = EVP_CIPHER_CTX_cipher(ctx);
+        doCipher = EVP_CIPHER_meth_get_do_cipher(cipher);
+        err = doCipher == NULL;
+    }
+    if (err == 0) {
+        size_t oversized = (size_t)INT_MAX + 1U;
+
+        err = doCipher(ctx, NULL, &aad, oversized) >= 0;
+    }
+    if ((err == 0) && (sizeof(size_t) > sizeof(unsigned int))) {
+        size_t oversized = (size_t)UINT_MAX + 2U;
+
+        err = doCipher(ctx, NULL, &aad, oversized) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, &aad, sizeof(aad)) != 1;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    (void)data;
+    return 0;
+#endif
 }
 
 #endif /* WE_HAVE_AESGCM */

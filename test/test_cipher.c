@@ -1947,3 +1947,143 @@ int test_aes_ccm_keyed_reinit(ENGINE *e, void *data)
 
 #endif /* WE_HAVE_AESCCM */
 
+#ifdef WE_HAVE_AESGCM
+
+static int test_gcm_keyed_roundtrip(ENGINE *e, const EVP_CIPHER *cipher)
+{
+    int err;
+    int len = 0;
+    int finalLen = 0;
+    const unsigned char msg[] = "Test pattern";
+    static const unsigned char aad[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
+    unsigned char badAad[sizeof(aad)];
+    unsigned char key[32] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char enc[sizeof(msg)];
+    unsigned char dec[sizeof(msg)];
+    unsigned char tag[16];
+    unsigned char nextTag[sizeof(tag)];
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    XMEMCPY(badAad, aad, sizeof(aad));
+    badAad[0] ^= 0x80;
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("GCM appends AAD through a NULL output buffer");
+        err = EVP_EncryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, enc, &len, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = len != (int)sizeof(msg);
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, enc + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = finalLen != 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Reinitialize GCM for a keyed decrypt roundtrip");
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+    }
+    /* The engine releases GCM plaintext only once the tag verifies. */
+    if (err == 0) {
+        err = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = (len + finalLen != (int)sizeof(msg)) ||
+              (XMEMCMP(dec, msg, sizeof(msg)) != 0);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("GCM decryption authenticates the appended AAD");
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, badAad, sizeof(badAad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen) > 0;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Reinitialize GCM for keyed encryption");
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, dec, &len, msg, sizeof(msg)) != 1;
+    }
+    /* The engine's one-shot GCM writes buffered output at finalization. */
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, dec + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = (len + finalLen != (int)sizeof(msg)) ||
+              (XMEMCMP(dec, enc, sizeof(enc)) != 0);
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(nextTag), nextTag) != 1;
+    }
+    if (err == 0) {
+        err = XMEMCMP(nextTag, tag, sizeof(tag)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
+int test_aes_gcm_keyed_reinit(ENGINE *e, void *data)
+{
+    int err;
+
+    (void)data;
+
+    err = test_gcm_keyed_roundtrip(NULL, EVP_aes_128_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(e, EVP_aes_128_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(NULL, EVP_aes_192_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(e, EVP_aes_192_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(NULL, EVP_aes_256_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(e, EVP_aes_256_gcm());
+
+    return err;
+}
+
+#endif /* WE_HAVE_AESGCM */
+
