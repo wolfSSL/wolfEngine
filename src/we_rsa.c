@@ -1341,13 +1341,6 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
         /* Store the padding mode (PKEY variant has it set) and private
          * encrypt. */
         engineRsa->padMode = padding;
-    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-        if ((padding == RSA_PKCS1_PADDING) && engineRsa->mdSet &&
-                                      (EVP_MD_size(engineRsa->md) != fromLen)) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
-            ret = -1;
-        }
-    #endif
     }
     if (ret == 1) {
         /* Output size is always the length of the prime. */
