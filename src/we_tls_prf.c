@@ -238,6 +238,8 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 OPENSSL_clear_free(tls1Prf->secret, tls1Prf->secretSz);
             }
             if (ret == 1) {
+                tls1Prf->secret = NULL;
+                tls1Prf->secretSz = 0;
                 /* Clear label/seed as this is a new operation. */
                 OPENSSL_cleanse(tls1Prf->seed, tls1Prf->seedSz);
                 tls1Prf->seedSz = 0;

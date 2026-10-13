@@ -23,6 +23,21 @@
 
 #ifdef WE_HAVE_TLS1_PRF
 
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+static int tls1PrfMissingSecretLogged;
+
+static void test_tls1_prf_log_cb(const int logLevel, const int component,
+                                 const char *const logMessage)
+{
+    (void)logLevel;
+    (void)component;
+
+    if (strstr(logMessage, "No secret from app.") != NULL) {
+        tls1PrfMissingSecretLogged = 1;
+    }
+}
+#endif
+
 static int test_tls1_prf_calc(ENGINE *e, unsigned char *key, int keyLen,
                               const EVP_MD *md)
 {
@@ -415,6 +430,73 @@ int test_tls1_prf_bad_md(ENGINE *e, void *data)
     EVP_PKEY_CTX_free(ctx);
 
     return err;
+#endif
+}
+
+/******************************************************************************/
+
+int test_tls1_prf_secret_failure(ENGINE *e, void *data)
+{
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+    int err = 0;
+    int initialDebug = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char secret[16] = { 0 };
+    unsigned char seed[16] = { 0 };
+    unsigned char key[16];
+    size_t keySz = sizeof(key);
+
+    if (data == NULL) {
+        err = 1;
+    }
+    else {
+        initialDebug = *(int *)data;
+    }
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_tls1_prf_md(ctx, EVP_sha256()) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set1_tls1_prf_secret(ctx, secret,
+                                                sizeof(secret)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_add1_tls1_prf_seed(ctx, seed, sizeof(seed)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set1_tls1_prf_secret(ctx, NULL, 1) > 0;
+    }
+    if (err == 0) {
+        err = wolfEngine_SetLoggingCb(test_tls1_prf_log_cb) != 0;
+    }
+    if (err == 0) {
+        err = wolfEngine_Debugging_ON() != 0;
+    }
+    if (err == 0) {
+        tls1PrfMissingSecretLogged = 0;
+        err = EVP_PKEY_derive(ctx, key, &keySz) > 0;
+    }
+    if (err == 0) {
+        err = tls1PrfMissingSecretLogged == 0;
+    }
+
+    (void)wolfEngine_SetLoggingCb(NULL);
+    if (!initialDebug) {
+        wolfEngine_Debugging_OFF();
+    }
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    (void)data;
+    return 0;
 #endif
 }
 
