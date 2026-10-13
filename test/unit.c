@@ -435,6 +435,76 @@ static int test_engine_destroyed(void)
 }
 #endif
 
+#ifndef WE_NO_DYNAMIC_ENGINE
+static int test_engine_id_match(const char *dir)
+{
+    int err = 0;
+    int len;
+    ENGINE *engine = NULL;
+    FILE *file = NULL;
+    char id[80];
+    char path[256];
+
+    len = snprintf(id, sizeof(id), "%s-suffix", wolfengine_id);
+    if ((len < 0) || ((size_t)len >= sizeof(id))) {
+        PRINT_ERR_MSG("Failed to construct mismatched engine identifier");
+        err = 1;
+    }
+    #ifdef __APPLE__
+    len = snprintf(path, sizeof(path), "%s/libwolfengine.dylib", dir);
+    #else
+    len = snprintf(path, sizeof(path), "%s/libwolfengine.so", dir);
+    #endif
+    if ((len < 0) || ((size_t)len >= sizeof(path))) {
+        PRINT_ERR_MSG("Failed to construct engine library path");
+        err = 1;
+    }
+    if (err == 0) {
+        file = fopen(path, "rb");
+        if (file == NULL) {
+            PRINT_ERR_MSG("Failed to open engine library for identifier test");
+            err = 1;
+        }
+    }
+    if (file != NULL) {
+        fclose(file);
+    }
+    if (err == 0) {
+        engine = ENGINE_by_id("dynamic");
+    }
+    if ((err == 0) && (engine == NULL)) {
+        PRINT_ERR_MSG("Failed to load dynamic engine support");
+        err = 1;
+    }
+    if ((err == 0) &&
+        (ENGINE_ctrl_cmd_string(engine, "SO_PATH", path, 0) != 1)) {
+        PRINT_ERR_MSG("Failed to set engine library path");
+        err = 1;
+    }
+    if ((err == 0) &&
+        (ENGINE_ctrl_cmd_string(engine, "ID", id, 0) != 1)) {
+        PRINT_ERR_MSG("Failed to set mismatched engine identifier");
+        err = 1;
+    }
+    if ((err == 0) &&
+        (ENGINE_ctrl_cmd_string(engine, "LIST_ADD", "0", 0) != 1)) {
+        PRINT_ERR_MSG("Failed to configure dynamic engine loading");
+        err = 1;
+    }
+    if ((err == 0) &&
+        (ENGINE_ctrl_cmd_string(engine, "LOAD", NULL, 0) != 0)) {
+        PRINT_ERR_MSG("Accepted an engine identifier with a suffix");
+        err = 1;
+    }
+
+    if (engine != NULL) {
+        ENGINE_free(engine);
+    }
+    ERR_clear_error();
+    return err;
+}
+#endif /* !WE_NO_DYNAMIC_ENGINE */
+
 TEST_CASE test_case[] = {
     TEST_DECL(test_logging, &debug),
     TEST_DECL(test_engine, NULL),
@@ -1166,8 +1236,14 @@ int main(int argc, char* argv[])
 
         if (staticTest == 1) {
             printf("Running tests using static engine.\n");
-            ENGINE_load_wolfengine();
-            name = wolfengine_id;
+        #ifndef WE_NO_DYNAMIC_ENGINE
+            ENGINE_load_dynamic();
+            err = test_engine_id_match(dir);
+        #endif
+            if (err == 0) {
+                ENGINE_load_wolfengine();
+                name = wolfengine_id;
+            }
         }
     #ifndef WE_NO_DYNAMIC_ENGINE
         else {
