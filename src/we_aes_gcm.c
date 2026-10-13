@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <limits.h>
+
 #include <wolfengine/we_internal.h>
 
 /* May not be available in FIPS builds of wolfSSL */
@@ -335,23 +337,32 @@ static int we_aes_gcm_update_aad(we_AesGcm* aes, const unsigned char* in,
 {
     int ret;
     unsigned char *p;
+    size_t newLen;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_update_aad");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [aes = %p, in = %p, len = %zu]",
                            aes, in, len);
 
-    /* Resize stored AAD and append new data. */
-    p = (unsigned char*)OPENSSL_realloc(aes->aad, aes->aadLen + (int)len);
-    if (p == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
+    if ((aes->aadLen < 0) || (len > (size_t)INT_MAX) ||
+        (len > (size_t)(INT_MAX - aes->aadLen))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "AES-GCM AAD length too large");
         ret = -1;
     }
     else {
-        /* Copy in new data after existing data. */
-        aes->aad = p;
-        XMEMCPY(aes->aad + aes->aadLen, in, len);
-        aes->aadLen += len;
-        ret = (int)len;
+        /* Resize stored AAD and append new data. */
+        newLen = (size_t)aes->aadLen + len;
+        p = (unsigned char*)OPENSSL_realloc(aes->aad, newLen);
+        if (p == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
+            ret = -1;
+        }
+        else {
+            /* Copy in new data after existing data. */
+            aes->aad = p;
+            XMEMCPY(aes->aad + aes->aadLen, in, len);
+            aes->aadLen = (int)newLen;
+            ret = (int)len;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_gcm_update_aad", ret);
