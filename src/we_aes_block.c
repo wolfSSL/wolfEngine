@@ -746,7 +746,7 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
                 len -= l;
             }
             /* Padding and not last full block or not padding and full block. */
-            if ((aes->over == WC_AES_BLOCK_SIZE) || len > 0) {
+            if (aes->over == WC_AES_BLOCK_SIZE) {
                 /* Decrypt block cached block. */
                 rc = wc_AesEcbDecrypt(&aes->aes, out, aes->lastBlock,
                                       WC_AES_BLOCK_SIZE);
@@ -772,18 +772,16 @@ static int we_aes_ecb_decrypt(we_AesBlock* aes, unsigned char *out,
             /* Calculate full blocks. */
             l = (int)len & (~(WC_AES_BLOCK_SIZE - 1));
 
-            if (l > 0) {
-                rc = wc_AesEcbDecrypt(&aes->aes, out, in, l);
-                if (rc != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesEcbDecrypt", rc);
-                    ret = 0;
-                }
-                else {
-                    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
-                                           "Decrypted %d bytes (AES-ECB)", l);
-                    WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
-                }
+            rc = wc_AesEcbDecrypt(&aes->aes, out, in, l);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                      "wc_AesEcbDecrypt", rc);
+                ret = 0;
+            }
+            else {
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER,
+                                       "Decrypted %d bytes (AES-ECB)", l);
+                WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, l);
             }
 
             in += l;
