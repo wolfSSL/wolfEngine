@@ -20,6 +20,10 @@
  */
 
 #include "unit.h"
+#if !defined(_WIN32) && !defined(TEST_MULTITHREADED)
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 #ifdef WE_HAVE_RANDOM
 
@@ -34,6 +38,40 @@ static int test_random_seed_failure(ENGINE *e)
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     return method->seed(NULL, 1) != 0;
 #else
+    return 0;
+#endif
+}
+
+static int test_random_status_after_teardown(ENGINE *e)
+{
+#if !defined(_WIN32) && !defined(TEST_MULTITHREADED)
+    const RAND_METHOD *method = ENGINE_get_RAND(e);
+    ENGINE_GEN_INT_FUNC_PTR destroy = ENGINE_get_destroy_function(e);
+    int status;
+    pid_t pid;
+
+    if (method == NULL || method->status == NULL || destroy == NULL) {
+        return 1;
+    }
+
+    pid = fork();
+    if (pid == -1) {
+        return 1;
+    }
+    if (pid == 0) {
+        if (destroy(e) != 1) {
+            _exit(1);
+        }
+        _exit(method->status() != 0);
+    }
+
+    if (waitpid(pid, &status, 0) != pid) {
+        return 1;
+    }
+
+    return !WIFEXITED(status) || WEXITSTATUS(status) != 0;
+#else
+    (void)e;
     return 0;
 #endif
 }
@@ -103,6 +141,9 @@ int test_random(ENGINE *e, void *data)
     }
     if (err == 0) {
         err = test_random_api();
+    }
+    if (err == 0) {
+        err = test_random_status_after_teardown(e);
     }
 
     return err;

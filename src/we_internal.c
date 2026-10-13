@@ -247,6 +247,16 @@ wolfSSL_Mutex* we_rng_mutex = &we_global_rng_mutex;
 #endif
 
 /**
+ * Get whether the global random number generator is initialized.
+ *
+ * @returns  1 when initialized and 0 otherwise.
+ */
+int we_rng_is_initialized(void)
+{
+    return we_globalRngInited;
+}
+
+/**
  * Initialize the global random number generator object.
  *
  * @returns  1 on success and 0 on failure.
