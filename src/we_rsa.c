@@ -1163,9 +1163,6 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                 /* Convert salt length into wolfCrypt value. */
                 int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md,
                     &rsa->key, 1);
-                if (wc_saltLen >= 0) {
-                    rsa->saltLen = wc_saltLen;
-                }
                 /* When MGF1 digest is not specified, use signing digest. */
                 mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
                 PRIVATE_KEY_UNLOCK();
