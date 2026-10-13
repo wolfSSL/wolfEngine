@@ -403,7 +403,7 @@ static int we_aes_gcm_update(we_AesGcm* aes, const unsigned char* in,
     int ret;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_update");
-    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [aes = %p, in = %p, len = %d, "
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [aes = %p, in = %p, len = %zu, "
                            "out = %p]", aes, in, len, out);
 
     if (len != 0 && in != NULL) {
@@ -486,7 +486,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
                 ret = -1;
             }
             else {
-                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %zu bytes "
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %d bytes "
                                        "(AES-GCM):", aes->tmpLen);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, aes->tmp, aes->tmpLen);
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "AES-GCM tag:");
@@ -504,7 +504,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
                 ret = -1;
             }
             else {
-                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %d bytes "
                                        "(AES-GCM):", aes->tmpLen);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, aes->tmp, aes->tmpLen);
             }
