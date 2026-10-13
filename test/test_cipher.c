@@ -425,7 +425,47 @@ int test_aes256_ecb_stream(ENGINE *e, void *data)
 
 int test_aes128_cbc(ENGINE *e, void *data)
 {
-    return test_cipher_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16);
+    int err;
+
+    err = test_cipher_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16);
+
+    if (err == 0) {
+        EVP_CIPHER_CTX *ctx = NULL;
+        const EVP_CIPHER *cipher;
+        int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                        const unsigned char *, size_t);
+        unsigned char key[16] = { 0 };
+        unsigned char iv[16] = { 0 };
+        unsigned char in[16] = { 0 };
+
+        ctx = EVP_CIPHER_CTX_new();
+        err = ctx == NULL;
+        if (err == 0) {
+            err = EVP_CipherInit_ex(ctx, EVP_aes_128_cbc(), e, key, iv, 1)
+                  != 1;
+        }
+        if (err == 0) {
+            cipher = EVP_CIPHER_CTX_cipher(ctx);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+            doCipher = EVP_CIPHER_meth_get_do_cipher(cipher);
+#else
+            doCipher = cipher->do_cipher;
+#endif
+            err = doCipher == NULL;
+        }
+        if (err == 0) {
+            err = doCipher(ctx, NULL, in, sizeof(in)) != 0;
+        }
+        if (err == 0) {
+            err = EVP_CipherInit_ex(ctx, NULL, e, key, iv, 0) != 1;
+        }
+        if (err == 0) {
+            err = doCipher(ctx, NULL, in, sizeof(in)) != 0;
+        }
+        EVP_CIPHER_CTX_free(ctx);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
