@@ -160,6 +160,7 @@ int test_hmac_raw_key_output_size(ENGINE *e, void *data);
 #ifdef WE_HAVE_TLS1_PRF
 int test_tls1_prf(ENGINE *e, void *data);
 int test_tls1_prf_bad_md(ENGINE *e, void *data);
+int test_tls1_prf_secret_failure(ENGINE *e, void *data);
 #endif
 
 #ifdef WE_HAVE_HKDF

@@ -863,6 +863,7 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_TLS1_PRF
     TEST_DECL(test_tls1_prf, NULL),
     TEST_DECL(test_tls1_prf_bad_md, NULL),
+    TEST_DECL(test_tls1_prf_secret_failure, &debug),
 #endif
 #ifdef WE_HAVE_HKDF
     TEST_DECL(test_hkdf, NULL),
