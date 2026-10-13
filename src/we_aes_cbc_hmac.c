@@ -294,6 +294,83 @@ static int we_aes_cbc_hmac_enc(we_AesCbcHmac* aes, unsigned char *out,
     return ret;
 }
 
+/* Return an all-ones mask for equal values. */
+static word32 we_cbc_ct_eq(word32 a, word32 b)
+{
+    word32 diff = a ^ b;
+
+    return 0U - (1U ^ ((diff | (0U - diff)) >> 31));
+}
+
+/* Arguments are bounded by the 16-bit TLS record length. */
+static word32 we_cbc_ct_lt(word32 a, word32 b)
+{
+    return 0U - ((a - b) >> 31);
+}
+
+/* Balance HMAC work and compare the MAC at public candidate offsets. */
+static int we_aes_cbc_hmac_verify_ct(Hmac* hmac,
+        const unsigned char* header, const unsigned char* plain,
+        word32 maxMsgLen, word32 msgLen, word32 pad)
+{
+    unsigned char candidateHeader[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    unsigned char dummy[WC_SHA256_BLOCK_SIZE] = {0};
+    unsigned char dummyDigest[SHA256_DIGEST_LENGTH];
+    word32 maxBlocks = (EVP_AEAD_TLS1_AAD_LEN + maxMsgLen + 72) /
+                       WC_SHA256_BLOCK_SIZE;
+    word32 realBlocks = (EVP_AEAD_TLS1_AAD_LEN + msgLen + 72) /
+                        WC_SHA256_BLOCK_SIZE;
+    word32 dummyBlocks = maxBlocks - realBlocks + 1;
+    word32 matched = 0;
+    word32 i;
+    word32 j;
+    int rc = 0;
+
+    XMEMCPY(candidateHeader, header, sizeof(candidateHeader));
+    candidateHeader[sizeof(candidateHeader) - 2] = (unsigned char)(msgLen >> 8);
+    candidateHeader[sizeof(candidateHeader) - 1] = (unsigned char)msgLen;
+    rc = wc_HmacUpdate(hmac, candidateHeader, sizeof(candidateHeader));
+    if (rc == 0) {
+        rc = wc_HmacUpdate(hmac, plain, msgLen);
+    }
+    if (rc == 0) {
+        rc = wc_HmacFinal(hmac, digest);
+    }
+    /* A padding byte changes the message by at most 255 bytes, so at most
+     * five dummy blocks balance the SHA-256 compression count. Finalize the
+     * dummy HMAC so the context is ready for the next record. */
+    for (i = 0; (rc == 0) && (i < 5); i++) {
+        word32 size = sizeof(dummy) & we_cbc_ct_lt(i, dummyBlocks);
+
+        rc = wc_HmacUpdate(hmac, dummy, size);
+    }
+    if (rc == 0) {
+        rc = wc_HmacFinal(hmac, dummyDigest);
+    }
+
+    if (rc == 0) {
+        /* Probe every possible MAC position at public offsets. */
+        for (i = 0; i < 256; i++) {
+            word32 candidateLen = i <= maxMsgLen ? maxMsgLen - i : 0;
+            word32 mismatch = 0;
+
+            for (j = 0; j < sizeof(digest); j++) {
+                mismatch |= digest[j] ^ plain[candidateLen + j];
+            }
+            matched |= we_cbc_ct_eq(i, pad) &
+                       we_cbc_ct_eq(mismatch, 0) &
+                       we_cbc_ct_lt(i, maxMsgLen + 1);
+        }
+    }
+
+    OPENSSL_cleanse(candidateHeader, sizeof(candidateHeader));
+    OPENSSL_cleanse(digest, sizeof(digest));
+    OPENSSL_cleanse(dummy, sizeof(dummy));
+    OPENSSL_cleanse(dummyDigest, sizeof(dummyDigest));
+    return (rc == 0) && (matched != 0);
+}
+
 /**
  * Decrypt and verify MAC using wolfSSL.
  *
@@ -310,11 +387,15 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
     int ret = 0;
     int rc;
     int off = 0;
-    unsigned char pb;
     int pLen;
     int tls;
-    unsigned char mac[SHA256_DIGEST_LENGTH];
-    int i;
+    word32 payloadLen;
+    word32 maxMsgLen;
+    word32 msgLen;
+    word32 pad;
+    word32 invalid;
+    word32 i;
+    word32 scan;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_cbc_hmac_dec");
 
@@ -357,71 +438,30 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         }
     }
     if ((ret != -1) && tls) {
-        /* TODO: not constant time. */
-        /* Remove padding. */
-        pb = out[off + ret - 1];
-        /* Record must hold the claimed padding and MAC. */
-        if (ret < pb + 1 + SHA256_DIGEST_LENGTH) {
-            ret = -1;
-        }
-        for (i = 1; (ret != -1) && (i <= pb); i++) {
-            if (out[off + ret - 1 - i] != pb)
-                ret = -1;
-        }
-        if (ret != -1) {
-            /* Remove padding and MAC length. */
-            ret -= pb + 1 + SHA256_DIGEST_LENGTH;
+        payloadLen = (word32)ret;
+        maxMsgLen = payloadLen - SHA256_DIGEST_LENGTH - 1;
+        pad = out[off + payloadLen - 1];
+        msgLen = maxMsgLen - pad;
+        invalid = msgLen >> 31;
+        msgLen &= 0U - (1U ^ invalid);
+        scan = payloadLen < 256 ? payloadLen : 256;
+        for (i = 0; i < scan; i++) {
+            word32 mask = we_cbc_ct_lt(i, pad + 1);
+
+            invalid |= (out[off + payloadLen - 1 - i] ^ pad) & mask;
         }
 
-        if (ret != -1) {
-            /* Update the record header with the plaintext length. */
-            aes->tlsAAD[aes->pLen - 2] = ret >> 8;
-            aes->tlsAAD[aes->pLen - 1] = ret;
-
-            WOLFENGINE_MSG(WE_LOG_CIPHER, "Generate MAC over record header: "
-                           "len = %d", aes->pLen);
-            rc = we_hmac_update(&aes->hmac, aes->tlsAAD, aes->pLen);
-            if (rc != 1) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "we_hmac_update", rc);
-                ret = -1;
-            }
-        }
-    }
-    /* TODO: not constant time. */
-    if ((ret != -1) && tls) {
-        /* MAC the message/input. */
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "Generate MAC over message/input, "
-                       "len = %d", ret);
-        rc = we_hmac_update(&aes->hmac, out + off, ret);
-        if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "we_hmac_update", rc);
-            ret = -1;
-        }
-    }
-    if ((ret != -1) && tls) {
-        /* Calculate MAC. */
-        rc = wc_HmacFinal(&aes->hmac, mac);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_HmacFinal", rc);
-            ret = -1;
-        }
-    }
-    if ((ret != -1) && tls) {
-        WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Generated MAC:");
-        WOLFENGINE_BUFFER(WE_LOG_CIPHER, mac, SHA256_DIGEST_LENGTH);
-
-        /* Check MAC. */
-        pb = 0;
-        for (i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-            pb |= mac[i] ^ out[off + ret + i];
-        }
-        if (pb != 0) {
+        rc = we_aes_cbc_hmac_verify_ct(&aes->hmac, aes->tlsAAD,
+                                       out + off, maxMsgLen, msgLen, pad);
+        if ((rc == 0) || (invalid != 0)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "MAC check failed");
             ret = -1;
         }
+        else {
+            ret = (int)msgLen;
+        }
     }
 
-    OPENSSL_cleanse(mac, sizeof(mac));
     if (tls) {
         aes->pLen = 0;
         aes->tls = 0;
