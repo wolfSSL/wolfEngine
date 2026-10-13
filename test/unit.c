@@ -801,6 +801,7 @@ TEST_CASE test_case[] = {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     TEST_DECL(test_openssl_bc_method_name, &flags),
     TEST_DECL(test_openssl_bc_public_ec_key, NULL),
+    TEST_DECL(test_openssl_bc_ec_private_padding, NULL),
 #endif
 #ifdef WE_HAVE_SHA1
     TEST_DECL(test_sha, NULL),

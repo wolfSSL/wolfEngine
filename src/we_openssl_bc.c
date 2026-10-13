@@ -213,25 +213,46 @@ void EVP_CIPHER_meth_free(EVP_CIPHER *cipher)
 size_t EC_KEY_priv2buf(const EC_KEY *eckey, unsigned char **pbuf)
 {
     const BIGNUM *priv_key_bn = NULL;
-    size_t priv_len = 0;
+    const EC_GROUP *group = NULL;
+    BIGNUM *order = NULL;
+    int priv_len = 0;
+    int order_len = 0;
+    size_t ret = 0;
     unsigned char *priv_key_buf = NULL;
 
     priv_key_bn = EC_KEY_get0_private_key(eckey);
     if (priv_key_bn == NULL)
         return 0;
+    group = EC_KEY_get0_group(eckey);
+    if (group == NULL)
+        return 0;
+
+    order = BN_new();
+    if (order == NULL)
+        return 0;
+    if (EC_GROUP_get_order(group, order, NULL) != 1)
+        goto end;
+
     priv_len = BN_num_bytes(priv_key_bn);
+    order_len = BN_num_bytes(order);
+    if ((priv_len <= 0) || (order_len <= 0) || (priv_len > order_len))
+        goto end;
 
-    if (priv_len == 0)
-        return 0;
-
-    priv_key_buf = OPENSSL_malloc(priv_len);
+    priv_key_buf = OPENSSL_zalloc((size_t)order_len);
     if (priv_key_buf == NULL)
-        return 0;
-    
-    BN_bn2bin(priv_key_bn, priv_key_buf);
+        goto end;
+    if (BN_bn2bin(priv_key_bn,
+                  priv_key_buf + order_len - priv_len) != priv_len) {
+        goto end;
+    }
     *pbuf = priv_key_buf;
+    priv_key_buf = NULL;
+    ret = (size_t)order_len;
 
-    return priv_len;
+end:
+    OPENSSL_clear_free(priv_key_buf, (size_t)order_len);
+    BN_free(order);
+    return ret;
 }
 
 void OPENSSL_clear_free(void *str, size_t num)
