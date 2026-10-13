@@ -321,11 +321,19 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
     /* Get payload length. */
     pLen = aes->pLen;
     tls = (pLen != 0);
-    if (tls && aes->tls11) {
+    off = (tls && aes->tls11) ? WC_AES_BLOCK_SIZE : 0;
+    if ((len > INT_MAX) || (len < (size_t)off) ||
+        (((len - (size_t)off) % WC_AES_BLOCK_SIZE) != 0) ||
+        (tls && ((len - (size_t)off < SHA256_DIGEST_LENGTH + 1) ||
+                 (len != (size_t)((aes->tlsAAD[pLen - 2] << 8) |
+                                  aes->tlsAAD[pLen - 1]))))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid AES-CBC-HMAC length");
+        ret = -1;
+    }
+    if ((ret != -1) && tls && aes->tls11) {
         /* TLS v1.1 and v1.2 have IV before message. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES IV, aes->tls11 = %d",
                        aes->tls11);
-        off = WC_AES_BLOCK_SIZE;
         rc = wc_AesSetIV(&aes->aes, in);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetIV", rc);

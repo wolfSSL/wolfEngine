@@ -193,6 +193,7 @@ int test_aes128_cbc_hmac_ctrl_error(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_tls_empty(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_reinit_state(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_cleanup(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_lengths(ENGINE *e, void *data);
 
 #endif
 
