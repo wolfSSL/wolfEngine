@@ -287,6 +287,7 @@ static int we_mac_set_key(we_Mac* mac, const unsigned char* newKey,
     int newKeySz)
 {
     int ret = 1;
+    unsigned char *key = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_set_key");
 
@@ -302,21 +303,23 @@ static int we_mac_set_key(we_Mac* mac, const unsigned char* newKey,
     }
 
     if (ret == 1) {
-        /* Dispose of old key. */
-        if (mac->key != NULL) {
-            OPENSSL_clear_free(mac->key, mac->keySz);
-        }
         /* We allow the key size to be 0, which OpenSSL also allows. In that
          * case, we need to allocate at least one byte, which we'll set to a
          * null terminator. */
-        mac->key = (unsigned char *)OPENSSL_malloc(newKeySz + 1);
-        if (mac->key == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_malloc", mac->key);
+        key = (unsigned char *)OPENSSL_malloc(newKeySz + 1);
+        if (key == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_malloc", key);
             ret = 0;
         }
         else {
-            XMEMCPY(mac->key, newKey, newKeySz);
-            mac->key[newKeySz] = '\0';
+            if (newKeySz > 0) {
+                XMEMCPY(key, newKey, newKeySz);
+            }
+            key[newKeySz] = '\0';
+            if (mac->key != NULL) {
+                OPENSSL_clear_free(mac->key, mac->keySz);
+            }
+            mac->key = key;
             mac->keySz = newKeySz;
         }
     }
