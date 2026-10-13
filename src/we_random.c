@@ -429,11 +429,12 @@ static int we_rand_bytes(unsigned char *buf, int num)
  */
 static int we_rand_status(void)
 {
-    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_status");
-    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_status", 1);
+    int ret = we_rng_is_initialized();
 
-    /* Always have enough entropy. */
-    return 1;
+    WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_status");
+    WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_status", ret);
+
+    return ret;
 }
 
 /**

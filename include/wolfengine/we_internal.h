@@ -140,6 +140,7 @@ extern WC_RNG* we_rng;
 #ifndef WE_SINGLE_THREADED
 extern wolfSSL_Mutex* we_rng_mutex;
 #endif
+WOLFENGINE_LOCAL int we_rng_is_initialized(void);
 
 WOLFENGINE_LOCAL int we_pkey_get_nids(const int** nids);
 WOLFENGINE_LOCAL int we_pkey_asn1_get_nids(const int** nids);
