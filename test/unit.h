@@ -296,6 +296,7 @@ int test_rsa_enc_dec_pkcs1(ENGINE *e, void *data);
 int test_rsa_enc_dec_no_pad(ENGINE *e, void *data);
 int test_rsa_dec_no_pad_size_query(ENGINE *e, void *data);
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data);
+int test_rsa_oaep_label(ENGINE *e, void *data);
 int test_rsa_pkey_keygen(ENGINE *e, void *data);
 int test_rsa_pkey_large_exponent(ENGINE *e, void *data);
 int test_rsa_pkey_sign_missing_data(ENGINE *e, void *data);

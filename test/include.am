@@ -4,6 +4,8 @@
 
 TEST_EXTENSIONS=.test
 TESTS += $(check_PROGRAMS)
+TESTS += test/rsa_oaep_allocator.sh
+dist_noinst_SCRIPTS += test/rsa_oaep_allocator.sh
 
 check_PROGRAMS += test/cmac_cleanup.test test/cmac_cleanup_inline.test \
                   test/cmac_cleanup_buffered.test

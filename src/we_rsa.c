@@ -67,6 +67,10 @@ typedef struct we_Rsa
     int bits;
     /** Length of salt to use with PSS. */
     int saltLen;
+    /** Owned OAEP label, transferred by the EVP control. */
+    unsigned char *oaepLabel;
+    /** Length of the OAEP label. */
+    int oaepLabelLen;
     /** Indicates private key has been set into wolfSSL structure. */
     unsigned int privKeySet:1;
     /** Indicates public key has been set into wolfSSL structure. */
@@ -74,6 +78,28 @@ typedef struct we_Rsa
     /** Indicates message digest algorithm has been explicitly set. */
     unsigned int mdSet:1;
 } we_Rsa;
+
+static unsigned char *we_rsa_oaep_label_alloc(int length)
+{
+    if (length <= 0) {
+        return NULL;
+    }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    return (unsigned char *)CRYPTO_malloc((size_t)length, __FILE__, __LINE__);
+#else
+    return (unsigned char *)CRYPTO_malloc(length, __FILE__, __LINE__);
+#endif
+}
+
+static void we_rsa_oaep_label_free(void *label)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    CRYPTO_free(label, __FILE__, __LINE__);
+#else
+    CRYPTO_free(label);
+#endif
+}
 
 
 /** RSA direct method - RSA using wolfSSL for the implementation. */
@@ -767,7 +793,8 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
                 ret = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
                     (word32)toLen, &rsa->key, rng, WC_RSA_OAEP_PAD,
                     we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->oaepLabel,
+                    (word32)rsa->oaepLabelLen);
                 if (ret < 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
                                           ret);
@@ -940,7 +967,8 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
                     ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
                         (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD,
                         we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                        we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                        we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->oaepLabel,
+                        (word32)rsa->oaepLabelLen);
                     PRIVATE_KEY_LOCK();
                     if (ret < 0) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
@@ -1895,6 +1923,7 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
         wc_FreeRng(&rsa->rng);
     #endif
         wc_FreeRsaKey(&rsa->key);
+        we_rsa_oaep_label_free(rsa->oaepLabel);
         OPENSSL_free(rsa);
     }
 
@@ -1924,6 +1953,7 @@ static void we_rsa_pkey_cleanup(EVP_PKEY_CTX *ctx)
         wc_FreeRng(&rsa->rng);
     #endif
         wc_FreeRsaKey(&rsa->key);
+        we_rsa_oaep_label_free(rsa->oaepLabel);
         OPENSSL_free(rsa);
     }
 
@@ -1983,8 +2013,28 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
         rsaDst->pubExp = rsaSrc->pubExp;
         rsaDst->bits = rsaSrc->bits;
         rsaDst->saltLen = rsaSrc->saltLen;
+        if (rsaSrc->oaepLabel != NULL) {
+            rsaDst->oaepLabel = we_rsa_oaep_label_alloc(
+                    rsaSrc->oaepLabelLen);
+            if (rsaDst->oaepLabel == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "CRYPTO_malloc",
+                                           rsaDst->oaepLabel);
+                ret = 0;
+            }
+            else {
+                if (rsaSrc->oaepLabelLen > 0) {
+                    XMEMCPY(rsaDst->oaepLabel, rsaSrc->oaepLabel,
+                            (size_t)rsaSrc->oaepLabelLen);
+                }
+                rsaDst->oaepLabelLen = rsaSrc->oaepLabelLen;
+            }
+        }
         /* Don't copy wolfSSL RSA key.
          * No public key or private key set. */
+    }
+
+    if (ret != 1) {
+        we_rsa_pkey_cleanup(dst);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_copy", ret);
@@ -2316,14 +2366,36 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
             case EVP_PKEY_CTRL_RSA_OAEP_LABEL:
                 WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_RSA_OAEP_LABEL");
-                /* Not needed - seed created internally. */
+                if (rsa->padMode != RSA_PKCS1_OAEP_PADDING || num < 0) {
+                    ret = 0;
+                }
+                else {
+                    unsigned char *label = (unsigned char *)ptr;
+
+                    if (label != rsa->oaepLabel) {
+                        we_rsa_oaep_label_free(rsa->oaepLabel);
+                    }
+                    if (label == NULL || num == 0) {
+                        we_rsa_oaep_label_free(label);
+                        rsa->oaepLabel = NULL;
+                        rsa->oaepLabelLen = 0;
+                    }
+                    else {
+                        rsa->oaepLabel = label;
+                        rsa->oaepLabelLen = num;
+                    }
+                }
                 break;
             case EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL:
                 WOLFENGINE_MSG(WE_LOG_PK,
                                "type: EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL");
-                /* Not needed - seed created internally. */
-                *(unsigned char **)ptr = NULL;
-                ret = 0;
+                if (rsa->padMode != RSA_PKCS1_OAEP_PADDING || ptr == NULL) {
+                    ret = 0;
+                }
+                else {
+                    *(unsigned char **)ptr = rsa->oaepLabel;
+                    ret = rsa->oaepLabelLen;
+                }
                 break;
 
             default:

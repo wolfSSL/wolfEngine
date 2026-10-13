@@ -980,6 +980,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_enc_dec_no_pad, NULL),
     TEST_DECL(test_rsa_dec_no_pad_size_query, NULL),
     TEST_DECL(test_rsa_enc_dec_oaep, NULL),
+    TEST_DECL(test_rsa_oaep_label, NULL),
     TEST_DECL(test_rsa_pkey_keygen, NULL),
     TEST_DECL(test_rsa_pkey_large_exponent, NULL),
     TEST_DECL(test_rsa_pkey_sign_missing_data, NULL),
