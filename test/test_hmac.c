@@ -136,6 +136,40 @@ static int test_hmac_cipher_ctrl(ENGINE *e)
     return err;
 }
 
+static int test_hmac_copy_without_key(ENGINE *e)
+{
+#ifndef TEST_MULTITHREADED
+    int err = 0;
+    int allocationFailed;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY_CTX *copy = NULL;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        test_openssl_mem_fail_once(1);
+        copy = EVP_PKEY_CTX_dup(ctx);
+        /* The incomplete context cannot copy its HMAC state, but it must not
+         * try to allocate storage for a key that was never configured. */
+        allocationFailed = test_openssl_mem_failure_triggered();
+        err = (copy != NULL) || allocationFailed;
+    }
+
+    EVP_PKEY_CTX_free(copy);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    return 0;
+#endif
+}
+
 int test_hmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
@@ -229,6 +263,9 @@ int test_hmac_create(ENGINE *e, void *data)
 #endif
     if (ret == 0) {
         ret = test_hmac_cipher_ctrl(e);
+    }
+    if (ret == 0) {
+        ret = test_hmac_copy_without_key(e);
     }
     return ret;
 }
