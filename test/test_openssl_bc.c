@@ -50,4 +50,32 @@ int test_openssl_bc_method_name(ENGINE *e, void *data)
     return err;
 }
 
+int test_openssl_bc_public_ec_key(ENGINE *e, void *data)
+{
+    int err = 0;
+    EC_KEY *key = NULL;
+    unsigned char *buf = NULL;
+
+    (void)e;
+    (void)data;
+
+    key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    if (key == NULL) {
+        PRINT_ERR_MSG("EC key allocation failed");
+        err = 1;
+    }
+    if ((err == 0) && (EC_KEY_priv2buf(key, &buf) != 0)) {
+        PRINT_ERR_MSG("Public EC key produced private bytes");
+        err = 1;
+    }
+    if (buf != NULL) {
+        PRINT_ERR_MSG("Public EC key allocated a private buffer");
+        err = 1;
+    }
+
+    OPENSSL_free(buf);
+    EC_KEY_free(key);
+    return err;
+}
+
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
