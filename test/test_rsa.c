@@ -22,6 +22,10 @@
 #include <limits.h>
 #include "unit.h"
 #include <wolfengine/we_fips.h>
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    defined(WOLFSSL_PTHREADS) && !defined(TEST_MULTITHREADED)
+#include <wolfengine/we_internal.h>
+#endif
 
 #ifdef WE_HAVE_RSA
 
@@ -800,6 +804,93 @@ int test_rsa_direct_priv_enc(ENGINE *e, void *data)
     return err;
 }
 
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    defined(WOLFSSL_PTHREADS) && !defined(TEST_MULTITHREADED)
+static int test_rsa_priv_dec_lock_failure(ENGINE *e)
+{
+    int err = 0;
+    int encryptedLen = 0;
+    int decryptedLen;
+    int attrInited = 0;
+    int mutexInited = 0;
+    int mutexLocked = 0;
+    int rngMutexSet = 0;
+    unsigned char plain[20] = { 0 };
+    unsigned char* encrypted = NULL;
+    unsigned char* decrypted = NULL;
+    RSA* weRsaKey = NULL;
+    RSA* osslRsaKey = NULL;
+    pthread_mutexattr_t attr;
+    wolfSSL_Mutex mutex;
+    wolfSSL_Mutex* savedRngMutex = NULL;
+
+    err = load_static_rsa_key(e, rsa_key_der_1024,
+                              sizeof(rsa_key_der_1024), &weRsaKey,
+                              &osslRsaKey) != 1;
+    if (err == 0) {
+        encrypted = OPENSSL_malloc(RSA_size(osslRsaKey));
+        decrypted = OPENSSL_malloc(RSA_size(weRsaKey));
+        err = encrypted == NULL || decrypted == NULL;
+    }
+    if (err == 0) {
+        encryptedLen = RSA_public_encrypt(sizeof(plain), plain, encrypted,
+                                          osslRsaKey, RSA_PKCS1_PADDING);
+        err = encryptedLen <= 0;
+    }
+    if (err == 0) {
+        err = pthread_mutexattr_init(&attr) != 0;
+        attrInited = err == 0;
+    }
+    if (err == 0) {
+        err = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0;
+    }
+    if (err == 0) {
+        err = pthread_mutex_init(&mutex, &attr) != 0;
+        mutexInited = err == 0;
+    }
+    if (err == 0) {
+        err = pthread_mutex_lock(&mutex) != 0;
+        mutexLocked = err == 0;
+    }
+    if (err == 0) {
+        savedRngMutex = we_rng_mutex;
+        we_rng_mutex = &mutex;
+        rngMutexSet = 1;
+
+        decryptedLen = RSA_private_decrypt(encryptedLen, encrypted, decrypted,
+                                           weRsaKey, RSA_PKCS1_PADDING);
+
+        we_rng_mutex = savedRngMutex;
+        rngMutexSet = 0;
+        err = decryptedLen != -1;
+    }
+    if (mutexLocked) {
+        int rc = pthread_mutex_unlock(&mutex);
+
+        if (err == 0) {
+            err = rc != 0;
+        }
+        mutexLocked = 0;
+    }
+
+    if (rngMutexSet) {
+        we_rng_mutex = savedRngMutex;
+    }
+    if (mutexInited) {
+        pthread_mutex_destroy(&mutex);
+    }
+    if (attrInited) {
+        pthread_mutexattr_destroy(&attr);
+    }
+    OPENSSL_free(decrypted);
+    OPENSSL_free(encrypted);
+    RSA_free(osslRsaKey);
+    RSA_free(weRsaKey);
+
+    return err;
+}
+#endif
+
 int test_rsa_direct_priv_dec(ENGINE *e, void *data)
 {
     int err = 0;
@@ -814,6 +905,13 @@ int test_rsa_direct_priv_dec(ENGINE *e, void *data)
         err = test_rsa_direct(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
                               PRIVATE_DECRYPT);
     }
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    defined(WOLFSSL_PTHREADS) && !defined(TEST_MULTITHREADED)
+    if (err == 0) {
+        PRINT_MSG("Check lock failure preserves RSA RNG mutex ownership.");
+        err = test_rsa_priv_dec_lock_failure(e);
+    }
+#endif
 
     return err;
 }

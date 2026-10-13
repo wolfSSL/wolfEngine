@@ -923,13 +923,12 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
                            "toLen = %zu, to = %p, rsa = %p]", fromLen,
                            from, toLen, to, rsa);
 
- #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
     ret = wc_LockMutex(we_rng_mutex);
     if (ret != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", ret);
-        ret = -1;
+        return -1;
     }
-    else
 #endif
     {
         switch (rsa->padMode) {
