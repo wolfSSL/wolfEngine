@@ -333,6 +333,19 @@ static int test_stream_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
 #ifdef WE_HAVE_DES3CBC
 
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+static int des3DecryptErrorLogged;
+
+static void test_des3_cbc_log_cb(const int logLevel, const int component,
+                                 const char *const logMessage)
+{
+    if ((logLevel == WE_LOG_ERROR) && (component == WE_LOG_CIPHER) &&
+        (strstr(logMessage, "wc_Des3_CbcDecrypt") != NULL)) {
+        des3DecryptErrorLogged = 1;
+    }
+}
+#endif
+
 
 int test_des3_cbc(ENGINE *e, void *data)
 {
@@ -401,6 +414,66 @@ int test_des3_cbc_iv_bounds(ENGINE *e, void *data)
     EVP_CIPHER_CTX_free(ctx);
 
     return err;
+}
+
+/******************************************************************************/
+
+int test_des3_cbc_decrypt_error_log(ENGINE *e, void *data)
+{
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+    int err = 0;
+    int initialDebug = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[24] = { 0 };
+    unsigned char iv[8] = { 0 };
+    unsigned char in[8] = { 0 };
+    int outLen;
+
+    if (data == NULL) {
+        err = 1;
+    }
+    else {
+        initialDebug = *(int *)data;
+    }
+
+    if (err == 0) {
+        ctx = EVP_CIPHER_CTX_new();
+        if (ctx == NULL) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, EVP_des_ede3_cbc(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ctx, 0) != 1;
+    }
+    if (err == 0) {
+        err = wolfEngine_SetLoggingCb(test_des3_cbc_log_cb) != 0;
+    }
+    if (err == 0) {
+        err = wolfEngine_Debugging_ON() != 0;
+    }
+    if (err == 0) {
+        des3DecryptErrorLogged = 0;
+        err = EVP_DecryptUpdate(ctx, NULL, &outLen, in, sizeof(in)) == 1;
+    }
+    if (err == 0) {
+        err = des3DecryptErrorLogged == 0;
+    }
+
+    (void)wolfEngine_SetLoggingCb(NULL);
+    if (!initialDebug) {
+        wolfEngine_Debugging_OFF();
+    }
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    (void)data;
+    return 0;
+#endif
 }
 
 #endif /* WE_HAVE_DES3CBC */

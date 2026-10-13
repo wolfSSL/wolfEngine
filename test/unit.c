@@ -867,6 +867,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_des3_cbc, NULL),
     TEST_DECL(test_des3_cbc_stream, NULL),
     TEST_DECL(test_des3_cbc_iv_bounds, NULL),
+    TEST_DECL(test_des3_cbc_decrypt_error_log, &debug),
 #endif
 #ifdef WE_HAVE_AESECB
     TEST_DECL(test_aes128_ecb, NULL),

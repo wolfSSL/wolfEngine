@@ -185,7 +185,7 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
         rc = wc_Des3_CbcDecrypt(&des3->des3, out, in, (word32)len);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                  "wc_Des3_CbcEncrypt 1", rc);
+                                  "wc_Des3_CbcDecrypt", rc);
             ret = 0;
         }
         else {
