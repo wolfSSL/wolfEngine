@@ -1145,6 +1145,93 @@ int test_rsa_sign_verify_no_pad(ENGINE *e, void *data)
 #endif
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+static int test_rsa_pss_saltlen_persistence(ENGINE *e)
+{
+    int err = 0;
+    int saltLen = 0;
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    const unsigned char *p = rsa_key_der_2048;
+    unsigned char hash[SHA384_DIGEST_LENGTH] = { 0 };
+    unsigned char *sig = NULL;
+    size_t sigLen = 0;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (err == 0) {
+        err = EVP_PKEY_set1_engine(pkey, e) != 1;
+    }
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(pkey, NULL);
+        err = ctx == NULL;
+    }
+#else
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(pkey, e);
+        err = ctx == NULL;
+    }
+#endif
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx,
+                                               RSA_PSS_SALTLEN_AUTO) <= 0;
+    }
+    if (err == 0) {
+        sigLen = (size_t)EVP_PKEY_size(pkey);
+        sig = (unsigned char *)OPENSSL_malloc(sigLen);
+        err = sig == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign(ctx, sig, &sigLen, hash,
+                            SHA256_DIGEST_LENGTH) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_get_rsa_pss_saltlen(ctx, &saltLen) <= 0;
+    }
+    if (err == 0) {
+#ifdef WOLFSSL_PSS_LONG_SALT
+        err = saltLen != RSA_PSS_SALTLEN_AUTO;
+#else
+        err = saltLen != EVP_MD_size(EVP_sha256());
+#endif
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha384()) <= 0;
+    }
+    if (err == 0) {
+        sigLen = (size_t)EVP_PKEY_size(pkey);
+        err = EVP_PKEY_sign(ctx, sig, &sigLen, hash,
+                            SHA384_DIGEST_LENGTH) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_get_rsa_pss_saltlen(ctx, &saltLen) <= 0;
+    }
+    if (err == 0) {
+#ifdef WOLFSSL_PSS_LONG_SALT
+        err = saltLen != RSA_PSS_SALTLEN_AUTO;
+#else
+        err = saltLen != EVP_MD_size(EVP_sha384());
+#endif
+    }
+
+    OPENSSL_free(sig);
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+#endif
+
 int test_rsa_sign_verify_pss(ENGINE *e, void *data)
 {
     int err = 0;
@@ -1163,6 +1250,11 @@ int test_rsa_sign_verify_pss(ENGINE *e, void *data)
         err = test_rsa_sign_verify_pad(e, RSA_PKCS1_PSS_PADDING, EVP_sha384(),
                                        EVP_sha512()) == 1;
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    if (err == 0) {
+        err = test_rsa_pss_saltlen_persistence(e);
+    }
+#endif
 
     return err;
 }
