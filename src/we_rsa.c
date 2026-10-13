@@ -2962,8 +2962,9 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
  * Encrypt data with a public RSA key.
  *
  * @param  ctx         [in]  Public key context of operation.
- * @param  ciphertext  [in]  Encrypted data.
- * @param  cipherLen   [in]  Length of encrypted data.
+ * @param  ciphertext  [out]  Buffer to hold encrypted data.
+ * @param  cipherLen   [in/out]  Buffer size on input, encrypted length on
+ *                             output.
  * @param  plaintext   [in]  Data to be encrypted.
  * @param  plainLen    [in]  Length of data to be encrypted.
  * @returns  1 on success and 0 on failure.
