@@ -35,6 +35,8 @@ typedef struct we_AesCtr
     /* The wolfSSL AES data object. */
     Aes aes;
     word32 inited;
+    unsigned char key[32];
+    word32 keyLen;
 } we_AesCtr;
 
 
@@ -75,7 +77,9 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
             ret = 0;
         }
-        aes->inited = 1;
+        else {
+            aes->inited = 1;
+        }
     }
     if ((ret == 1) && (key != NULL)) {
         if (tmpIv == NULL) {
@@ -87,7 +91,14 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                           AES_ENCRYPTION);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesSetKey", rc);
+            OPENSSL_cleanse(aes->key, sizeof(aes->key));
+            aes->keyLen = 0;
             ret = 0;
+        }
+        else {
+            OPENSSL_cleanse(aes->key, sizeof(aes->key));
+            aes->keyLen = EVP_CIPHER_CTX_key_length(ctx);
+            XMEMCPY(aes->key, key, aes->keyLen);
         }
     }
     if ((ret == 1) && (iv != NULL)) {
@@ -107,6 +118,91 @@ static int we_aes_ctr_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ctr_init", ret);
 
+    return ret;
+}
+
+/**
+ * Cleanup the internal AES-CTR object. Does not free object.
+ *
+ * @param  ctx  [in]  EVP cipher context.
+ * @returns  1 on success and 0 on failure.
+ */
+static int we_aes_ctr_cleanup(EVP_CIPHER_CTX *ctx)
+{
+    int ret = 1;
+    we_AesCtr *aes;
+
+    aes = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+    if (aes == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
+        ret = 0;
+    }
+
+    if ((ret == 1) && (aes->inited != 0)) {
+        wc_AesFree(&aes->aes);
+    }
+    if (aes != NULL) {
+        OPENSSL_cleanse(aes, sizeof(*aes));
+    }
+
+    return ret;
+}
+
+static int we_aes_ctr_copy(EVP_CIPHER_CTX *ctx, EVP_CIPHER_CTX *dstCtx)
+{
+    we_AesCtr *src = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+    we_AesCtr *dst;
+    unsigned char counter[WC_AES_BLOCK_SIZE];
+    unsigned char discard[WC_AES_BLOCK_SIZE] = { 0 };
+    word32 left;
+    word32 num;
+    int ret = 1;
+    int i;
+
+    if (dstCtx == NULL || src == NULL) {
+        return 0;
+    }
+    dst = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(dstCtx);
+    if (dst == NULL || dst == src) {
+        return 0;
+    }
+    left = src->aes.left;
+    num = (WC_AES_BLOCK_SIZE - left) % WC_AES_BLOCK_SIZE;
+    /* OpenSSL copied the wrapper, but backend resources need fresh ownership. */
+    XMEMSET(&dst->aes, 0, sizeof(dst->aes));
+    dst->inited = 0;
+    if (src->inited != 0) {
+        ret = wc_AesInit(&dst->aes, NULL, INVALID_DEVID) == 0;
+        if (ret == 1) {
+            dst->inited = 1;
+        }
+    }
+    if (ret == 1 && src->keyLen != 0) {
+        XMEMCPY(counter, EVP_CIPHER_CTX_iv(ctx), sizeof(counter));
+        ret = left <= WC_AES_BLOCK_SIZE &&
+              src->keyLen <= sizeof(src->key);
+        /* A partial block has already advanced the counter once. */
+        if (ret == 1 && num != 0) {
+            for (i = sizeof(counter) - 1; i >= 0; i--) {
+                if (counter[i]-- != 0) {
+                    break;
+                }
+            }
+        }
+        if (ret == 1) {
+            ret = wc_AesSetKey(&dst->aes, src->key, src->keyLen, counter,
+                              AES_ENCRYPTION) == 0;
+        }
+        if (ret == 1 && num != 0) {
+            ret = wc_AesCtrEncrypt(&dst->aes, discard, discard, num) == 0;
+        }
+    }
+    OPENSSL_cleanse(discard, sizeof(discard));
+    if (ret == 0) {
+        /* OpenSSL skips cipher cleanup after a failed custom copy. */
+        we_aes_ctr_cleanup(dstCtx);
+    }
     return ret;
 }
 
@@ -172,7 +268,7 @@ static int we_aes_ctr_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 /**
  * Extra operations for AES-CTR.
  *
- * No supported operations yet.
+ * Initialize or copy independent cipher state.
  *
  * @param  ctx   [in]  EVP cipher context of operation.
  * @param  type  [in]  Type of operation to perform.
@@ -191,7 +287,6 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                            "arg = %d, ptr = %p]", ctx, type, arg, ptr);
 
     (void)arg;
-    (void)ptr;
 
     /* Get the AES-CTR data to work with. */
     aes = (we_AesCtr *)EVP_CIPHER_CTX_get_cipher_data(ctx);
@@ -204,7 +299,12 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
         switch (type) {
             case EVP_CTRL_INIT:
             {
-                XMEMSET(aes, 0, sizeof(we_AesCtr));
+                XMEMSET(aes, 0, sizeof(*aes));
+                break;
+            }
+            case EVP_CTRL_COPY:
+            {
+                ret = we_aes_ctr_copy(ctx, (EVP_CIPHER_CTX *)ptr);
                 break;
             }
             default:
@@ -222,11 +322,13 @@ static int we_aes_ctr_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 }
 
 /** Flags for AES-CTR method. */
+#define AES_CTR_COPY_FLAG EVP_CIPH_CUSTOM_COPY
 #define AES_CTR_FLAGS              \
     (EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_CTRL_INIT          | \
      EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_FLAG_DEFAULT_ASN1  | \
+     AES_CTR_COPY_FLAG            | \
      EVP_CIPH_CTR_MODE)
 
 /** AES128-CTR EVP cipher method. */
@@ -253,6 +355,13 @@ static int we_init_aesctr_meth(EVP_CIPHER *cipher)
     }
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_aes_ctr_init);
+    }
+    if (ret == 1) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        ret = EVP_CIPHER_meth_set_cleanup(cipher, we_aes_ctr_cleanup);
+#else
+        cipher->cleanup = we_aes_ctr_cleanup;
+#endif
     }
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_aes_ctr_cipher);

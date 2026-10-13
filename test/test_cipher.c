@@ -1508,6 +1508,123 @@ int test_aes128_cbc_hmac_cleanup(ENGINE *e, void *data)
 
 #ifdef WE_HAVE_AESCTR
 
+static int test_aes_ctr_copy(ENGINE *e, const EVP_CIPHER *cipher)
+{
+    const int offsets[] = { 0, 1, 15, 16, 17, 33 };
+    unsigned char key[32] = { 1 };
+    unsigned char nextKey[32] = { 2 };
+    unsigned char iv[16];
+    unsigned char in[64] = { 3 };
+    unsigned char out[80];
+    unsigned char expected[80];
+    EVP_CIPHER_CTX *src = NULL, *copy = NULL;
+    EVP_CIPHER_CTX *ref = NULL, *copyRef = NULL;
+    int err = 0, enc, order, stage, i, outLen, expectedLen;
+
+    XMEMSET(iv, 0xff, sizeof(iv));
+    PRINT_MSG("Copy AES-CTR at block and partial-block positions");
+    for (enc = 0; err == 0 && enc < 2; enc++) {
+        for (order = 0; err == 0 && order < 2; order++) {
+            for (i = 0; err == 0 && i < (int)(sizeof(offsets) /
+                                                   sizeof(offsets[0])); i++) {
+                src = EVP_CIPHER_CTX_new();
+                copy = EVP_CIPHER_CTX_new();
+                ref = EVP_CIPHER_CTX_new();
+                copyRef = EVP_CIPHER_CTX_new();
+                if (src == NULL || copy == NULL || ref == NULL ||
+                    copyRef == NULL) {
+                    err = 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherInit_ex(src, cipher, e, key, iv, enc) != 1 ||
+                          EVP_CipherInit_ex(copy, cipher, e, nextKey, iv,
+                                            enc) != 1 ||
+                          EVP_CipherInit_ex(ref, cipher, NULL, key, iv, enc) != 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherUpdate(src, out, &outLen, in,
+                                          offsets[i]) != 1 ||
+                          EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                          offsets[i]) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0 ||
+                          EVP_CIPHER_CTX_copy(copy, src) != 1 ||
+                          EVP_CIPHER_CTX_copy(copyRef, ref) != 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherInit_ex(src, NULL, NULL, nextKey, iv,
+                                            enc) != 1 ||
+                          EVP_CipherInit_ex(ref, NULL, NULL, nextKey, iv,
+                                            enc) != 1;
+                }
+                if (order == 0) {
+                    EVP_CIPHER_CTX_free(src);
+                    src = NULL;
+                }
+                if (err == 0) {
+                    err = EVP_CipherUpdate(copy, out, &outLen, in,
+                                          sizeof(in)) != 1 ||
+                          EVP_CipherUpdate(copyRef, expected, &expectedLen, in,
+                                          sizeof(in)) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0;
+                }
+                EVP_CIPHER_CTX_free(copy);
+                copy = NULL;
+                if (err == 0 && order == 1) {
+                    err = EVP_CipherUpdate(src, out, &outLen, in,
+                                          sizeof(in)) != 1 ||
+                          EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                          sizeof(in)) != 1;
+                    if (err == 0) {
+                        err = outLen != expectedLen ||
+                              XMEMCMP(out, expected, outLen) != 0;
+                    }
+                }
+                EVP_CIPHER_CTX_free(src);
+                EVP_CIPHER_CTX_free(ref);
+                EVP_CIPHER_CTX_free(copyRef);
+                src = ref = copyRef = NULL;
+            }
+        }
+    }
+    PRINT_MSG("Copy AES-CTR before setting the key");
+    for (stage = 0; err == 0 && stage < 2; stage++) {
+        src = EVP_CIPHER_CTX_new();
+        copy = EVP_CIPHER_CTX_new();
+        ref = EVP_CIPHER_CTX_new();
+        if (src == NULL || copy == NULL || ref == NULL) {
+            err = 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherInit_ex(src, cipher, e, NULL,
+                                    stage ? iv : NULL, 1) != 1 ||
+                  EVP_CIPHER_CTX_copy(copy, src) != 1 ||
+                  EVP_CipherInit_ex(copy, NULL, NULL, key,
+                                    stage ? NULL : iv, 1) != 1 ||
+                  EVP_CipherInit_ex(ref, cipher, NULL, key, iv, 1) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherUpdate(copy, out, &outLen, in, sizeof(in)) != 1 ||
+                  EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                   sizeof(in)) != 1;
+        }
+        if (err == 0) {
+            err = outLen != expectedLen ||
+                  XMEMCMP(out, expected, outLen) != 0;
+        }
+        EVP_CIPHER_CTX_free(src);
+        EVP_CIPHER_CTX_free(copy);
+        EVP_CIPHER_CTX_free(ref);
+        src = copy = ref = NULL;
+    }
+    return err;
+}
+
 int test_aes128_ctr_stream(ENGINE *e, void *data)
 {
     int err;
@@ -1515,6 +1632,8 @@ int test_aes128_ctr_stream(ENGINE *e, void *data)
     err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 16, 0);
     if (err == 0)
         err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 1, 0);
+    if (err == 0)
+        err = test_aes_ctr_copy(e, EVP_aes_128_ctr());
 
     return err;
 }
@@ -1528,6 +1647,8 @@ int test_aes192_ctr_stream(ENGINE *e, void *data)
     err = test_stream_enc_dec(e, data, EVP_aes_192_ctr(), 24, 16, 15, 0);
     if (err == 0)
         err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 2, 0);
+    if (err == 0)
+        err = test_aes_ctr_copy(e, EVP_aes_192_ctr());
 
     return err;
 }
@@ -1541,6 +1662,8 @@ int test_aes256_ctr_stream(ENGINE *e, void *data)
     err = test_stream_enc_dec(e, data, EVP_aes_256_ctr(), 32, 16, 14, 0);
     if (err == 0)
         err = test_stream_enc_dec(e, data, EVP_aes_256_ctr(), 32, 16, 3, 0);
+    if (err == 0)
+        err = test_aes_ctr_copy(e, EVP_aes_256_ctr());
 
     return err;
 }
@@ -1696,6 +1819,10 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
 {
     int err = 0;
     int outLen;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    const EVP_CIPHER* cipher;
+    EVP_CIPHER_CTX* copyCtx = NULL;
+#endif
     unsigned char iv[AES_BLOCK_SIZE];
     unsigned char key[16];
     EVP_CIPHER_CTX* encCtx = NULL;
@@ -1737,9 +1864,27 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
     if (err == 0) {
         err = EVP_CIPHER_CTX_iv_length(decCtx) != (int)sizeof(iv);
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (err == 0) {
+        cipher = EVP_CIPHER_CTX_cipher(decCtx);
+        err = (cipher == NULL) ||
+              (EVP_CIPHER_meth_get_cleanup(cipher) == NULL);
+    }
+#endif
     if (err == 0) {
         err = EVP_CipherInit_ex(decCtx, NULL, e, key, NULL, -1) != 1;
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (err == 0) {
+        err = (copyCtx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_copy(copyCtx, decCtx) != 1;
+    }
+    if (err == 0) {
+        ERR_clear_error();
+    }
+#endif
 
     if (err == 0) {
         outLen = EVP_Cipher(decCtx, decText, decText, 0);
@@ -1765,6 +1910,10 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
         EVP_CIPHER_CTX_free(encCtx);
     if (decCtx != NULL)
         EVP_CIPHER_CTX_free(decCtx);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (copyCtx != NULL)
+        EVP_CIPHER_CTX_free(copyCtx);
+#endif
 
     return err;
 }
