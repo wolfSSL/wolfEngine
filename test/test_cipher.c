@@ -445,6 +445,9 @@ int test_aes128_cbc(ENGINE *e, void *data)
                   != 1;
         }
         if (err == 0) {
+            err = EVP_CIPHER_CTX_iv_length(ctx) != (int)sizeof(iv);
+        }
+        if (err == 0) {
             cipher = EVP_CIPHER_CTX_cipher(ctx);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
             doCipher = EVP_CIPHER_meth_get_do_cipher(cipher);
