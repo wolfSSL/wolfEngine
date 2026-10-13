@@ -3054,8 +3054,8 @@ static int we_rsa_pkey_encrypt(EVP_PKEY_CTX *ctx, unsigned char *ciphertext,
  * Decrypt ciphertext with a private RSA key.
  *
  * @param  ctx         [in]      Private key context of operation.
- * @param  plaintext   [in]      Buffer to hold decrypted data.
- *                               NULL indicates length of signature requested.
+ * @param  plaintext   [out]     Buffer receiving decrypted data, or NULL to
+ *                               request the required buffer length.
  * @param  plainLen    [in/out]  Length of decrypted data.
  * @param  ciphertext  [in]      Data to be decrypted.
  * @param  cipherLen   [in]      Length of encrypted data.
