@@ -220,14 +220,14 @@ static int we_pss_salt_len_to_wc(int saltLen, const EVP_MD *md, RsaKey *key,
         if (saltLen == RSA_PSS_SALTLEN_DIGEST) {
             saltLen = RSA_PSS_SALT_LEN_DEFAULT;
         }
-        if (saltLen == RSA_PSS_SALTLEN_MAX) {
+        else if (saltLen == RSA_PSS_SALTLEN_MAX) {
         #ifndef WOLFSSL_PSS_SALT_LEN_DISCOVER
             saltLen = EVP_MD_size(md);
         #else
             saltLen = RSA_PSS_SALT_LEN_DISCOVER;
         #endif
         }
-        if (saltLen == RSA_PSS_SALTLEN_AUTO) {
+        else if (saltLen == RSA_PSS_SALTLEN_AUTO) {
         #ifndef WOLFSSL_PSS_LONG_SALT
             saltLen = EVP_MD_size(md);
         #else
