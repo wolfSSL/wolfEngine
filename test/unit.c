@@ -893,6 +893,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_cbc_hmac_tls_lengths, NULL),
     TEST_DECL(test_aes128_cbc_hmac_no_tls_mac, NULL),
     TEST_DECL(test_aes128_cbc_hmac_tls_extended_padding, NULL),
+    TEST_DECL(test_aes128_cbc_hmac_tls_retry_after_bad_padding, NULL),
 #endif
 #ifdef WE_HAVE_AESCTR
     TEST_DECL(test_aes128_ctr_stream, NULL),

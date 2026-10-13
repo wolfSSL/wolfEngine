@@ -373,17 +373,18 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
             ret -= pb + 1 + SHA256_DIGEST_LENGTH;
         }
 
-        /* Update record header to have correct message length. */
-        aes->tlsAAD[aes->pLen - 2] = ret >> 8;
-        aes->tlsAAD[aes->pLen - 1] = ret;
+        if (ret != -1) {
+            /* Update the record header with the plaintext length. */
+            aes->tlsAAD[aes->pLen - 2] = ret >> 8;
+            aes->tlsAAD[aes->pLen - 1] = ret;
 
-        /* MAC the record header. */
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "Generate MAC over record header: "
-                       "len = %d", aes->pLen);
-        rc = we_hmac_update(&aes->hmac, aes->tlsAAD, aes->pLen);
-        if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "we_hmac_update", rc);
-            ret = -1;
+            WOLFENGINE_MSG(WE_LOG_CIPHER, "Generate MAC over record header: "
+                           "len = %d", aes->pLen);
+            rc = we_hmac_update(&aes->hmac, aes->tlsAAD, aes->pLen);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "we_hmac_update", rc);
+                ret = -1;
+            }
         }
     }
     /* TODO: not constant time. */
