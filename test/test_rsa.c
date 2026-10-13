@@ -1281,6 +1281,124 @@ int test_rsa_enc_dec_oaep(ENGINE *e, void *data)
     return err;
 }
 
+static int test_rsa_set_oaep_label(EVP_PKEY_CTX *ctx,
+                                    const unsigned char *value, int len)
+{
+    unsigned char *label = NULL;
+    int ret = 0;
+
+    label = (unsigned char *)OPENSSL_malloc((size_t)len);
+    if (label != NULL) {
+        XMEMCPY(label, value, (size_t)len);
+        ret = EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label, len);
+        if (ret <= 0) {
+            OPENSSL_free(label);
+        }
+    }
+
+    return ret;
+}
+
+int test_rsa_oaep_label(ENGINE *e, void *data)
+{
+    int err = 0;
+    int labelLen;
+    const unsigned char *der = rsa_key_der_2048;
+    const unsigned char labelA[] = "label A";
+    const unsigned char labelB[] = "label B";
+    const unsigned char message[] = "OAEP label test";
+    unsigned char ciphertext[256];
+    unsigned char plaintext[256];
+    unsigned char *gotLabel = NULL;
+    unsigned char *copiedLabel = NULL;
+    size_t ciphertextLen = sizeof(ciphertext);
+    size_t plaintextLen = sizeof(plaintext);
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *encryptCtx = NULL;
+    EVP_PKEY_CTX *copyCtx = NULL;
+    EVP_PKEY_CTX *decryptCtx = NULL;
+
+    (void)data;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        encryptCtx = EVP_PKEY_CTX_new(pkey, e);
+        err = encryptCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_encrypt_init(encryptCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(encryptCtx,
+                                            RSA_PKCS1_OAEP_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = test_rsa_set_oaep_label(encryptCtx, labelA,
+                                      (int)sizeof(labelA)) <= 0;
+    }
+    if (err == 0) {
+        labelLen = EVP_PKEY_CTX_get0_rsa_oaep_label(encryptCtx, &gotLabel);
+        err = labelLen != (int)sizeof(labelA) || gotLabel == NULL ||
+              XMEMCMP(gotLabel, labelA, sizeof(labelA)) != 0;
+    }
+    if (err == 0) {
+        copyCtx = EVP_PKEY_CTX_dup(encryptCtx);
+        err = copyCtx == NULL;
+    }
+    if (err == 0) {
+        labelLen = EVP_PKEY_CTX_get0_rsa_oaep_label(copyCtx, &copiedLabel);
+        err = labelLen != (int)sizeof(labelA) || copiedLabel == gotLabel ||
+              XMEMCMP(copiedLabel, labelA, sizeof(labelA)) != 0;
+    }
+    EVP_PKEY_CTX_free(encryptCtx);
+    encryptCtx = NULL;
+    if (err == 0) {
+        err = EVP_PKEY_encrypt(copyCtx, ciphertext, &ciphertextLen, message,
+                                sizeof(message)) != 1;
+    }
+    if (err == 0) {
+        decryptCtx = EVP_PKEY_CTX_new(pkey, e);
+        err = decryptCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_decrypt_init(decryptCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(decryptCtx,
+                                            RSA_PKCS1_OAEP_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = test_rsa_set_oaep_label(decryptCtx, labelA,
+                                      (int)sizeof(labelA)) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_decrypt(decryptCtx, plaintext, &plaintextLen,
+                                ciphertext, ciphertextLen) != 1;
+    }
+    if (err == 0) {
+        err = plaintextLen != sizeof(message) ||
+              XMEMCMP(plaintext, message, sizeof(message)) != 0;
+    }
+    if (err == 0) {
+        err = test_rsa_set_oaep_label(decryptCtx, labelB,
+                                      (int)sizeof(labelB)) <= 0;
+    }
+    if (err == 0) {
+        plaintextLen = sizeof(plaintext);
+        err = EVP_PKEY_decrypt(decryptCtx, plaintext, &plaintextLen,
+                                ciphertext, ciphertextLen) > 0;
+    }
+
+    EVP_PKEY_CTX_free(decryptCtx);
+    EVP_PKEY_CTX_free(copyCtx);
+    EVP_PKEY_CTX_free(encryptCtx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
 int test_rsa_pkey_keygen(ENGINE *e, void *data)
 {
     int err;

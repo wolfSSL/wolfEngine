@@ -93,3 +93,6 @@ openssl-source/
 wolfssl-install/
 wolfssl-source/
 wolfengine-install/
+
+/test/rsa_oaep_allocator.sh.log
+/test/rsa_oaep_allocator.sh.trs
