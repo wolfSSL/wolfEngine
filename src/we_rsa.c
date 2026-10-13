@@ -2530,8 +2530,16 @@ static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
                            "digestLen = %zu, encodedDigest = %p]", md,
                            digest, digestLen, encodedDigest);
 
+    if ((md == NULL) || (digest == NULL) || (encodedDigest == NULL) ||
+        (EVP_MD_size(md) <= 0) ||
+        (digestLen != (size_t)EVP_MD_size(md)) ||
+        (digestLen > MAX_DER_DIGEST_SZ - 20)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
+        ret = 0;
+    }
+
     /* Allocate a buffer if not passed in. */
-    if (*encodedDigest == NULL) {
+    if ((ret == 1) && (*encodedDigest == NULL)) {
         *encodedDigest = (unsigned char *)OPENSSL_malloc(MAX_DER_DIGEST_SZ);
         if (*encodedDigest == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
@@ -2663,13 +2671,11 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     }
 
     if ((ret == 1) && (sig != NULL)) {
-    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
         if ((rsa->md != NULL) && (rsa->padMode == RSA_PKCS1_PADDING) &&
                                      ((size_t)EVP_MD_size(rsa->md) != tbsLen)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
             ret = -1;
         }
-    #endif
         if ((ret == 1) && (rsa->md != NULL) &&
                                           (rsa->padMode == RSA_PKCS1_PADDING)) {
             /* In this case, OpenSSL expects a proper PKCS #1 v1.5
