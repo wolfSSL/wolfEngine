@@ -230,6 +230,7 @@ int test_aes_gcm_keyed_reinit(ENGINE *e, void *data);
 int test_aes_gcm_cleanup_empty_ctx(ENGINE *e, void *data);
 int test_aes_gcm_aad_length_bounds(ENGINE *e, void *data);
 int test_aes_gcm_auth_error_queue(ENGINE *e, void *data);
+int test_aes_gcm_ctrl_output_buffers(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_AESGCM */
 
