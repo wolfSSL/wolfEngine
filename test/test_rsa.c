@@ -581,6 +581,7 @@ int test_rsa_ctrl_str(ENGINE* e, void* data)
 {
     int err;
     EVP_PKEY_CTX* ctx = NULL;
+    void* engineData = NULL;
 
     (void)data;
 
@@ -613,7 +614,25 @@ int test_rsa_ctrl_str(ENGINE* e, void* data)
         err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "2048") <= 0;
     }
     if (err == 0) {
-        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "-1") > 0;
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "-1") != -2;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_unknown_option", "1") != -2;
+    }
+    if (err == 0) {
+        engineData = EVP_PKEY_CTX_get_data(ctx);
+        EVP_PKEY_CTX_set_data(ctx, NULL);
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "2048") != 0;
+        EVP_PKEY_CTX_set_data(ctx, engineData);
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_padding_mode", "pkcs1") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_mgf1_md", "SHA256") != -2;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_oaep_md", "SHA256") != -2;
     }
 
     /* rsa_pss_saltlen */
