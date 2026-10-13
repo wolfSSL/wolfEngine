@@ -1735,6 +1735,9 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
         err = EVP_CipherInit_ex(decCtx, EVP_aes_128_ctr(), e, NULL, iv, 0) != 1;
     }
     if (err == 0) {
+        err = EVP_CIPHER_CTX_iv_length(decCtx) != (int)sizeof(iv);
+    }
+    if (err == 0) {
         err = EVP_CipherInit_ex(decCtx, NULL, e, key, NULL, -1) != 1;
     }
 
