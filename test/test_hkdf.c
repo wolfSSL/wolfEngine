@@ -302,6 +302,47 @@ static int test_hkdf_md(ENGINE *e, const EVP_MD *md, int mode)
     return err;
 }
 
+static int test_hkdf_empty_key_calc(ENGINE *e, unsigned char *out,
+                                    size_t outSz)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char empty = 0;
+    size_t len = outSz;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive_init(ctx) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set_hkdf_md(ctx, EVP_sha256()) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set1_hkdf_key(ctx, &empty, 0) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive(ctx, out, &len) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (len != outSz)) {
+        err = 1;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    return err;
+}
+
+static int test_hkdf_empty_key(ENGINE *e)
+{
+    unsigned char key[32];
+
+    return test_hkdf_empty_key_calc(e, key, sizeof(key));
+}
+
 static int test_hkdf_str_calc(ENGINE *e, unsigned char *key, int keyLen,
                                   const char *md, const char *mode)
 {
@@ -636,13 +677,6 @@ static int test_hkdf_key_failure_state(ENGINE *e)
             (len != sizeof(out)))) {
         err = 1;
     }
-    if ((err == 0) &&
-            (EVP_PKEY_CTX_set1_hkdf_key(ctx, NULL, 0) == 1)) {
-        err = 1;
-    }
-    if ((err == 0) && (EVP_PKEY_derive(ctx, NULL, &len) == 1)) {
-        err = 1;
-    }
 
     EVP_PKEY_CTX_free(ctx);
     return err;
@@ -769,6 +803,9 @@ int test_hkdf(ENGINE *e, void *data)
     }
     if (err == 0) {
         err = test_hkdf_fail(e);
+    }
+    if (err == 0) {
+        err = test_hkdf_empty_key(e);
     }
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     if (err == 0) {

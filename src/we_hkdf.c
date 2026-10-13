@@ -46,6 +46,8 @@ typedef struct we_Hkdf {
     unsigned char info[WE_MAX_INFO_SIZE];
     /** Size of info in bytes. */
     size_t infoSz;
+    /** Whether a key has been configured. */
+    int keySet;
 } we_Hkdf;
 
 /**
@@ -143,7 +145,7 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         ret = 0;
     }
     /* Check a key was set - no point otherwise! */
-    if ((ret == 1) && ((hkdf->key == NULL) || (hkdf->keySz == 0))) {
+    if ((ret == 1) && (hkdf->keySet == 0)) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No key from app.");
         ret = 0;
     }
@@ -289,9 +291,10 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_HKDF_KEY");
             /* num: Number of bytes in buffer.
              * ptr: Buffer holding key data. */
-            /* Number of bytes must be positive. */
+            /* Number of bytes must not be negative. */
             if (num < 0) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Key size must be positive");
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                     "Key size must not be negative");
                 ret = 0;
             }
             if (hkdf->key != NULL) {
@@ -300,20 +303,24 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             }
             hkdf->key = NULL;
             hkdf->keySz = 0;
+            hkdf->keySet = 0;
             if (ret == 1) {
                 /* Clear info as this is a new operation. */
                 OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
                 hkdf->infoSz = 0;
-                /* Copy the key. */
-                hkdf->key = OPENSSL_memdup(ptr, num);
-                if (hkdf->key == NULL) {
-                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_memdup(key)",
-                                               hkdf->key);
-                    ret = 0;
+                /* Copy the key when it is not empty. */
+                if (num != 0) {
+                    hkdf->key = OPENSSL_memdup(ptr, num);
+                    if (hkdf->key == NULL) {
+                        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
+                            "OPENSSL_memdup(key)", hkdf->key);
+                        ret = 0;
+                    }
                 }
-                else {
+                if (ret == 1) {
                     /* Store size of key. */
-                    hkdf->keySz  = num;
+                    hkdf->keySz = num;
+                    hkdf->keySet = 1;
                 }
             }
             break;
