@@ -43,6 +43,8 @@ typedef union test_MemHeader {
 
 static void *testClearPtr = NULL;
 static int testClearResult = -1;
+static size_t testFailSize = 0;
+static int testFailCount = 0;
 
 static void *test_openssl_malloc(size_t size, const char *file, int line)
 {
@@ -50,6 +52,11 @@ static void *test_openssl_malloc(size_t size, const char *file, int line)
 
     (void)file;
     (void)line;
+
+    if ((testFailCount > 0) && (size == testFailSize)) {
+        testFailCount--;
+        return NULL;
+    }
 
     header = (test_MemHeader *)malloc(sizeof(*header) + size);
     if (header != NULL) {
@@ -164,6 +171,20 @@ void test_openssl_mem_expect_clear(void *ptr)
 int test_openssl_mem_clear_result(void)
 {
     return testClearResult;
+}
+
+void test_openssl_mem_fail_once(size_t size)
+{
+    testFailSize = size;
+    testFailCount = 1;
+}
+
+int test_openssl_mem_failure_triggered(void)
+{
+    int triggered = testFailCount == 0;
+
+    testFailCount = 0;
+    return triggered;
 }
 #endif
 
