@@ -165,13 +165,11 @@ static int we_aes_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, key = %p, "
                            "iv = %p, enc = %d]", ctx, key, iv, enc);
 
-    if (ret == 1) {
-        aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
-        if (aes == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
-                                       "EVP_CIPHER_CTX_get_cipher_data", aes);
-            ret = 0;
-        }
+    aes = (we_AesBlock *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+    if (aes == NULL) {
+        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
+                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
+        ret = 0;
     }
 
     if ((ret == 1) && (key != NULL)) {
