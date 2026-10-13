@@ -110,9 +110,8 @@ static void we_tls1_prf_cleanup(EVP_PKEY_CTX *ctx)
  * Derive the key from the secret and label/seed.
  *
  * @param  ctx    [in]      PKEY context.
- * @param  key    [in]      Calculated key data.
- * @param  keySz  [in,out]  On in, size of key data to calculate in bytes.
- *                          On out, size of key data in bytes.
+ * @param  key    [out]  Calculated key data.
+ * @param  keySz  [in]   Size of key data to calculate in bytes.
  * @returns  1 on success and 0 on failure.
  */
 static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
