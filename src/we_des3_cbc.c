@@ -273,7 +273,7 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_ctrl");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, type = %d, "
-                           "arg = %p, ptr = %p]", ctx, type, arg, ptr);
+                           "arg = %d, ptr = %p]", ctx, type, arg, ptr);
 
     (void)arg;
     (void)ptr;

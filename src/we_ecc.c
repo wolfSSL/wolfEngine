@@ -132,7 +132,7 @@ static int we_ec_set_private(ecc_key *key, int curveId, const EC_KEY *ecKey)
     unsigned char* privBuf = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_set_private");
-    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [key = %p, curveId = %p, "
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [key = %p, curveId = %d, "
                            "ecKey = %p]", key, curveId, ecKey);
 
     /* Get the EC key private key as binary data. */

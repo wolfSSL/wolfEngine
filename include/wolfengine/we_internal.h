@@ -132,17 +132,6 @@ WOLFENGINE_LOCAL void *we_memdup(const void *data, size_t siz);
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
 #endif /* WE_NO_OPENSSL_MALLOC */
 
-#if defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
-    /* Function is a printf style function. Pretend parameter is string literal.
-     *
-     * @param s  [in]  Index of string literal. Index from 1.
-     * @param v  [in]  Index of first argument to check. 0 means don't.
-     */
-    #define WE_PRINTF_FUNC(s, v)  __attribute__((__format__ (__printf__, s, v)))
-#else
-    #define WE_PRINTF_FUNC(s, v)
-#endif
-
 /*
  * Global random
  */
