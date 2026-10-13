@@ -360,7 +360,8 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
         /* TODO: not constant time. */
         /* Remove padding. */
         pb = out[off + ret - 1];
-        if (pb >= WC_AES_BLOCK_SIZE) {
+        /* Record must hold the claimed padding and MAC. */
+        if (ret < pb + 1 + SHA256_DIGEST_LENGTH) {
             ret = -1;
         }
         for (i = 1; (ret != -1) && (i <= pb); i++) {
@@ -368,14 +369,8 @@ static int we_aes_cbc_hmac_dec(we_AesCbcHmac* aes, unsigned char *out,
                 ret = -1;
         }
         if (ret != -1) {
-            /* Record must hold the padding and MAC or the length underflows. */
-            if (ret < pb + 1 + SHA256_DIGEST_LENGTH) {
-                ret = -1;
-            }
-            else {
-                /* Remove padding and MAC length. */
-                ret -= pb + 1 + SHA256_DIGEST_LENGTH;
-            }
+            /* Remove padding and MAC length. */
+            ret -= pb + 1 + SHA256_DIGEST_LENGTH;
         }
 
         /* Update record header to have correct message length. */
