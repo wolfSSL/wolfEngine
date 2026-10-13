@@ -1188,7 +1188,12 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize", ret);
                 ret = -1;
             }
+            else if (toLen < (size_t)paddedSz) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Output buffer too small");
+                ret = -1;
+            }
             else {
+                tLen = (unsigned int)paddedSz;
                 padded = (unsigned char *)OPENSSL_malloc(paddedSz);
                 if (padded == NULL) {
                     WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
@@ -1226,7 +1231,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                     ret = -1;
                 }
                 else {
-                    rc = mp_read_unsigned_bin(&toMp, to, (int)toLen);
+                    rc = mp_read_unsigned_bin(&toMp, to, (int)tLen);
                     if (rc != MP_OKAY) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_read_unsigned_bin",
                                               rc);
@@ -1244,7 +1249,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                         }
                         else if (mp_cmp(&toMp, &nMinusTo) == MP_GT) {
                             rc = mp_to_unsigned_bin_len(&nMinusTo, to,
-                                                        (int)toLen);
+                                                        (int)tLen);
                             if (rc != MP_OKAY) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                     "mp_to_unsigned_bin_len", rc);
@@ -1386,6 +1391,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     unsigned char* unpadded = NULL;
     mp_int toMp;
     mp_int nMinusTo;
+    int outputSz;
     int rc;
 #endif
 
@@ -1467,15 +1473,29 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
         #ifdef WE_HAVE_RSA_X931
             case RSA_X931_PADDING:
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
-                PRIVATE_KEY_UNLOCK();
-                ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
-                                   &tLen, &rsa->key, RSA_PUBLIC_DECRYPT, rng);
-                PRIVATE_KEY_LOCK();
-                if (ret < 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
+                outputSz = wc_RsaEncryptSize(&rsa->key);
+                if (outputSz <= 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize",
+                                          outputSz);
+                    ret = -1;
+                }
+                else if (toLen < (size_t)outputSz) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Output buffer too small");
                     ret = -1;
                 }
                 else {
+                    tLen = (unsigned int)outputSz;
+                    PRIVATE_KEY_UNLOCK();
+                    ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
+                                       &tLen, &rsa->key, RSA_PUBLIC_DECRYPT,
+                                       rng);
+                    PRIVATE_KEY_LOCK();
+                    if (ret < 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
+                        ret = -1;
+                    }
+                }
+                if (ret != -1) {
                     /* 
                      * X9.31 specifies, "If e is odd, then
                      *   - If RR = 12 mod 16, then IR = RR ;
@@ -1484,7 +1504,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                      * step. Taking "to" mod 16 is the same as just checking the
                      * lower 4 bits of "to."
                      */
-                    if ((to[toLen-1] & 0x0F) != 12) {
+                    if ((to[tLen-1] & 0x0F) != 12) {
                         rc = mp_init_multi(&toMp, &nMinusTo, NULL, NULL, NULL,
                                            NULL);
                         if (rc != MP_OKAY) {
@@ -1493,7 +1513,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                             ret = -1;
                         }
                         else {
-                            rc = mp_read_unsigned_bin(&toMp, to, (int)toLen);
+                            rc = mp_read_unsigned_bin(&toMp, to, (int)tLen);
                             if (rc != MP_OKAY) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                     "mp_read_unsigned_bin", ret);
@@ -1507,7 +1527,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                                 }
                                 else {
                                     rc = mp_to_unsigned_bin_len(&nMinusTo, to,
-                                                                (int)toLen);
+                                                                (int)tLen);
                                     if (rc != MP_OKAY) {
                                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                             "mp_to_unsigned_bin_len", rc);

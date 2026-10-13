@@ -986,10 +986,14 @@ static int test_rsa_x931_fixed_width(ENGINE *e)
 {
     int err = 0;
     EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
     const unsigned char *p = rsa_key_der_2048;
     unsigned char buf[20] = { 0 };
     unsigned char *rsaSig = NULL;
+    unsigned char *recovered = NULL;
     size_t rsaSigLen = 0;
+    size_t rsaSigCap = 0;
+    size_t recoveredLen = 0;
 
     buf[sizeof(buf) - 2] = 0x01;
     buf[sizeof(buf) - 1] = 0x6c;
@@ -997,21 +1001,61 @@ static int test_rsa_x931_fixed_width(ENGINE *e)
     pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
     err = pkey == NULL;
     if (err == 0) {
-        rsaSigLen = (size_t)EVP_PKEY_size(pkey);
-        rsaSig = (unsigned char *)OPENSSL_malloc(rsaSigLen);
+        rsaSigCap = (size_t)EVP_PKEY_size(pkey) + 16;
+        rsaSig = (unsigned char *)OPENSSL_malloc(rsaSigCap);
         err = rsaSig == NULL;
     }
 
     if (err == 0) {
+        XMEMSET(rsaSig, 0xa5, rsaSigCap);
+        rsaSigLen = rsaSigCap;
         err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha256(),
                                rsaSig, &rsaSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = rsaSigLen != (size_t)EVP_PKEY_size(pkey);
     }
     if (err == 0) {
         err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha256(),
                                  rsaSig, rsaSigLen, RSA_X931_PADDING);
     }
+    if (err == 0) {
+        recoveredLen = rsaSigCap;
+        recovered = (unsigned char *)OPENSSL_malloc(recoveredLen);
+        err = recovered == NULL;
+    }
+    if (err == 0) {
+    #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        err = EVP_PKEY_set1_engine(pkey, e) != 1;
+        if (err == 0) {
+            ctx = EVP_PKEY_CTX_new(pkey, NULL);
+        }
+    #else
+        ctx = EVP_PKEY_CTX_new(pkey, e);
+    #endif
+        err = (err != 0) || (ctx == NULL);
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify_recover_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_X931_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        XMEMSET(recovered, 0xa5, recoveredLen);
+        err = EVP_PKEY_verify_recover(ctx, recovered, &recoveredLen, rsaSig,
+                                      rsaSigLen) != 1;
+    }
+    if (err == 0) {
+        err = recoveredLen > (size_t)EVP_PKEY_size(pkey);
+    }
 
+    EVP_PKEY_CTX_free(ctx);
     EVP_PKEY_free(pkey);
+    OPENSSL_free(recovered);
     OPENSSL_free(rsaSig);
 
     return err;
