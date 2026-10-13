@@ -217,6 +217,8 @@ size_t EC_KEY_priv2buf(const EC_KEY *eckey, unsigned char **pbuf)
     unsigned char *priv_key_buf = NULL;
 
     priv_key_bn = EC_KEY_get0_private_key(eckey);
+    if (priv_key_bn == NULL)
+        return 0;
     priv_len = BN_num_bytes(priv_key_bn);
 
     if (priv_len == 0)
