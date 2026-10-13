@@ -159,16 +159,30 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         }
     }
     else if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY)) {
-        PRIVATE_KEY_UNLOCK();
-        rc = wc_HKDF_Extract(hkdf->mdType, hkdf->salt, (word32)hkdf->saltSz,
-            hkdf->key, (word32)hkdf->keySz, key);
-        PRIVATE_KEY_LOCK();
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HKDF_Extract", rc);
+        rc = wc_HashGetDigestSize(hkdf->mdType);
+        if (rc <= 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HashGetDigestSize", rc);
             ret = 0;
         }
-        if (ret == 1) {
-            *keySz = (size_t)wc_HashGetDigestSize(hkdf->mdType);
+        else if (key == NULL) {
+            *keySz = (size_t)rc;
+        }
+        else if (*keySz < (size_t)rc) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "HKDF output buffer is too small.");
+            ret = 0;
+        }
+        else {
+            PRIVATE_KEY_UNLOCK();
+            rc = wc_HKDF_Extract(hkdf->mdType, hkdf->salt,
+                (word32)hkdf->saltSz, hkdf->key, (word32)hkdf->keySz, key);
+            PRIVATE_KEY_LOCK();
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HKDF_Extract", rc);
+                ret = 0;
+            }
+            if (ret == 1) {
+                *keySz = (size_t)wc_HashGetDigestSize(hkdf->mdType);
+            }
         }
     }
     else if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXPAND_ONLY)) {
