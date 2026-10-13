@@ -97,6 +97,7 @@ int test_logging(ENGINE *e, void *data);
 #define WE_VALGRIND_TEST 0x1
 
 void test_openssl_mem_expect_clear(void *ptr);
+void test_openssl_mem_expect_next_clear(size_t size);
 int test_openssl_mem_clear_result(void);
 void test_openssl_mem_fail_once(size_t size);
 int test_openssl_mem_failure_triggered(void);

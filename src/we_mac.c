@@ -1341,7 +1341,7 @@ int we_hmac_update(Hmac* hmac, const void *data, size_t dataSz) {
         hmac->macType == WC_HASH_TYPE_SHA512)  {
         internalBuffLen = hmac->hash.sha512.buffLen;
         add = dataSz > (WC_SHA512_BLOCK_SIZE - internalBuffLen) ?
-              (WC_SHA512_BLOCK_SIZE - internalBuffLen) : dataSz;
+              (WC_SHA512_BLOCK_SIZE - internalBuffLen) : (word32)dataSz;
     }
     /* If the conditions below are satisfied, just calling wc_HmacUpdate with
      * the passed in buffer and length can cause a memory alignment crash on
@@ -1359,9 +1359,9 @@ int we_hmac_update(Hmac* hmac, const void *data, size_t dataSz) {
         }
         if (ret == 1) {
             /* Allocate new, aligned buffer. */
-            tmp = (byte*)XMALLOC(WC_SHA512_BLOCK_SIZE, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+            tmp = (byte*)OPENSSL_malloc(WC_SHA512_BLOCK_SIZE);
             if (tmp == NULL) {
-                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "XMALLOC", tmp);
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_MAC, "OPENSSL_malloc", tmp);
                 ret = 0;
             }
         }
@@ -1374,7 +1374,7 @@ int we_hmac_update(Hmac* hmac, const void *data, size_t dataSz) {
                 size_t nextLen = (remaining <= WC_SHA512_BLOCK_SIZE) ?
                     remaining : WC_SHA512_BLOCK_SIZE;
                 XMEMCPY(tmp, nextData, nextLen);
-                rc = wc_HmacUpdate(hmac, (const byte*)tmp, nextLen);
+                rc = wc_HmacUpdate(hmac, (const byte*)tmp, (word32)nextLen);
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_MAC, "wc_HmacUpdate", rc);
                     ret = 0;
@@ -1386,7 +1386,7 @@ int we_hmac_update(Hmac* hmac, const void *data, size_t dataSz) {
         }
 
         if (tmp != NULL) {
-            XFREE(tmp, NULL, DYNAMIC_TYPE_TMP_BUFFER);
+            OPENSSL_clear_free(tmp, WC_SHA512_BLOCK_SIZE);
         }
     }
     else

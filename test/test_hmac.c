@@ -21,13 +21,14 @@
 
 #include "unit.h"
 #include <stdint.h>
+#include <wolfssl/wolfcrypt/hmac.h>
+#include <wolfengine/we_internal.h>
 
 #ifdef WE_HAVE_HMAC
 
 #if defined(WOLF_CRYPTO_CB) && defined(WOLF_CRYPTO_CB_FIND) && \
     !defined(TEST_MULTITHREADED)
 #include <openssl/hmac.h>
-#include <stdint.h>
 #include <wolfssl/wolfcrypt/cryptocb.h>
 
 #define TEST_HMAC_CB_DEVID 27182
@@ -419,6 +420,33 @@ static int test_hmac_failed_copy_cleanup(ENGINE *e)
 #endif
 }
 
+static int test_hmac_alignment_buffer_cleanup(void)
+{
+#if defined(WE_ALIGNMENT_SAFETY) && !defined(TEST_MULTITHREADED)
+    int err = 0;
+    unsigned char key[32] = { 0 };
+    unsigned char data[257] = { 0 };
+    Hmac hmac;
+
+    err = wc_HmacInit(&hmac, NULL, INVALID_DEVID) != 0;
+    if (err == 0) {
+        err = wc_HmacSetKey(&hmac, WC_SHA512, key, sizeof(key)) != 0;
+    }
+    if (err == 0) {
+        test_openssl_mem_expect_next_clear(WC_SHA512_BLOCK_SIZE);
+        err = we_hmac_update(&hmac, data + 1, sizeof(data) - 1) != 1;
+    }
+    if (err == 0) {
+        err = test_openssl_mem_clear_result() != 1;
+    }
+
+    wc_HmacFree(&hmac);
+    return err;
+#else
+    return 0;
+#endif
+}
+
 int test_hmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
@@ -524,6 +552,9 @@ int test_hmac_create(ENGINE *e, void *data)
     }
     if (ret == 0) {
         ret = test_hmac_failed_copy_cleanup(e);
+    }
+    if (ret == 0) {
+        ret = test_hmac_alignment_buffer_cleanup();
     }
 #if defined(WOLF_CRYPTO_CB) && defined(WOLF_CRYPTO_CB_FIND) && \
     !defined(TEST_MULTITHREADED)
