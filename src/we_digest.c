@@ -925,6 +925,149 @@ static int we_digest_update(EVP_MD_CTX *ctx, const void *data, size_t len)
 }
 
 /**
+ * Copy a digest operation using wolfSSL.
+ *
+ * @param  dstCtx  [in, out]  Destination EVP digest context.
+ * @param  srcCtx  [in]       Source EVP digest context.
+ * @return  1 on success and 0 on failure.
+ */
+static int we_digest_copy(EVP_MD_CTX *dstCtx, const EVP_MD_CTX *srcCtx)
+{
+    int ret = 1;
+    int rc = BAD_FUNC_ARG;
+    we_Digest *dst;
+    const we_Digest *src;
+
+    WOLFENGINE_ENTER(WE_LOG_DIGEST, "we_digest_copy");
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [dstCtx = %p, srcCtx = %p]",
+        dstCtx, srcCtx);
+
+    if (dstCtx == srcCtx) {
+        WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_copy", ret);
+        return ret;
+    }
+
+    dst = (we_Digest *)EVP_MD_CTX_md_data(dstCtx);
+    src = (const we_Digest *)EVP_MD_CTX_md_data(srcCtx);
+    if ((dst == NULL) && (src == NULL)) {
+        /* Some EVP_PKEY methods copy a context before allocating md_data. */
+        WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_copy", ret);
+        return ret;
+    }
+    else if ((dst == NULL) || (src == NULL)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_DIGEST, "digest was NULL");
+        ret = 0;
+    }
+    else if ((src->hashType == 0) &&
+             EVP_MD_CTX_test_flags(srcCtx, EVP_MD_CTX_FLAG_NO_INIT)) {
+        /* HMAC reuses cleansed digest storage without initializing it. */
+        XMEMSET(dst, 0, sizeof(*dst));
+        WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_copy", ret);
+        return ret;
+    }
+    if (ret == 1) {
+        dst->hashType = WC_HASH_TYPE_NONE;
+
+        /* Keep wrapper metadata while clearing the active hash context. */
+#ifdef WE_HAVE_SHA1
+        if (src->hashType == WC_HASH_TYPE_SHA) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha));
+            rc = wc_ShaCopy((wc_Sha *)&src->hash, (wc_Sha *)&dst->hash);
+        }
+        else
+#endif
+#ifdef WE_HAVE_SHA224
+        if (src->hashType == WC_HASH_TYPE_SHA224) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha224));
+            rc = wc_Sha224Copy((wc_Sha224 *)&src->hash,
+                (wc_Sha224 *)&dst->hash);
+        }
+        else
+#endif
+#ifdef WE_HAVE_SHA256
+        if (src->hashType == WC_HASH_TYPE_SHA256) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha256));
+            rc = wc_Sha256Copy((wc_Sha256 *)&src->hash,
+                (wc_Sha256 *)&dst->hash);
+        }
+        else
+#endif
+#ifdef WE_HAVE_SHA384
+        if (src->hashType == WC_HASH_TYPE_SHA384) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha384));
+            rc = wc_Sha384Copy((wc_Sha384 *)&src->hash,
+                (wc_Sha384 *)&dst->hash);
+        }
+        else
+#endif
+#ifdef WE_HAVE_SHA512
+        if (src->hashType == WC_HASH_TYPE_SHA512) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha512));
+            rc = wc_Sha512Copy((wc_Sha512 *)&src->hash,
+                (wc_Sha512 *)&dst->hash);
+        }
+        else
+#endif
+#ifdef WE_HAVE_SHA3_224
+        if (src->hashType == WC_HASH_TYPE_SHA3_224) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha3));
+            rc = wc_Sha3_224_Copy((wc_Sha3 *)&src->hash,
+                (wc_Sha3 *)&dst->hash);
+        }
+        else
+#endif
+#ifdef WE_HAVE_SHA3_256
+        if (src->hashType == WC_HASH_TYPE_SHA3_256) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha3));
+            rc = wc_Sha3_256_Copy((wc_Sha3 *)&src->hash,
+                (wc_Sha3 *)&dst->hash);
+        }
+        else
+#endif
+#ifdef WE_HAVE_SHA3_384
+        if (src->hashType == WC_HASH_TYPE_SHA3_384) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha3));
+            rc = wc_Sha3_384_Copy((wc_Sha3 *)&src->hash,
+                (wc_Sha3 *)&dst->hash);
+        }
+        else
+#endif
+#ifdef WE_HAVE_SHA3_512
+        if (src->hashType == WC_HASH_TYPE_SHA3_512) {
+            XMEMSET(&dst->hash, 0, sizeof(wc_Sha3));
+            rc = wc_Sha3_512_Copy((wc_Sha3 *)&src->hash,
+                (wc_Sha3 *)&dst->hash);
+        }
+        else
+#endif
+        {
+            rc = BAD_FUNC_ARG;
+        }
+
+        if (rc == 0) {
+            dst->hashType = src->hashType;
+        }
+        else {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_*Copy", rc);
+            dst->hashType = src->hashType;
+            rc = wc_HashFree(&dst->hash, dst->hashType);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_DIGEST, "wc_HashFree", rc);
+            }
+            else {
+                OPENSSL_cleanse(&dst->hash, sizeof(dst->hash));
+                dst->hashType = WC_HASH_TYPE_NONE;
+            }
+            ret = 0;
+        }
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_copy", ret);
+
+    return ret;
+}
+
+/**
  * Finalize the digest operation.
  *
  * @param  ctx  [in]  EVP digest context of operation.
@@ -1008,6 +1151,9 @@ static int we_init_digest_meth(EVP_MD *method)
     WOLFENGINE_MSG_VERBOSE(WE_LOG_DIGEST, "ARGS [method = %p]", method);
 
     ret = EVP_MD_meth_set_update(method, we_digest_update);
+    if (ret == 1) {
+        ret = EVP_MD_meth_set_copy(method, we_digest_copy);
+    }
     if (ret == 1) {
         ret = EVP_MD_meth_set_final(method, we_digest_final);
     }

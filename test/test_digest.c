@@ -21,7 +21,136 @@
 
 #include "unit.h"
 
+#include <openssl/hmac.h>
+
 #ifdef WE_HAVE_DIGEST
+
+#ifdef WE_USE_HASH
+static int test_digest_copy(const EVP_MD *md, ENGINE *e)
+{
+    int err = 0;
+    EVP_MD_CTX *src = NULL;
+    EVP_MD_CTX *dst = NULL;
+    const EVP_MD *engineMd;
+    const unsigned char prefix[] = "shared prefix";
+    const unsigned char srcSuffix[] = " source";
+    const unsigned char dstSuffix[] = " destination";
+    const unsigned char srcMsg[] = "shared prefix source";
+    const unsigned char dstMsg[] = "shared prefix destination";
+    unsigned char srcDigest[EVP_MAX_MD_SIZE];
+    unsigned char dstDigest[EVP_MAX_MD_SIZE];
+    unsigned char expected[EVP_MAX_MD_SIZE];
+    unsigned int srcLen = 0;
+    unsigned int dstLen = 0;
+    unsigned int expectedLen = 0;
+
+    engineMd = ENGINE_get_digest(e, EVP_MD_type(md));
+    err = (engineMd == NULL) || (EVP_MD_meth_get_copy(engineMd) == NULL);
+    if (err == 0) {
+        err = ((src = EVP_MD_CTX_new()) == NULL) ||
+              ((dst = EVP_MD_CTX_new()) == NULL);
+    }
+    if (err == 0) {
+        err = EVP_DigestInit_ex(src, md, e) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestUpdate(src, prefix, sizeof(prefix) - 1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_MD_meth_get_copy(engineMd)(src, src) != 1;
+    }
+    if (err == 0) {
+        err = EVP_MD_CTX_copy_ex(dst, src) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestUpdate(src, srcSuffix, sizeof(srcSuffix) - 1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestUpdate(dst, dstSuffix, sizeof(dstSuffix) - 1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestFinal_ex(src, srcDigest, &srcLen) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestFinal_ex(dst, dstDigest, &dstLen) != 1;
+    }
+    if (err == 0) {
+        err = EVP_Digest(srcMsg, sizeof(srcMsg) - 1, expected, &expectedLen,
+            md, NULL) != 1;
+    }
+    if (err == 0) {
+        err = (srcLen != expectedLen) ||
+              (XMEMCMP(srcDigest, expected, srcLen) != 0);
+    }
+    if (err == 0) {
+        err = EVP_Digest(dstMsg, sizeof(dstMsg) - 1, expected, &expectedLen,
+            md, NULL) != 1;
+    }
+    if (err == 0) {
+        err = (dstLen != expectedLen) ||
+              (XMEMCMP(dstDigest, expected, dstLen) != 0);
+    }
+
+    EVP_MD_CTX_free(dst);
+    EVP_MD_CTX_free(src);
+
+    return err;
+}
+
+#if defined(WE_HAVE_HMAC) && defined(WE_HAVE_EVP_PKEY) && \
+    defined(WE_HAVE_SHA384)
+static int test_digest_hmac_reuse(ENGINE *e)
+{
+    int err;
+    EVP_MD_CTX *ctx = NULL;
+    EVP_PKEY *key = NULL;
+    const EVP_MD *md = EVP_sha384();
+    const unsigned char secret[] = "context reuse key";
+    const unsigned char message[] = "context reuse message";
+    unsigned char mac[EVP_MAX_MD_SIZE];
+    unsigned char expected[EVP_MAX_MD_SIZE];
+    unsigned int expectedLen = 0;
+    size_t macLen = sizeof(mac);
+
+    PRINT_MSG("Reuse a finalized digest context for HMAC");
+    err = HMAC(md, secret, sizeof(secret) - 1, message, sizeof(message) - 1,
+        expected, &expectedLen) == NULL;
+    if (err == 0) {
+        ctx = EVP_MD_CTX_new();
+        key = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, e, secret,
+            sizeof(secret) - 1);
+        err = (ctx == NULL) || (key == NULL);
+    }
+    if (err == 0) {
+        err = EVP_DigestInit_ex(ctx, md, e) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestUpdate(ctx, message, sizeof(message) - 1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestFinal_ex(ctx, mac, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestSignInit(ctx, NULL, md, e, key) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestSignUpdate(ctx, message, sizeof(message) - 1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestSignFinal(ctx, mac, &macLen) != 1;
+    }
+    if (err == 0) {
+        err = (macLen != expectedLen) ||
+              (XMEMCMP(mac, expected, expectedLen) != 0);
+    }
+
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(key);
+
+    return err;
+}
+#endif
+#endif
 
 int test_digest_op(const EVP_MD *md, ENGINE *e, unsigned char *msg,
                           size_t len, unsigned char *prev,
@@ -108,6 +237,11 @@ static int test_create_digest(const EVP_MD *md, ENGINE *e, void *data)
         PRINT_MSG("Digest With wolfengine");
         err = test_digest_op(md, e, longMsg, longMsgLen, digest, &dLen);
     }
+#ifdef WE_USE_HASH
+    if (err == 0) {
+        err = test_digest_copy(md, e);
+    }
+#endif
 
     OPENSSL_free(longMsg);
 
@@ -155,7 +289,15 @@ int test_sha256(ENGINE *e, void *data)
 #ifdef WE_HAVE_SHA384
 int test_sha384(ENGINE *e, void *data)
 {
-    return test_create_digest(EVP_sha384(), e, data);
+    int err = test_create_digest(EVP_sha384(), e, data);
+
+#if defined(WE_USE_HASH) && defined(WE_HAVE_HMAC) && defined(WE_HAVE_EVP_PKEY)
+    if (err == 0) {
+        err = test_digest_hmac_reuse(e);
+    }
+#endif
+
+    return err;
 }
 #endif
 
