@@ -1461,6 +1461,44 @@ int test_rsa_pkey_sign_missing_data(ENGINE *e, void *data)
     return err;
 }
 
+int test_rsa_pkey_sign_digest_length(ENGINE *e, void *data)
+{
+    int err = 0;
+    const unsigned char *der = rsa_key_der_2048;
+    unsigned char digest[128] = {0};
+    unsigned char sig[256];
+    size_t sigLen = sizeof(sig);
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+
+    (void)data;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(pkey, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign(ctx, sig, &sigLen, digest, sizeof(digest)) > 0;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
 int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data) {
     int err;
     EVP_PKEY *pkey = NULL;
