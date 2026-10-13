@@ -1425,6 +1425,64 @@ int test_aes_gcm_auth_error_queue(ENGINE *e, void *data)
     return err;
 }
 
+int test_aes_gcm_ctrl_output_buffers(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad[] = "AAD";
+    unsigned char msg[] = "Test pattern";
+    unsigned char enc[sizeof(msg)];
+    unsigned char expectedEnc[sizeof(msg)];
+    unsigned char tag[16] = {0};
+    unsigned char expectedTag[16] = {0};
+#if !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
+    unsigned char generated[8] = {0};
+#endif
+
+    (void)data;
+    iv[11] = 1;
+
+    err = test_aes_tag_enc(NULL, EVP_aes_128_gcm(), key, iv, sizeof(iv),
+                           aad, msg, sizeof(msg), expectedEnc, expectedTag,
+                           0, 0);
+    if (err == 0) {
+        err = test_aes_tag_enc(e, EVP_aes_128_gcm(), key, iv, sizeof(iv),
+                               aad, msg, sizeof(msg), enc, tag, 0, 0);
+    }
+    if (err == 0) {
+        err = memcmp(enc, expectedEnc, sizeof(enc)) != 0;
+    }
+    if (err == 0) {
+        err = memcmp(tag, expectedTag, sizeof(tag)) != 0;
+    }
+
+#if !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  -1, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN,
+                                  sizeof(generated), generated) != 1;
+    }
+    if (err == 0) {
+        err = memcmp(generated, iv + sizeof(iv) - sizeof(generated),
+                     sizeof(generated)) != 0;
+    }
+#endif
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
 #endif /* WE_HAVE_AESGCM */
 
 /******************************************************************************/

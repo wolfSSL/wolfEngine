@@ -920,6 +920,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes_gcm_cleanup_empty_ctx, NULL),
     TEST_DECL(test_aes_gcm_aad_length_bounds, NULL),
     TEST_DECL(test_aes_gcm_auth_error_queue, NULL),
+    TEST_DECL(test_aes_gcm_ctrl_output_buffers, NULL),
 #endif
 #ifdef WE_HAVE_AESCCM
     TEST_DECL(test_aes128_ccm, NULL),

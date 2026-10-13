@@ -593,7 +593,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
  *  - EVP_CTRL_GET_IVLEN: get the total IV/nonce length
  *  - EVP_CTRL_AEAD_SET_IVLEN: set the length of an IV/nonce
  *  - EVP_CTRL_GCM_SET_IV_FIXED: set the fixed part of an IV/nonce
- *  - EVP_CTRL_GCM_IV_GEN: set the generated IV/nonce
+ *  - EVP_CTRL_GCM_IV_GEN: get the generated IV/nonce
  *  - EVP_CTRL_AEAD_GET_TAG: get the tag value after encrypt
  *  - EVP_CTRL_AEAD_SET_TAG: set the tag value before decrypt
  *  - EVP_CTRL_AEAD_TLS1_AAD: set AAD for TLS
@@ -601,7 +601,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
  * @param  ctx   [in.out]  EVP cipher context of operation.
  * @param  type  [in]      Type of operation to perform.
  * @param  arg   [in]      Integer argument.
- * @param  ptr   [in]      Pointer argument.
+ * @param  ptr   [in,out]  Pointer argument; direction depends on type.
  * @return  1 on success and 0 on failure.
  */
 static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
@@ -742,9 +742,9 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
             case EVP_CTRL_GCM_IV_GEN:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_GCM_IV_GEN");
-                /* Set the generated IV
+                /* Get the generated IV
                  *   arg [in] size of generated IV/nonce
-                 *   ptr [in] generated IV/nonce data
+                 *   ptr [out] generated IV/nonce data
                  */
                 if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ) || (ptr == NULL) ||
                         (arg > aes->ivLen) || (!aes->ivFixed)) {
@@ -763,7 +763,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_GET_TAG");
                 /* Get the tag from encryption.
                  *   arg [in] size of buffer
-                 *   ptr [in] buffer to copy into
+                 *   ptr [out] buffer to copy into
                  */
                 if ((!aes->enc) || (arg <= 0) || (arg > aes->tagLen)) {
                     ret = 0;
