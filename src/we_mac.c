@@ -635,7 +635,7 @@ static int we_mac_md_to_hash_type(EVP_MD *md)
  * Supported operations include:
  *  - EVP_PKEY_CTRL_MD: set digest to use or initialize CMAC operation.
  *  - EVP_PKEY_CTRL_SET_MAC_KEY: set password/key to use.
- *  - EVP_PKEY_CTRL_CIPHER: set cipher to use with CMAC.
+ *  - EVP_PKEY_CTRL_CIPHER: validate and set cipher to use with CMAC.
  *  - EVP_PKEY_CTRL_DIGESTINIT: initialize HMAC's digest.
  *
  * @param  ctx   [in]  EVP_PKEY context being used.
@@ -739,10 +739,18 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                         ret = 0;
                     }
                     else {
-                        mac->cipherNid = EVP_CIPHER_nid(
+                        int cipherNid = EVP_CIPHER_nid(
                                 (const EVP_CIPHER *)ptr);
-                        if (mac->cipherNid == NID_undef)
-                            ret = 0;
+
+                        switch (cipherNid) {
+                            case NID_aes_128_cbc:
+                            case NID_aes_192_cbc:
+                            case NID_aes_256_cbc:
+                                mac->cipherNid = cipherNid;
+                                break;
+                            default:
+                                ret = 0;
+                        }
                     }
                 }
             #endif
