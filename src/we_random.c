@@ -185,9 +185,16 @@ static int we_rand_seed(const void *buf, int num)
         }
 #else
         /* Mix the seed into the global seed. */
-        (void)we_rand_mix_seed(we_seed, sizeof(we_seed),
+        ret = we_rand_mix_seed(we_seed, sizeof(we_seed),
                 (const unsigned char*)buf, num);
-        haveSeed = 1;
+        if (ret == 1) {
+            haveSeed = 1;
+        }
+        else {
+            haveSeed = 0;
+            WOLFENGINE_ERROR_MSG(WE_LOG_RNG,
+                                 "we_rand_mix_seed failed");
+        }
 #endif
     #ifndef WE_SINGLE_THREADED
         wc_UnLockMutex(we_rng_mutex);
