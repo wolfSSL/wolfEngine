@@ -221,6 +221,52 @@ static int test_hkdf_extract_capacity(ENGINE *e, const EVP_MD *md)
 }
 #endif
 
+static int test_hkdf_oversized_output(ENGINE *e, int mode)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char key[32] = { 0 };
+    unsigned char out[1];
+    size_t len = (size_t)(word32)-1;
+
+    if (sizeof(size_t) == sizeof(word32)) {
+        return 0;
+    }
+    len += 2U;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive_init(ctx) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_CTX_hkdf_mode(ctx, mode) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set_hkdf_md(ctx, EVP_sha256()) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_set1_hkdf_key(ctx, key, sizeof(key)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) &&
+            (EVP_PKEY_CTX_add1_hkdf_info(ctx, key, sizeof(key)) != 1)) {
+        err = 1;
+    }
+    if ((err == 0) && (EVP_PKEY_derive(ctx, out, &len) == 1)) {
+        err = 1;
+    }
+    len = ((size_t)EVP_MD_size(EVP_sha256()) * 255U) + 1U;
+    if ((err == 0) && (EVP_PKEY_derive(ctx, out, &len) == 1)) {
+        err = 1;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    return err;
+}
 #endif
 
 static int test_hkdf_md(ENGINE *e, const EVP_MD *md, int mode)
@@ -740,6 +786,14 @@ int test_hkdf(ENGINE *e, void *data)
         err = test_hkdf_extract_capacity(e, EVP_sha512());
     }
 #endif
+    if (err == 0) {
+        err = test_hkdf_oversized_output(e,
+            EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND);
+    }
+    if (err == 0) {
+        err = test_hkdf_oversized_output(e,
+            EVP_PKEY_HKDEF_MODE_EXPAND_ONLY);
+    }
 #endif
 
     return err;

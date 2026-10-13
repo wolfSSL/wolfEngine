@@ -147,6 +147,19 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No key from app.");
         ret = 0;
     }
+    if ((ret == 1) &&
+            (hkdf->mode != EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY)) {
+        rc = wc_HashGetDigestSize(hkdf->mdType);
+        if (rc <= 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HashGetDigestSize", rc);
+            ret = 0;
+        }
+        else if ((*keySz > (size_t)(word32)-1) ||
+                 (*keySz > ((size_t)rc * 255U))) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "HKDF output is too large.");
+            ret = 0;
+        }
+    }
     if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND)) {
         PRIVATE_KEY_UNLOCK();
         rc = wc_HKDF(hkdf->mdType, hkdf->key, (word32)hkdf->keySz, hkdf->salt,
