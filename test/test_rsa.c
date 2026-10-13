@@ -1330,6 +1330,9 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
         PRINT_MSG("Change the public exponent w/ ctrl command");
         err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_KEYGEN,
                                 EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP, 0, eCmd) <= 0;
+        if (err == 0) {
+            eCmd = NULL;
+        }
     }
     if (err == 0) {
         PRINT_MSG("Generate RSA key w/ new parameters");
@@ -1345,7 +1348,7 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
         err = BN_num_bits(n) != newKeySize;
     }
     if (err == 0) {
-        err = BN_cmp(eCmd, eKey) != 0;
+        err = BN_get_word(eKey) != 3;
     }
 
     if (err == 0) {
@@ -1396,6 +1399,9 @@ int test_rsa_pkey_large_exponent(ENGINE *e, void *data)
     }
     if (err == 0) {
         err = EVP_PKEY_CTX_set_rsa_keygen_pubexp(ctx, requestedExp) <= 0;
+        if (err == 0) {
+            requestedExp = NULL;
+        }
     }
     if (err == 0) {
         err = EVP_PKEY_keygen(ctx, &pkey) != 1;
@@ -1406,7 +1412,8 @@ int test_rsa_pkey_large_exponent(ENGINE *e, void *data)
     }
     if (err == 0) {
         RSA_get0_key(rsaKey, NULL, &keyExp, NULL);
-        err = keyExp == NULL || BN_cmp(requestedExp, keyExp) != 0;
+        err = keyExp == NULL ||
+              BN_get_word(keyExp) != (BN_ULONG)INT_MAX + 6U;
     }
 
     BN_free(requestedExp);
