@@ -565,8 +565,8 @@ static int we_rsa_set_public_key_from_ctx(EVP_PKEY_CTX* ctx, we_Rsa* engineRsa)
 /**
  * Set the private key in a we_Rsa structure.
  *
- * @param  ctx     [in]  Public key context of operation.
- * @param  rsa     [in]  RSA structure to hold private key.
+ * @param  rsaKey     [in]   OpenSSL RSA private key.
+ * @param  engineRsa  [out]  wolfEngine RSA object to hold key.
  * @returns  1 on success and 0 on failure.
  */
 static int we_rsa_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
