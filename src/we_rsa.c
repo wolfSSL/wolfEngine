@@ -476,7 +476,7 @@ static int we_rsa_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
 
     /* DER encoded public key with OpenSSL. */
     pubDerLen = i2d_RSAPublicKey(rsaKey, &pubDer);
-    if (pubDerLen == 0) {
+    if (pubDerLen <= 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_RSAPublicKey", pubDerLen);
         ret = 0;
     }
