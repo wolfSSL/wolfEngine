@@ -244,6 +244,8 @@ static int we_globalRngInited = 0;
 wolfSSL_Mutex we_global_rng_mutex;
 /* Pointer to mutex for protecting use of global random number generator.*/
 wolfSSL_Mutex* we_rng_mutex = &we_global_rng_mutex;
+/* Global RNG mutex has been initialized. */
+static int we_globalRngMutexInited = 0;
 #endif
 
 /**
@@ -255,6 +257,18 @@ int we_rng_is_initialized(void)
 {
     return we_globalRngInited;
 }
+
+#ifndef WE_SINGLE_THREADED
+/**
+ * Get whether the global random number generator mutex is initialized.
+ *
+ * @returns  1 when initialized and 0 otherwise.
+ */
+int we_rng_mutex_is_initialized(void)
+{
+    return we_globalRngMutexInited;
+}
+#endif
 
 /**
  * Initialize the global random number generator object.
@@ -282,6 +296,9 @@ static int we_init_random(void)
                 WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wc_InitMutex", rc);
                 ret = 0;
             }
+            else {
+                we_globalRngMutexInited = 1;
+            }
         }
     #endif
         if (ret == 1) {
@@ -302,11 +319,15 @@ static void we_final_random(void)
     WOLFENGINE_ENTER(WE_LOG_ENGINE, "we_final_random");
 
     if (we_globalRngInited) {
-    #ifndef WE_SINGLE_THREADED
-        wc_FreeMutex(&we_global_rng_mutex);
+    #if defined(WE_HAVE_RANDOM) && !defined(WE_STATIC_WOLFSSL)
+        we_rand_clear_seed();
     #endif
         wc_FreeRng(&we_globalRng);
         we_globalRngInited = 0;
+    #ifndef WE_SINGLE_THREADED
+        we_globalRngMutexInited = 0;
+        wc_FreeMutex(&we_global_rng_mutex);
+    #endif
     }
 
     WOLFENGINE_LEAVE(WE_LOG_ENGINE, "we_final_random", 1);
