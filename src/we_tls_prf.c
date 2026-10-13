@@ -140,6 +140,10 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No secret from app.");
         ret = 0;
     }
+    if ((ret == 1) && (*keySz > UINT32_MAX)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Output size too large");
+        ret = 0;
+    }
     if ((ret == 1) && (tls1Prf->mdType == NID_md5_sha1)) {
          /* Calculate key.
           * Label is included in seed so pass in buffer and 0 length for label.
