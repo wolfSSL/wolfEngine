@@ -583,9 +583,10 @@ static int we_rsa_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
 
     /* DER encoded private key with OpenSSL. */
     privDerLen = i2d_RSAPrivateKey(rsaKey, &privDer);
-    if (privDerLen == 0) {
+    if (privDerLen <= 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_RSAPrivateKey", privDerLen);
         ret = 0;
+        privDerLen = 0;
     }
 
     if (ret == 1) {
