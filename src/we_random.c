@@ -33,6 +33,24 @@ extern int wc_RNG_DRBG_Reseed(WC_RNG* rng, const byte* seed, word32 seedSz);
 unsigned char we_seed[WC_SHA256_DIGEST_SIZE] = {0,};
 /* Have added to global seed. */
 int haveSeed = 0;
+#if !defined(WE_SINGLE_THREADED) && defined(WOLFSSL_ATOMIC_OPS)
+/* Tickets for serializing access to supplemental seed state. */
+static wolfSSL_Atomic_Int we_seedLockNext = 0;
+static wolfSSL_Atomic_Int we_seedLockServing = 0;
+
+static void we_rand_lock_seed_state(void)
+{
+    int ticket = wolfSSL_Atomic_Int_FetchAdd(&we_seedLockNext, 1);
+
+    while (wolfSSL_Atomic_Int_FetchAdd(&we_seedLockServing, 0) != ticket) {
+    }
+}
+
+static void we_rand_unlock_seed_state(void)
+{
+    wolfSSL_Atomic_Int_FetchAdd(&we_seedLockServing, 1);
+}
+#endif
 #endif
 
 #ifndef WE_STATIC_WOLFSSL
@@ -53,7 +71,7 @@ static int we_rand_mix_seed(unsigned char* buf, int num,
     int ret = 1;
     int rc;
     wc_Sha256 sha256;
-    unsigned char seedHash[WC_SHA256_DIGEST_SIZE];
+    unsigned char seedHash[WC_SHA256_DIGEST_SIZE] = {0,};
     unsigned char hash[WC_SHA256_DIGEST_SIZE] = {0,};
     int i;
     int j;
@@ -140,6 +158,9 @@ static int we_rand_mix_seed(unsigned char* buf, int num,
         wc_Sha256Free(&sha256);
     }
 
+    OPENSSL_cleanse(seedHash, sizeof(seedHash));
+    OPENSSL_cleanse(hash, sizeof(hash));
+
     WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_mix_seed", ret);
 
     return ret;
@@ -184,6 +205,9 @@ static int we_rand_seed(const void *buf, int num)
             ret = 0;
         }
 #else
+    #if !defined(WE_SINGLE_THREADED) && defined(WOLFSSL_ATOMIC_OPS)
+        we_rand_lock_seed_state();
+    #endif
         /* Mix the seed into the global seed. */
         ret = we_rand_mix_seed(we_seed, sizeof(we_seed),
                 (const unsigned char*)buf, num);
@@ -191,10 +215,14 @@ static int we_rand_seed(const void *buf, int num)
             haveSeed = 1;
         }
         else {
+            OPENSSL_cleanse(we_seed, sizeof(we_seed));
             haveSeed = 0;
             WOLFENGINE_ERROR_MSG(WE_LOG_RNG,
                                  "we_rand_mix_seed failed");
         }
+    #if !defined(WE_SINGLE_THREADED) && defined(WOLFSSL_ATOMIC_OPS)
+        we_rand_unlock_seed_state();
+    #endif
 #endif
     #ifndef WE_SINGLE_THREADED
         wc_UnLockMutex(we_rng_mutex);
@@ -210,10 +238,53 @@ static int we_rand_seed(const void *buf, int num)
 #endif
 }
 
+#ifndef WE_STATIC_WOLFSSL
+/**
+ * Clear the supplemental seed state.
+ *
+ * OpenSSL can invoke the RAND cleanup callback after destroying the engine,
+ * so supplemental seed state uses synchronization independent of the
+ * engine-owned RNG mutex when atomic operations are available.
+ */
+void we_rand_clear_seed(void)
+{
+#if !defined(WE_SINGLE_THREADED) && defined(WOLFSSL_ATOMIC_OPS)
+    we_rand_lock_seed_state();
+#elif !defined(WE_SINGLE_THREADED)
+    int locked = 0;
+    int rc;
+
+    if (we_rng_mutex_is_initialized()) {
+        rc = wc_LockMutex(we_rng_mutex);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_RNG, "wc_LockMutex", rc);
+            return;
+        }
+        else {
+            locked = 1;
+        }
+    }
+#endif
+
+    OPENSSL_cleanse(we_seed, sizeof(we_seed));
+    haveSeed = 0;
+
+#if !defined(WE_SINGLE_THREADED) && defined(WOLFSSL_ATOMIC_OPS)
+    we_rand_unlock_seed_state();
+#elif !defined(WE_SINGLE_THREADED)
+    if (locked) {
+        wc_UnLockMutex(we_rng_mutex);
+    }
+#endif
+}
+#endif
+
 static void we_rand_cleanup(void)
 {
-    /* Global random cleanup done in internal.c: we_final_random(). */
     WOLFENGINE_ENTER(WE_LOG_RNG, "we_rand_cleanup");
+#ifndef WE_STATIC_WOLFSSL
+    we_rand_clear_seed();
+#endif
     WOLFENGINE_LEAVE(WE_LOG_RNG, "we_rand_cleanup", 1);
 }
 
@@ -393,6 +464,9 @@ static int we_rand_bytes(unsigned char *buf, int num)
                 ret = 0;
             }
         #ifndef WE_STATIC_WOLFSSL
+        #if !defined(WE_SINGLE_THREADED) && defined(WOLFSSL_ATOMIC_OPS)
+            we_rand_lock_seed_state();
+        #endif
             /* Mix global seed if RAND_add() or RAND_seed() has been called. */
             if (ret == 1 && haveSeed) {
                 ret = we_rand_mix_seed(buf, num, we_seed, sizeof(we_seed));
@@ -401,6 +475,9 @@ static int we_rand_bytes(unsigned char *buf, int num)
                                                      "global seed failed");
                 }
             }
+        #if !defined(WE_SINGLE_THREADED) && defined(WOLFSSL_ATOMIC_OPS)
+            we_rand_unlock_seed_state();
+        #endif
             /* Mix in weak entropy. */
             if (ret == 1) {
                 ret = we_rand_add_weak_entropy(buf, num);

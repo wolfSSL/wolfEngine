@@ -139,8 +139,12 @@ WOLFENGINE_LOCAL void *we_memdup(const void *data, size_t siz);
 extern WC_RNG* we_rng;
 #ifndef WE_SINGLE_THREADED
 extern wolfSSL_Mutex* we_rng_mutex;
+WOLFENGINE_LOCAL int we_rng_mutex_is_initialized(void);
 #endif
 WOLFENGINE_LOCAL int we_rng_is_initialized(void);
+#if defined(WE_HAVE_RANDOM) && !defined(WE_STATIC_WOLFSSL)
+WOLFENGINE_LOCAL void we_rand_clear_seed(void);
+#endif
 
 WOLFENGINE_LOCAL int we_pkey_get_nids(const int** nids);
 WOLFENGINE_LOCAL int we_pkey_asn1_get_nids(const int** nids);

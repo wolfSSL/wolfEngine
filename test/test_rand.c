@@ -27,6 +27,19 @@
 
 #ifdef WE_HAVE_RANDOM
 
+#if defined(WOLFENGINE_DEBUG) && !defined(WE_STATIC_WOLFSSL)
+static int seedMixCount;
+
+static void test_random_logging_cb(const int logLevel, const int component,
+                                   const char *const logMessage)
+{
+    if (logLevel == WE_LOG_ENTER && component == WE_LOG_RNG &&
+            strcmp(logMessage, "wolfEngine Entering we_rand_mix_seed") == 0) {
+        seedMixCount++;
+    }
+}
+#endif
+
 static int test_random_seed_failure(ENGINE *e)
 {
     const RAND_METHOD *method = ENGINE_get_RAND(e);
@@ -50,7 +63,8 @@ static int test_random_status_after_teardown(ENGINE *e)
     int status;
     pid_t pid;
 
-    if (method == NULL || method->status == NULL || destroy == NULL) {
+    if (method == NULL || method->cleanup == NULL || method->status == NULL ||
+            destroy == NULL) {
         return 1;
     }
 
@@ -62,7 +76,12 @@ static int test_random_status_after_teardown(ENGINE *e)
         if (destroy(e) != 1) {
             _exit(1);
         }
-        _exit(method->status() != 0);
+        if (method->status() != 0) {
+            _exit(1);
+        }
+        method->cleanup();
+        method->cleanup();
+        _exit(0);
     }
 
     if (waitpid(pid, &status, 0) != pid) {
@@ -70,6 +89,44 @@ static int test_random_status_after_teardown(ENGINE *e)
     }
 
     return !WIFEXITED(status) || WEXITSTATUS(status) != 0;
+#else
+    (void)e;
+    return 0;
+#endif
+}
+
+static int test_random_cleanup(ENGINE *e)
+{
+#if defined(WOLFENGINE_DEBUG) && !defined(WE_STATIC_WOLFSSL)
+    const RAND_METHOD *method = ENGINE_get_RAND(e);
+    unsigned char buf[16] = { 0 };
+    int err = 0;
+
+    if (method == NULL || method->seed == NULL || method->cleanup == NULL ||
+            method->bytes == NULL) {
+        err = 1;
+    }
+    if (err == 0 && (wolfEngine_Debugging_ON() != 0 ||
+            wolfEngine_SetLoggingCb(test_random_logging_cb) != 0 ||
+            wolfEngine_SetLogLevel(WE_LOG_ENTER) != 0 ||
+            wolfEngine_SetLogComponents(WE_LOG_RNG) != 0)) {
+        err = 1;
+    }
+    if (err == 0) {
+        method->seed(buf, sizeof(buf));
+        seedMixCount = 0;
+        method->cleanup();
+        if (method->bytes(buf, sizeof(buf)) != 1 || seedMixCount != 1) {
+            err = 1;
+        }
+    }
+
+    (void)wolfEngine_SetLoggingCb(NULL);
+    (void)wolfEngine_SetLogLevel(WE_LOG_ERROR | WE_LOG_INFO);
+    (void)wolfEngine_SetLogComponents(WE_LOG_COMPONENTS_DEFAULT);
+    wolfEngine_Debugging_OFF();
+
+    return err;
 #else
     (void)e;
     return 0;
@@ -141,6 +198,9 @@ int test_random(ENGINE *e, void *data)
     }
     if (err == 0) {
         err = test_random_api();
+    }
+    if (err == 0) {
+        err = test_random_cleanup(e);
     }
     if (err == 0) {
         err = test_random_status_after_teardown(e);
