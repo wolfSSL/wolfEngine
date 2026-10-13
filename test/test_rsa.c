@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <limits.h>
 #include "unit.h"
 #include <wolfengine/we_fips.h>
 
@@ -1357,6 +1358,58 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
     }
 
     BN_free(eCmd);
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
+int test_rsa_pkey_large_exponent(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+    BIGNUM *requestedExp = NULL;
+    const BIGNUM *keyExp = NULL;
+    const RSA *rsaKey = NULL;
+
+    (void)data;
+
+    if (sizeof(long) <= sizeof(int)) {
+        return 0;
+    }
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, e);
+    err = ctx == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) <= 0;
+    }
+    if (err == 0) {
+        requestedExp = BN_new();
+        err = requestedExp == NULL;
+    }
+    if (err == 0) {
+        err = BN_set_word(requestedExp, (BN_ULONG)INT_MAX + 6U) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_keygen_pubexp(ctx, requestedExp) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &pkey) != 1;
+    }
+    if (err == 0) {
+        rsaKey = EVP_PKEY_get0_RSA(pkey);
+        err = rsaKey == NULL;
+    }
+    if (err == 0) {
+        RSA_get0_key(rsaKey, NULL, &keyExp, NULL);
+        err = keyExp == NULL || BN_cmp(requestedExp, keyExp) != 0;
+    }
+
+    BN_free(requestedExp);
     EVP_PKEY_free(pkey);
     EVP_PKEY_CTX_free(ctx);
 

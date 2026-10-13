@@ -981,6 +981,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_rsa_dec_no_pad_size_query, NULL),
     TEST_DECL(test_rsa_enc_dec_oaep, NULL),
     TEST_DECL(test_rsa_pkey_keygen, NULL),
+    TEST_DECL(test_rsa_pkey_large_exponent, NULL),
     TEST_DECL(test_rsa_pkey_sign_missing_data, NULL),
     TEST_DECL(test_rsa_pkey_invalid_key_size, NULL),
 #endif /* WE_HAVE_RSA */
