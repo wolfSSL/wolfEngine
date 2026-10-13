@@ -347,6 +347,138 @@ static void test_des3_cbc_log_cb(const int logLevel, const int component,
 #endif
 
 
+static int test_des3_cbc_copy(ENGINE *e)
+{
+    const int offsets[] = { 0, 1, 7, 8, 9, 17, 33 };
+    unsigned char key[24] = { 1 };
+    unsigned char nextKey[24] = { 2 };
+    unsigned char iv[8] = { 4 };
+    unsigned char in[64] = { 3 };
+    unsigned char out[80];
+    unsigned char expected[80];
+    EVP_CIPHER_CTX *src = NULL, *copy = NULL;
+    EVP_CIPHER_CTX *ref = NULL, *copyRef = NULL;
+    int err = 0, enc, order, stage, i, outLen, expectedLen;
+
+    PRINT_MSG("Copy DES3-CBC with buffered and complete blocks");
+    for (enc = 0; err == 0 && enc < 2; enc++) {
+        for (order = 0; err == 0 && order < 2; order++) {
+            for (i = 0; err == 0 && i < (int)(sizeof(offsets) /
+                                                   sizeof(offsets[0])); i++) {
+                src = EVP_CIPHER_CTX_new();
+                copy = EVP_CIPHER_CTX_new();
+                ref = EVP_CIPHER_CTX_new();
+                copyRef = EVP_CIPHER_CTX_new();
+                if (src == NULL || copy == NULL || ref == NULL ||
+                    copyRef == NULL) {
+                    err = 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherInit_ex(src, EVP_des_ede3_cbc(), e, key, iv,
+                                            enc) != 1 ||
+                          EVP_CipherInit_ex(copy, EVP_des_ede3_cbc(), e, nextKey,
+                                            iv, enc) != 1 ||
+                          EVP_CipherInit_ex(ref, EVP_des_ede3_cbc(), NULL, key,
+                                            iv, enc) != 1 ||
+                          EVP_CIPHER_CTX_set_padding(src, 0) != 1 ||
+                          EVP_CIPHER_CTX_set_padding(ref, 0) != 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherUpdate(src, out, &outLen, in,
+                                          offsets[i]) != 1 ||
+                          EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                          offsets[i]) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0 ||
+                          EVP_CIPHER_CTX_copy(copy, src) != 1 ||
+                          EVP_CIPHER_CTX_copy(copyRef, ref) != 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherInit_ex(src, NULL, NULL, nextKey, iv,
+                                            enc) != 1 ||
+                          EVP_CipherInit_ex(ref, NULL, NULL, nextKey, iv,
+                                            enc) != 1;
+                }
+                if (order == 0) {
+                    EVP_CIPHER_CTX_free(src);
+                    src = NULL;
+                }
+                if (err == 0) {
+                    err = EVP_CipherUpdate(copy, out, &outLen,
+                                          in + offsets[i],
+                                          sizeof(in) - offsets[i]) != 1 ||
+                          EVP_CipherUpdate(copyRef, expected, &expectedLen,
+                                          in + offsets[i],
+                                          sizeof(in) - offsets[i]) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0;
+                }
+                if (err == 0) {
+                    err = EVP_CipherFinal_ex(copy, out, &outLen) != 1 ||
+                          EVP_CipherFinal_ex(copyRef, expected,
+                                             &expectedLen) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0;
+                }
+                EVP_CIPHER_CTX_free(copy);
+                copy = NULL;
+                if (err == 0 && order == 1) {
+                    err = EVP_CipherUpdate(src, out, &outLen, in,
+                                          sizeof(in)) != 1 ||
+                          EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                          sizeof(in)) != 1;
+                    if (err == 0) {
+                        err = outLen != expectedLen ||
+                              XMEMCMP(out, expected, outLen) != 0;
+                    }
+                }
+                EVP_CIPHER_CTX_free(src);
+                EVP_CIPHER_CTX_free(ref);
+                EVP_CIPHER_CTX_free(copyRef);
+                src = ref = copyRef = NULL;
+            }
+        }
+    }
+    PRINT_MSG("Copy DES3-CBC before setting the key");
+    for (stage = 0; err == 0 && stage < 2; stage++) {
+        src = EVP_CIPHER_CTX_new();
+        copy = EVP_CIPHER_CTX_new();
+        ref = EVP_CIPHER_CTX_new();
+        if (src == NULL || copy == NULL || ref == NULL) {
+            err = 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherInit_ex(src, EVP_des_ede3_cbc(), e, NULL,
+                                    stage ? iv : NULL, 1) != 1 ||
+                  EVP_CIPHER_CTX_copy(copy, src) != 1 ||
+                  EVP_CipherInit_ex(copy, NULL, NULL, key,
+                                    stage ? NULL : iv, 1) != 1 ||
+                  EVP_CipherInit_ex(ref, EVP_des_ede3_cbc(), NULL, key, iv,
+                                    1) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherUpdate(copy, out, &outLen, in, sizeof(in)) != 1 ||
+                  EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                   sizeof(in)) != 1;
+        }
+        if (err == 0) {
+            err = outLen != expectedLen ||
+                  XMEMCMP(out, expected, outLen) != 0;
+        }
+        EVP_CIPHER_CTX_free(src);
+        EVP_CIPHER_CTX_free(copy);
+        EVP_CIPHER_CTX_free(ref);
+        src = copy = ref = NULL;
+    }
+    return err;
+}
+
 int test_des3_cbc(ENGINE *e, void *data)
 {
     return test_cipher_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8);
@@ -363,6 +495,8 @@ int test_des3_cbc_stream(ENGINE *e, void *data)
         err = test_stream_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8, 1, 1);
     if (err == 0)
         err = test_stream_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8, 7, 1);
+    if (err == 0)
+        err = test_des3_cbc_copy(e);
 
     return err;
 }
@@ -474,6 +608,95 @@ int test_des3_cbc_decrypt_error_log(ENGINE *e, void *data)
     (void)data;
     return 0;
 #endif
+}
+
+/******************************************************************************/
+
+int test_des3_cbc_rekey_cleanup(ENGINE *e, void *data)
+{
+    int err = 0;
+    const EVP_CIPHER *cipher;
+    EVP_CIPHER_CTX *ctx = NULL;
+    EVP_CIPHER_CTX *ref = NULL;
+    EVP_CIPHER_CTX *copyCtx = NULL;
+    int (*cleanup)(EVP_CIPHER_CTX *) = NULL;
+    unsigned char key[24] = { 0 };
+    unsigned char nextKey[24] = { 2 };
+    unsigned char iv[8] = { 0 };
+    unsigned char in[8] = { 0 };
+    unsigned char out[8];
+    unsigned char expected[8];
+    int outLen;
+    int expectedLen;
+
+    (void)data;
+
+    cipher = ENGINE_get_cipher(e, NID_des_ede3_cbc);
+    if (cipher == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = (EVP_CIPHER_flags(cipher) & EVP_CIPH_CTRL_INIT) == 0;
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (err == 0) {
+        cleanup = EVP_CIPHER_meth_get_cleanup(cipher);
+    }
+#else
+    if (err == 0) {
+        cleanup = cipher->cleanup;
+    }
+#endif
+    if (err == 0) {
+        err = cleanup == NULL;
+    }
+    if (err == 0) {
+        ctx = EVP_CIPHER_CTX_new();
+        ref = EVP_CIPHER_CTX_new();
+        copyCtx = EVP_CIPHER_CTX_new();
+        if ((ctx == NULL) || (ref == NULL) || (copyCtx == NULL)) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        err = cleanup(copyCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_des_ede3_cbc(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_copy(copyCtx, ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, NULL, nextKey, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ctx, 0) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, out, &outLen, in, sizeof(in)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ref, EVP_des_ede3_cbc(), NULL, nextKey, iv) !=
+              1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ref, 0) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ref, expected, &expectedLen, in, sizeof(in)) !=
+              1;
+    }
+    if (err == 0) {
+        err = (outLen != expectedLen) ||
+              (XMEMCMP(out, expected, sizeof(out)) != 0);
+    }
+
+    EVP_CIPHER_CTX_free(copyCtx);
+    EVP_CIPHER_CTX_free(ref);
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
 }
 
 #endif /* WE_HAVE_DES3CBC */
