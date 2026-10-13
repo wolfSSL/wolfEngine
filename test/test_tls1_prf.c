@@ -21,6 +21,8 @@
 
 #include "unit.h"
 
+#include <stdint.h>
+
 #ifdef WE_HAVE_TLS1_PRF
 
 #if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
@@ -490,6 +492,51 @@ int test_tls1_prf_secret_failure(ENGINE *e, void *data)
     if (!initialDebug) {
         wolfEngine_Debugging_OFF();
     }
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    (void)data;
+    return 0;
+#endif
+}
+
+/******************************************************************************/
+
+int test_tls1_prf_output_size(ENGINE *e, void *data)
+{
+#if SIZE_MAX > UINT32_MAX
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char secret[16] = { 0 };
+    unsigned char seed[16] = { 0 };
+    unsigned char key[1] = { 0 };
+    size_t keySz = (size_t)UINT32_MAX + 2U;
+
+    (void)data;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_TLS1_PRF, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_tls1_prf_md(ctx, EVP_sha256()) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set1_tls1_prf_secret(ctx, secret,
+                                                sizeof(secret)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_add1_tls1_prf_seed(ctx, seed, sizeof(seed)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive(ctx, key, &keySz) > 0;
+    }
+
     EVP_PKEY_CTX_free(ctx);
 
     return err;
