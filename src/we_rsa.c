@@ -2833,7 +2833,16 @@ static int we_rsa_pkey_verify_recover(EVP_PKEY_CTX *ctx, unsigned char* out,
 {
     int ret = 1;
     int rc;
+    int keySize;
+    int mdSize;
+    int encodedSize;
+    int prefixSize;
     we_Rsa *rsa = NULL;
+    unsigned char *decoded = NULL;
+    unsigned char *encoded = NULL;
+    const unsigned char *digest = NULL;
+    unsigned char emptyDigest[EVP_MAX_MD_SIZE];
+    unsigned char encodedDigest[MAX_DER_DIGEST_SZ];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify_recover");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, out = %p, outSz = %p, "
@@ -2862,15 +2871,82 @@ static int we_rsa_pkey_verify_recover(EVP_PKEY_CTX *ctx, unsigned char* out,
             }
         }
         else {
-            /* Unpad and public decrypt. */
-            rc = we_rsa_pub_dec_int(inSz, in, *outSz, out, rsa);
-            if (rc < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
-                ret = 0;
+            /* Digest recovery needs room for the encoded form before it is
+             * reduced to the caller's digest-sized buffer. */
+            if (rsa->md != NULL && (rsa->padMode == RSA_PKCS1_PADDING
+#ifdef WE_HAVE_RSA_X931
+                || rsa->padMode == RSA_X931_PADDING
+#endif
+                )) {
+                keySize = wc_RsaEncryptSize(&rsa->key);
+                if (keySize <= 0) {
+                    ret = 0;
+                }
+                else {
+                    decoded = (unsigned char *)OPENSSL_malloc((size_t)keySize);
+                    if (decoded == NULL) {
+                        ret = 0;
+                    }
+                }
             }
-            else {
-                *outSz = rc;
+            if (ret == 1) {
+                rc = we_rsa_pub_dec_int(inSz, in,
+                        decoded != NULL ? (size_t)keySize : *outSz,
+                        decoded != NULL ? decoded : out, rsa);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
+                    ret = 0;
+                }
             }
+            if (ret == 1 && decoded != NULL) {
+                mdSize = EVP_MD_size(rsa->md);
+                if (mdSize <= 0 || mdSize > EVP_MAX_MD_SIZE) {
+                    ret = 0;
+                }
+                else if (rsa->padMode == RSA_PKCS1_PADDING) {
+                    XMEMSET(emptyDigest, 0, (size_t)mdSize);
+                    encoded = encodedDigest;
+                    encodedSize = we_der_encode_digest(rsa->md, emptyDigest,
+                                                       (size_t)mdSize, &encoded);
+                    prefixSize = encodedSize - mdSize;
+                    if (encodedSize <= 0 || prefixSize < 0 ||
+                        rc != encodedSize ||
+                        XMEMCMP(decoded, encodedDigest,
+                                (size_t)prefixSize) != 0) {
+                        ret = 0;
+                    }
+                    else {
+                        digest = decoded + prefixSize;
+                        rc = mdSize;
+                    }
+                }
+#ifdef WE_HAVE_RSA_X931
+                else if (rsa->padMode == RSA_X931_PADDING) {
+                    if (we_rsa_get_x931_hash_code(EVP_MD_type(rsa->md)) == 0 ||
+                        rc != mdSize + 1 ||
+                        decoded[mdSize] !=
+                            we_rsa_get_x931_hash_code(EVP_MD_type(rsa->md))) {
+                        ret = 0;
+                    }
+                    else {
+                        digest = decoded;
+                        rc = mdSize;
+                    }
+                }
+#endif
+                if (ret == 1) {
+                    if (*outSz < (size_t)rc) {
+                        ret = 0;
+                    }
+                    else {
+                        XMEMCPY(out, digest, (size_t)rc);
+                    }
+                }
+            }
+            if (ret == 1) {
+                *outSz = (size_t)rc;
+            }
+            OPENSSL_free(decoded);
         }
     }
 
@@ -2933,11 +3009,18 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         ret = -1;
     }
     if (ret == 1) {
-        rc = we_rsa_pkey_verify_recover(ctx, decryptedSig, &decLen, sig,
-                                        sigLen);
-        if (rc <= 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pkey_verify_recover", rc);
+        if (!rsa->pubKeySet) {
+            ret = we_rsa_set_public_key_from_ctx(ctx, rsa);
+        }
+    }
+    if (ret == 1) {
+        rc = we_rsa_pub_dec_int(sigLen, sig, decLen, decryptedSig, rsa);
+        if (rc < 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
             ret = 0;
+        }
+        else {
+            decLen = (size_t)rc;
         }
     }
     if ((ret == 1) && (rsa->padMode == RSA_PKCS1_PSS_PADDING)) {

@@ -301,6 +301,7 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data);
 int test_rsa_pkey_large_exponent(ENGINE *e, void *data);
 int test_rsa_pkey_sign_missing_data(ENGINE *e, void *data);
 int test_rsa_pkey_sign_digest_length(ENGINE *e, void *data);
+int test_rsa_verify_recover_digest(ENGINE *e, void *data);
 int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 

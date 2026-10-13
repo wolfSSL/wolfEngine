@@ -1617,6 +1617,138 @@ int test_rsa_pkey_sign_digest_length(ENGINE *e, void *data)
     return err;
 }
 
+static int test_rsa_verify_recover_digest_padding(ENGINE *e, EVP_PKEY *pkey,
+                                                   int padding)
+{
+    int err = 0;
+    unsigned char digest[32] = {0};
+    unsigned char signature[256];
+    unsigned char recovered[32];
+    unsigned char shortRecovered[33];
+    size_t signatureLen = sizeof(signature);
+    size_t recoveredLen = sizeof(recovered);
+    EVP_PKEY_CTX *signCtx = NULL;
+    EVP_PKEY_CTX *recoverCtx = NULL;
+    EVP_PKEY_CTX *verifyCtx = NULL;
+
+    digest[0] = 0x12;
+    digest[sizeof(digest) - 1] = 0x34;
+
+    signCtx = EVP_PKEY_CTX_new(pkey, e);
+    err = signCtx == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(signCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(signCtx, padding) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(signCtx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign(signCtx, signature, &signatureLen, digest,
+                            sizeof(digest)) != 1;
+    }
+
+    if (err == 0) {
+        recoverCtx = EVP_PKEY_CTX_new(pkey, e);
+        err = recoverCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify_recover_init(recoverCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(recoverCtx, padding) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(recoverCtx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify_recover(recoverCtx, recovered, &recoveredLen,
+                                      signature, signatureLen) != 1;
+    }
+    if (err == 0) {
+        err = recoveredLen != sizeof(digest) ||
+              XMEMCMP(recovered, digest, sizeof(digest)) != 0;
+    }
+    if (err == 0) {
+        XMEMSET(shortRecovered, 0xa5, sizeof(shortRecovered));
+        recoveredLen = sizeof(digest) - 1;
+        err = EVP_PKEY_verify_recover(recoverCtx, shortRecovered, &recoveredLen,
+                                      signature, signatureLen) > 0 ||
+              shortRecovered[sizeof(digest) - 1] != 0xa5 ||
+              shortRecovered[sizeof(digest)] != 0xa5;
+    }
+
+    if (err == 0) {
+        verifyCtx = EVP_PKEY_CTX_new(pkey, e);
+        err = verifyCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify_init(verifyCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(verifyCtx, padding) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(verifyCtx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify(verifyCtx, signature, signatureLen, digest,
+                              sizeof(digest)) != 1;
+    }
+
+#if defined(WE_HAVE_SHA3_256) && !defined(HAVE_FIPS) && \
+    !defined(HAVE_FIPS_VERSION)
+    if (err == 0 && padding == RSA_PKCS1_PADDING) {
+        err = EVP_PKEY_CTX_set_signature_md(signCtx, EVP_sha3_256()) <= 0;
+    }
+    if (err == 0 && padding == RSA_PKCS1_PADDING) {
+        signatureLen = sizeof(signature);
+        err = EVP_PKEY_sign(signCtx, signature, &signatureLen, digest,
+                            sizeof(digest)) != 1;
+    }
+    if (err == 0 && padding == RSA_PKCS1_PADDING) {
+        recoveredLen = sizeof(recovered);
+        err = EVP_PKEY_verify_recover(recoverCtx, recovered, &recoveredLen,
+                                      signature, signatureLen) > 0;
+    }
+#endif
+
+    EVP_PKEY_CTX_free(verifyCtx);
+    EVP_PKEY_CTX_free(recoverCtx);
+    EVP_PKEY_CTX_free(signCtx);
+
+    return err;
+}
+
+int test_rsa_verify_recover_digest(ENGINE *e, void *data)
+{
+    int err = 0;
+    const unsigned char *der = rsa_key_der_2048;
+    EVP_PKEY *pkey = NULL;
+
+    (void)data;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        err = test_rsa_verify_recover_digest_padding(e, pkey,
+                                                      RSA_PKCS1_PADDING);
+    }
+#ifdef WE_HAVE_RSA_X931
+    if (err == 0) {
+        err = test_rsa_verify_recover_digest_padding(e, pkey,
+                                                      RSA_X931_PADDING);
+    }
+#endif
+
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
 int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data) {
     int err;
     EVP_PKEY *pkey = NULL;
