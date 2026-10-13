@@ -22,6 +22,7 @@
 #include <limits.h>
 
 #include <wolfengine/we_internal.h>
+#include <openssl/err.h>
 
 /* May not be available in FIPS builds of wolfSSL */
 #ifndef GCM_NONCE_MAX_SZ
@@ -34,6 +35,15 @@
 #endif
 
 #ifdef WE_HAVE_AESGCM
+
+#define WE_GCM_BACKEND_FAILURE 100
+
+static void we_aes_gcm_set_error(const char* operation)
+{
+    ERR_put_error(ERR_LIB_USER, 0, WE_GCM_BACKEND_FAILURE,
+                  __FILE__, __LINE__);
+    ERR_add_error_data(2, "wolfEngine AES-GCM: ", operation);
+}
 
 /*
  * AES-GCM
@@ -265,6 +275,7 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
             aes->aadLen);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex", rc);
+            we_aes_gcm_set_error("encryption failed");
             ret = -1;
         }
         /* Advance the explicit nonce for the next record, matching OpenSSL. */
@@ -298,6 +309,10 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                               EVP_GCM_TLS_TAG_LEN, aes->aad, aes->aadLen);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt", rc);
+            /* DTLS silently discards records that fail authentication. */
+            if (rc != AES_GCM_AUTH_E) {
+                we_aes_gcm_set_error("decryption failed");
+            }
             ret = -1;
         }
         if (ret == 1) {
@@ -447,6 +462,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
         ret = wc_AesGcmSetExtIV(&aes->aes, aes->iv, aes->ivLen);
         if (ret != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmSetExtIV", ret);
+            we_aes_gcm_set_error("IV setup failed");
             ret = -1;
         }
         else {
@@ -466,6 +482,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
             if (ret != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex",
                                       ret);
+                we_aes_gcm_set_error("encryption failed");
                 ret = -1;
             }
             else {
@@ -483,6 +500,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
                                    aes->tagLen, aes->aad, aes->aadLen);
             if (ret != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt", ret);
+                we_aes_gcm_set_error("decryption failed");
                 ret = -1;
             }
             else {

@@ -22,6 +22,7 @@
 #include "unit.h"
 
 #include <limits.h>
+#include <openssl/err.h>
 
 #ifndef EVP_CCM_TLS_FIXED_IV_LEN
 #define EVP_CCM_TLS_FIXED_IV_LEN        EVP_GCM_TLS_FIXED_IV_LEN
@@ -1308,6 +1309,120 @@ int test_aes_gcm_aad_length_bounds(ENGINE *e, void *data)
     (void)data;
     return 0;
 #endif
+}
+
+int test_aes_gcm_auth_error_queue(ENGINE *e, void *data)
+{
+    int err = 0;
+    int i;
+    int len = 0;
+    int finalLen;
+    int ret;
+    int flags;
+    int line;
+    unsigned long code;
+    unsigned long expectedError;
+    const char *file;
+    const char *detail;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad[] = "AAD";
+    unsigned char msg[] = "Test pattern";
+    unsigned char enc[sizeof(msg)];
+    unsigned char dec[sizeof(msg)];
+    unsigned char tag[16];
+    unsigned char tlsAad[EVP_AEAD_TLS1_AAD_LEN] = {0};
+    unsigned char record[EVP_GCM_TLS_EXPLICIT_IV_LEN + sizeof(msg) +
+                         EVP_GCM_TLS_TAG_LEN] = {0};
+    unsigned char recordCopy[sizeof(record)];
+
+    (void)data;
+
+    err = test_aes_tag_enc(NULL, EVP_aes_128_gcm(), key, iv, sizeof(iv),
+                           aad, msg, sizeof(msg), enc, tag, 0, 0);
+    if (err == 0) {
+        tag[0] ^= 1;
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+    }
+    if (err == 0) {
+        ERR_clear_error();
+        ret = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen);
+        err = 1;
+        if (ret <= 0) {
+            while ((code = ERR_get_error_line_data(&file, &line, &detail,
+                                                    &flags)) != 0) {
+                if ((ERR_GET_LIB(code) == ERR_LIB_USER) &&
+                    ((flags & ERR_TXT_STRING) != 0) &&
+                    (strstr(detail, "wolfEngine AES-GCM") != NULL)) {
+                    err = 0;
+                    break;
+                }
+            }
+        }
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    ctx = NULL;
+    if (err == 0) {
+        tlsAad[8] = 23;
+        tlsAad[9] = 3;
+        tlsAad[10] = 3;
+        tlsAad[12] = sizeof(record) - EVP_GCM_TLS_TAG_LEN;
+        XMEMCPY(record + EVP_GCM_TLS_EXPLICIT_IV_LEN, msg, sizeof(msg));
+        err = test_aes_tag_tls_enc(NULL, EVP_aes_128_gcm(), key, iv,
+                                   EVP_GCM_TLS_FIXED_IV_LEN, tlsAad, record,
+                                   sizeof(record), 0);
+    }
+    if (err == 0) {
+        record[sizeof(record) - 1] ^= 1;
+        tlsAad[12] = sizeof(record);
+    }
+    for (i = 0; (err == 0) && (i < 4); i++) {
+        XMEMCPY(recordCopy, record, sizeof(record));
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+        if (err == 0) {
+            err = EVP_DecryptInit_ex(ctx, EVP_aes_128_gcm(),
+                                      (i & 1) ? e : NULL, key, NULL) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                      EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                      sizeof(tlsAad), tlsAad) !=
+                                      EVP_GCM_TLS_TAG_LEN;
+        }
+        if (err == 0) {
+            PRINT_MSG("TLS GCM authentication failure preserves error state");
+            ERR_clear_error();
+            if (i >= 2) {
+                ERR_put_error(ERR_LIB_USER, 0, 101, __FILE__, __LINE__);
+            }
+            expectedError = ERR_peek_error();
+            ret = EVP_Cipher(ctx, recordCopy, recordCopy, sizeof(recordCopy));
+            code = ERR_get_error();
+            err = (ret >= 0) || (code != expectedError) ||
+                  (ERR_peek_error() != 0);
+        }
+        EVP_CIPHER_CTX_free(ctx);
+        ctx = NULL;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    ERR_clear_error();
+    return err;
 }
 
 #endif /* WE_HAVE_AESGCM */
