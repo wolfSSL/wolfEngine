@@ -1185,7 +1185,8 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
             paddedSz = wc_RsaEncryptSize(&rsa->key);
             if (paddedSz <= 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize", ret);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize",
+                                      paddedSz);
                 ret = -1;
             }
             else if (toLen < (size_t)paddedSz) {
