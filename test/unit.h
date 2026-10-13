@@ -100,6 +100,7 @@ void test_openssl_mem_expect_clear(void *ptr);
 int test_openssl_mem_clear_result(void);
 void test_openssl_mem_fail_once(size_t size);
 int test_openssl_mem_failure_triggered(void);
+size_t test_openssl_mem_active(void);
 
 #ifdef WE_HAVE_DIGEST
 

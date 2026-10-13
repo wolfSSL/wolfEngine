@@ -1218,7 +1218,7 @@ static int we_hmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 {
     int ret = 1;
     we_Mac *mac;
-    we_Mac *dupl;
+    we_Mac *dupl = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_copy");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [dst = %p, src = %p]", dst, src);
@@ -1260,6 +1260,14 @@ static int we_hmac_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
         dupl->state.hmac.keyLen = mac->state.hmac.keyLen;
 #endif
         EVP_PKEY_CTX_set_data(dst, dupl);
+    }
+    else if (dupl != NULL) {
+        wc_HmacFree(&dupl->state.hmac);
+        if (dupl->key != NULL) {
+            OPENSSL_clear_free(dupl->key, dupl->keySz);
+        }
+        OPENSSL_cleanse(dupl, sizeof(*dupl));
+        OPENSSL_free(dupl);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_hmac_pkey_copy", ret);

@@ -387,6 +387,38 @@ static int test_hmac_short_key_init(ENGINE *e)
 #endif
 }
 
+static int test_hmac_failed_copy_cleanup(ENGINE *e)
+{
+#ifndef TEST_MULTITHREADED
+    int err = 0;
+    size_t allocations;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY_CTX *copy = NULL;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        allocations = test_openssl_mem_active();
+        copy = EVP_PKEY_CTX_dup(ctx);
+        err = (copy != NULL) ||
+            (test_openssl_mem_active() != allocations);
+    }
+
+    EVP_PKEY_CTX_free(copy);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    return 0;
+#endif
+}
+
 int test_hmac_create(ENGINE *e, void *data)
 {
     int ret = 0;
@@ -489,6 +521,9 @@ int test_hmac_create(ENGINE *e, void *data)
     }
     if (ret == 0) {
         ret = test_hmac_short_key_init(e);
+    }
+    if (ret == 0) {
+        ret = test_hmac_failed_copy_cleanup(e);
     }
 #if defined(WOLF_CRYPTO_CB) && defined(WOLF_CRYPTO_CB_FIND) && \
     !defined(TEST_MULTITHREADED)
