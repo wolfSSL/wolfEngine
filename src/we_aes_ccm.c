@@ -85,6 +85,8 @@ typedef struct we_AesCcm
     int            L;
     /** Flag to indicate whether object initialized. */
     unsigned int   init:1;
+    /** Flag to indicate successful wolfCrypt AES initialization. */
+    unsigned int   aesInit:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
     /** Flag to indicate whether doing this for TLS */
@@ -137,6 +139,16 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         /* Not doing CCM for TLS unless ctrl function called. */
         aes->tls = 0;
     }
+    if ((ret == 1) && (key != NULL) && (!aes->aesInit)) {
+        rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
+            ret = 0;
+        }
+        else {
+            aes->aesInit = 1;
+        }
+    }
     if ((ret == 1) && (key != NULL)) {
         /* Set the AES-CCM key. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES-CCM key (%d bytes)",
@@ -157,6 +169,18 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ccm_init", ret);
 
     return ret;
+}
+
+static int we_aes_ccm_cleanup(EVP_CIPHER_CTX *ctx)
+{
+    we_AesCcm *aes = (we_AesCcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+
+    if ((aes != NULL) && aes->aesInit) {
+        wc_AesFree(&aes->aes);
+        aes->aesInit = 0;
+    }
+
+    return 1;
 }
 
 /**
@@ -474,6 +498,9 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_INIT:
+                XMEMSET(aes, 0, sizeof(*aes));
+                break;
             case EVP_CTRL_CCM_SET_L:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_CCM_SET_L");
                 /* Set the length field, L
@@ -664,6 +691,7 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
      EVP_CIPH_CUSTOM_IV          | \
      EVP_CIPH_CUSTOM_COPY        | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_CTRL_INIT          | \
      EVP_CIPH_FLAG_AEAD_CIPHER   | \
      EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CCM_MODE)
@@ -693,6 +721,13 @@ static int we_init_aesccm_meth(EVP_CIPHER *cipher)
     }
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_aes_ccm_init);
+    }
+    if (ret == 1) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        ret = EVP_CIPHER_meth_set_cleanup(cipher, we_aes_ccm_cleanup);
+#else
+        cipher->cleanup = we_aes_ccm_cleanup;
+#endif
     }
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_aes_ccm_cipher);
