@@ -617,15 +617,88 @@ static int we_ec_copy(EVP_PKEY_CTX *dst, const EVP_PKEY_CTX *src)
 static int we_ec_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 #endif
 {
+    int ret = 1;
+    we_Ecc *srcEcc;
+    we_Ecc *dstEcc = NULL;
+
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_copy");
 
-    /* Nothing to copy as src is empty. */
-    (void)src;
-    (void)dst;
+    srcEcc = (we_Ecc *)EVP_PKEY_CTX_get_data(src);
+    EVP_PKEY_CTX_set_data(dst, NULL);
 
-    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_copy", 1);
+    if (srcEcc != NULL) {
+        ret = we_ec_init(dst);
+    }
+    if (ret == 1 && srcEcc != NULL) {
+        dstEcc = (we_Ecc *)EVP_PKEY_CTX_get_data(dst);
+        dstEcc->curveId = srcEcc->curveId;
+        dstEcc->curveName = srcEcc->curveName;
+#ifdef WE_HAVE_ECDSA
+        dstEcc->md = srcEcc->md;
+#endif
+#ifdef WE_HAVE_ECKEYGEN
+        if (srcEcc->group != NULL) {
+            dstEcc->group = EC_GROUP_dup(srcEcc->group);
+            if (dstEcc->group == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_dup",
+                                           dstEcc->group);
+                ret = 0;
+            }
+        }
+#endif
+#ifdef WE_HAVE_ECDH
+        dstEcc->coFactor = srcEcc->coFactor;
+        dstEcc->kdfType = srcEcc->kdfType;
+        dstEcc->kdfMd = srcEcc->kdfMd;
+        dstEcc->kdfOutLen = srcEcc->kdfOutLen;
+        if (ret == 1 && srcEcc->peerKey != NULL) {
+            if (srcEcc->peerKeyLen <= 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid peer key length");
+                ret = 0;
+            }
+            else {
+                dstEcc->peerKey = OPENSSL_malloc(srcEcc->peerKeyLen);
+                if (dstEcc->peerKey == NULL) {
+                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                               dstEcc->peerKey);
+                    ret = 0;
+                }
+                else {
+                    XMEMCPY(dstEcc->peerKey, srcEcc->peerKey,
+                            srcEcc->peerKeyLen);
+                    dstEcc->peerKeyLen = srcEcc->peerKeyLen;
+                }
+            }
+        }
+        if (ret == 1 && srcEcc->kdfUkm != NULL) {
+            if (srcEcc->kdfUkmLen <= 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid KDF UKM length");
+                ret = 0;
+            }
+            else {
+                dstEcc->kdfUkm = OPENSSL_malloc(srcEcc->kdfUkmLen);
+                if (dstEcc->kdfUkm == NULL) {
+                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                               dstEcc->kdfUkm);
+                    ret = 0;
+                }
+                else {
+                    XMEMCPY(dstEcc->kdfUkm, srcEcc->kdfUkm,
+                            srcEcc->kdfUkmLen);
+                    dstEcc->kdfUkmLen = srcEcc->kdfUkmLen;
+                }
+            }
+        }
+#endif
+    }
 
-    return 1;
+    if (ret == 0 && dstEcc != NULL) {
+        we_ec_cleanup(dst);
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_copy", ret);
+
+    return ret;
 }
 
 /**

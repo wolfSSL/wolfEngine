@@ -402,6 +402,60 @@ int test_eckeygen_p224(ENGINE *e, void *data)
 #endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
+#if defined(WE_HAVE_EC_P384) && OPENSSL_VERSION_NUMBER < 0x30000000L
+static int test_eckeygen_copy(ENGINE *e)
+{
+    int err;
+    int shared = 0;
+    EVP_PKEY_CTX *src = NULL;
+    EVP_PKEY_CTX *dst = NULL;
+    EVP_PKEY *key = NULL;
+    EC_KEY *ecKey = NULL;
+    const EC_GROUP *group = NULL;
+
+    err = (src = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, e)) == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(src) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_ec_paramgen_curve_nid(src,
+                                                     NID_X9_62_prime256v1) != 1;
+    }
+    if (err == 0) {
+        dst = EVP_PKEY_CTX_dup(src);
+        err = dst == NULL;
+    }
+    if (err == 0) {
+        shared = EVP_PKEY_CTX_get_data(src) == EVP_PKEY_CTX_get_data(dst);
+        err = EVP_PKEY_CTX_set_ec_paramgen_curve_nid(src, NID_secp384r1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(dst, &key) != 1;
+    }
+    if (err == 0) {
+        ecKey = EVP_PKEY_get1_EC_KEY(key);
+        err = ecKey == NULL;
+    }
+    if (err == 0) {
+        group = EC_KEY_get0_group(ecKey);
+        err = group == NULL;
+    }
+    if (err == 0) {
+        err = EC_GROUP_get_curve_name(group) != NID_X9_62_prime256v1;
+    }
+
+    if (shared) {
+        EVP_PKEY_CTX_set_data(dst, NULL);
+    }
+    EC_KEY_free(ecKey);
+    EVP_PKEY_free(key);
+    EVP_PKEY_CTX_free(dst);
+    EVP_PKEY_CTX_free(src);
+
+    return err;
+}
+#endif
+
 int test_eckeygen_p256_by_nid(ENGINE *e, void *data)
 {
     int err;
@@ -420,6 +474,11 @@ int test_eckeygen_p256_by_nid(ENGINE *e, void *data)
         PRINT_MSG("Generate key");
         err = EVP_PKEY_keygen(ctx, &key) != 1;
     }
+#if defined(WE_HAVE_EC_P384) && OPENSSL_VERSION_NUMBER < 0x30000000L
+    if (err == 0) {
+        err = test_eckeygen_copy(e);
+    }
+#endif
 
     EVP_PKEY_free(key);
     EVP_PKEY_CTX_free(ctx);
