@@ -2449,7 +2449,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     }
     if (ret == 1 && sig != NULL) {
         /* Sign hash with wolfSSL. */
-        outLen = *sigLen;
+        outLen = (word32)wc_ecc_sig_size(&key);
 #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
