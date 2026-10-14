@@ -605,8 +605,9 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] size of tag
                  *   ptr [in] tag data to copy
                  */
-                if ((arg <= 0) || (arg > WC_AES_BLOCK_SIZE)) {
-                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid tag size");
+                if ((arg < 4) || (arg > WC_AES_BLOCK_SIZE) ||
+                    ((arg & 1) != 0) || (aes->enc && (ptr != NULL))) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid tag parameters");
                     ret = 0;
                 }
                 else {
