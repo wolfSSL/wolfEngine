@@ -401,7 +401,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             ret = (int)len;
         }
     }
-    else if ((ret == 1) && (len > 0)) {
+    else if ((ret == 1) && ((len > 0) || (in != NULL))) {
         if (aes->tagLen == 0) {
             /* OpenSSL defaults non-TLS CCM tags to 12 bytes. */
             aes->tagLen = 12;
@@ -474,10 +474,9 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         OPENSSL_free(aes->aad);
         aes->aad = NULL;
         aes->aadLen = 0;
-    } else if ((ret == 1) && (in == NULL)) {
-        /* no error, but no input data or AAD to process, return 0 length */
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "No input data or AAd to process, "
-                       "returning 0");
+    }
+    else if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "No input data to process, returning 0");
         ret = 0;
     }
 

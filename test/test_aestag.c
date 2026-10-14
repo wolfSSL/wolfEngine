@@ -92,8 +92,8 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
         err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad + 1,
                                 (int)strlen((char *)aad) - 1) != 1;
     }
-    if (err == 0 && len > 0) {
-        /* Update with msg, if len > 0 (not GMAC) */
+    if (err == 0 && (len > 0 || ccm)) {
+        /* CCM authenticates empty messages during the payload update. */
         err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, len) != 1;
         if (encLen != len) {
             err = 1;
@@ -166,9 +166,11 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
             err = 1;
         }
     }
-    if (err == 0 && len > 0) {
-        /* Not used in GMAC test (len == 0) */
+    if (err == 0 && (len > 0 || ccm)) {
         err = EVP_DecryptUpdate(ctx, dec, &decLen, enc, len) != 1;
+        if (err == 0 && ccm && len == 0) {
+            err = decLen != 0;
+        }
     } else {
         /* Reset decLen, represented AAD length above */
         decLen = 0;
@@ -177,7 +179,7 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
     /* Bug in older versions has tag_set cleared and causes failure. */
     if (err == 0) {
 #else
-    if (err == 0 && (!ccm || len == 0)) {
+    if (err == 0 && !ccm) {
 #endif
         err = EVP_DecryptFinal_ex(ctx, dec + decLen, &decLen) != 1;
     }
@@ -1211,6 +1213,19 @@ static int test_aes_ccm_default_tag_encrypt(ENGINE *e, unsigned char *enc,
     if (err == 0) {
         err = EVP_EncryptUpdate(ctx, NULL, &encLen, NULL, sizeof(msg)) != 1;
     }
+    if ((err == 0) && (e != NULL)) {
+        encLen = -1;
+        err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, 0) != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = encLen != 0;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = EVP_EncryptUpdate(ctx, NULL, &encLen, NULL, sizeof(msg)) != 1;
+    }
     if (err == 0) {
         err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, sizeof(msg)) != 1;
     }
@@ -1251,6 +1266,50 @@ static int test_aes_ccm_default_tag(ENGINE *e)
     return err;
 }
 
+static int test_aes_ccm_empty(ENGINE *e, const EVP_CIPHER *cipher)
+{
+    int err;
+    unsigned char key[32] = {0};
+    unsigned char iv[13] = {0};
+    unsigned char aad[] = "AAD";
+    unsigned char msg[1] = {0};
+    unsigned char enc[1] = {0};
+    unsigned char dec[1] = {0};
+    unsigned char tag[16];
+    unsigned char expectedTag[sizeof(tag)];
+
+    PRINT_MSG("CCM authenticates empty messages with AAD");
+    err = test_aes_tag_enc(NULL, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                           enc, expectedTag, 1, 0);
+    if (err == 0) {
+        err = test_aes_tag_dec(NULL, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, expectedTag, dec, 1, 0);
+    }
+    if (err == 0) {
+        expectedTag[0] ^= 1;
+        err = test_aes_tag_dec(NULL, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, expectedTag, dec, 1, 0) == 0;
+    }
+    if (err == 0) {
+        err = test_aes_tag_dec(e, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, expectedTag, dec, 1, 0) == 0;
+    }
+    if (err == 0) {
+        expectedTag[0] ^= 1;
+        err = test_aes_tag_dec(e, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, expectedTag, dec, 1, 0);
+    }
+    if (err == 0) {
+        err = test_aes_tag_enc(e, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, tag, 1, 0);
+    }
+    if (err == 0) {
+        err = XMEMCMP(tag, expectedTag, sizeof(tag)) != 0;
+    }
+
+    return err;
+}
+
 int test_aes128_ccm(ENGINE *e, void *data)
 {
     int err = 0;
@@ -1259,6 +1318,9 @@ int test_aes128_ccm(ENGINE *e, void *data)
     err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 0);
     if (err == 0) {
         err = test_aes_ccm_default_tag(e);
+    }
+    if (err == 0) {
+        err = test_aes_ccm_empty(e, EVP_aes_128_ccm());
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -1279,6 +1341,9 @@ int test_aes192_ccm(ENGINE *e, void *data)
 
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 0);
+    if (err == 0) {
+        err = test_aes_ccm_empty(e, EVP_aes_192_ccm());
+    }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */
@@ -1298,6 +1363,9 @@ int test_aes256_ccm(ENGINE *e, void *data)
 
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 0);
+    if (err == 0) {
+        err = test_aes_ccm_empty(e, EVP_aes_256_ccm());
+    }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */
