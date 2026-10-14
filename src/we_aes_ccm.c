@@ -544,7 +544,8 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] length of IV/nonce to use
                  *   ptr [in] Unused
                  */
-                if ((arg <= 0) || (arg > CCM_NONCE_MAX_SZ)) {
+                if ((arg < CCM_NONCE_MIN_SZ) ||
+                    (arg > CCM_NONCE_MAX_SZ)) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid nonce length");
                     ret = 0;
                 }
