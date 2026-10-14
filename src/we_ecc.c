@@ -1088,6 +1088,11 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
 
+    if ((ret == 1) && (!ecc->privKeySet)) {
+        /* Get the OpenSSL EC_KEY object and set curve id. */
+        ret = we_ec_get_ec_key(ctx, &ecKey, ecc);
+    }
+
     if (ret == 1) {
         ret = we_ecc_check_curve_usage(ecc->curveId);
         if (ret != 1) {
@@ -1096,12 +1101,8 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
     }
 
     if ((ret == 1) && (!ecc->privKeySet)) {
-        /* Get the OpenSSL EC_KEY object and set curve id. */
-        ret = we_ec_get_ec_key(ctx, &ecKey, ecc);
-        if (ret == 1) {
-            /* Set private key in wolfSSL object. */
-            ret = we_ec_set_private(&ecc->key, ecc->curveId, ecKey);
-        }
+        /* Set private key in wolfSSL object. */
+        ret = we_ec_set_private(&ecc->key, ecc->curveId, ecKey);
         if (ret == 1) {
             /* Only do this once as private will not change. */
             ecc->privKeySet = 1;
