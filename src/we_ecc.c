@@ -2710,7 +2710,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
     }
 
     if (secret != NULL) {
-        OPENSSL_free(secret);
+        OPENSSL_clear_free(secret, secretLen);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_KE, "we_ecdh_compute_key", ret);
