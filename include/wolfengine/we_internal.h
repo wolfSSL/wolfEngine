@@ -359,7 +359,9 @@ WOLFENGINE_LOCAL int we_init_ec_key_meths(void);
  */
 
 #ifdef WE_HAVE_PBE
+WOLFENGINE_LOCAL int we_prepare_pbe_keygen(void);
 WOLFENGINE_LOCAL int we_init_pbe_keygen(void);
+WOLFENGINE_LOCAL int we_pbe_keygen_ready(void);
 #endif
 
 WOLFENGINE_LOCAL int wolfengine_bind(ENGINE *e, const char *id);
