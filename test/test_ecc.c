@@ -1824,14 +1824,20 @@ int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
     int err;
     unsigned int sigLen;
     PRINT_MSG("test_ec_key_ecdsa_sign");
-    sigLen = (unsigned int)*ecdsaSigLen;
+    sigLen = 0;
     err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
+    if (err == 0) {
+        err = (sigLen == 0) || (sigLen > *ecdsaSigLen);
+    }
     if (err == 0) {
         PRINT_BUFFER("Signature", ecdsaSig, sigLen);
     }
     if (err == 0) {
-        sigLen = (unsigned int)*ecdsaSigLen;
+        sigLen = 0;
         err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
+    }
+    if (err == 0) {
+        err = (sigLen == 0) || (sigLen > *ecdsaSigLen);
     }
     if (err == 0) {
         PRINT_BUFFER("Signature", ecdsaSig, sigLen);
