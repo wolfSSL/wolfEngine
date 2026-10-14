@@ -1389,7 +1389,12 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 ecc->kdfOutLen = num;
                 break;
             case EVP_PKEY_CTRL_GET_EC_KDF_OUTLEN:
-                ret = ecc->kdfOutLen;
+                if (ptr == NULL) {
+                    ret = 0;
+                }
+                else {
+                    *(int *)ptr = ecc->kdfOutLen;
+                }
                 break;
 
             case EVP_PKEY_CTRL_EC_KDF_UKM:
