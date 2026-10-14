@@ -1332,6 +1332,8 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 if (ret == 1) {
                     /* Replace the peerKey data. */
                     OPENSSL_free(ecc->peerKey);
+                    ecc->peerKey = NULL;
+                    ecc->peerKeyLen = 0;
                     /* Get the EC key public key as an uncompressed point. */
                     ecc->peerKeyLen = (int)EC_KEY_key2buf(ecPeerKey,
                         POINT_CONVERSION_UNCOMPRESSED, &ecc->peerKey, NULL);
