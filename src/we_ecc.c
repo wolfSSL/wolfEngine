@@ -2658,7 +2658,7 @@ struct ecdh_method {
  * Compute shared secret with a private-key and a peer's public-key.
  * If key-derivation function is given, calls it with shared secret.
  *
- * @param  out     [in]  buffer to hold computed key.
+ * @param  out     [out] buffer to hold computed key.
  * @param  outlen  [in]  size of out buffer.
  * @param  pub_key [in]  peer's public key.
  * @param  ecdh    [in]  private key.
