@@ -990,10 +990,12 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         if (len < 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                   "wc_ecc_get_curve_size_from_id", len);
+            ret = 0;
         }
 
         /* New OpenSSL EC_KEY object to hold new key. */
-        ret = (ecKey = EC_KEY_new()) != NULL;
+        if (ret == 1)
+            ret = (ecKey = EC_KEY_new()) != NULL;
     }
 
     if (ret == 1) {
@@ -1113,6 +1115,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                       "wc_ecc_get_curve_size_from_id", rc);
+                ret = 0;
             }
             else {
                 *keyLen = (size_t)rc;
