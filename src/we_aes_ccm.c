@@ -570,7 +570,10 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] size of fixed part of IV/nonce
                  *   ptr [in] fixed part of IV/nonce data
                  */
-                if (arg == EVP_CCM_TLS_FIXED_IV_LEN) {
+                if (ptr == NULL) {
+                    ret = 0;
+                }
+                else if (arg == EVP_CCM_TLS_FIXED_IV_LEN) {
                     WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting TLS fixed IV len");
                     XMEMCPY(aes->iv, ptr, arg);
                     XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->iv, arg);
