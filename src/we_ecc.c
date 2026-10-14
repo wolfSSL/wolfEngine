@@ -1134,6 +1134,14 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
         ret = 0;
     }
     if ((ret == 1) && (key != NULL)) {
+        rc = wc_ecc_get_curve_size_from_id(ecc->curveId);
+        if ((rc <= 0) || (ecc->peerKeyLen != (2 * rc + 1)) ||
+            (ecc->peerKey[0] != POINT_CONVERSION_UNCOMPRESSED)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid peer key encoding");
+            ret = 0;
+        }
+    }
+    if ((ret == 1) && (key != NULL)) {
         /* Create a new wolfSSL ECC key and set peer's public key. */
         rc = wc_ecc_init(&peer);
         if (rc != 0) {
@@ -1250,7 +1258,11 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     we_Ecc *ecc;
 #ifdef WE_HAVE_ECDH
     EVP_PKEY *peerKey;
+    EVP_PKEY *localKey;
     EC_KEY *ecPeerKey = NULL;
+    const EC_KEY *ecLocalKey;
+    const EC_GROUP *localGroup;
+    const EC_GROUP *peerGroup;
 #endif
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
@@ -1333,11 +1345,27 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 peerKey = (EVP_PKEY *)ptr;
                 /* Get the OpenSSL EC_KEY object. */
             #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-                ret = (ecPeerKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(peerKey)) !=
-                                                                           NULL;
+                if (peerKey != NULL)
+                    ecPeerKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(peerKey);
             #else
-                ret = (ecPeerKey = EVP_PKEY_get0_EC_KEY(peerKey)) != NULL;
+                if (peerKey != NULL)
+                    ecPeerKey = EVP_PKEY_get0_EC_KEY(peerKey);
             #endif
+                ret = ecPeerKey != NULL;
+                if (ret == 1) {
+                    localKey = EVP_PKEY_CTX_get0_pkey(ctx);
+                    ecLocalKey = localKey != NULL ?
+                                 EVP_PKEY_get0_EC_KEY(localKey) : NULL;
+                    localGroup = ecLocalKey != NULL ?
+                                 EC_KEY_get0_group(ecLocalKey) : NULL;
+                    peerGroup = EC_KEY_get0_group(ecPeerKey);
+                    if ((localGroup == NULL) || (peerGroup == NULL) ||
+                        (EC_GROUP_cmp(localGroup, peerGroup, NULL) != 0)) {
+                        WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                             "Peer key curve does not match");
+                        ret = 0;
+                    }
+                }
                 if (ret == 1) {
                     /* Replace the peerKey data. */
                     OPENSSL_free(ecc->peerKey);
