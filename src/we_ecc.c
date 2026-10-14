@@ -321,6 +321,8 @@ typedef struct we_Ecc
 #endif
 } we_Ecc;
 
+static void we_ec_cleanup(EVP_PKEY_CTX *ctx);
+
 /**
  * Initialize and set the data required to complete an EC operation.
  *
@@ -438,6 +440,7 @@ static int we_ec_p192_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -474,6 +477,7 @@ static int we_ec_p224_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -511,6 +515,7 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -548,6 +553,7 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -586,6 +592,7 @@ static int we_ec_p521_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
