@@ -157,6 +157,33 @@ exit:
 }
 #endif
 
+static int test_hmac_ctrl_str(ENGINE *e, const char *type,
+    const char *value)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HMAC, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, type, value) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &pkey) != 1;
+    }
+
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
 static int test_mac_generation(ENGINE *e, const EVP_MD *md, int pkeyType,
                            unsigned char *pswd, int pswdSz, unsigned char *msg,
                            int len, unsigned char *mac, int *macLen)
@@ -657,6 +684,19 @@ int test_hmac_create(ENGINE *e, void *data)
         ret = test_hmac_callback_copy(e, data);
     }
 #endif
+    if (ret == 0) {
+        PRINT_MSG("Testing string key controls");
+        ret = test_hmac_ctrl_str(NULL, "key", "string key");
+    }
+    if (ret == 0) {
+        ret = test_hmac_ctrl_str(e, "key", "string key");
+    }
+    if (ret == 0) {
+        ret = test_hmac_ctrl_str(NULL, "hexkey", "0011223344556677");
+    }
+    if (ret == 0) {
+        ret = test_hmac_ctrl_str(e, "hexkey", "0011223344556677");
+    }
     return ret;
 }
 

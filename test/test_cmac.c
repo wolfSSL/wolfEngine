@@ -55,6 +55,46 @@ static void test_cmac_logging_cb(const int level, const int component,
 }
 #endif
 
+static int test_cmac_ctrl_str(ENGINE *e)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_CMAC, e);
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "cipher", "aes-128-ecb") > 0;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "cipher", "aes-256-cbc") != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "hexkey",
+            "000102030405060708090a0b0c0d0e0f") > 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "cipher", "aes-128-cbc") != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "hexkey",
+            "000102030405060708090a0b0c0d0e0f") != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &pkey) != 1;
+    }
+
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
 static int test_cmac_generation(ENGINE *e, const EVP_CIPHER *c,
     unsigned char *key, int keySz, unsigned char *msg, int len,
     unsigned char *out, int *outLen)
@@ -353,6 +393,13 @@ int test_cmac_create(ENGINE *e, void *data)
     }
     if (ret == 0) {
         ret = test_cmac_failed_copy_cleanup(e);
+    }
+    if (ret == 0) {
+        PRINT_MSG("Testing string key and cipher controls");
+        ret = test_cmac_ctrl_str(NULL);
+    }
+    if (ret == 0) {
+        ret = test_cmac_ctrl_str(e);
     }
 
     return ret;
