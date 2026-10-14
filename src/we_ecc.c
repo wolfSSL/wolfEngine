@@ -1787,6 +1787,9 @@ static int we_ec_key_keygen(EC_KEY *key)
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
                 ret = 0;
             }
+            else {
+                pEcc = &ecc;
+            }
         }
     }
 #ifndef WE_ECC_USE_GLOBAL_RNG
@@ -1801,8 +1804,6 @@ static int we_ec_key_keygen(EC_KEY *key)
     }
 #endif
     if (ret == 1) {
-        pEcc = &ecc;
-
         /* Generate key. */
 #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
