@@ -1193,11 +1193,11 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                             }
                         }
                     }
-                }
             #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
                 && !defined(WE_SINGLE_THREADED)
-                wc_UnLockMutex(we_rng_mutex);
+                    wc_UnLockMutex(we_rng_mutex);
             #endif
+                }
             }
             if (ret == 1) {
                 /* Return length of secret. */
@@ -1981,11 +1981,11 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_shared_secret", rc);
                 ret = 0;
             }
-        }
     #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
         && !defined(WE_SINGLE_THREADED)
-        wc_UnLockMutex(we_rng_mutex);
+            wc_UnLockMutex(we_rng_mutex);
     #endif
+        }
     }
     if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_PK, "Calculated ECDH shared secret");

@@ -447,10 +447,10 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
                         rc);
                     ret = 0;
                 }
-            }
         #if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
-            wc_UnLockMutex(we_rng_mutex);
+                wc_UnLockMutex(we_rng_mutex);
         #endif
+            }
         }
     }
 
