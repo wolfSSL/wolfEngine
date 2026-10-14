@@ -1227,7 +1227,8 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
  * @param  type  [in]  Type of operation to perform.
  * @param  num   [in]  Integer parameter.
  * @param  ptr   [in]  Pointer parameter.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
@@ -1396,7 +1397,7 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-                ret = 0;
+                ret = -2;
                 break;
         }
     }
@@ -1413,7 +1414,8 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  *
  * @param  ctx   [in]  Public key context of operation.
  * @param  type  [in]  String representation of value.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                           const char *value)
@@ -1446,7 +1448,7 @@ static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl string %s",
                       type);
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-            ret = 0;
+            ret = -2;
         }
     }
 

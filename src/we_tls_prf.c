@@ -186,7 +186,8 @@ static int we_tls1_prf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
  * @param  type   [in]  Type of operation to perform.
  * @param  num    [in]  Integer argument.
  * @param  ptr    [in]  Pointer argument.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
@@ -265,7 +266,7 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                       type);
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-            ret = 0;
+            ret = -2;
             break;
     }
 
@@ -287,7 +288,8 @@ static int we_tls1_prf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  * @param  ctx    [in]  PKEY context.
  * @param  type   [in]  Type of operation to perform.
  * @param  value  [in]  Pointer argument.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                                 const char *value)
@@ -331,7 +333,7 @@ static int we_tls1_prf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         /* Unsupported type. */
         XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %s", type);
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-        ret = 0;
+        ret = -2;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_tls1_prf_ctrl_str", ret);
