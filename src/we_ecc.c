@@ -1918,6 +1918,9 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
             ret = 0;
         }
+        else {
+            pKey = &key;
+        }
     }
 #if !defined(HAVE_FIPS) || \
     (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
@@ -1943,8 +1946,6 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     }
 #endif /* !HAVE_FIPS || (HAVE_FIPS_VERSION && HAVE_FIPS_VERSION != 2) */
     if (ret == 1) {
-        pKey = &key;
-
         /* Set private key into wolfSSL key object. */
         ret = we_ec_set_private(pKey, curveId, ecdh);
     }
