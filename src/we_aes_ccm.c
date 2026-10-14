@@ -484,7 +484,6 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 /**
  * Extra operations for AES-CCM.
  * Supported operations include:
- *  - EVP_CTRL_SET_IV (version 3.0+): get IV from wolfengine object
  *  - EVP_CTRL_AEAD_SET_IVLEN: set the length of an IV/nonce
  *  - EVP_CTRL_GET_IVLEN: get the total IV/nonce length
  *  - EVP_CTRL_CCM_SET_IV_FIXED: set the fixed part of an IV/nonce
