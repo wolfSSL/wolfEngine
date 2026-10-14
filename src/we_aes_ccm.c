@@ -403,8 +403,8 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     }
     else if ((ret == 1) && (len > 0)) {
         if (aes->tagLen == 0) {
-            /* Default to full size tag. */
-            aes->tagLen = EVP_CCM_TLS_TAG_LEN;
+            /* OpenSSL defaults non-TLS CCM tags to 12 bytes. */
+            aes->tagLen = 12;
         }
         if (aes->enc) {
             aes->tagSet = 0;

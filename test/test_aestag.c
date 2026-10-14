@@ -27,6 +27,7 @@
 #ifndef EVP_CCM_TLS_TAG_LEN
 #define EVP_CCM_TLS_TAG_LEN             EVP_GCM_TLS_TAG_LEN
 #endif
+#define CCM_TAG_DEFAULT_LEN             12
 
 #if defined(WE_HAVE_AESGCM) || defined(WE_HAVE_AESCCM)
 
@@ -1183,12 +1184,82 @@ int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data)
 
 #ifdef WE_HAVE_AESCCM
 
+static int test_aes_ccm_default_tag_encrypt(ENGINE *e, unsigned char *enc,
+                                            unsigned char *tag)
+{
+    int err = 0;
+    int encLen = 0;
+    unsigned char key[16];
+    unsigned char iv[13];
+    unsigned char msg[] = "Test pattern";
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(iv, 0, sizeof(iv));
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_ccm(), e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN,
+                                  sizeof(iv), NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &encLen, NULL, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = encLen != (int)sizeof(msg);
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, enc + encLen, &encLen) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  CCM_TAG_DEFAULT_LEN, tag) != 1;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
+static int test_aes_ccm_default_tag(ENGINE *e)
+{
+    int err = 0;
+    unsigned char enc[sizeof("Test pattern")];
+    unsigned char encOSSL[sizeof("Test pattern")];
+    unsigned char tag[CCM_TAG_DEFAULT_LEN];
+    unsigned char tagOSSL[CCM_TAG_DEFAULT_LEN];
+
+    err = test_aes_ccm_default_tag_encrypt(NULL, encOSSL, tagOSSL);
+    if (err == 0) {
+        err = test_aes_ccm_default_tag_encrypt(e, enc, tag);
+    }
+    if (err == 0) {
+        err = XMEMCMP(enc, encOSSL, sizeof(enc)) != 0;
+    }
+    if (err == 0) {
+        err = XMEMCMP(tag, tagOSSL, sizeof(tag)) != 0;
+    }
+
+    return err;
+}
+
 int test_aes128_ccm(ENGINE *e, void *data)
 {
     int err = 0;
 
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 0);
+    if (err == 0) {
+        err = test_aes_ccm_default_tag(e);
+    }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */
