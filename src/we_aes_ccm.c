@@ -558,7 +558,7 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
             case EVP_CTRL_GET_IVLEN:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_GET_IVLEN");
-                /* Set the generated IV
+                /* Get the IV length
                  *   ptr [out] length of iv
                  */
                 *(int *)ptr = aes->ivLen;
