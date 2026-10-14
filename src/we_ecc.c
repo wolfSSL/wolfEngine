@@ -646,6 +646,10 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
             OPENSSL_free(ecc->peerKey);
             ecc->peerKey = NULL;
         }
+        if (ecc->kdfUkm != NULL) {
+            OPENSSL_free(ecc->kdfUkm);
+            ecc->kdfUkm = NULL;
+        }
 #endif
 #ifndef WE_ECC_USE_GLOBAL_RNG
         wc_FreeRng(&ecc->rng);
