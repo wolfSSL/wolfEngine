@@ -414,7 +414,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 rc = wc_AesCcmSetNonce(&aes->aes, aes->iv, aes->ivLen);
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesCcmSetExtIV", rc);
+                                          "wc_AesCcmSetNonce", rc);
                     ret = -1;
                 }
             }
@@ -453,7 +453,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                   aes->ivLen, aes->tag, aes->tagLen,
                                   aes->aad, aes->aadLen);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCcmDecrypt_ex", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCcmDecrypt", rc);
                 ret = -1;
             }
             if (ret == 1) {
