@@ -799,7 +799,7 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 /**
  * Handle control string values.
  *
- * Currently a stub function.
+ * Supports key, hexkey and cipher controls.
  *
  * @param  ctx   [in]  EVP_PKEY context being used.
  * @param  type  [in]  String with the type of ctrl to do.
@@ -809,17 +809,126 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 static int we_mac_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         const char *value)
 {
-    int ret = 0;
-
-    (void)ctx;
-    (void)type;
-    (void)value;
+    int ret = 1;
+    we_Mac *mac = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_mac_pkey_ctrl_str");
-    WOLFENGINE_ERROR_MSG(WE_LOG_MAC,
-            "This function is currently a stub, was not used in test cases");
 
-    /* TODO: "key", "hexkey", "cipher" */
+    if ((ctx == NULL) || (type == NULL) || (value == NULL)) {
+        ret = 0;
+    }
+    if (ret == 1) {
+        mac = (we_Mac *)EVP_PKEY_CTX_get_data(ctx);
+        if (mac == NULL) {
+            ret = 0;
+        }
+    }
+    if ((ret == 1) && (XSTRCMP(type, "key") == 0)) {
+        size_t keySz = XSTRLEN(value);
+
+        if ((keySz >= INT_MAX) || ((mac->algo == WE_CMAC_ALGO) &&
+                (mac->size != 0) && (keySz != (size_t)mac->size))) {
+            ret = 0;
+        }
+        else {
+            ret = EVP_PKEY_CTX_ctrl(ctx, -1, -1,
+                    EVP_PKEY_CTRL_SET_MAC_KEY, (int)keySz, (void *)value);
+        }
+    }
+    else if ((ret == 1) && (XSTRCMP(type, "hexkey") == 0)) {
+        unsigned char *key = NULL;
+        size_t allocSz = 0;
+        size_t i;
+        size_t keySz = 0;
+        size_t valueSz = XSTRLEN(value);
+        int high = -1;
+
+        if ((valueSz == 0) || (valueSz > INT_MAX)) {
+            ret = 0;
+        }
+        if (ret == 1) {
+            allocSz = (valueSz / 2) + 1;
+            key = (unsigned char *)OPENSSL_malloc(allocSz);
+            if (key == NULL) {
+                ret = 0;
+            }
+        }
+        for (i = 0; (ret == 1) && (i < valueSz); i++) {
+            int digit;
+
+            if (value[i] == ':') {
+                if ((high != -1) || (keySz == 0) || (i + 1 == valueSz) ||
+                        (value[i + 1] == ':')) {
+                    ret = 0;
+                }
+                continue;
+            }
+            if ((value[i] >= '0') && (value[i] <= '9')) {
+                digit = value[i] - '0';
+            }
+            else if ((value[i] >= 'a') && (value[i] <= 'f')) {
+                digit = value[i] - 'a' + 10;
+            }
+            else if ((value[i] >= 'A') && (value[i] <= 'F')) {
+                digit = value[i] - 'A' + 10;
+            }
+            else {
+                ret = 0;
+                continue;
+            }
+            if (high == -1) {
+                high = digit;
+            }
+            else {
+                key[keySz++] = (unsigned char)((high << 4) | digit);
+                high = -1;
+            }
+        }
+        if ((ret == 1) && ((high != -1) || ((mac->algo == WE_CMAC_ALGO) &&
+                (mac->size != 0) && (keySz != (size_t)mac->size)))) {
+            ret = 0;
+        }
+        if (ret == 1) {
+            ret = EVP_PKEY_CTX_ctrl(ctx, -1, -1,
+                    EVP_PKEY_CTRL_SET_MAC_KEY, (int)keySz, key);
+        }
+        OPENSSL_clear_free(key, allocSz);
+    }
+    else if ((ret == 1) && (XSTRCMP(type, "cipher") == 0)) {
+        const EVP_CIPHER *cipher = EVP_get_cipherbyname(value);
+
+        if ((mac->algo != WE_CMAC_ALGO) || (cipher == NULL)) {
+            ret = 0;
+        }
+        else {
+            int keySz = EVP_CIPHER_key_length(cipher);
+
+            switch (EVP_CIPHER_nid(cipher)) {
+                case NID_aes_128_cbc:
+                case NID_aes_192_cbc:
+                case NID_aes_256_cbc:
+                    if ((mac->key != NULL) && (mac->keySz != keySz)) {
+                        ret = 0;
+                    }
+                    else {
+                        int oldSize = mac->size;
+
+                        mac->size = keySz;
+                        ret = EVP_PKEY_CTX_ctrl(ctx, -1, -1,
+                                EVP_PKEY_CTRL_CIPHER, 0, (void *)cipher);
+                        if (ret != 1) {
+                            mac->size = oldSize;
+                        }
+                    }
+                    break;
+                default:
+                    ret = 0;
+            }
+        }
+    }
+    else if (ret == 1) {
+        ret = 0;
+    }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_pkey_ctrl_str", ret);
 
