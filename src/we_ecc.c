@@ -2445,7 +2445,7 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     if (ret == 1 && sig == NULL) {
         /* Return signature size in bytes. */
         *sigLen = wc_ecc_sig_size(&key);
-        WOLFENGINE_MSG(WE_LOG_PK, "sig is NULL, returning size: %zu", *sigLen);
+        WOLFENGINE_MSG(WE_LOG_PK, "sig is NULL, returning size: %u", *sigLen);
     }
     if (ret == 1 && sig != NULL) {
         /* Sign hash with wolfSSL. */
