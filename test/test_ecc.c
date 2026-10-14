@@ -1869,6 +1869,125 @@ int test_ec_key_ecdsa_verify(EC_KEY *key, unsigned char *hash,
     return err;
 }
 
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+static int test_ecdsa_verify_error_logs;
+
+static void test_ecdsa_verify_logging(const int level, const int component,
+                                     const char *const message)
+{
+    if ((level == WE_LOG_ERROR) && (component == WE_LOG_PK) &&
+        strstr(message, "wc_ecc_verify_hash") != NULL) {
+        test_ecdsa_verify_error_logs++;
+    }
+}
+#endif
+
+static int test_ec_key_ecdsa_scalar_range(EC_KEY *key, unsigned char *hash,
+                                         size_t hashLen)
+{
+    int err = 0;
+    int i;
+    int sigLen;
+    BIGNUM *order = NULL;
+    BIGNUM *r = NULL;
+    BIGNUM *s = NULL;
+    ECDSA_SIG *sig = NULL;
+    unsigned char der[140];
+    unsigned char *p;
+
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+    test_ecdsa_verify_error_logs = 0;
+    if (wolfEngine_SetLoggingCb(test_ecdsa_verify_logging) != 0) {
+        return 1;
+    }
+#endif
+    order = BN_new();
+    sig = ECDSA_SIG_new();
+    if (order == NULL || sig == NULL ||
+        EC_GROUP_get_order(EC_KEY_get0_group(key), order, NULL) != 1) {
+        err = 1;
+        goto end;
+    }
+
+    /* ECDSA scalars must be strictly between zero and the group order. */
+    for (i = 0; i < 4 && err == 0; i++) {
+        r = BN_new();
+        s = BN_new();
+        if (r == NULL || s == NULL || BN_one(r) != 1 || BN_one(s) != 1) {
+            err = 1;
+            goto end;
+        }
+        if (i < 2) {
+            BN_zero(i == 0 ? r : s);
+        }
+        else if (BN_copy(i == 2 ? r : s, order) == NULL) {
+            err = 1;
+            goto end;
+        }
+        if (ECDSA_SIG_set0(sig, r, s) != 1) {
+            err = 1;
+            goto end;
+        }
+        r = NULL;
+        s = NULL;
+        sigLen = i2d_ECDSA_SIG(sig, NULL);
+        if (sigLen <= 0 || sigLen > (int)sizeof(der)) {
+            err = 1;
+            goto end;
+        }
+        p = der;
+        err = i2d_ECDSA_SIG(sig, &p) != sigLen;
+        if (err == 0) {
+            err = ECDSA_verify(0, hash, (int)hashLen, der, sigLen, key) != 0;
+        }
+    }
+
+end:
+    BN_free(s);
+    BN_free(r);
+    BN_free(order);
+    ECDSA_SIG_free(sig);
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+    (void)wolfEngine_SetLoggingCb(NULL);
+    if (test_ecdsa_verify_error_logs != 0) {
+        PRINT_MSG("Invalid ECDSA scalars produced backend error diagnostics");
+        err = 1;
+    }
+#endif
+    return err;
+}
+
+static int test_ec_key_ecdsa_encoding(EC_KEY *key, unsigned char *hash,
+                                     size_t hashLen)
+{
+    static const unsigned char invalidInteger[2][8] = {
+        { 0x30, 0x06, 0x02, 0x01, 0xff, 0x02, 0x01, 0x01 },
+        { 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0xff }
+    };
+    static const unsigned char invalidEncoding[2][9] = {
+        { 0x30, 0x07, 0x02, 0x02, 0x00, 0x01, 0x02, 0x01, 0x01 },
+        { 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01, 0x00 }
+    };
+    int i;
+
+    for (i = 0; i < 2; i++) {
+        if (ECDSA_verify(0, hash, (int)hashLen, invalidInteger[i],
+                         (int)sizeof(invalidInteger[i]), key) != -1) {
+            PRINT_MSG("Invalid ECDSA integer encoding did not return an error");
+            return 1;
+        }
+    }
+    for (i = 0; i < 2; i++) {
+        if (ECDSA_verify(0, hash, (int)hashLen, invalidEncoding[i],
+                         (int)sizeof(invalidEncoding[i]), key) != -1) {
+            PRINT_MSG("Noncanonical ECDSA encoding did not return an error");
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
                       size_t privKeyLen)
 {
@@ -1911,6 +2030,22 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
         PRINT_MSG("Verify with wolfengine");
         err = test_ec_key_ecdsa_verify(key, buf, sizeof(buf), ecdsaSig,
                                        ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify ECDSA scalar range with wolfengine");
+        err = test_ec_key_ecdsa_scalar_range(key, buf, sizeof(buf));
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify ECDSA scalar range with OpenSSL");
+        err = test_ec_key_ecdsa_scalar_range(keyOSSL, buf, sizeof(buf));
+    }
+    if (err == 0) {
+        PRINT_MSG("Reject invalid ECDSA integer encoding with wolfengine");
+        err = test_ec_key_ecdsa_encoding(key, buf, sizeof(buf));
+    }
+    if (err == 0) {
+        PRINT_MSG("Reject invalid ECDSA integer encoding with OpenSSL");
+        err = test_ec_key_ecdsa_encoding(keyOSSL, buf, sizeof(buf));
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
