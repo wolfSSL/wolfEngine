@@ -496,7 +496,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
  * @param  ctx   [in.out]  EVP cipher context of operation.
  * @param  type  [in]      Type of operation to perform.
  * @param  arg   [in]      Integer argument.
- * @param  ptr   [in]      Pointer argument.
+ * @param  ptr   [in,out]  Pointer argument, direction depends on type.
  * @return  1 on success and 0 on failure.
  */
 static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
@@ -583,7 +583,7 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_GET_TAG");
                 /* Get the tag from encryption.
                  *   arg [in] size of buffer
-                 *   ptr [in] buffer to copy into
+                 *   ptr [out] buffer to copy into
                  */
                 if ((!aes->enc) || (!aes->tagSet) || (arg <= 0) ||
                     (arg > aes->tagLen)) {
