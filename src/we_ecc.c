@@ -2701,7 +2701,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
                 ret = (int)outlen;
             }
             else {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "KDF", ret);
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "KDF", NULL);
                 ret = -1;
             }
         }
