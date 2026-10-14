@@ -1124,6 +1124,11 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
             *keyLen = ecc->kdfOutLen;
         }
     }
+    if ((ret == 1) && (key != NULL) &&
+        ((ecc->peerKey == NULL) || (ecc->peerKeyLen <= 0))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Peer key not set");
+        ret = 0;
+    }
     if ((ret == 1) && (key != NULL)) {
         /* Create a new wolfSSL ECC key and set peer's public key. */
         rc = wc_ecc_init(&peer);
