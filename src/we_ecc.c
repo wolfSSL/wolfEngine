@@ -1116,6 +1116,13 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid ECDH KDF configuration");
         ret = 0;
     }
+    if ((ret == 1) && (key != NULL) &&
+        (ecc->kdfType == EVP_PKEY_ECDH_KDF_X9_63) &&
+        (*keyLen < (size_t)ecc->kdfOutLen)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "ECDH KDF output buffer too small");
+        ret = 0;
+    }
+
     if ((ret == 1) && (key == NULL)) {
         if (ecc->kdfType == EVP_PKEY_ECDH_KDF_NONE) {
             /* Return secret size in bytes. */
@@ -1196,6 +1203,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                         /* Maximum output size supported for curves supported.
                          */
                         unsigned char out[72];
+                        word32 outputLen = (word32)ecc->kdfOutLen;
 
                         /* Get buffer length. */
                         len = (word32)sizeof(out);
@@ -1214,10 +1222,13 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                                 we_nid_to_wc_hash_type(EVP_MD_type(ecc->kdfMd));
                             /* KDF secret to key. */
                             rc = wc_X963_KDF(hash, out, len, ecc->kdfUkm,
-                                             ecc->kdfUkmLen, key, (word32)*keyLen);
+                                             ecc->kdfUkmLen, key, outputLen);
                             if (rc != 0) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_X963_KDF", rc);
                                 ret = 0;
+                            }
+                            else {
+                                len = outputLen;
                             }
                         }
                         OPENSSL_cleanse(out, sizeof(out));
