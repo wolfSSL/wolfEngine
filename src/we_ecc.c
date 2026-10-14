@@ -1502,11 +1502,11 @@ static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
     }
 
     if (ret == 1) {
-        if (XSTRNCMP(type, "ecdh_cofactor_mode", 19) == 0) {
+        if (XSTRCMP(type, "ecdh_cofactor_mode") == 0) {
             WOLFENGINE_MSG(WE_LOG_PK, "received type: ecdh_cofactor_mode");
             ecc->coFactor = (XATOI(value) == 1);
         }
-        else if (XSTRNCMP(type, "ecdh_kdf_md", 19) == 0) {
+        else if (XSTRCMP(type, "ecdh_kdf_md") == 0) {
             const EVP_MD *md = EVP_get_digestbyname(value);
 
             WOLFENGINE_MSG(WE_LOG_PK, "received type: ecdh_kdf_md");
