@@ -64,6 +64,9 @@ void *we_memdup(const void *data, size_t siz)
 /** Engine bound to. */
 static ENGINE *bound = NULL;
 static int we_binding = 0;
+#ifdef WE_HAVE_PBE
+static int we_pbe_ready = 0;
+#endif
 
 #ifndef WE_SINGLE_THREADED
 #if defined(_MSC_VER)
@@ -131,6 +134,18 @@ ENGINE *wolfengine_get_bound_engine(void)
 
     return engine;
 }
+
+#ifdef WE_HAVE_PBE
+int we_pbe_keygen_ready(void)
+{
+    int ready;
+
+    we_lock_bind();
+    ready = we_pbe_ready;
+    we_unlock_bind();
+    return ready;
+}
+#endif
 
 #if defined(WE_HAVE_EVP_PKEY) || defined(WE_USE_HASH)
 /** List of public key types supported as ids. */
@@ -1082,13 +1097,6 @@ static int wolfengine_init(ENGINE *e)
     }
 #endif
 #endif
-
-#endif /* WE_HAVE_ECC */
-
-#ifdef WE_HAVE_PBE
-    if (ret == 1) {
-        ret = we_init_pbe_keygen();
-    }
 #endif
 
     WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_init", ret);
@@ -1679,6 +1687,13 @@ int wolfengine_bind(ENGINE *e, const char *id)
         ret = we_init_cmac_cipher_meth();
     }
 #endif
+#ifdef WE_HAVE_PBE
+    /* Publish only after all fallible engine setup has succeeded. */
+    if (ret == 1) {
+        ret = we_init_pbe_keygen();
+    }
+#endif
+
     if ((ret == 0) && (initialized == 1)) {
         wolfengine_pkey_methods_rollback(e);
         wolfengine_cleanup();
@@ -1687,8 +1702,13 @@ int wolfengine_bind(ENGINE *e, const char *id)
     WOLFENGINE_LEAVE(WE_LOG_ENGINE, "wolfengine_bind", ret);
 
     we_lock_bind();
-    if (ret == 1)
+    if (ret == 1) {
         bound = e;
+#ifdef WE_HAVE_PBE
+        /* Registered callbacks retain their lifetime after engine release. */
+        we_pbe_ready = 1;
+#endif
+    }
     we_binding = 0;
     we_unlock_bind();
 

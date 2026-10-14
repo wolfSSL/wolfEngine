@@ -19,11 +19,115 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include <wolfengine/we_internal.h>
 
 #ifdef WE_HAVE_PBE
 
 #ifndef NO_PWDBASED
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(WE_HAVE_DLADDR)
+#include <dlfcn.h>
+#if defined(WE_HAVE_DL_ITERATE_PHDR)
+#include <link.h>
+#include <stdint.h>
+#endif
+#if defined(__APPLE__)
+#include <mach-o/loader.h>
+#endif
+#endif
+
+#ifndef WE_NO_DYNAMIC_ENGINE
+#if defined(_WIN32)
+static HMODULE we_pbe_module = NULL;
+#elif defined(WE_HAVE_DLADDR)
+static void *we_pbe_module = NULL;
+#endif
+#endif
+
+#if defined(WE_HAVE_DL_ITERATE_PHDR) && defined(WE_HAVE_DLADDR) && \
+    !defined(WE_NO_DYNAMIC_ENGINE)
+static int we_pbe_in_executable(struct dl_phdr_info *info, size_t size,
+    void *address)
+{
+    uintptr_t target = (uintptr_t)address;
+    uintptr_t start;
+    unsigned int i;
+
+    (void)size;
+
+    /* The first object is the executable, even when its name is nonempty. */
+    for (i = 0; i < info->dlpi_phnum; i++) {
+        if (info->dlpi_phdr[i].p_type == PT_LOAD) {
+            start = (uintptr_t)info->dlpi_addr +
+                (uintptr_t)info->dlpi_phdr[i].p_vaddr;
+            if ((target >= start) &&
+                (target - start < info->dlpi_phdr[i].p_memsz)) {
+                return 1;
+            }
+        }
+    }
+    return 2;
+}
+#endif
+
+static int we_pin_pbe_module(void)
+{
+    int ret = 1;
+
+#ifndef WE_NO_DYNAMIC_ENGINE
+#if defined(_WIN32)
+    if ((we_pbe_module == NULL) &&
+        (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                            (LPCSTR)(const void *)&we_pbe_module,
+                            &we_pbe_module) == 0)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PBE, "Failed to pin PBE module");
+        ret = 0;
+    }
+#elif defined(WE_HAVE_DLADDR)
+    if (we_pbe_module == NULL) {
+        Dl_info info;
+
+#if defined(WE_HAVE_DL_ITERATE_PHDR)
+        if (dl_iterate_phdr(we_pbe_in_executable, &we_pbe_module) == 1) {
+            /* The executable already has process lifetime. */
+            ret = 1;
+        }
+        else
+#endif
+        if ((dladdr((const void *)&we_pbe_module, &info) == 0) ||
+            (info.dli_fname == NULL)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PBE, "Failed to locate PBE module");
+            ret = 0;
+        }
+#if defined(__APPLE__)
+        else if ((info.dli_fbase != NULL) &&
+            (((const struct mach_header *)info.dli_fbase)->filetype ==
+                MH_EXECUTE)) {
+            ret = 1;
+        }
+#endif
+        else {
+            we_pbe_module = dlopen(info.dli_fname, RTLD_NOW | RTLD_LOCAL);
+            if (we_pbe_module == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PBE, "Failed to pin PBE module");
+                ret = 0;
+            }
+        }
+    }
+#else
+    WOLFENGINE_ERROR_MSG(WE_LOG_PBE, "PBE module pinning is unavailable");
+    ret = 0;
+#endif
+#endif /* !WE_NO_DYNAMIC_ENGINE */
+
+    return ret;
+}
+
 /**
  * Convert the OpenSSL HMAC NID to a wolfCrypt hash type.
  *
@@ -108,6 +212,9 @@ static int we_pbkdf2_keygen(EVP_CIPHER_CTX *ctx, const char *passwd,
     unsigned char *salt;
     int sLen;
     int hashType;
+
+    if (we_pbe_keygen_ready() == 0)
+        return 0;
 
     /* Cipher already set.  */
     (void)cipher;
@@ -307,6 +414,9 @@ static int we_pbe_keyivgen(EVP_CIPHER_CTX *ctx, const char *passwd,
     unsigned char *uniPass = NULL;
     int uniLen;
 
+    if (we_pbe_keygen_ready() == 0)
+        return 0;
+
     WOLFENGINE_ENTER(WE_LOG_PBE, "we_pbe_keyivgen");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PBE, "ARGS [ctx = %p, passwd = %p, "
         "passwdLen = %d, param = %p, cipher = %p, md = %p, en_de = %d]", ctx,
@@ -437,6 +547,9 @@ static int we_pbes2_keyivgen(EVP_CIPHER_CTX *ctx, const char *passwd,
     /* Cipher ingored in favour of PBES2 parameters. */
     (void)c;
 
+    if (we_pbe_keygen_ready() == 0)
+        return 0;
+
     WOLFENGINE_ENTER(WE_LOG_PBE, "we_pbes2_keyivgen");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PBE, "ARGS [ctx = %p, passwd = %p, "
         "passwdLen = %d, param = %p, c = %p, md = %p, en_de = %d]", ctx, passwd,
@@ -515,25 +628,51 @@ static int we_pbes2_keyivgen(EVP_CIPHER_CTX *ctx, const char *passwd,
     return ret;
 }
 #endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+
+static int we_pbe_callback_matches(int type, int nid, EVP_PBE_KEYGEN *keygen)
+{
+    int cipherNid;
+    int digestNid;
+    EVP_PBE_KEYGEN *registered = NULL;
+
+    return (EVP_PBE_find(type, nid, &cipherNid, &digestNid, &registered) == 1) &&
+        (registered == keygen);
+}
 #endif /* !NO_PWDBASED */
 
 /**
- * Set the PBE functions to lookup for PBE, PBES2 and PKBDF2.
+ * Reserve the lifetime of PBE callbacks without registering them.
  *
  * @returns  1 on success and 0 on failure.
  */
+int we_prepare_pbe_keygen(void)
+{
+#ifndef NO_PWDBASED
+    return we_pin_pbe_module();
+#else
+    return 1;
+#endif
+}
+
 int we_init_pbe_keygen(void)
 {
 #ifndef NO_PWDBASED
     int ret;
 
-    ret = EVP_PBE_alg_add_type(EVP_PBE_TYPE_OUTER, NID_id_pbkdf2, -1, -1,
-        we_pbkdf2_keygen);
-    if (ret != 1) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_PBE, "EVP_PBE_alg_add_type", ret);
+    ret = we_prepare_pbe_keygen();
+    if ((ret == 1) && !we_pbe_callback_matches(EVP_PBE_TYPE_OUTER,
+                                             NID_id_pbkdf2,
+                                             we_pbkdf2_keygen)) {
+        ret = EVP_PBE_alg_add_type(EVP_PBE_TYPE_OUTER, NID_id_pbkdf2, -1, -1,
+            we_pbkdf2_keygen);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PBE, "EVP_PBE_alg_add_type", ret);
+        }
     }
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    if (ret == 1) {
+    if ((ret == 1) && !we_pbe_callback_matches(EVP_PBE_TYPE_KDF,
+                                             NID_id_pbkdf2,
+                                             we_pbkdf2_keygen)) {
         /* Let PKCS5_v2_PBE_keyivgen look up the KDF function. */
         ret = EVP_PBE_alg_add_type(EVP_PBE_TYPE_KDF, NID_id_pbkdf2, -1, -1,
             we_pbkdf2_keygen);
@@ -542,7 +681,9 @@ int we_init_pbe_keygen(void)
         }
     }
 #else
-    if (ret == 1) {
+    if ((ret == 1) && !we_pbe_callback_matches(EVP_PBE_TYPE_OUTER,
+                                             NID_pbes2,
+                                             we_pbes2_keyivgen)) {
         /* PKCS5_v2_PBE_keyivgen doesn't look up the KDF function. */
         ret = EVP_PBE_alg_add_type(EVP_PBE_TYPE_OUTER, NID_pbes2, -1, -1,
             we_pbes2_keyivgen);
@@ -551,7 +692,9 @@ int we_init_pbe_keygen(void)
         }
     }
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
-    if (ret == 1) {
+    if ((ret == 1) && !we_pbe_callback_matches(EVP_PBE_TYPE_OUTER,
+                                  NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
+                                  we_pbe_keyivgen)) {
         ret = EVP_PBE_alg_add_type(EVP_PBE_TYPE_OUTER,
             NID_pbe_WithSHA1And3_Key_TripleDES_CBC, NID_des_ede3_cbc, NID_sha1,
             we_pbe_keyivgen);
@@ -559,7 +702,6 @@ int we_init_pbe_keygen(void)
             WOLFENGINE_ERROR_FUNC(WE_LOG_PBE, "EVP_PBE_alg_add_type", ret);
         }
     }
-
     return ret;
 #else
     WOLFENGINE_MSG(WE_LOG_PBE, "wolfCrypt does not support PBKDF");
