@@ -488,7 +488,6 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
  *  - EVP_CTRL_AEAD_SET_IVLEN: set the length of an IV/nonce
  *  - EVP_CTRL_GET_IVLEN: get the total IV/nonce length
  *  - EVP_CTRL_CCM_SET_IV_FIXED: set the fixed part of an IV/nonce
- *  - EVP_CTRL_CCM_IV_GEN: set the generated IV/nonce
  *  - EVP_CTRL_AEAD_GET_TAG: get the tag value after encrypt
  *  - EVP_CTRL_AEAD_SET_TAG: set the tag value before decrypt
  *  - EVP_CTRL_AEAD_TLS1_AAD: set AAD for TLS
