@@ -651,7 +651,8 @@ static int we_mac_md_to_hash_type(EVP_MD *md)
  * @param  type  [in]  Type of operation to perform.
  * @param  num   [in]  Integer parameter.
  * @param  ptr   [in]  Pointer parameter.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
@@ -786,7 +787,7 @@ static int we_mac_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
                 WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);
-                ret = 0;
+                ret = -2;
         }
     }
 

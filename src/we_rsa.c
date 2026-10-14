@@ -2061,7 +2061,8 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
  * @param  type  [in]  Type of operation to perform.
  * @param  num   [in]  Integer parameter.
  * @param  ptr   [in]  Pointer parameter.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
@@ -2329,7 +2330,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-                ret = 0;
+                ret = -2;
                 break;
         }
     }
