@@ -1503,12 +1503,20 @@ static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                           const char *value)
 {
     int ret = 1;
+#ifdef WE_HAVE_ECKEYGEN
+    int curveNid;
+#endif
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
     we_Ecc *ecc;
 
     ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx);
     if (ecc == NULL) {
         WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EVP_PKEY_CTX_get_data", ecc);
+        ret = 0;
+    }
+
+    if ((ret == 1) && ((type == NULL) || (value == NULL))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Missing EC control value");
         ret = 0;
     }
 
@@ -1529,6 +1537,35 @@ static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                 ret = 0;
             }
         }
+    #ifdef WE_HAVE_ECKEYGEN
+        else if (XSTRCMP(type, "ec_paramgen_curve") == 0) {
+            curveNid = OBJ_txt2nid(value);
+            if (curveNid == NID_undef)
+                curveNid = EC_curve_nist2nid(value);
+            if (curveNid == NID_undef) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unknown EC curve");
+                ret = 0;
+            }
+            else {
+                ret = we_ec_ctrl(ctx, EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID,
+                                 curveNid, NULL);
+            }
+        }
+        else if (XSTRCMP(type, "ec_param_enc") == 0) {
+            if (XSTRCMP(value, "named_curve") != 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                     "Unsupported EC parameter encoding");
+                ret = -2;
+            }
+            else if (ecc->group == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "EC group not set");
+                ret = 0;
+            }
+            else {
+                EC_GROUP_set_asn1_flag(ecc->group, OPENSSL_EC_NAMED_CURVE);
+            }
+        }
+    #endif
         else {
             XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl string %s",
                       type);

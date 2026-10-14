@@ -915,6 +915,42 @@ static int test_ecdh_kdf_output_length(ENGINE *e)
 }
 #endif /* WE_HAVE_SHA256 */
 
+#if defined(WE_HAVE_ECKEYGEN) && OPENSSL_VERSION_NUMBER >= 0x1000212fL
+static int test_ec_paramgen_string_controls(ENGINE *e)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *params = NULL;
+    const EC_KEY *ecKey;
+    const EC_GROUP *group;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, e);
+    err = ctx == NULL;
+    if (err == 0)
+        err = EVP_PKEY_paramgen_init(ctx) != 1;
+    if (err == 0)
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "ec_paramgen_curve", "P-256") != 1;
+    if (err == 0)
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "ec_param_enc", "named_curve") != 1;
+    if (err == 0)
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "ec_param_enc", "explicit") != -2;
+    if (err == 0)
+        err = EVP_PKEY_paramgen(ctx, &params) != 1;
+    if (err == 0) {
+        ecKey = EVP_PKEY_get0_EC_KEY(params);
+        group = ecKey != NULL ? EC_KEY_get0_group(ecKey) : NULL;
+        err = group == NULL ||
+              EC_GROUP_get_curve_name(group) != NID_X9_62_prime256v1 ||
+              EC_GROUP_get_asn1_flag(group) != OPENSSL_EC_NAMED_CURVE;
+    }
+
+    EVP_PKEY_free(params);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+#endif /* WE_HAVE_ECKEYGEN && OPENSSL_VERSION_NUMBER >= 0x1000212fL */
+
 int test_ecdh_p256(ENGINE *e, void *data)
 {
     int err;
@@ -929,6 +965,13 @@ int test_ecdh_p256(ENGINE *e, void *data)
         err = test_ecdh_kdf_output_length(e);
     }
 #endif /* WE_HAVE_SHA256 */
+#if defined(WE_HAVE_ECKEYGEN) && OPENSSL_VERSION_NUMBER >= 0x1000212fL
+    if (err == 0) {
+        PRINT_MSG("Check EC parameter string controls");
+        err = test_ec_paramgen_string_controls(e);
+    }
+#endif /* WE_HAVE_ECKEYGEN && OPENSSL_VERSION_NUMBER >= 0x1000212fL */
+
     return err;
 }
 #endif /* WE_HAVE_EC_P256 */
