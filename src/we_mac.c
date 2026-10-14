@@ -363,7 +363,11 @@ static int we_mac_get_asn1_key(EVP_PKEY_CTX *ctx, ASN1_OCTET_STRING **pKey)
     }
     if (ret == 1) {
         /* Copy the key into ASN.1 octet string. */
-        ASN1_OCTET_STRING_set(key, mac->key, mac->keySz);
+        if (ASN1_OCTET_STRING_set(key, mac->key, mac->keySz) != 1) {
+            ASN1_OCTET_STRING_free(key);
+            key = NULL;
+            ret = 0;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_MAC, "we_mac_get_asn1_key", ret);
