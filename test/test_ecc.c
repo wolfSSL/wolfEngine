@@ -815,12 +815,121 @@ int test_ecdh_p224(ENGINE *e, void *data)
 #endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
+#ifdef WE_HAVE_SHA256
+static int test_ecdh_kdf_output_length(ENGINE *e)
+{
+    int err = 0;
+    int i;
+    EVP_PKEY *key = NULL;
+    EVP_PKEY *peerKey = NULL;
+#ifdef WE_HAVE_EC_P384
+    EVP_PKEY *otherPeer = NULL;
+#endif
+    unsigned char output[2][16];
+    const unsigned char *p;
+
+    p = ecc_key_der_256;
+    key = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_256));
+    if (key == NULL)
+        err = 1;
+    if (err == 0) {
+        p = ecc_peerkey_der_256;
+        peerKey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p,
+                                 sizeof(ecc_peerkey_der_256));
+        err = peerKey == NULL;
+    }
+#ifdef WE_HAVE_EC_P384
+    if (err == 0) {
+        p = ecc_peerkey_der_384;
+        otherPeer = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p,
+                                   sizeof(ecc_peerkey_der_384));
+        err = otherPeer == NULL;
+    }
+#endif
+
+    for (i = 0; (i < 2) && (err == 0); i++) {
+        EVP_PKEY_CTX *ctx;
+        int configuredLen = 0;
+        size_t outputLen = sizeof(output[i]);
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        if (i == 1)
+            err = EVP_PKEY_set1_engine(key, e) != 1;
+        ctx = err == 0 ? EVP_PKEY_CTX_new(key, NULL) : NULL;
+#else
+        ctx = EVP_PKEY_CTX_new(key, i == 0 ? NULL : e);
+#endif
+        if (ctx == NULL)
+            err = 1;
+        if (err == 0)
+            err = EVP_PKEY_derive_init(ctx) != 1;
+#ifdef WE_HAVE_EC_P384
+        if ((err == 0) && (i == 1))
+            err = EVP_PKEY_derive_set_peer(ctx, otherPeer) == 1;
+#endif
+        if (err == 0)
+            err = EVP_PKEY_derive_set_peer(ctx, peerKey) != 1;
+        if (err == 0)
+            err = EVP_PKEY_CTX_set_ecdh_kdf_type(ctx,
+                                                 EVP_PKEY_ECDH_KDF_X9_63) != 1;
+        if (err == 0)
+            err = EVP_PKEY_CTX_set_ecdh_kdf_md(ctx, EVP_sha256()) != 1;
+        if (err == 0)
+            err = EVP_PKEY_CTX_set_ecdh_kdf_outlen(ctx, (int)outputLen) != 1;
+        if (err == 0)
+            err = EVP_PKEY_CTX_get_ecdh_kdf_outlen(ctx, &configuredLen) != 1;
+        if (err == 0)
+            err = configuredLen != (int)outputLen;
+        if ((err == 0) && (i == 1)) {
+            err = EVP_PKEY_CTX_set_ecdh_kdf_md(ctx, NULL) != 1;
+            if (err == 0)
+                err = EVP_PKEY_CTX_set_ecdh_kdf_md(ctx, EVP_sha256()) != 1;
+            if (err == 0)
+                err = EVP_PKEY_CTX_set_ecdh_kdf_outlen(ctx, 0) == 1;
+        }
+        if (err == 0)
+            err = EVP_PKEY_derive(ctx, output[i], &outputLen) != 1;
+        if (err == 0) {
+            err = outputLen != sizeof(output[i]);
+            if (err != 0)
+                PRINT_ERR_MSG("ECDH KDF output length differs from result");
+        }
+        if ((err == 0) && (i == 1)) {
+            size_t shortLen = sizeof(output[i]) - 1;
+
+            err = EVP_PKEY_derive(ctx, output[i], &shortLen) == 1;
+        }
+
+        EVP_PKEY_CTX_free(ctx);
+    }
+    if (err == 0)
+        err = XMEMCMP(output[0], output[1], sizeof(output[0])) != 0;
+
+#ifdef WE_HAVE_EC_P384
+    EVP_PKEY_free(otherPeer);
+#endif
+    EVP_PKEY_free(peerKey);
+    EVP_PKEY_free(key);
+
+    return err;
+}
+#endif /* WE_HAVE_SHA256 */
+
 int test_ecdh_p256(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
-    return test_ecdh(e, ecc_key_der_256, sizeof(ecc_key_der_256),
-                     ecc_peerkey_der_256, sizeof(ecc_peerkey_der_256),
-                     ecc_derived_256, sizeof(ecc_derived_256));
+    err = test_ecdh(e, ecc_key_der_256, sizeof(ecc_key_der_256),
+                    ecc_peerkey_der_256, sizeof(ecc_peerkey_der_256),
+                    ecc_derived_256, sizeof(ecc_derived_256));
+#ifdef WE_HAVE_SHA256
+    if (err == 0) {
+        PRINT_MSG("Check ECDH KDF output length");
+        err = test_ecdh_kdf_output_length(e);
+    }
+#endif /* WE_HAVE_SHA256 */
+    return err;
 }
 #endif /* WE_HAVE_EC_P256 */
 
