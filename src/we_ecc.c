@@ -332,6 +332,9 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
     int ret, rc;
     we_Ecc *ecc;
     int keyInited = 0;
+#ifndef WE_ECC_USE_GLOBAL_RNG
+    int rngInited = 0;
+#endif
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_init");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
@@ -358,7 +361,10 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
 #ifndef WE_ECC_USE_GLOBAL_RNG
     if (ret == 1) {
         rc = wc_InitRng(&ecc->rng);
-        if (rc != 0) {
+        if (rc == 0) {
+            rngInited = 1;
+        }
+        else {
             ret = 0;
         }
     }
@@ -385,7 +391,9 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
 
     if (ret == 0 && ecc != NULL) {
 #ifndef WE_ECC_USE_GLOBAL_RNG
-        wc_FreeRng(&ecc->rng);
+        if (rngInited) {
+            wc_FreeRng(&ecc->rng);
+        }
 #endif
         /* Make sure wolfSSL EC key is freed if initialized. */
         if (keyInited) {
