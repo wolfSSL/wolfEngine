@@ -2502,6 +2502,14 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
     ecc_key *pKey = NULL;
     const EC_GROUP *group;
     int curveId;
+    ECDSA_SIG *decodedSig = NULL;
+    const unsigned char *sigIn;
+    unsigned char encodedSig[ECC_MAX_SIG_SIZE];
+    unsigned char *sigOut;
+    int encodedLen;
+    const BIGNUM *r;
+    const BIGNUM *s;
+    const BIGNUM *order;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_verify");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [type = %d, dgst = %p, dLen = %d, "
@@ -2526,12 +2534,45 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         /* Set public key into wolfSSL key object. */
         ret = we_ec_set_public(&key, curveId, ecKey);
     }
+    if (ret != 1) {
+        /* Setup failures are errors, not invalid signatures. */
+        ret = -1;
+    }
+    if (ret == 1) {
+        ret = -1;
+        if (sig != NULL && sigLen > 0 && sigLen <= (int)sizeof(encodedSig)) {
+            sigIn = sig;
+            decodedSig = d2i_ECDSA_SIG(NULL, &sigIn, sigLen);
+            if (decodedSig != NULL && sigIn == sig + sigLen &&
+                i2d_ECDSA_SIG(decodedSig, NULL) == sigLen) {
+                sigOut = encodedSig;
+                encodedLen = i2d_ECDSA_SIG(decodedSig, &sigOut);
+                if (encodedLen == sigLen &&
+                    XMEMCMP(sig, encodedSig, sigLen) == 0) {
+                    /* Encoding errors must not depend on backend results. */
+                    ECDSA_SIG_get0(decodedSig, &r, &s);
+                    if (!BN_is_negative(r) && !BN_is_negative(s)) {
+                        ret = 1;
+                    }
+                }
+            }
+        }
+    }
     if (ret == 1) {
         /* Verify hash with wolfSSL. */
         rc = wc_ecc_verify_hash(sig, sigLen, dgst, dLen, &res, &key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
             ret = -1;
+            if (rc == MP_ZERO_E || rc == MP_VAL) {
+                order = EC_GROUP_get0_order(group);
+                if (order != NULL && (BN_is_zero(r) || BN_cmp(r, order) >= 0 ||
+                    BN_is_zero(s) || BN_cmp(s, order) >= 0)) {
+                    ret = 0;
+                }
+            }
+            if (ret == -1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
+            }
         }
     }
     if (ret == 1) {
@@ -2546,6 +2587,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         }
     }
 
+    ECDSA_SIG_free(decodedSig);
     wc_ecc_free(pKey);
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_key_verify", ret);
