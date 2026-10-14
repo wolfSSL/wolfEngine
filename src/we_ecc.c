@@ -833,6 +833,10 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
             ecc->pubKeySet = 1;
         }
     }
+    if (ret != 1) {
+        /* Setup failures are errors, not invalid signatures. */
+        ret = -1;
+    }
     /* wolfSSL FIPS is not checking SEQUENCE length. */
     if ((ret == 1) && ((sig == NULL) || (sigLen < 2))) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature too short");
