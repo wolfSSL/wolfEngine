@@ -1196,6 +1196,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                                 ret = 0;
                             }
                         }
+                        OPENSSL_cleanse(out, sizeof(out));
                     }
             #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
                 && !defined(WE_SINGLE_THREADED)
