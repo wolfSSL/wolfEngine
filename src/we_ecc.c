@@ -1109,6 +1109,13 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
         }
     }
 
+    if ((ret == 1) && (ecc->kdfType == EVP_PKEY_ECDH_KDF_X9_63) &&
+        ((ecc->kdfMd == NULL) || (ecc->kdfOutLen <= 0) ||
+         (we_nid_to_wc_hash_type(EVP_MD_type(ecc->kdfMd)) ==
+          WC_HASH_TYPE_NONE))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid ECDH KDF configuration");
+        ret = 0;
+    }
     if ((ret == 1) && (key == NULL)) {
         if (ecc->kdfType == EVP_PKEY_ECDH_KDF_NONE) {
             /* Return secret size in bytes. */
@@ -1407,14 +1414,29 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
 
             case EVP_PKEY_CTRL_EC_KDF_MD:
-                ecc->kdfMd = (const EVP_MD *)ptr;
+                if ((ptr != NULL) &&
+                    (we_nid_to_wc_hash_type(
+                        EVP_MD_type((const EVP_MD *)ptr)) ==
+                     WC_HASH_TYPE_NONE)) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid KDF digest");
+                    ret = 0;
+                }
+                else {
+                    ecc->kdfMd = (const EVP_MD *)ptr;
+                }
                 break;
             case EVP_PKEY_CTRL_GET_EC_KDF_MD:
                 *(const EVP_MD **)ptr = ecc->kdfMd;
                 break;
 
             case EVP_PKEY_CTRL_EC_KDF_OUTLEN:
-                ecc->kdfOutLen = num;
+                if (num <= 0) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid KDF output length");
+                    ret = 0;
+                }
+                else {
+                    ecc->kdfOutLen = num;
+                }
                 break;
             case EVP_PKEY_CTRL_GET_EC_KDF_OUTLEN:
                 if (ptr == NULL) {
@@ -1485,9 +1507,12 @@ static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             ecc->coFactor = (XATOI(value) == 1);
         }
         else if (XSTRNCMP(type, "ecdh_kdf_md", 19) == 0) {
-            ecc->kdfMd = EVP_get_digestbyname(value);
+            const EVP_MD *md = EVP_get_digestbyname(value);
+
             WOLFENGINE_MSG(WE_LOG_PK, "received type: ecdh_kdf_md");
-            if (ecc->kdfMd == NULL) {
+            if ((md == NULL) ||
+                (we_ec_ctrl(ctx, EVP_PKEY_CTRL_EC_KDF_MD, 0, (void *)md) !=
+                 1)) {
                 XSNPRINTF(errBuff, sizeof(errBuff), "Invalid digest %s", value);
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
                 ret = 0;
