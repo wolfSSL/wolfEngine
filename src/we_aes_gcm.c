@@ -135,6 +135,10 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if (ret == 1) {
+        /* Preserve a pending TLS header, but leave spent TLS mode on reinit. */
+        if (aes->aad == NULL) {
+            aes->tls = 0;
+        }
         aes->enc = enc;
     }
 
@@ -237,9 +241,10 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
         ret = -1;
     }
     /* TLS AAD carries the record sequence number and must be set first. */
-    if ((ret == 1) && aes->enc && (aes->aad == NULL)) {
+    if ((ret == 1) && ((aes->aad == NULL) ||
+            (aes->aadLen != EVP_AEAD_TLS1_AAD_LEN))) {
         WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                             "TLS AAD not set before AES-GCM encrypt");
+                             "TLS AAD not set before AES-GCM operation");
         ret = -1;
     }
     /* Doing the TLS variation. */

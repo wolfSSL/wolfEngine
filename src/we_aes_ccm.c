@@ -173,6 +173,10 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         XMEMCPY(aes->iv, iv, aes->ivLen);
     }
     if (ret == 1) {
+        /* Preserve a pending TLS header, but leave spent TLS mode on reinit. */
+        if (aes->aad == NULL) {
+            aes->tls = 0;
+        }
         aes->enc = enc;
     }
 
@@ -242,10 +246,10 @@ static int we_aes_ccm_tls_cipher(we_AesCcm *aes, unsigned char *out,
     /* Explicit nonce: encrypt uses the saved AAD sequence number, decrypt the
      * record. */
     if (ret == 1) {
-        if (aes->enc && ((aes->aad == NULL) ||
-                (aes->aadLen < EVP_CCM_TLS_EXPLICIT_IV_LEN))) {
+        if ((aes->aad == NULL) ||
+                (aes->aadLen != EVP_AEAD_TLS1_AAD_LEN)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                 "TLS AAD not set before AES-CCM encrypt");
+                                 "TLS AAD not set before AES-CCM operation");
             ret = -1;
         }
         else if (aes->enc) {

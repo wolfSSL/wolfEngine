@@ -493,6 +493,10 @@ static int test_aes_tag_tls_dec(ENGINE *e, const EVP_CIPHER *cipher,
         PRINT_BUFFER("Decrypted", msg + EVP_GCM_TLS_EXPLICIT_IV_LEN, dLen);
         (void)dLen;
     }
+    if ((err == 0) && (e != NULL)) {
+        PRINT_MSG("TLS decrypt requires a fresh record header");
+        err = EVP_Cipher(ctx, msg, msg, len) >= 0;
+    }
 
     EVP_CIPHER_CTX_free(ctx);
 
