@@ -131,6 +131,7 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         /* No tag set. */
         aes->tagLen = 0;
         /* Start with no AAD. */
+        OPENSSL_free(aes->aad);
         aes->aad = NULL;
         aes->aadLen = 0;
         aes->enc = enc;
