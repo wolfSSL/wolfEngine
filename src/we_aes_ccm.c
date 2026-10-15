@@ -525,8 +525,8 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] value to use for length field (L)
                  *   ptr [in] Unused
                  */
-                if ((arg <= 0) ||
-                    arg < CCM_LEN_FIELD_MIN_SZ || arg > CCM_LEN_FIELD_MAX_SZ) {
+                if ((arg < CCM_LEN_FIELD_MIN_SZ) ||
+                    (arg > CCM_LEN_FIELD_MAX_SZ)) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
                                          "Invalid CCM length field");
                     ret = 0;
