@@ -87,6 +87,8 @@ typedef struct we_AesCcm
     unsigned int   init:1;
     /** Flag to indicate successful wolfCrypt AES initialization. */
     unsigned int   aesInit:1;
+    /** Tag generated or explicitly supplied for the current operation. */
+    unsigned int   tagSet:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
     /** Flag to indicate whether doing this for TLS */
@@ -121,6 +123,9 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
+    if ((ret == 1) && (enc || (aes->enc != (unsigned int)enc))) {
+        aes->tagSet = 0;
+    }
     if ((ret == 1) && (((key == NULL) && (iv == NULL)) || (!aes->init))) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting defaults for we_AesCcm struct");
         /* Default L size for OpenSSL is 8, used to calc nonce/iv size */
@@ -130,6 +135,7 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         aes->ivSet = 0;
         /* No tag set. */
         aes->tagLen = 0;
+        aes->tagSet = 0;
         /* Start with no AAD. */
         OPENSSL_free(aes->aad);
         aes->aad = NULL;
@@ -165,6 +171,9 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
          * default set above, unless reset by application through ctrl cmd. */
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching IV into aes->iv");
         XMEMCPY(aes->iv, iv, aes->ivLen);
+    }
+    if (ret == 1) {
+        aes->enc = enc;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ccm_init", ret);
@@ -394,6 +403,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             aes->tagLen = EVP_CCM_TLS_TAG_LEN;
         }
         if (aes->enc) {
+            aes->tagSet = 0;
             if (!aes->ivSet) {
                 /* Set extern IV. */
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES-CCM Nonce");
@@ -424,11 +434,16 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
                 /* Cache nonce/IV. */
                 XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
+                aes->tagSet = 1;
                 /* Return encrypted data length */
                 ret = (int)len;
             }
         }
+        else if (!aes->tagSet) {
+            ret = -1;
+        }
         else {
+            aes->tagSet = 0;
             /* Decrypt the data. */
             rc = wc_AesCcmDecrypt(&aes->aes, out, in, (word32)len, aes->iv,
                                   aes->ivLen, aes->tag, aes->tagLen,
@@ -571,11 +586,13 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] size of buffer
                  *   ptr [in] buffer to copy into
                  */
-                if ((!aes->enc) || (arg <= 0) || (arg > aes->tagLen)) {
+                if ((!aes->enc) || (!aes->tagSet) || (arg <= 0) ||
+                    (arg > aes->tagLen)) {
                     ret = 0;
                 }
                 else {
                     XMEMCPY(ptr, aes->tag, arg);
+                    aes->tagSet = 0;
                 }
                 break;
 
@@ -592,6 +609,10 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 else {
                     if (!aes->enc && (ptr != NULL)) {
                         XMEMCPY(aes->tag, ptr, arg);
+                        aes->tagSet = 1;
+                    }
+                    else if (aes->enc || (arg != aes->tagLen)) {
+                        aes->tagSet = 0;
                     }
                     aes->tagLen = arg;
                 }

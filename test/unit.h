@@ -87,6 +87,10 @@ typedef struct TEST_CASE {
 #endif
 } TEST_CASE;
 
+#ifdef WE_HAVE_AESCCM
+int test_aes_ccm_keyed_reinit(ENGINE *e, void *data);
+#endif
+
 int test_logging(ENGINE *e, void *data);
 
 #define WE_VALGRIND_TEST 0x1
