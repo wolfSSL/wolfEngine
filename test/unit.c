@@ -69,6 +69,9 @@ TEST_CASE test_case[] = {
 #ifdef WE_HAVE_SHA512
     TEST_DECL(test_sha512, NULL),
 #endif
+#ifdef WE_HAVE_AESCCM
+    TEST_DECL(test_aes_ccm_keyed_reinit, NULL),
+#endif
 #ifdef WE_HAVE_SHA3_224
     TEST_DECL(test_sha3_224, NULL),
 #endif

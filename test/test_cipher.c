@@ -841,3 +841,188 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
 
 #endif /* WE_HAVE_AESCTR */
 
+#ifdef WE_HAVE_AESCCM
+
+static int test_ccm_keyed_roundtrip(ENGINE *e, const EVP_CIPHER *cipher)
+{
+    int err = 0;
+    int len = 0;
+    int finalLen = 0;
+    int lengthRet = 1;
+    const unsigned char msg[] = "Test pattern";
+    static const unsigned char aad[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
+    unsigned char key[32] = {0};
+    unsigned char iv[13] = {0};
+    unsigned char enc[sizeof(msg)];
+    unsigned char dec[sizeof(msg)];
+    unsigned char tag[16];
+    unsigned char nextTag[sizeof(tag)];
+    EVP_CIPHER_CTX *ctx = NULL;
+    EVP_CIPHER_CTX *copy = NULL;
+
+#if OPENSSL_VERSION_NUMBER < 0x1010103fL
+    /* Native OpenSSL before 1.1.1c needs a tag for length setup. */
+    lengthRet = e != NULL;
+#endif
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN,
+                                  sizeof(iv), NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = (copy = EVP_CIPHER_CTX_new()) == NULL;
+        if (err == 0) {
+            PRINT_MSG("CCM engine contexts reject copying");
+            err = EVP_CIPHER_CTX_copy(copy, ctx) != 0;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("CCM encryption tags require a completed operation");
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 0;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, NULL, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, enc, &len, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = len != (int)sizeof(msg);
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, enc + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = finalLen != 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        unsigned char unused[sizeof(tag)];
+
+        PRINT_MSG("CCM encryption tags are exported once per operation");
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(unused), unused) != 0;
+    }
+    if (err == 0) {
+        PRINT_MSG("Reinitialize CCM for a keyed decrypt roundtrip");
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, NULL, sizeof(enc)) != lengthRet;
+    }
+    if (err == 0) {
+        PRINT_MSG("CCM decryption requires an authentication tag");
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 0;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, NULL, sizeof(enc)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+    }
+    if (err == 0) {
+        err = (len != (int)sizeof(msg)) ||
+              (XMEMCMP(dec, msg, sizeof(msg)) != 0);
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    /* Older OpenSSL clears CCM tag state before finalization. */
+    if (err == 0) {
+        err = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = finalLen != 0;
+    }
+#endif
+    if (err == 0) {
+        PRINT_MSG("CCM decrypt contexts do not export encryption tags");
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 0;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Reinitialize CCM for keyed encryption");
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, NULL, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, dec, &len, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = (len != (int)sizeof(msg)) ||
+              (XMEMCMP(dec, enc, sizeof(enc)) != 0);
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, dec + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = finalLen != 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(nextTag), nextTag) != 1;
+    }
+    if (err == 0) {
+        err = XMEMCMP(nextTag, tag, sizeof(tag)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_CTX_free(copy);
+    return err;
+}
+
+int test_aes_ccm_keyed_reinit(ENGINE *e, void *data)
+{
+    int err;
+
+    (void)data;
+
+    err = test_ccm_keyed_roundtrip(NULL, EVP_aes_128_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(e, EVP_aes_128_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(NULL, EVP_aes_192_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(e, EVP_aes_192_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(NULL, EVP_aes_256_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(e, EVP_aes_256_ccm());
+
+    return err;
+}
+
+#endif /* WE_HAVE_AESCCM */
+
