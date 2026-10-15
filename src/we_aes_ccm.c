@@ -175,9 +175,14 @@ static int we_aes_ccm_cleanup(EVP_CIPHER_CTX *ctx)
 {
     we_AesCcm *aes = (we_AesCcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
 
-    if ((aes != NULL) && aes->aesInit) {
-        wc_AesFree(&aes->aes);
-        aes->aesInit = 0;
+    if (aes != NULL) {
+        OPENSSL_free(aes->aad);
+        aes->aad = NULL;
+        aes->aadLen = 0;
+        if (aes->aesInit) {
+            wc_AesFree(&aes->aes);
+            aes->aesInit = 0;
+        }
     }
 
     return 1;
