@@ -2187,11 +2187,15 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         sBN = BN_bin2bn(s_bin, s_size, sBN);
         if (rBN == NULL || sBN == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_bin2bn", NULL);
+            BN_clear_free(rBN);
+            BN_clear_free(sBN);
             err = 1;
         } else {
             rc = ECDSA_SIG_set0(sig, rBN, sBN);
             if (rc != 1) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "ECDSA_SIG_set0", rc);
+                BN_clear_free(rBN);
+                BN_clear_free(sBN);
                 err = 1;
             }
         }
