@@ -1081,6 +1081,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
 #ifdef WE_HAVE_RSA_X931
     unsigned char* padded = NULL;
     int paddedSz;
+    int padSz;
     mp_int toMp;
     mp_int nMinusTo;
     int rc;
@@ -1198,7 +1199,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                     ret = -1;
                 }
                 else {
-                    rc = mp_read_unsigned_bin(&toMp, to, (int)toLen);
+                    rc = mp_read_unsigned_bin(&toMp, to, (int)tLen);
                     if (rc != MP_OKAY) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_read_unsigned_bin",
                                               rc);
@@ -1215,11 +1216,21 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                             ret = -1;
                         }
                         else if (mp_cmp(&toMp, &nMinusTo) == MP_GT) {
-                            rc = mp_to_unsigned_bin(&nMinusTo, to);
-                            if (rc != MP_OKAY) {
-                                WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                    "mp_to_unsigned_bin", rc);
+                            /* Complement can be shorter than n: left-pad. */
+                            padSz = (int)tLen - mp_unsigned_bin_size(&nMinusTo);
+                            if (padSz < 0) {
+                                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                    "X9.31 complement larger than signature");
                                 ret = -1;
+                            }
+                            else {
+                                XMEMSET(to, 0, (size_t)padSz);
+                                rc = mp_to_unsigned_bin(&nMinusTo, to + padSz);
+                                if (rc != MP_OKAY) {
+                                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                        "mp_to_unsigned_bin", rc);
+                                    ret = -1;
+                                }
                             }
                         }
                     }
@@ -1358,6 +1369,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     mp_int toMp;
     mp_int nMinusTo;
     int rc;
+    int padSz;
 #endif
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pub_dec_int");
@@ -1455,7 +1467,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                      * step. Taking "to" mod 16 is the same as just checking the
                      * lower 4 bits of "to."
                      */
-                    if ((to[toLen-1] & 0x0F) != 12) {
+                    if ((to[tLen-1] & 0x0F) != 12) {
                         rc = mp_init_multi(&toMp, &nMinusTo, NULL, NULL, NULL,
                                            NULL);
                         if (rc != MP_OKAY) {
@@ -1464,7 +1476,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                             ret = -1;
                         }
                         else {
-                            rc = mp_read_unsigned_bin(&toMp, to, (int)toLen);
+                            rc = mp_read_unsigned_bin(&toMp, to, (int)tLen);
                             if (rc != MP_OKAY) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                     "mp_read_unsigned_bin", ret);
@@ -1477,11 +1489,22 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                                     ret = -1;
                                 }
                                 else {
-                                    rc = mp_to_unsigned_bin(&nMinusTo, to);
-                                    if (rc != MP_OKAY) {
-                                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                            "mp_to_unsigned_bin", rc);
+                                    padSz = (int)tLen -
+                                        mp_unsigned_bin_size(&nMinusTo);
+                                    if (padSz < 0) {
+                                        WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                            "X9.31 complement too large");
                                         ret = -1;
+                                    }
+                                    else {
+                                        XMEMSET(to, 0, (size_t)padSz);
+                                        rc = mp_to_unsigned_bin(&nMinusTo,
+                                            to + padSz);
+                                        if (rc != MP_OKAY) {
+                                            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
+                                                "mp_to_unsigned_bin", rc);
+                                            ret = -1;
+                                        }
                                     }
                                 }
                             }

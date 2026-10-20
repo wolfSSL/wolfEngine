@@ -1067,11 +1067,66 @@ int test_rsa_sign_verify_pss(ENGINE *e, void *data)
 }
 
 #ifdef WE_HAVE_RSA_X931
+static int test_rsa_x931_sig_leading_zero(ENGINE *e)
+{
+    int err;
+    EVP_PKEY *pkey = NULL;
+    unsigned char sslSig[256];
+    unsigned char weSig[256];
+    size_t sslSigLen = sizeof(sslSig);
+    size_t weSigLen = sizeof(weSig);
+    /* SHA-256 X9.31 signature of this message under rsa_key_der_2048 is
+     * n - s with a leading zero byte. */
+    unsigned char msg[20] = {
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x6c
+    };
+    const unsigned char *p = rsa_key_der_2048;
+
+    PRINT_MSG("Sign message whose X9.31 signature has a leading zero byte");
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        err = test_digest_sign(pkey, NULL, msg, sizeof(msg), EVP_sha256(),
+                               sslSig, &sslSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = sslSigLen != sizeof(sslSig) || sslSig[0] != 0x00;
+    }
+    if (err == 0) {
+        err = test_digest_sign(pkey, e, msg, sizeof(msg), EVP_sha256(),
+                               weSig, &weSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = weSigLen != sslSigLen ||
+              memcmp(weSig, sslSig, sslSigLen) != 0;
+    }
+    if (err == 0) {
+        err = test_digest_verify(pkey, NULL, msg, sizeof(msg), EVP_sha256(),
+                                 weSig, weSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = test_digest_verify(pkey, e, msg, sizeof(msg), EVP_sha256(),
+                                 sslSig, sslSigLen, RSA_X931_PADDING);
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
 int test_rsa_sign_verify_x931(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
 
-    return test_rsa_sign_verify_pad(e, RSA_X931_PADDING, NULL, NULL);
+    err = test_rsa_sign_verify_pad(e, RSA_X931_PADDING, NULL, NULL);
+    if (err == 0) {
+        err = test_rsa_x931_sig_leading_zero(e);
+    }
+
+    return err;
 }
 #endif /* WE_HAVE_RSA_X931 */
 
