@@ -543,6 +543,7 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
     int tlsVer;
     int len;
     unsigned char header[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char digest[SHA256_DIGEST_LENGTH];
     we_AesCbcHmac *copy;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
@@ -621,6 +622,16 @@ static int we_aes_cbc_hmac_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg,
                                 len -= WC_AES_BLOCK_SIZE;
                                 header[arg - 2] = len >> 8;
                                 header[arg - 1] = len;
+                            }
+                        }
+                        if ((ret == 1) && aes->tls) {
+                            /* Drop a rejected record's header from the MAC. */
+                            rc = wc_HmacFinal(&aes->hmac, digest);
+                            OPENSSL_cleanse(digest, sizeof(digest));
+                            if (rc != 0) {
+                                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
+                                                      "wc_HmacFinal", rc);
+                                ret = 0;
                             }
                         }
                         if (ret == 1) {
