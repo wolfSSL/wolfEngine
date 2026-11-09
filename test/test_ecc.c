@@ -2115,8 +2115,12 @@ static int test_ec_key_ecdsa_scalar_range(EC_KEY *key, unsigned char *hash,
 
 #if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
     test_ecdsa_verify_error_logs = 0;
-    if (wolfEngine_SetLoggingCb(test_ecdsa_verify_logging) != 0) {
-        return 1;
+    if (wolfEngine_SetLoggingCb(test_ecdsa_verify_logging) != 0 ||
+            wolfEngine_Debugging_ON() != 0 ||
+            wolfEngine_SetLogLevel(WE_LOG_ERROR) != 0 ||
+            wolfEngine_SetLogComponents(WE_LOG_PK) != 0) {
+        err = 1;
+        goto end;
     }
 #endif
     order = BN_new();
@@ -2167,6 +2171,9 @@ end:
     ECDSA_SIG_free(sig);
 #if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
     (void)wolfEngine_SetLoggingCb(NULL);
+    (void)wolfEngine_SetLogLevel(WE_LOG_ERROR | WE_LOG_INFO);
+    (void)wolfEngine_SetLogComponents(WE_LOG_COMPONENTS_DEFAULT);
+    wolfEngine_Debugging_OFF();
     if (test_ecdsa_verify_error_logs != 0) {
         PRINT_MSG("Invalid ECDSA scalars produced backend error diagnostics");
         err = 1;
