@@ -27,7 +27,7 @@
 
 #ifdef WE_HAVE_RANDOM
 
-#ifdef WOLFENGINE_DEBUG
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
 #ifndef WE_STATIC_WOLFSSL
 static int seedMixCount;
 #endif
@@ -106,7 +106,8 @@ static int test_random_status_after_teardown(ENGINE *e)
 
 static int test_random_cleanup(ENGINE *e)
 {
-#if defined(WOLFENGINE_DEBUG) && !defined(WE_STATIC_WOLFSSL)
+#if defined(WOLFENGINE_DEBUG) && !defined(WE_STATIC_WOLFSSL) && \
+    !defined(TEST_MULTITHREADED)
     const RAND_METHOD *method = ENGINE_get_RAND(e);
     unsigned char buf[16] = { 0 };
     int err = 0;
@@ -144,7 +145,7 @@ static int test_random_cleanup(ENGINE *e)
 
 static int test_random_entropy_logging(ENGINE *e)
 {
-#ifdef WOLFENGINE_DEBUG
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
     const RAND_METHOD *method = ENGINE_get_RAND(e);
     unsigned char buf[16] = { 0 };
     int err = 0;
