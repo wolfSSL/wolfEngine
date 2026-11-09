@@ -209,13 +209,16 @@ static int test_create_digest(const EVP_MD *md, ENGINE *e, void *data)
     unsigned char *longMsg = NULL;
     unsigned char digest[64];
     unsigned int dLen;
+    size_t i;
 
     (void)data;
 
     XMEMSET(digest, 0, sizeof(digest));
     err = (longMsg = OPENSSL_malloc(longMsgLen)) == NULL;
     if (err == 0) {
-        err = RAND_bytes(longMsg, (int)longMsgLen) != 1;
+        for (i = 0; i < longMsgLen; i++) {
+            longMsg[i] = (unsigned char)(i * 31U);
+        }
     }
 
     dLen = 0;
