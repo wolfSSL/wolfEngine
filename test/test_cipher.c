@@ -1698,6 +1698,96 @@ int test_aes128_cbc_hmac_plain_encrypt(ENGINE *e, void *data)
 
 /******************************************************************************/
 
+int test_aes128_cbc_hmac_tls_bad_length_reset(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    EVP_CIPHER_CTX *usedCtx = NULL;
+    EVP_CIPHER_CTX *cleanCtx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned char key[16];
+    unsigned char macKey[SHA256_DIGEST_LENGTH];
+    unsigned char iv[16];
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char in[64];
+    unsigned char usedOut[64];
+    unsigned char cleanOut[64];
+
+    (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(macKey, 0, sizeof(macKey));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(in, 0, sizeof(in));
+
+    err = (usedCtx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = (cleanCtx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(usedCtx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(cleanCtx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(cleanCtx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        XMEMSET(aad, 0, sizeof(aad));
+        aad[9] = (unsigned char)(TLS1_VERSION >> 8);
+        aad[10] = (unsigned char)TLS1_VERSION;
+        aad[12] = 16;
+        len = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad);
+        err = len != 48;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(usedCtx, usedOut, in, 48) >= 0;
+    }
+    if (err == 0) {
+        XMEMSET(aad, 0, sizeof(aad));
+        aad[9] = (unsigned char)(TLS1_VERSION >> 8);
+        aad[10] = (unsigned char)TLS1_VERSION;
+        aad[12] = 16;
+        len = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad);
+        err = len != 48;
+    }
+    if (err == 0) {
+        XMEMSET(aad, 0, sizeof(aad));
+        aad[9] = (unsigned char)(TLS1_VERSION >> 8);
+        aad[10] = (unsigned char)TLS1_VERSION;
+        aad[12] = 16;
+        len = EVP_CIPHER_CTX_ctrl(cleanCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad);
+        err = len != 48;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(usedCtx, usedOut, in, sizeof(in)) != (int)sizeof(in);
+    }
+    if (err == 0) {
+        err = EVP_Cipher(cleanCtx, cleanOut, in, sizeof(in)) !=
+              (int)sizeof(in);
+    }
+    if (err == 0) {
+        err = XMEMCMP(usedOut, cleanOut, sizeof(usedOut)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(usedCtx);
+    EVP_CIPHER_CTX_free(cleanCtx);
+
+    return err;
+}
+
+/******************************************************************************/
+
 int test_aes128_cbc_hmac_encrypt_error(ENGINE *e, void *data)
 {
     int err = 0;

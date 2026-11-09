@@ -895,6 +895,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes128_cbc_hmac_tls_short, NULL),
     TEST_DECL(test_aes128_cbc_hmac_staged_init, NULL),
     TEST_DECL(test_aes128_cbc_hmac_plain_encrypt, NULL),
+    TEST_DECL(test_aes128_cbc_hmac_tls_bad_length_reset, NULL),
     TEST_DECL(test_aes128_cbc_hmac_encrypt_error, NULL),
     TEST_DECL(test_aes128_cbc_hmac_ctrl_error, NULL),
     TEST_DECL(test_aes128_cbc_hmac_tls_empty, NULL),
