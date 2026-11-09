@@ -21,6 +21,7 @@
 
 #include "unit.h"
 #include <stdint.h>
+#include <openssl/hmac.h>
 #include <wolfssl/wolfcrypt/hmac.h>
 #include <wolfengine/we_internal.h>
 
@@ -703,20 +704,26 @@ int test_hmac_create(ENGINE *e, void *data)
 int test_hmac_output_size(ENGINE *e, void *data)
 {
     int ret = 0;
-    int i;
     unsigned char key[] = "My empire of dirt";
     unsigned char msg[] = "Test message";
     unsigned char mac[EVP_MAX_MD_SIZE];
+    unsigned char expected[EVP_MAX_MD_SIZE];
+    unsigned int expectedLen = 0;
     size_t macLen = 1;
     EVP_MD_CTX *ctx = NULL;
     EVP_PKEY *pkey = NULL;
 
     (void)data;
-    XMEMSET(mac, 0xa5, sizeof(mac));
+    XMEMSET(mac, 0, sizeof(mac));
 
-    ctx = EVP_MD_CTX_new();
-    if (ctx == NULL)
+    if (HMAC(EVP_sha256(), key, (int)sizeof(key), msg, sizeof(msg), expected,
+             &expectedLen) == NULL)
         ret = -1;
+    if (ret == 0) {
+        ctx = EVP_MD_CTX_new();
+        if (ctx == NULL)
+            ret = -1;
+    }
     if (ret == 0) {
         pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, e, key, sizeof(key));
         if (pkey == NULL)
@@ -728,16 +735,16 @@ int test_hmac_output_size(ENGINE *e, void *data)
     if (ret == 0) {
         ret = EVP_DigestSignUpdate(ctx, msg, sizeof(msg)) != 1;
     }
+    /* Undersized length, as OpenSSL's TLS PRF passes: the full MAC is still
+     * written, matching OpenSSL's own HMAC method. */
     if (ret == 0) {
-        if (EVP_DigestSignFinal(ctx, mac, &macLen) == 1)
-            ret = -1;
+        ret = EVP_DigestSignFinal(ctx, mac, &macLen) != 1;
     }
-    if ((ret == 0) && (macLen != SHA256_DIGEST_LENGTH))
+    if ((ret == 0) && ((macLen != SHA256_DIGEST_LENGTH) ||
+                       (macLen != expectedLen)))
         ret = -1;
-    for (i = 0; (ret == 0) && (i < (int)sizeof(mac)); i++) {
-        if (mac[i] != 0xa5)
-            ret = -1;
-    }
+    if ((ret == 0) && (XMEMCMP(mac, expected, macLen) != 0))
+        ret = -1;
 
     EVP_PKEY_free(pkey);
     EVP_MD_CTX_free(ctx);

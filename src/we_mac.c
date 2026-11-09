@@ -1636,7 +1636,6 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
 {
     int ret = 1, rc;
     we_Mac *mac;
-    size_t len = 0;
 
     WOLFENGINE_ENTER(WE_LOG_MAC, "we_hmac_pkey_signctx");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_MAC, "ARGS [ctx = %p, sig = %p, "
@@ -1663,11 +1662,10 @@ static int we_hmac_pkey_signctx(EVP_PKEY_CTX *ctx, unsigned char *sig,
         }
     }
 
+    /* OpenSSL's TLS PRF passes an uninitialized length, so ignore it like
+     * OpenSSL's own HMAC method does. */
     if (ret == 1) {
-        len = (size_t)mac->size;
-        if ((sig != NULL) && (*sigLen < len))
-            ret = 0;
-        *sigLen = len;
+        *sigLen = (size_t)mac->size;
     }
 
     if ((ret == 1) && (sig != NULL)) {
