@@ -950,8 +950,9 @@ static int test_ecdh_kdf_output_length(ENGINE *e)
             err = EVP_PKEY_derive(ctx, output[i], &outputLen) != 1;
         if (err == 0) {
             err = outputLen != sizeof(output[i]);
-            if (err != 0)
+            if (err != 0) {
                 PRINT_ERR_MSG("ECDH KDF output length differs from result");
+            }
         }
         if ((err == 0) && (i == 1)) {
             size_t shortLen = sizeof(output[i]) - 1;
