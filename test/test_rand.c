@@ -230,8 +230,9 @@ static int test_random_api(void)
 int test_random(ENGINE *e, void *data)
 {
     int err;
+    unsigned long flags;
 
-    (void)data;
+    flags = *(unsigned long*)data;
 
     err = test_random_api();
     if (err == 0) {
@@ -249,7 +250,8 @@ int test_random(ENGINE *e, void *data)
     if (err == 0) {
         err = test_random_entropy_logging(e);
     }
-    if (err == 0) {
+    /* The child skips OpenSSL's method frees, so memcheck reports leaks. */
+    if ((err == 0) && ((flags & WE_VALGRIND_TEST) == 0)) {
         err = test_random_status_after_teardown(e);
     }
 
