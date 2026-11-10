@@ -945,7 +945,7 @@ TEST_CASE test_case[] = {
 #endif
 #endif
 #ifdef WE_HAVE_RANDOM
-    TEST_DECL(test_random, NULL),
+    TEST_DECL(test_random, &flags),
 #endif
 #ifdef WE_HAVE_RSA
     TEST_DECL(test_rsa_ctrl_str,        NULL),
