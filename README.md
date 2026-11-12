@@ -189,6 +189,50 @@ Visual Studio.
 
 Example programs using wolfEngine can be found in the `examples/` subdirectory.
 
+## SBOM / EU CRA Compliance
+
+wolfEngine generates a Software Bill of Materials (SBOM) in CycloneDX 1.6 and
+SPDX 2.3 formats to support compliance with the EU Cyber Resilience Act (CRA).
+The SBOM records the configured build options, hashes the built `libwolfengine`
+library artifact (shared or static; ELF, Mach-O, or PE), and lists both wolfSSL
+and OpenSSL as dependencies so vulnerability scanners can associate wolfSSL and OpenSSL advisories with a
+wolfEngine deployment. Output is reproducible: set `SOURCE_DATE_EPOCH` (or
+build from a git checkout, which uses the last commit time) and repeated runs
+are byte-identical.
+
+```sh
+make sbom
+```
+
+Requires `python3` and `pyspdxtools` (`pip install spdx-tools`). The generator
+is vendored in `tools/sbom/` from
+[wolfssl-compliance-tooling](https://github.com/wolfSSL/wolfssl-compliance-tooling)
+(revision in `tools/sbom/.wolfssl-compliance-tooling-rev`), so no wolfSSL source
+tree is needed. Pass `WOLFSSL_DIR=/path/to/wolfssl` to read the wolfSSL
+dependency version from a source tree instead of `pkg-config`.
+
+Output: `wolfengine-<version>.cdx.json`, `wolfengine-<version>.spdx.json`, `wolfengine-<version>.spdx`
+
+Optional overrides:
+
+- `SBOM_LICENSE_OVERRIDE` - SPDX expression to use instead of the licence
+  parsed from `COPYING` (e.g. `LicenseRef-wolfSSL-Commercial` for commercial
+  licensees). Defaults to `GPL-3.0-or-later` (the per-file header licence).
+- `SBOM_LICENSE_TEXT` - path to the licence text for any `LicenseRef-*` used in
+  `SBOM_LICENSE_OVERRIDE` (required by SPDX 2.3).
+- `SBOM_WOLFSSL_VERSION` - version recorded for the wolfSSL dependency;
+  auto-detected from `WOLFSSL_DIR/wolfssl/version.h` (or wolfSSL's `pkg-config`
+  entry) when unset.
+- `SBOM_OPENSSL_VERSION` - version recorded for the OpenSSL dependency;
+  resolved via OpenSSL's `pkg-config` entry when unset.
+
+```sh
+make install-sbom    # installs to $(datadir)/doc/wolfengine/
+make uninstall-sbom
+```
+
+For further CRA guidance see [wolfssl/doc/CRA.md](https://github.com/wolfSSL/wolfssl/blob/master/doc/CRA.md).
+
 ## Need Help?
 
 Please reach out to support@wolfssl.com for technical support. If you're

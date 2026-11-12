@@ -5,6 +5,7 @@ noinst_HEADERS =
 check_PROGRAMS =
 dist_noinst_SCRIPTS =
 DISTCLEANFILES =
+CLEANFILES =
 pkginclude_HEADERS =
 EXTRA_DIST =
 
@@ -47,3 +48,42 @@ AM_DISTCHECK_CONFIGURE_FLAGS=CPPFLAGS="-I@abs_top_srcdir@/include" --with-openss
 EXTRA_DIST += README.md \
               engine.conf \
               ChangeLog.md
+
+# SBOM generation (CRA compliance).  The recipe and the generator are the
+# vendored wolfssl-compliance-tooling snapshot in tools/sbom/ (pinned by
+# tools/sbom/.wolfssl-compliance-tooling-rev); wolfEngine just declares what it
+# is (a libwolfengine shared library that links both wolfSSL and OpenSSL) and
+# includes it.  The wolfSSL dependency version comes from pkg-config, or from a
+# wolfssl source tree with `make sbom WOLFSSL_DIR=/path/to/wolfssl`.
+SBOM_PKGNAME      = wolfengine
+SBOM_LICENSE_FILE = $(srcdir)/COPYING
+SBOM_DEP_WOLFSSL  = yes
+SBOM_DEP_OPENSSL  = yes
+
+# wolfEngine is GPLv3-or-later (per the per-file source headers: "either version
+# 3 of the License, or (at your option) any later version") or commercial.  Pin
+# the header-accurate SPDX id here so the SBOM is correct regardless of the
+# gen-sbom version's licence detection; commercial licensees can override it
+# (e.g. LicenseRef-wolfSSL-Commercial).
+SBOM_LICENSE_OVERRIDE ?= GPL-3.0-or-later
+
+# wolfEngine declares AC_CONFIG_HEADERS([include/config.h]) and carries its
+# feature macros (-DWE_HAVE_*, -DWE_NO_DYNAMIC_ENGINE, ...) in AM_CFLAGS, so
+# point the SBOM build-options capture at the real config header.
+SBOM_CONFIG_H = $(abs_builddir)/include/config.h
+
+EXTRA_DIST += tools/sbom/README.md \
+              tools/sbom/VERSION \
+              tools/sbom/.wolfssl-compliance-tooling-rev \
+              tools/sbom/gen-sbom \
+              tools/sbom/sbom-driver \
+              tools/sbom/sbom-driver.py \
+              tools/sbom/sbom.am \
+              tools/sbom/validate_sbom.py \
+              tools/sbom/build/sbom.cmake \
+              tools/sbom/build/sbom.mk \
+              tools/sbom/frontends/compdb_sbom.py \
+              tools/sbom/frontends/iar_sbom.py \
+              tools/sbom/frontends/zephyr_sbom.py
+
+include tools/sbom/sbom.am
