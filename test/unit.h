@@ -22,10 +22,16 @@
 #ifndef UNIT_H
 #define UNIT_H
 
+/* Archive-only test builds can enable hidden internal MAC checks. */
+#if defined(WE_MAC_STATIC_TEST) && defined(WOLFENGINE_DLL)
+#error WE_MAC_STATIC_TEST requires archive-only linkage
+#endif
+
 /* OpenSSL 3.0.0 has deprecated the ENGINE API. */
 #define OPENSSL_API_COMPAT      10101
 
 #include <string.h>
+#include <stddef.h>
 
 #ifdef WOLFENGINE_USER_SETTINGS
 #include <user_settings.h>
@@ -87,9 +93,27 @@ typedef struct TEST_CASE {
 #endif
 } TEST_CASE;
 
+#ifdef WE_HAVE_AESCCM
+int test_aes_ccm_keyed_reinit(ENGINE *e, void *data);
+#endif
+
 int test_logging(ENGINE *e, void *data);
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+int test_openssl_bc_method_name(ENGINE *e, void *data);
+int test_openssl_bc_public_ec_key(ENGINE *e, void *data);
+int test_openssl_bc_ec_private_padding(ENGINE *e, void *data);
+#endif
+
 #define WE_VALGRIND_TEST 0x1
+
+void test_openssl_mem_expect_clear(void *ptr);
+void test_openssl_mem_expect_next_clear(size_t size);
+int test_openssl_mem_clear_result(void);
+void test_openssl_mem_fail_once(size_t size);
+int test_openssl_mem_failure_triggered(void);
+size_t test_openssl_mem_active(void);
+int test_openssl_mem_has_source(void);
 
 #ifdef WE_HAVE_DIGEST
 
@@ -110,15 +134,34 @@ int test_sha3_512(ENGINE *e, void *data);
 
 #ifdef WE_HAVE_CMAC
 int test_cmac_create(ENGINE *e, void *data);
-#endif /* WE_HAVE_HMAC */
+int test_cmac_output_size(ENGINE *e, void *data);
+int test_cmac_update_size(ENGINE *e, void *data);
+int test_cmac_copy_error(ENGINE *e, void *data);
+int test_cmac_copy(ENGINE *e, void *data);
+int test_cmac_keygen_reuse(ENGINE *e, void *data);
+int test_cmac_unregistered_engine(ENGINE *e, void *data);
+int test_cmac_asn1_registry(ENGINE *e, void *data);
+#endif /* WE_HAVE_CMAC */
+
+#if defined(WE_HAVE_HMAC) || defined(WE_HAVE_CMAC)
+int test_mac_asn1_ownership(ENGINE *e, void *data);
+#endif
 
 #ifdef WE_HAVE_HMAC
 int test_hmac_create(ENGINE *e, void *data);
+int test_hmac_output_size(ENGINE *e, void *data);
+int test_hmac_pkey_size(ENGINE *e, void *data);
+int test_hmac_update_size(ENGINE *e, void *data);
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(TEST_MULTITHREADED)
+int test_hmac_raw_key_output_size(ENGINE *e, void *data);
+#endif
 #endif /* WE_HAVE_HMAC */
 
 #ifdef WE_HAVE_TLS1_PRF
 int test_tls1_prf(ENGINE *e, void *data);
 int test_tls1_prf_bad_md(ENGINE *e, void *data);
+int test_tls1_prf_secret_failure(ENGINE *e, void *data);
+int test_tls1_prf_output_size(ENGINE *e, void *data);
 #endif
 
 #ifdef WE_HAVE_HKDF
@@ -129,6 +172,9 @@ int test_hkdf_bad_md(ENGINE *e, void *data);
 #ifdef WE_HAVE_DES3CBC
 int test_des3_cbc(ENGINE *e, void *data);
 int test_des3_cbc_stream(ENGINE *e, void *data);
+int test_des3_cbc_iv_bounds(ENGINE *e, void *data);
+int test_des3_cbc_decrypt_error_log(ENGINE *e, void *data);
+int test_des3_cbc_rekey_cleanup(ENGINE *e, void *data);
 #endif
 
 #ifdef WE_HAVE_AESECB
@@ -151,6 +197,19 @@ int test_aes128_cbc_stream(ENGINE *e, void *data);
 int test_aes192_cbc_stream(ENGINE *e, void *data);
 int test_aes256_cbc_stream(ENGINE *e, void *data);
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_staged_init(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_plain_encrypt(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_bad_length_reset(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_encrypt_error(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_ctrl_error(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_empty(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_reinit_state(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_cleanup(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_lengths(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_no_tls_mac(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_extended_padding(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_retry_after_bad_padding(ENGINE *e, void *data);
+int test_aes128_cbc_hmac_tls_padding_range(ENGINE *e, void *data);
 
 #endif
 
@@ -178,6 +237,12 @@ int test_aes_gcm_tls_bad_iv_len(ENGINE *e, void *data);
 int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data);
 int test_aes_gcm_evp_cipher(ENGINE *e, void *data);
 int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data);
+int test_aes_gcm_ctx_copy_rejected(ENGINE *e, void *data);
+int test_aes_gcm_keyed_reinit(ENGINE *e, void *data);
+int test_aes_gcm_cleanup_empty_ctx(ENGINE *e, void *data);
+int test_aes_gcm_aad_length_bounds(ENGINE *e, void *data);
+int test_aes_gcm_auth_error_queue(ENGINE *e, void *data);
+int test_aes_gcm_ctrl_output_buffers(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_AESGCM */
 
@@ -249,7 +314,12 @@ int test_rsa_enc_dec_pkcs1(ENGINE *e, void *data);
 int test_rsa_enc_dec_no_pad(ENGINE *e, void *data);
 int test_rsa_dec_no_pad_size_query(ENGINE *e, void *data);
 int test_rsa_enc_dec_oaep(ENGINE *e, void *data);
+int test_rsa_oaep_label(ENGINE *e, void *data);
 int test_rsa_pkey_keygen(ENGINE *e, void *data);
+int test_rsa_pkey_large_exponent(ENGINE *e, void *data);
+int test_rsa_pkey_sign_missing_data(ENGINE *e, void *data);
+int test_rsa_pkey_sign_digest_length(ENGINE *e, void *data);
+int test_rsa_verify_recover_digest(ENGINE *e, void *data);
 int test_rsa_pkey_invalid_key_size(ENGINE *e, void *data);
 #endif /* WE_HAVE_EVP_PKEY */
 
@@ -506,6 +576,7 @@ int test_ecdsa(ENGINE *e, void *data);
 #endif /* WE_HAVE_ECC */
 
 #ifdef WE_HAVE_PBE
+int test_pbe_invalid_params(ENGINE *e, void *data);
 int test_pbe(ENGINE *e, void *data);
 #endif /* WE_HAVE_PBE */
 

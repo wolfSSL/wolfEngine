@@ -20,6 +20,7 @@
  */
 
 #include "unit.h"
+#include <openssl/hmac.h>
 
 #if defined(WE_HAVE_DES3CBC) || defined(WE_HAVE_AESCBC)
 
@@ -332,6 +333,151 @@ static int test_stream_enc_dec(ENGINE *e, void *data, const EVP_CIPHER *cipher,
 
 #ifdef WE_HAVE_DES3CBC
 
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+static int des3DecryptErrorLogged;
+
+static void test_des3_cbc_log_cb(const int logLevel, const int component,
+                                 const char *const logMessage)
+{
+    if ((logLevel == WE_LOG_ERROR) && (component == WE_LOG_CIPHER) &&
+        (strstr(logMessage, "wc_Des3_CbcDecrypt") != NULL)) {
+        des3DecryptErrorLogged = 1;
+    }
+}
+#endif
+
+
+static int test_des3_cbc_copy(ENGINE *e)
+{
+    const int offsets[] = { 0, 1, 7, 8, 9, 17, 33 };
+    unsigned char key[24] = { 1 };
+    unsigned char nextKey[24] = { 2 };
+    unsigned char iv[8] = { 4 };
+    unsigned char in[64] = { 3 };
+    unsigned char out[80];
+    unsigned char expected[80];
+    EVP_CIPHER_CTX *src = NULL, *copy = NULL;
+    EVP_CIPHER_CTX *ref = NULL, *copyRef = NULL;
+    int err = 0, enc, order, stage, i, outLen, expectedLen;
+
+    PRINT_MSG("Copy DES3-CBC with buffered and complete blocks");
+    for (enc = 0; err == 0 && enc < 2; enc++) {
+        for (order = 0; err == 0 && order < 2; order++) {
+            for (i = 0; err == 0 && i < (int)(sizeof(offsets) /
+                                                   sizeof(offsets[0])); i++) {
+                src = EVP_CIPHER_CTX_new();
+                copy = EVP_CIPHER_CTX_new();
+                ref = EVP_CIPHER_CTX_new();
+                copyRef = EVP_CIPHER_CTX_new();
+                if (src == NULL || copy == NULL || ref == NULL ||
+                    copyRef == NULL) {
+                    err = 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherInit_ex(src, EVP_des_ede3_cbc(), e, key, iv,
+                                            enc) != 1 ||
+                          EVP_CipherInit_ex(copy, EVP_des_ede3_cbc(), e, nextKey,
+                                            iv, enc) != 1 ||
+                          EVP_CipherInit_ex(ref, EVP_des_ede3_cbc(), NULL, key,
+                                            iv, enc) != 1 ||
+                          EVP_CIPHER_CTX_set_padding(src, 0) != 1 ||
+                          EVP_CIPHER_CTX_set_padding(ref, 0) != 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherUpdate(src, out, &outLen, in,
+                                          offsets[i]) != 1 ||
+                          EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                          offsets[i]) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0 ||
+                          EVP_CIPHER_CTX_copy(copy, src) != 1 ||
+                          EVP_CIPHER_CTX_copy(copyRef, ref) != 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherInit_ex(src, NULL, NULL, nextKey, iv,
+                                            enc) != 1 ||
+                          EVP_CipherInit_ex(ref, NULL, NULL, nextKey, iv,
+                                            enc) != 1;
+                }
+                if (order == 0) {
+                    EVP_CIPHER_CTX_free(src);
+                    src = NULL;
+                }
+                if (err == 0) {
+                    err = EVP_CipherUpdate(copy, out, &outLen,
+                                          in + offsets[i],
+                                          sizeof(in) - offsets[i]) != 1 ||
+                          EVP_CipherUpdate(copyRef, expected, &expectedLen,
+                                          in + offsets[i],
+                                          sizeof(in) - offsets[i]) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0;
+                }
+                if (err == 0) {
+                    err = EVP_CipherFinal_ex(copy, out, &outLen) != 1 ||
+                          EVP_CipherFinal_ex(copyRef, expected,
+                                             &expectedLen) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0;
+                }
+                EVP_CIPHER_CTX_free(copy);
+                copy = NULL;
+                if (err == 0 && order == 1) {
+                    err = EVP_CipherUpdate(src, out, &outLen, in,
+                                          sizeof(in)) != 1 ||
+                          EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                          sizeof(in)) != 1;
+                    if (err == 0) {
+                        err = outLen != expectedLen ||
+                              XMEMCMP(out, expected, outLen) != 0;
+                    }
+                }
+                EVP_CIPHER_CTX_free(src);
+                EVP_CIPHER_CTX_free(ref);
+                EVP_CIPHER_CTX_free(copyRef);
+                src = ref = copyRef = NULL;
+            }
+        }
+    }
+    PRINT_MSG("Copy DES3-CBC before setting the key");
+    for (stage = 0; err == 0 && stage < 2; stage++) {
+        src = EVP_CIPHER_CTX_new();
+        copy = EVP_CIPHER_CTX_new();
+        ref = EVP_CIPHER_CTX_new();
+        if (src == NULL || copy == NULL || ref == NULL) {
+            err = 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherInit_ex(src, EVP_des_ede3_cbc(), e, NULL,
+                                    stage ? iv : NULL, 1) != 1 ||
+                  EVP_CIPHER_CTX_copy(copy, src) != 1 ||
+                  EVP_CipherInit_ex(copy, NULL, NULL, key,
+                                    stage ? NULL : iv, 1) != 1 ||
+                  EVP_CipherInit_ex(ref, EVP_des_ede3_cbc(), NULL, key, iv,
+                                    1) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherUpdate(copy, out, &outLen, in, sizeof(in)) != 1 ||
+                  EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                   sizeof(in)) != 1;
+        }
+        if (err == 0) {
+            err = outLen != expectedLen ||
+                  XMEMCMP(out, expected, outLen) != 0;
+        }
+        EVP_CIPHER_CTX_free(src);
+        EVP_CIPHER_CTX_free(copy);
+        EVP_CIPHER_CTX_free(ref);
+        src = copy = ref = NULL;
+    }
+    return err;
+}
 
 int test_des3_cbc(ENGINE *e, void *data)
 {
@@ -349,6 +495,206 @@ int test_des3_cbc_stream(ENGINE *e, void *data)
         err = test_stream_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8, 1, 1);
     if (err == 0)
         err = test_stream_enc_dec(e, data, EVP_des_ede3_cbc(), 24, 8, 7, 1);
+    if (err == 0)
+        err = test_des3_cbc_copy(e);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_des3_cbc_iv_bounds(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[24] = { 0 };
+    unsigned char iv[8] = { 0 };
+    unsigned char in[8] = { 0 };
+    unsigned char out[8];
+    unsigned char *ctxIv;
+    int outLen;
+
+    (void)data;
+
+    ctx = EVP_CIPHER_CTX_new();
+    if (ctx == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_des_ede3_cbc(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ctx, 0) != 1;
+    }
+    if (err == 0) {
+        ctxIv = EVP_CIPHER_CTX_iv_noconst(ctx);
+        XMEMSET(ctxIv + sizeof(iv), 0xa5, EVP_MAX_IV_LENGTH - sizeof(iv));
+        err = EVP_EncryptUpdate(ctx, out, &outLen, in, sizeof(in)) != 1;
+    }
+    if (err == 0) {
+        err = outLen != (int)sizeof(out);
+    }
+    if (err == 0) {
+        size_t i;
+
+        for (i = sizeof(iv); i < EVP_MAX_IV_LENGTH; i++) {
+            if (ctxIv[i] != 0xa5) {
+                err = 1;
+                break;
+            }
+        }
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_des3_cbc_decrypt_error_log(ENGINE *e, void *data)
+{
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+    int err = 0;
+    int initialDebug = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[24] = { 0 };
+    unsigned char iv[8] = { 0 };
+    unsigned char in[8] = { 0 };
+    int outLen;
+
+    if (data == NULL) {
+        err = 1;
+    }
+    else {
+        initialDebug = *(int *)data;
+    }
+
+    if (err == 0) {
+        ctx = EVP_CIPHER_CTX_new();
+        if (ctx == NULL) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, EVP_des_ede3_cbc(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ctx, 0) != 1;
+    }
+    if (err == 0) {
+        err = wolfEngine_SetLoggingCb(test_des3_cbc_log_cb) != 0;
+    }
+    if (err == 0) {
+        err = wolfEngine_Debugging_ON() != 0;
+    }
+    if (err == 0) {
+        des3DecryptErrorLogged = 0;
+        err = EVP_DecryptUpdate(ctx, NULL, &outLen, in, sizeof(in)) == 1;
+    }
+    if (err == 0) {
+        err = des3DecryptErrorLogged == 0;
+    }
+
+    (void)wolfEngine_SetLoggingCb(NULL);
+    if (!initialDebug) {
+        wolfEngine_Debugging_OFF();
+    }
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    (void)data;
+    return 0;
+#endif
+}
+
+/******************************************************************************/
+
+int test_des3_cbc_rekey_cleanup(ENGINE *e, void *data)
+{
+    int err = 0;
+    const EVP_CIPHER *cipher;
+    EVP_CIPHER_CTX *ctx = NULL;
+    EVP_CIPHER_CTX *ref = NULL;
+    EVP_CIPHER_CTX *copyCtx = NULL;
+    int (*cleanup)(EVP_CIPHER_CTX *) = NULL;
+    unsigned char key[24] = { 0 };
+    unsigned char nextKey[24] = { 2 };
+    unsigned char iv[8] = { 0 };
+    unsigned char in[8] = { 0 };
+    unsigned char out[8];
+    unsigned char expected[8];
+    int outLen;
+    int expectedLen;
+
+    (void)data;
+
+    cipher = ENGINE_get_cipher(e, NID_des_ede3_cbc);
+    if (cipher == NULL) {
+        err = 1;
+    }
+    if (err == 0) {
+        err = (EVP_CIPHER_flags(cipher) & EVP_CIPH_CTRL_INIT) == 0;
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (err == 0) {
+        cleanup = EVP_CIPHER_meth_get_cleanup(cipher);
+    }
+#else
+    if (err == 0) {
+        cleanup = cipher->cleanup;
+    }
+#endif
+    if (err == 0) {
+        err = cleanup == NULL;
+    }
+    if (err == 0) {
+        ctx = EVP_CIPHER_CTX_new();
+        ref = EVP_CIPHER_CTX_new();
+        copyCtx = EVP_CIPHER_CTX_new();
+        if ((ctx == NULL) || (ref == NULL) || (copyCtx == NULL)) {
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        err = cleanup(copyCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_des_ede3_cbc(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_copy(copyCtx, ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, NULL, nextKey, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ctx, 0) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, out, &outLen, in, sizeof(in)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ref, EVP_des_ede3_cbc(), NULL, nextKey, iv) !=
+              1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ref, 0) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ref, expected, &expectedLen, in, sizeof(in)) !=
+              1;
+    }
+    if (err == 0) {
+        err = (outLen != expectedLen) ||
+              (XMEMCMP(out, expected, sizeof(out)) != 0);
+    }
+
+    EVP_CIPHER_CTX_free(copyCtx);
+    EVP_CIPHER_CTX_free(ref);
+    EVP_CIPHER_CTX_free(ctx);
 
     return err;
 }
@@ -357,11 +703,86 @@ int test_des3_cbc_stream(ENGINE *e, void *data)
 
 /******************************************************************************/
 
+#if defined(WE_HAVE_AESCBC) || defined(WE_HAVE_AESECB)
+static int test_aes_block_lifecycle(ENGINE *e, const EVP_CIPHER *cipher,
+                                    const unsigned char *iv)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    EVP_CIPHER_CTX *copyCtx = NULL;
+    unsigned char key[32] = { 0 };
+    unsigned char input[32] = { 0 };
+    unsigned char output[16];
+    unsigned char copyOutput[16];
+    int outputLen = 0;
+    int copyOutputLen = 0;
+
+    ctx = EVP_CIPHER_CTX_new();
+    err = ctx == NULL;
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, cipher, e, key, iv, 1) != 1;
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (err == 0) {
+        err = EVP_CIPHER_meth_get_cleanup(EVP_CIPHER_CTX_cipher(ctx)) == NULL;
+    }
+#else
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_cipher(ctx)->cleanup == NULL;
+    }
+#endif
+    if (err == 0) {
+        err = EVP_CipherInit_ex(ctx, NULL, e, key, iv, -1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_set_padding(ctx, 0) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherUpdate(ctx, output, &outputLen, input,
+                               sizeof(output)) != 1;
+    }
+    if (err == 0) {
+        copyCtx = EVP_CIPHER_CTX_new();
+        err = copyCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_copy(copyCtx, ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherUpdate(ctx, output, &outputLen,
+                               input + sizeof(output), sizeof(output)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CipherUpdate(copyCtx, copyOutput, &copyOutputLen,
+                               input + sizeof(output),
+                               sizeof(copyOutput)) != 1;
+    }
+    if (err == 0) {
+        err = (outputLen != copyOutputLen) ||
+              (memcmp(output, copyOutput, outputLen) != 0);
+    }
+
+    EVP_CIPHER_CTX_free(copyCtx);
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+#endif
+
+/******************************************************************************/
+
 #ifdef WE_HAVE_AESECB
 
 int test_aes128_ecb(ENGINE *e, void *data)
 {
-    return test_cipher_enc_dec(e, data, EVP_aes_128_ecb(), 16, 16);
+    int err;
+
+    err = test_cipher_enc_dec(e, data, EVP_aes_128_ecb(), 16, 16);
+    if (err == 0) {
+        err = test_aes_block_lifecycle(e, EVP_aes_128_ecb(), NULL);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
@@ -390,7 +811,6 @@ int test_aes128_ecb_stream(ENGINE *e, void *data)
 
     return err;
 }
-
 /******************************************************************************/
 
 int test_aes192_ecb_stream(ENGINE *e, void *data)
@@ -425,7 +845,56 @@ int test_aes256_ecb_stream(ENGINE *e, void *data)
 
 int test_aes128_cbc(ENGINE *e, void *data)
 {
-    return test_cipher_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16);
+    int err;
+
+    err = test_cipher_enc_dec(e, data, EVP_aes_128_cbc(), 16, 16);
+
+    if (err == 0) {
+        EVP_CIPHER_CTX *ctx = NULL;
+        const EVP_CIPHER *cipher;
+        int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                        const unsigned char *, size_t);
+        unsigned char key[16] = { 0 };
+        unsigned char iv[16] = { 0 };
+        unsigned char in[16] = { 0 };
+
+        ctx = EVP_CIPHER_CTX_new();
+        err = ctx == NULL;
+        if (err == 0) {
+            err = EVP_CipherInit_ex(ctx, EVP_aes_128_cbc(), e, key, iv, 1)
+                  != 1;
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_iv_length(ctx) != (int)sizeof(iv);
+        }
+        if (err == 0) {
+            cipher = EVP_CIPHER_CTX_cipher(ctx);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+            doCipher = EVP_CIPHER_meth_get_do_cipher(cipher);
+#else
+            doCipher = cipher->do_cipher;
+#endif
+            err = doCipher == NULL;
+        }
+        if (err == 0) {
+            err = doCipher(ctx, NULL, in, sizeof(in)) != 0;
+        }
+        if (err == 0) {
+            err = EVP_CipherInit_ex(ctx, NULL, e, key, iv, 0) != 1;
+        }
+        if (err == 0) {
+            err = doCipher(ctx, NULL, in, sizeof(in)) != 0;
+        }
+        EVP_CIPHER_CTX_free(ctx);
+    }
+
+    if (err == 0) {
+        unsigned char iv[16] = { 0 };
+
+        err = test_aes_block_lifecycle(e, EVP_aes_128_cbc(), iv);
+    }
+
+    return err;
 }
 
 /******************************************************************************/
@@ -483,8 +952,7 @@ int test_aes256_cbc_stream(ENGINE *e, void *data)
 
 /******************************************************************************/
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
+#if !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 {
     int err = 0;
@@ -492,7 +960,8 @@ int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
     int decLen = 0;
     EVP_CIPHER_CTX *encCtx = NULL;
     EVP_CIPHER_CTX *ctx = NULL;
-    const EVP_CIPHER *cipher = EVP_aes_128_cbc_hmac_sha256();
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(e,
+                                                 NID_aes_128_cbc_hmac_sha256);
     unsigned char key[16];
     unsigned char macKey[SHA256_DIGEST_LENGTH];
     unsigned char iv[16];
@@ -503,12 +972,8 @@ int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 
     (void)data;
 
-    /* OpenSSL only provides the stitched AES-CBC-HMAC-SHA256 cipher on
-     * platforms where it has a hand-written assembly implementation (e.g.
-     * AES-NI x86_64); elsewhere EVP_aes_128_cbc_hmac_sha256() returns NULL,
-     * so there is nothing to exercise. */
     if (cipher == NULL) {
-        return 0;
+        return 1;
     }
 
     XMEMSET(key, 0, sizeof(key));
@@ -570,22 +1035,1154 @@ int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 
     return err;
 }
+
+static int test_cbc_hmac_plain_reuse(EVP_CIPHER_CTX *ctx,
+                                    unsigned char *key, unsigned char *iv)
+{
+    int err;
+    unsigned char msg[AES_BLOCK_SIZE] = {1, 2, 3, 4};
+    unsigned char enc[sizeof(msg)];
+    unsigned char out[sizeof(msg)];
+
+    PRINT_MSG("CBC-HMAC consumes TLS framing once per record");
+    err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, msg,
+                          sizeof(msg), enc, 0);
+    if (err == 0) {
+        err = EVP_Cipher(ctx, out, enc, sizeof(enc)) != (int)sizeof(msg);
+    }
+    if (err == 0) {
+        err = XMEMCMP(out, msg, sizeof(msg)) != 0;
+    }
+
+    return err;
+}
+
+int test_aes128_cbc_hmac_tls_lengths(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(e,
+                                                 NID_aes_128_cbc_hmac_sha256);
+    int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                    const unsigned char *, size_t) = NULL;
+    unsigned char key[16] = {0};
+    unsigned char macKey[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char iv[16] = {0};
+    unsigned char record[64] = {0};
+    unsigned char out[64] = {0};
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0};
+
+    (void)data;
+
+    if (cipher == NULL) {
+        return 1;
+    }
+    aad[9] = (unsigned char)(TLS1_2_VERSION >> 8);
+    aad[10] = (unsigned char)TLS1_2_VERSION;
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        doCipher = EVP_CIPHER_meth_get_do_cipher(EVP_CIPHER_CTX_cipher(ctx));
+#else
+        doCipher = EVP_CIPHER_CTX_cipher(ctx)->do_cipher;
+#endif
+        err = doCipher == NULL;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, record, 0) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, record, 17) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, record, (size_t)INT_MAX + 1U) >= 0;
+    }
+    if (err == 0) {
+        err = test_cbc_hmac_plain_reuse(ctx, key, iv);
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
+int test_aes128_cbc_hmac_no_tls_mac(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(e,
+                                                 NID_aes_128_cbc_hmac_sha256);
+    unsigned char key[16] = {0};
+    unsigned char macKey[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char iv[16] = {0};
+    unsigned char msg[16] = {1, 2, 3, 4};
+    unsigned char enc[sizeof(msg)] = {0};
+    unsigned char out[sizeof(msg) + SHA256_DIGEST_LENGTH] = {0};
+
+    (void)data;
+
+    if (cipher == NULL) {
+        return 1;
+    }
+    err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, msg,
+                          sizeof(msg), enc, 0);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        len = EVP_Cipher(ctx, out, enc, sizeof(enc));
+        err = len != sizeof(msg);
+    }
+    if (err == 0) {
+        err = XMEMCMP(out, msg, sizeof(msg)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
+int test_aes128_cbc_hmac_tls_extended_padding(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len = 0;
+    unsigned int macLen = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(e,
+                                                 NID_aes_128_cbc_hmac_sha256);
+    unsigned char key[16] = {0};
+    unsigned char macKey[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char iv[16] = {0};
+    unsigned char msg[16] = {1, 2, 3, 4};
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0};
+    unsigned char hmacInput[EVP_AEAD_TLS1_AAD_LEN + sizeof(msg)] = {0};
+    unsigned char mac[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char plain[sizeof(msg) + SHA256_DIGEST_LENGTH + 32] = {0};
+    unsigned char record[sizeof(iv) + sizeof(plain)] = {0};
+    unsigned char out[sizeof(record)] = {0};
+
+    (void)data;
+
+    if (cipher == NULL) {
+        return 1;
+    }
+    aad[9] = (unsigned char)(TLS1_2_VERSION >> 8);
+    aad[10] = (unsigned char)TLS1_2_VERSION;
+    XMEMCPY(hmacInput, aad, sizeof(aad));
+    hmacInput[sizeof(aad) - 1] = sizeof(msg);
+    XMEMCPY(hmacInput + sizeof(aad), msg, sizeof(msg));
+    err = HMAC(EVP_sha256(), macKey, sizeof(macKey), hmacInput,
+               sizeof(hmacInput), mac, &macLen) == NULL;
+    if (err == 0) {
+        err = macLen != sizeof(mac);
+    }
+    if (err == 0) {
+        XMEMCPY(plain, msg, sizeof(msg));
+        XMEMCPY(plain + sizeof(msg), mac, sizeof(mac));
+        XMEMSET(plain + sizeof(msg) + sizeof(mac), 31, 32);
+        XMEMCPY(record, iv, sizeof(iv));
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(plain), record + sizeof(iv), 0);
+    }
+
+    aad[sizeof(aad) - 1] = sizeof(record);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        len = EVP_Cipher(ctx, out, record, sizeof(record));
+        err = len != sizeof(msg);
+    }
+    if (err == 0) {
+        err = XMEMCMP(out + sizeof(iv), msg, sizeof(msg)) != 0;
+    }
+    if (err == 0) {
+        err = test_cbc_hmac_plain_reuse(ctx, key,
+                                       record + sizeof(record) - sizeof(iv));
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
+int test_aes128_cbc_hmac_tls_retry_after_bad_padding(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    unsigned int macLen = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(e,
+                                                 NID_aes_128_cbc_hmac_sha256);
+    int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                    const unsigned char *, size_t) = NULL;
+    unsigned char key[16] = {0};
+    unsigned char macKey[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char iv[16] = {0};
+    unsigned char msg[16] = {1, 2, 3, 4};
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0};
+    unsigned char hmacInput[EVP_AEAD_TLS1_AAD_LEN + sizeof(msg)] = {0};
+    unsigned char mac[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char plain[sizeof(msg) + SHA256_DIGEST_LENGTH + 16] = {0};
+    unsigned char validRecord[sizeof(iv) + sizeof(plain)] = {0};
+    unsigned char badRecord[sizeof(validRecord)] = {0};
+    unsigned char badMacRecord[sizeof(validRecord)] = {0};
+    unsigned char out[sizeof(validRecord)] = {0};
+
+    (void)data;
+
+    if (cipher == NULL) {
+        return 1;
+    }
+    aad[9] = (unsigned char)(TLS1_2_VERSION >> 8);
+    aad[10] = (unsigned char)TLS1_2_VERSION;
+    XMEMCPY(hmacInput, aad, sizeof(aad));
+    hmacInput[sizeof(aad) - 1] = sizeof(msg);
+    XMEMCPY(hmacInput + sizeof(aad), msg, sizeof(msg));
+    err = HMAC(EVP_sha256(), macKey, sizeof(macKey), hmacInput,
+               sizeof(hmacInput), mac, &macLen) == NULL;
+    if (err == 0) {
+        err = macLen != sizeof(mac);
+    }
+    if (err == 0) {
+        XMEMCPY(plain, msg, sizeof(msg));
+        XMEMCPY(plain + sizeof(msg), mac, sizeof(mac));
+        XMEMSET(plain + sizeof(msg) + sizeof(mac), 15, 16);
+        XMEMCPY(validRecord, iv, sizeof(iv));
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(plain), validRecord + sizeof(iv), 0);
+    }
+    if (err == 0) {
+        plain[sizeof(msg)] ^= 1;
+        XMEMCPY(badMacRecord, iv, sizeof(iv));
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(plain), badMacRecord + sizeof(iv), 0);
+        plain[sizeof(msg)] ^= 1;
+    }
+    if (err == 0) {
+        plain[sizeof(plain) - 2] ^= 1;
+        XMEMCPY(badRecord, iv, sizeof(iv));
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(plain), badRecord + sizeof(iv), 0);
+    }
+
+    aad[sizeof(aad) - 1] = sizeof(validRecord);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        doCipher = EVP_CIPHER_meth_get_do_cipher(EVP_CIPHER_CTX_cipher(ctx));
+#else
+        doCipher = EVP_CIPHER_CTX_cipher(ctx)->do_cipher;
+#endif
+        err = doCipher == NULL;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, badRecord, sizeof(badRecord)) >= 0;
+    }
+    if (err == 0) {
+        err = test_cbc_hmac_plain_reuse(ctx, key,
+                                  badRecord + sizeof(badRecord) - sizeof(iv));
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        err = doCipher(ctx, out, badMacRecord, sizeof(badMacRecord)) >= 0;
+    }
+    if (err == 0) {
+        err = test_cbc_hmac_plain_reuse(ctx, key,
+                            badMacRecord + sizeof(badMacRecord) - sizeof(iv));
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        len = doCipher(ctx, out, validRecord, sizeof(validRecord));
+        err = len != sizeof(msg);
+    }
+    if (err == 0) {
+        err = XMEMCMP(out + sizeof(iv), msg, sizeof(msg)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
+int test_aes128_cbc_hmac_tls_padding_range(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    int n;
+    int msgLen;
+    unsigned int macLen;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(e,
+                                                 NID_aes_128_cbc_hmac_sha256);
+    const int pads[] = {0, 15, 31, 47, 63, 127, 191, 255};
+    unsigned char key[16] = {0};
+    unsigned char macKey[SHA256_DIGEST_LENGTH] = {1, 2, 3, 4};
+    unsigned char iv[16] = {0};
+    unsigned char msg[271] = {1, 2, 3, 4};
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0};
+    unsigned char hmacInput[EVP_AEAD_TLS1_AAD_LEN + sizeof(msg)] = {0};
+    unsigned char mac[SHA256_DIGEST_LENGTH] = {0};
+    unsigned char plain[sizeof(msg) + SHA256_DIGEST_LENGTH + 1] = {0};
+    unsigned char record[sizeof(iv) + sizeof(plain)] = {0};
+    unsigned char out[sizeof(record)] = {0};
+
+    (void)data;
+
+    if (cipher == NULL) {
+        return 1;
+    }
+    aad[9] = (unsigned char)(TLS1_2_VERSION >> 8);
+    aad[10] = (unsigned char)TLS1_2_VERSION;
+    aad[sizeof(aad) - 2] = (unsigned char)(sizeof(record) >> 8);
+    aad[sizeof(aad) - 1] = (unsigned char)sizeof(record);
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    for (n = 0; (err == 0) && (n < (int)(sizeof(pads) / sizeof(pads[0])));
+         n++) {
+        msgLen = (int)sizeof(msg) - pads[n];
+        XMEMSET(hmacInput, 0, sizeof(hmacInput));
+        XMEMCPY(hmacInput, aad, sizeof(aad));
+        hmacInput[sizeof(aad) - 2] = (unsigned char)(msgLen >> 8);
+        hmacInput[sizeof(aad) - 1] = (unsigned char)msgLen;
+        XMEMCPY(hmacInput + sizeof(aad), msg, msgLen);
+        err = HMAC(EVP_sha256(), macKey, sizeof(macKey), hmacInput,
+                   sizeof(aad) + msgLen, mac, &macLen) == NULL;
+        if (err == 0) {
+            err = macLen != sizeof(mac);
+        }
+        if (err == 0) {
+            XMEMCPY(plain, msg, msgLen);
+            XMEMCPY(plain + msgLen, mac, sizeof(mac));
+            XMEMSET(plain + msgLen + sizeof(mac), pads[n], pads[n] + 1);
+            XMEMCPY(record, iv, sizeof(iv));
+            err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                                  sizeof(plain), record + sizeof(iv), 0);
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                      sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+        }
+        if (err == 0) {
+            len = EVP_Cipher(ctx, out, record, sizeof(record));
+            err = len != msgLen;
+        }
+        if (err == 0) {
+            err = XMEMCMP(out + sizeof(iv), msg, msgLen) != 0;
+        }
+    }
+
+    /* A short record cannot contain the largest claimed padding. */
+    if (err == 0) {
+        XMEMSET(plain, 0, sizeof(iv) * 3);
+        plain[sizeof(iv) * 3 - 1] = 255;
+        XMEMCPY(record, iv, sizeof(iv));
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(iv) * 3, record + sizeof(iv), 0);
+    }
+    if (err == 0) {
+        aad[sizeof(aad) - 2] = 0;
+        aad[sizeof(aad) - 1] = sizeof(iv) * 4;
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        len = EVP_Cipher(ctx, out, record, sizeof(iv) * 4);
+        err = len >= 0;
+    }
+
+    /* TLS 1.0 carries no explicit IV in the record. */
+    if (err == 0) {
+        EVP_CIPHER_CTX_free(ctx);
+        ctx = NULL;
+        aad[9] = (unsigned char)(TLS1_VERSION >> 8);
+        aad[10] = (unsigned char)TLS1_VERSION;
+        aad[sizeof(aad) - 1] = sizeof(iv) * 5;
+        XMEMSET(hmacInput, 0, sizeof(hmacInput));
+        XMEMCPY(hmacInput, aad, sizeof(aad));
+        hmacInput[sizeof(aad) - 1] = sizeof(iv);
+        XMEMCPY(hmacInput + sizeof(aad), msg, sizeof(iv));
+        err = HMAC(EVP_sha256(), macKey, sizeof(macKey), hmacInput,
+                   sizeof(aad) + sizeof(iv), mac, &macLen) == NULL;
+    }
+    if (err == 0) {
+        err = macLen != sizeof(mac);
+    }
+    if (err == 0) {
+        XMEMCPY(plain, msg, sizeof(iv));
+        XMEMCPY(plain + sizeof(iv), mac, sizeof(mac));
+        XMEMSET(plain + sizeof(iv) + sizeof(mac), 31, 32);
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(iv) * 5, record, 0);
+    }
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        len = EVP_Cipher(ctx, out, record, sizeof(iv) * 5);
+        err = len != sizeof(iv);
+    }
+    if (err == 0) {
+        err = XMEMCMP(out, msg, sizeof(iv)) != 0;
+    }
+    if (err == 0) {
+        err = test_cbc_hmac_plain_reuse(ctx, key, record + sizeof(iv) * 4);
+    }
+    if (err == 0) {
+        plain[sizeof(iv) * 5 - 1] = 255;
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(iv) * 5, record, 0);
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad) != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        len = EVP_Cipher(ctx, out, record, sizeof(iv) * 5);
+        err = len >= 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
 #else
 int test_aes128_cbc_hmac_tls_short(ENGINE *e, void *data)
 {
-    /* Stitched AES-CBC-HMAC is not a FIPS-validated cipher, so this path is
-     * not exercised under FIPS. */
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_tls_lengths(ENGINE *e, void *data)
+{
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_no_tls_mac(ENGINE *e, void *data)
+{
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_tls_extended_padding(ENGINE *e, void *data)
+{
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_tls_retry_after_bad_padding(ENGINE *e, void *data)
+{
+    (void)e;
+    (void)data;
+    return 0;
+}
+
+int test_aes128_cbc_hmac_tls_padding_range(ENGINE *e, void *data)
+{
     (void)e;
     (void)data;
     return 0;
 }
 #endif
 
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_staged_init(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned char key[16];
+    unsigned char iv[16];
+    unsigned char plain[16] = {1, 2, 3, 4};
+    unsigned char first[16];
+    unsigned char repeated[16];
+
+    (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(iv, 0, sizeof(iv));
+
+    err = (cipher == NULL) ||
+          ((EVP_CIPHER_flags(cipher) & EVP_CIPH_CTRL_INIT) == 0);
+    if (err == 0)
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, first, plain, sizeof(plain)) != sizeof(plain);
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, repeated, plain, sizeof(plain)) != sizeof(plain);
+    }
+    if (err == 0) {
+        err = XMEMCMP(first, repeated, sizeof(first)) != 0;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, NULL, e, NULL, NULL) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_plain_encrypt(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    EVP_CIPHER_CTX *usedCtx = NULL;
+    EVP_CIPHER_CTX *cleanCtx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned char key[16];
+    unsigned char macKey[SHA256_DIGEST_LENGTH];
+    unsigned char iv[16];
+    unsigned char aadUsed[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char aadClean[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char in[64];
+    unsigned char usedOut[64];
+    unsigned char cleanOut[64];
+
+    (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(macKey, 0, sizeof(macKey));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(aadUsed, 0, sizeof(aadUsed));
+    XMEMSET(in, 0, sizeof(in));
+
+    aadUsed[9] = (unsigned char)(TLS1_VERSION >> 8);
+    aadUsed[10] = (unsigned char)TLS1_VERSION;
+    aadUsed[12] = 16;
+    XMEMCPY(aadClean, aadUsed, sizeof(aadClean));
+
+    err = (usedCtx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0)
+        err = (cleanCtx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(usedCtx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0)
+        err = EVP_Cipher(usedCtx, usedOut, in, 16) != 16;
+    if (err == 0)
+        err = EVP_EncryptInit_ex(usedCtx, NULL, e, key, iv) != 1;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(cleanCtx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(cleanCtx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        len = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aadUsed), aadUsed);
+        err = len != 48;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(usedCtx, NULL, e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        len = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aadUsed), aadUsed);
+        err = len != 48;
+    }
+    if (err == 0) {
+        len = EVP_CIPHER_CTX_ctrl(cleanCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aadClean), aadClean);
+        err = len != 48;
+    }
+    if (err == 0)
+        err = EVP_Cipher(usedCtx, usedOut, in, sizeof(in)) != (int)sizeof(in);
+    if (err == 0) {
+        err = EVP_Cipher(cleanCtx, cleanOut, in, sizeof(in)) !=
+              (int)sizeof(in);
+    }
+    if (err == 0)
+        err = XMEMCMP(usedOut, cleanOut, sizeof(usedOut)) != 0;
+
+    EVP_CIPHER_CTX_free(usedCtx);
+    EVP_CIPHER_CTX_free(cleanCtx);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_tls_bad_length_reset(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    EVP_CIPHER_CTX *usedCtx = NULL;
+    EVP_CIPHER_CTX *cleanCtx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned char key[16];
+    unsigned char macKey[SHA256_DIGEST_LENGTH];
+    unsigned char iv[16];
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char in[64];
+    unsigned char usedOut[64];
+    unsigned char cleanOut[64];
+
+    (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(macKey, 0, sizeof(macKey));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(in, 0, sizeof(in));
+
+    err = (usedCtx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = (cleanCtx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(usedCtx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(cleanCtx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(cleanCtx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        XMEMSET(aad, 0, sizeof(aad));
+        aad[9] = (unsigned char)(TLS1_VERSION >> 8);
+        aad[10] = (unsigned char)TLS1_VERSION;
+        aad[12] = 16;
+        len = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad);
+        err = len != 48;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(usedCtx, usedOut, in, 48) >= 0;
+    }
+    if (err == 0) {
+        XMEMSET(aad, 0, sizeof(aad));
+        aad[9] = (unsigned char)(TLS1_VERSION >> 8);
+        aad[10] = (unsigned char)TLS1_VERSION;
+        aad[12] = 16;
+        len = EVP_CIPHER_CTX_ctrl(usedCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad);
+        err = len != 48;
+    }
+    if (err == 0) {
+        XMEMSET(aad, 0, sizeof(aad));
+        aad[9] = (unsigned char)(TLS1_VERSION >> 8);
+        aad[10] = (unsigned char)TLS1_VERSION;
+        aad[12] = 16;
+        len = EVP_CIPHER_CTX_ctrl(cleanCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad), aad);
+        err = len != 48;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(usedCtx, usedOut, in, sizeof(in)) != (int)sizeof(in);
+    }
+    if (err == 0) {
+        err = EVP_Cipher(cleanCtx, cleanOut, in, sizeof(in)) !=
+              (int)sizeof(in);
+    }
+    if (err == 0) {
+        err = XMEMCMP(usedOut, cleanOut, sizeof(usedOut)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(usedCtx);
+    EVP_CIPHER_CTX_free(cleanCtx);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_encrypt_error(ENGINE *e, void *data)
+{
+    int err = 0;
+    int outLen = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned char in[16];
+    unsigned char out[16];
+
+    (void)data;
+
+    XMEMSET(in, 0, sizeof(in));
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, out, &outLen, in, sizeof(in)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_ctrl_error(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN];
+
+    (void)data;
+
+    XMEMSET(aad, 0, sizeof(aad));
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        ERR_clear_error();
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(aad) - 1, aad) != 0;
+    }
+    if (err == 0)
+        err = ERR_peek_last_error() != 0;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_tls_empty(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    int engineLen = 0;
+    int finalLen = 0;
+    int i;
+    EVP_CIPHER_CTX *engineCtx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned int macLen = 0;
+    unsigned char key[16];
+    unsigned char macKey[SHA256_DIGEST_LENGTH];
+    unsigned char iv[16];
+    unsigned char engineAAD[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char rejectedAAD[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char plain[48];
+    unsigned char in[48];
+    unsigned char expected[48];
+    unsigned char engineOut[80];
+
+    (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(macKey, 0, sizeof(macKey));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(engineAAD, 0, sizeof(engineAAD));
+    XMEMSET(plain, 0, sizeof(plain));
+    XMEMSET(in, 0, sizeof(in));
+    XMEMSET(engineOut, 0xa5, sizeof(engineOut));
+
+    engineAAD[9] = (unsigned char)(TLS1_VERSION >> 8);
+    engineAAD[10] = (unsigned char)TLS1_VERSION;
+
+    if (err == 0) {
+        err = HMAC(EVP_sha256(), macKey, sizeof(macKey), engineAAD,
+                   sizeof(engineAAD), plain, &macLen) == NULL;
+    }
+    if (err == 0)
+        err = macLen != SHA256_DIGEST_LENGTH;
+    if (err == 0) {
+        XMEMSET(plain + macLen, 15, sizeof(plain) - macLen);
+        err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, plain,
+                              sizeof(plain), expected, 0);
+    }
+    if (err == 0)
+        err = (engineCtx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(engineCtx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(engineCtx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        len = EVP_CIPHER_CTX_ctrl(engineCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(engineAAD), engineAAD);
+        err = len != (int)sizeof(in);
+    }
+    if (err == 0) {
+        XMEMCPY(rejectedAAD, engineAAD, sizeof(rejectedAAD));
+        rejectedAAD[9] = (unsigned char)(TLS1_1_VERSION >> 8);
+        rejectedAAD[10] = (unsigned char)TLS1_1_VERSION;
+        err = EVP_CIPHER_CTX_ctrl(engineCtx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  sizeof(rejectedAAD), rejectedAAD) != 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(engineCtx, engineOut, in, 0) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(engineCtx, engineOut, in, AES_BLOCK_SIZE) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(engineCtx, engineOut, in,
+                          2 * AES_BLOCK_SIZE) >= 0;
+    }
+    for (i = 0; (err == 0) && (i < (int)sizeof(engineOut)); i++) {
+        err = engineOut[i] != 0xa5;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(engineCtx, engineOut, &engineLen, in,
+                                sizeof(in)) != 1;
+    }
+    if (err == 0)
+        err = engineLen != (int)sizeof(expected);
+    if (err == 0)
+        err = XMEMCMP(expected, engineOut, sizeof(expected)) != 0;
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(engineCtx, engineOut + engineLen,
+                                  &finalLen) != 1;
+    }
+    if (err == 0)
+        err = finalLen != 0;
+    for (i = engineLen; (err == 0) && (i < (int)sizeof(engineOut)); i++) {
+        err = engineOut[i] != 0xa5;
+    }
+
+    EVP_CIPHER_CTX_free(engineCtx);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_reinit_state(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    unsigned int macLen = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = ENGINE_get_cipher(
+        e, NID_aes_128_cbc_hmac_sha256);
+    unsigned char key[16];
+    unsigned char macKey[SHA256_DIGEST_LENGTH];
+    unsigned char iv[16];
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN];
+    unsigned char in[16];
+    unsigned char enc[16];
+    unsigned char mac[SHA256_DIGEST_LENGTH];
+    unsigned char out[sizeof(in) + sizeof(mac)];
+
+    (void)data;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(macKey, 0, sizeof(macKey));
+    XMEMSET(iv, 0, sizeof(iv));
+    XMEMSET(aad, 0, sizeof(aad));
+    XMEMSET(in, 0, sizeof(in));
+    XMEMSET(out, 0, sizeof(out));
+
+    err = test_cipher_enc(NULL, EVP_aes_128_cbc(), key, iv, in, sizeof(in),
+                          enc, 0);
+    if (err == 0) {
+        err = HMAC(EVP_sha256(), macKey, sizeof(macKey), in, sizeof(in), mac,
+                   &macLen) == NULL;
+    }
+    if (err == 0)
+        err = macLen != sizeof(mac);
+
+    aad[9] = (unsigned char)(TLS1_1_VERSION >> 8);
+    aad[10] = (unsigned char)TLS1_1_VERSION;
+    aad[12] = sizeof(in);
+
+    if (err == 0)
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_MAC_KEY,
+                                  sizeof(macKey), macKey) != 1;
+    }
+    if (err == 0) {
+        len = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD, sizeof(aad),
+                                  aad);
+        err = len != SHA256_DIGEST_LENGTH;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        XMEMCPY(out + sizeof(in), mac, sizeof(mac));
+        err = EVP_Cipher(ctx, out, enc, sizeof(enc)) != (int)sizeof(in);
+    }
+    if (err == 0)
+        err = XMEMCMP(out, in, sizeof(in)) != 0;
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes128_cbc_hmac_cleanup(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    EVP_CIPHER_CTX *copyCtx = NULL;
+    const EVP_CIPHER *cipher;
+    unsigned char key[16];
+    unsigned char iv[16];
+
+    (void)data;
+
+    cipher = ENGINE_get_cipher(e, NID_aes_128_cbc_hmac_sha256);
+    err = cipher == NULL;
+    if (err == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        err = EVP_CIPHER_meth_get_cleanup(cipher) == NULL;
+#else
+        err = cipher->cleanup == NULL;
+#endif
+    }
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(iv, 0, sizeof(iv));
+
+    if (err == 0)
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0)
+        err = (copyCtx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0)
+        err = EVP_CIPHER_CTX_copy(copyCtx, ctx) != 0;
+
+    EVP_CIPHER_CTX_free(copyCtx);
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
 #endif /* WE_HAVE_AESCBC */
 
 /******************************************************************************/
 
 #ifdef WE_HAVE_AESCTR
+
+static int test_aes_ctr_copy(ENGINE *e, const EVP_CIPHER *cipher)
+{
+    const int offsets[] = { 0, 1, 15, 16, 17, 33 };
+    unsigned char key[32] = { 1 };
+    unsigned char nextKey[32] = { 2 };
+    unsigned char iv[16];
+    unsigned char in[64] = { 3 };
+    unsigned char out[80];
+    unsigned char expected[80];
+    EVP_CIPHER_CTX *src = NULL, *copy = NULL;
+    EVP_CIPHER_CTX *ref = NULL, *copyRef = NULL;
+    int err = 0, enc, order, stage, i, outLen, expectedLen;
+
+    XMEMSET(iv, 0xff, sizeof(iv));
+    PRINT_MSG("Copy AES-CTR at block and partial-block positions");
+    for (enc = 0; err == 0 && enc < 2; enc++) {
+        for (order = 0; err == 0 && order < 2; order++) {
+            for (i = 0; err == 0 && i < (int)(sizeof(offsets) /
+                                                   sizeof(offsets[0])); i++) {
+                src = EVP_CIPHER_CTX_new();
+                copy = EVP_CIPHER_CTX_new();
+                ref = EVP_CIPHER_CTX_new();
+                copyRef = EVP_CIPHER_CTX_new();
+                if (src == NULL || copy == NULL || ref == NULL ||
+                    copyRef == NULL) {
+                    err = 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherInit_ex(src, cipher, e, key, iv, enc) != 1 ||
+                          EVP_CipherInit_ex(copy, cipher, e, nextKey, iv,
+                                            enc) != 1 ||
+                          EVP_CipherInit_ex(ref, cipher, NULL, key, iv, enc) != 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherUpdate(src, out, &outLen, in,
+                                          offsets[i]) != 1 ||
+                          EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                          offsets[i]) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0 ||
+                          EVP_CIPHER_CTX_copy(copy, src) != 1 ||
+                          EVP_CIPHER_CTX_copy(copyRef, ref) != 1;
+                }
+                if (err == 0) {
+                    err = EVP_CipherInit_ex(src, NULL, NULL, nextKey, iv,
+                                            enc) != 1 ||
+                          EVP_CipherInit_ex(ref, NULL, NULL, nextKey, iv,
+                                            enc) != 1;
+                }
+                if (order == 0) {
+                    EVP_CIPHER_CTX_free(src);
+                    src = NULL;
+                }
+                if (err == 0) {
+                    err = EVP_CipherUpdate(copy, out, &outLen, in,
+                                          sizeof(in)) != 1 ||
+                          EVP_CipherUpdate(copyRef, expected, &expectedLen, in,
+                                          sizeof(in)) != 1;
+                }
+                if (err == 0) {
+                    err = outLen != expectedLen ||
+                          XMEMCMP(out, expected, outLen) != 0;
+                }
+                EVP_CIPHER_CTX_free(copy);
+                copy = NULL;
+                if (err == 0 && order == 1) {
+                    err = EVP_CipherUpdate(src, out, &outLen, in,
+                                          sizeof(in)) != 1 ||
+                          EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                          sizeof(in)) != 1;
+                    if (err == 0) {
+                        err = outLen != expectedLen ||
+                              XMEMCMP(out, expected, outLen) != 0;
+                    }
+                }
+                EVP_CIPHER_CTX_free(src);
+                EVP_CIPHER_CTX_free(ref);
+                EVP_CIPHER_CTX_free(copyRef);
+                src = ref = copyRef = NULL;
+            }
+        }
+    }
+    PRINT_MSG("Copy AES-CTR before setting the key");
+    for (stage = 0; err == 0 && stage < 2; stage++) {
+        src = EVP_CIPHER_CTX_new();
+        copy = EVP_CIPHER_CTX_new();
+        ref = EVP_CIPHER_CTX_new();
+        if (src == NULL || copy == NULL || ref == NULL) {
+            err = 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherInit_ex(src, cipher, e, NULL,
+                                    stage ? iv : NULL, 1) != 1 ||
+                  EVP_CIPHER_CTX_copy(copy, src) != 1 ||
+                  EVP_CipherInit_ex(copy, NULL, NULL, key,
+                                    stage ? NULL : iv, 1) != 1 ||
+                  EVP_CipherInit_ex(ref, cipher, NULL, key, iv, 1) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CipherUpdate(copy, out, &outLen, in, sizeof(in)) != 1 ||
+                  EVP_CipherUpdate(ref, expected, &expectedLen, in,
+                                   sizeof(in)) != 1;
+        }
+        if (err == 0) {
+            err = outLen != expectedLen ||
+                  XMEMCMP(out, expected, outLen) != 0;
+        }
+        EVP_CIPHER_CTX_free(src);
+        EVP_CIPHER_CTX_free(copy);
+        EVP_CIPHER_CTX_free(ref);
+        src = copy = ref = NULL;
+    }
+    return err;
+}
 
 int test_aes128_ctr_stream(ENGINE *e, void *data)
 {
@@ -594,6 +2191,8 @@ int test_aes128_ctr_stream(ENGINE *e, void *data)
     err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 16, 0);
     if (err == 0)
         err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 1, 0);
+    if (err == 0)
+        err = test_aes_ctr_copy(e, EVP_aes_128_ctr());
 
     return err;
 }
@@ -607,6 +2206,8 @@ int test_aes192_ctr_stream(ENGINE *e, void *data)
     err = test_stream_enc_dec(e, data, EVP_aes_192_ctr(), 24, 16, 15, 0);
     if (err == 0)
         err = test_stream_enc_dec(e, data, EVP_aes_128_ctr(), 16, 16, 2, 0);
+    if (err == 0)
+        err = test_aes_ctr_copy(e, EVP_aes_192_ctr());
 
     return err;
 }
@@ -620,6 +2221,8 @@ int test_aes256_ctr_stream(ENGINE *e, void *data)
     err = test_stream_enc_dec(e, data, EVP_aes_256_ctr(), 32, 16, 14, 0);
     if (err == 0)
         err = test_stream_enc_dec(e, data, EVP_aes_256_ctr(), 32, 16, 3, 0);
+    if (err == 0)
+        err = test_aes_ctr_copy(e, EVP_aes_256_ctr());
 
     return err;
 }
@@ -774,6 +2377,11 @@ int test_aes_ctr_leftover_data_regression(ENGINE *e, void *data)
 int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
 {
     int err = 0;
+    int outLen;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    const EVP_CIPHER* cipher;
+    EVP_CIPHER_CTX* copyCtx = NULL;
+#endif
     unsigned char iv[AES_BLOCK_SIZE];
     unsigned char key[16];
     EVP_CIPHER_CTX* encCtx = NULL;
@@ -813,7 +2421,33 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
         err = EVP_CipherInit_ex(decCtx, EVP_aes_128_ctr(), e, NULL, iv, 0) != 1;
     }
     if (err == 0) {
+        err = EVP_CIPHER_CTX_iv_length(decCtx) != (int)sizeof(iv);
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (err == 0) {
+        cipher = EVP_CIPHER_CTX_cipher(decCtx);
+        err = (cipher == NULL) ||
+              (EVP_CIPHER_meth_get_cleanup(cipher) == NULL);
+    }
+#endif
+    if (err == 0) {
         err = EVP_CipherInit_ex(decCtx, NULL, e, key, NULL, -1) != 1;
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (err == 0) {
+        err = (copyCtx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_copy(copyCtx, decCtx) != 1;
+    }
+    if (err == 0) {
+        ERR_clear_error();
+    }
+#endif
+
+    if (err == 0) {
+        outLen = EVP_Cipher(decCtx, decText, decText, 0);
+        err = outLen != 0;
     }
 
     /* Encrypt. */
@@ -835,9 +2469,338 @@ int test_aes_ctr_iv_init_regression(ENGINE *e, void *data)
         EVP_CIPHER_CTX_free(encCtx);
     if (decCtx != NULL)
         EVP_CIPHER_CTX_free(decCtx);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    if (copyCtx != NULL)
+        EVP_CIPHER_CTX_free(copyCtx);
+#endif
 
     return err;
 }
 
 #endif /* WE_HAVE_AESCTR */
+
+#ifdef WE_HAVE_AESCCM
+
+static int test_ccm_keyed_roundtrip(ENGINE *e, const EVP_CIPHER *cipher)
+{
+    int err = 0;
+    int len = 0;
+    int finalLen = 0;
+    int lengthRet = 1;
+    const unsigned char msg[] = "Test pattern";
+    static const unsigned char aad[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
+    unsigned char key[32] = {0};
+    unsigned char iv[13] = {0};
+    unsigned char enc[sizeof(msg)];
+    unsigned char dec[sizeof(msg)];
+    unsigned char tag[16];
+    unsigned char nextTag[sizeof(tag)];
+    EVP_CIPHER_CTX *ctx = NULL;
+    EVP_CIPHER_CTX *copy = NULL;
+
+#if OPENSSL_VERSION_NUMBER < 0x1010103fL
+    /* Native OpenSSL before 1.1.1c needs a tag for length setup. */
+    lengthRet = e != NULL;
+#endif
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN,
+                                  sizeof(iv), NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = (copy = EVP_CIPHER_CTX_new()) == NULL;
+        if (err == 0) {
+            PRINT_MSG("CCM engine contexts reject copying");
+            err = EVP_CIPHER_CTX_copy(copy, ctx) != 0;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("CCM encryption tags require a completed operation");
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 0;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, NULL, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, enc, &len, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = len != (int)sizeof(msg);
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, enc + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = finalLen != 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        unsigned char unused[sizeof(tag)];
+
+        PRINT_MSG("CCM encryption tags are exported once per operation");
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(unused), unused) != 0;
+    }
+    if (err == 0) {
+        PRINT_MSG("Reinitialize CCM for a keyed decrypt roundtrip");
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, NULL, sizeof(enc)) != lengthRet;
+    }
+    if (err == 0) {
+        PRINT_MSG("CCM decryption requires an authentication tag");
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 0;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, NULL, sizeof(enc)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+    }
+    if (err == 0) {
+        err = (len != (int)sizeof(msg)) ||
+              (XMEMCMP(dec, msg, sizeof(msg)) != 0);
+    }
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    /* Older OpenSSL clears CCM tag state before finalization. */
+    if (err == 0) {
+        err = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = finalLen != 0;
+    }
+#endif
+    if (err == 0) {
+        PRINT_MSG("CCM decrypt contexts do not export encryption tags");
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 0;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Reinitialize CCM for keyed encryption");
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, NULL, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, dec, &len, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = (len != (int)sizeof(msg)) ||
+              (XMEMCMP(dec, enc, sizeof(enc)) != 0);
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, dec + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = finalLen != 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(nextTag), nextTag) != 1;
+    }
+    if (err == 0) {
+        err = XMEMCMP(nextTag, tag, sizeof(tag)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_CTX_free(copy);
+    return err;
+}
+
+int test_aes_ccm_keyed_reinit(ENGINE *e, void *data)
+{
+    int err;
+
+    (void)data;
+
+    err = test_ccm_keyed_roundtrip(NULL, EVP_aes_128_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(e, EVP_aes_128_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(NULL, EVP_aes_192_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(e, EVP_aes_192_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(NULL, EVP_aes_256_ccm());
+    if (err == 0)
+        err = test_ccm_keyed_roundtrip(e, EVP_aes_256_ccm());
+
+    return err;
+}
+
+#endif /* WE_HAVE_AESCCM */
+
+#ifdef WE_HAVE_AESGCM
+
+static int test_gcm_keyed_roundtrip(ENGINE *e, const EVP_CIPHER *cipher)
+{
+    int err;
+    int len = 0;
+    int finalLen = 0;
+    const unsigned char msg[] = "Test pattern";
+    static const unsigned char aad[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
+    unsigned char badAad[sizeof(aad)];
+    unsigned char key[32] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char enc[sizeof(msg)];
+    unsigned char dec[sizeof(msg)];
+    unsigned char tag[16];
+    unsigned char nextTag[sizeof(tag)];
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    XMEMCPY(badAad, aad, sizeof(aad));
+    badAad[0] ^= 0x80;
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, cipher, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("GCM appends AAD through a NULL output buffer");
+        err = EVP_EncryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, enc, &len, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = len != (int)sizeof(msg);
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, enc + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = finalLen != 0;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Reinitialize GCM for a keyed decrypt roundtrip");
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+    }
+    /* The engine releases GCM plaintext only once the tag verifies. */
+    if (err == 0) {
+        err = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = (len + finalLen != (int)sizeof(msg)) ||
+              (XMEMCMP(dec, msg, sizeof(msg)) != 0);
+    }
+
+    if (err == 0) {
+        PRINT_MSG("GCM decryption authenticates the appended AAD");
+        err = EVP_DecryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, NULL, &len, badAad, sizeof(badAad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen) > 0;
+    }
+
+    if (err == 0) {
+        PRINT_MSG("Reinitialize GCM for keyed encryption");
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, dec, &len, msg, sizeof(msg)) != 1;
+    }
+    /* The engine's one-shot GCM writes buffered output at finalization. */
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, dec + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = (len + finalLen != (int)sizeof(msg)) ||
+              (XMEMCMP(dec, enc, sizeof(enc)) != 0);
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(nextTag), nextTag) != 1;
+    }
+    if (err == 0) {
+        err = XMEMCMP(nextTag, tag, sizeof(tag)) != 0;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
+int test_aes_gcm_keyed_reinit(ENGINE *e, void *data)
+{
+    int err;
+
+    (void)data;
+
+    err = test_gcm_keyed_roundtrip(NULL, EVP_aes_128_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(e, EVP_aes_128_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(NULL, EVP_aes_192_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(e, EVP_aes_192_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(NULL, EVP_aes_256_gcm());
+    if (err == 0)
+        err = test_gcm_keyed_roundtrip(e, EVP_aes_256_gcm());
+
+    return err;
+}
+
+#endif /* WE_HAVE_AESGCM */
 

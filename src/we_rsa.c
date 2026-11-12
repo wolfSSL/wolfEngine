@@ -67,6 +67,10 @@ typedef struct we_Rsa
     int bits;
     /** Length of salt to use with PSS. */
     int saltLen;
+    /** Owned OAEP label, transferred by the EVP control. */
+    unsigned char *oaepLabel;
+    /** Length of the OAEP label. */
+    int oaepLabelLen;
     /** Indicates private key has been set into wolfSSL structure. */
     unsigned int privKeySet:1;
     /** Indicates public key has been set into wolfSSL structure. */
@@ -74,6 +78,28 @@ typedef struct we_Rsa
     /** Indicates message digest algorithm has been explicitly set. */
     unsigned int mdSet:1;
 } we_Rsa;
+
+static unsigned char *we_rsa_oaep_label_alloc(int length)
+{
+    if (length <= 0) {
+        return NULL;
+    }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    return (unsigned char *)CRYPTO_malloc((size_t)length, __FILE__, __LINE__);
+#else
+    return (unsigned char *)CRYPTO_malloc(length, __FILE__, __LINE__);
+#endif
+}
+
+static void we_rsa_oaep_label_free(void *label)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    CRYPTO_free(label, __FILE__, __LINE__);
+#else
+    CRYPTO_free(label);
+#endif
+}
 
 
 /** RSA direct method - RSA using wolfSSL for the implementation. */
@@ -194,14 +220,14 @@ static int we_pss_salt_len_to_wc(int saltLen, const EVP_MD *md, RsaKey *key,
         if (saltLen == RSA_PSS_SALTLEN_DIGEST) {
             saltLen = RSA_PSS_SALT_LEN_DEFAULT;
         }
-        if (saltLen == RSA_PSS_SALTLEN_MAX) {
+        else if (saltLen == RSA_PSS_SALTLEN_MAX) {
         #ifndef WOLFSSL_PSS_SALT_LEN_DISCOVER
             saltLen = EVP_MD_size(md);
         #else
             saltLen = RSA_PSS_SALT_LEN_DISCOVER;
         #endif
         }
-        if (saltLen == RSA_PSS_SALTLEN_AUTO) {
+        else if (saltLen == RSA_PSS_SALTLEN_AUTO) {
         #ifndef WOLFSSL_PSS_LONG_SALT
             saltLen = EVP_MD_size(md);
         #else
@@ -450,7 +476,7 @@ static int we_rsa_set_public_key(RSA *rsaKey, we_Rsa *engineRsa)
 
     /* DER encoded public key with OpenSSL. */
     pubDerLen = i2d_RSAPublicKey(rsaKey, &pubDer);
-    if (pubDerLen == 0) {
+    if (pubDerLen <= 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_RSAPublicKey", pubDerLen);
         ret = 0;
     }
@@ -539,8 +565,8 @@ static int we_rsa_set_public_key_from_ctx(EVP_PKEY_CTX* ctx, we_Rsa* engineRsa)
 /**
  * Set the private key in a we_Rsa structure.
  *
- * @param  ctx     [in]  Public key context of operation.
- * @param  rsa     [in]  RSA structure to hold private key.
+ * @param  rsaKey     [in]   OpenSSL RSA private key.
+ * @param  engineRsa  [out]  wolfEngine RSA object to hold key.
  * @returns  1 on success and 0 on failure.
  */
 static int we_rsa_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
@@ -557,9 +583,10 @@ static int we_rsa_set_private_key(RSA *rsaKey, we_Rsa *engineRsa)
 
     /* DER encoded private key with OpenSSL. */
     privDerLen = i2d_RSAPrivateKey(rsaKey, &privDer);
-    if (privDerLen == 0) {
+    if (privDerLen <= 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_RSAPrivateKey", privDerLen);
         ret = 0;
+        privDerLen = 0;
     }
 
     if (ret == 1) {
@@ -767,7 +794,8 @@ static int we_rsa_pub_enc_int(size_t fromLen, const unsigned char *from,
                 ret = wc_RsaPublicEncrypt_ex(from, (word32)fromLen, to,
                     (word32)toLen, &rsa->key, rng, WC_RSA_OAEP_PAD,
                     we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                    we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->oaepLabel,
+                    (word32)rsa->oaepLabelLen);
                 if (ret < 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaPublicEncrypt_ex",
                                           ret);
@@ -896,13 +924,12 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
                            "toLen = %zu, to = %p, rsa = %p]", fromLen,
                            from, toLen, to, rsa);
 
- #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
     ret = wc_LockMutex(we_rng_mutex);
     if (ret != 0) {
         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", ret);
-        ret = -1;
+        return -1;
     }
-    else
 #endif
     {
         switch (rsa->padMode) {
@@ -940,7 +967,8 @@ static int we_rsa_priv_dec_int(size_t fromLen, const unsigned char *from,
                     ret = wc_RsaPrivateDecrypt_ex(from, (word32)fromLen, to,
                         (word32)toLen, &rsa->key, WC_RSA_OAEP_PAD,
                         we_nid_to_wc_hash_type(EVP_MD_type(rsa->md)),
-                        we_mgf_from_hash(EVP_MD_type(mdMGF1)), NULL, 0);
+                        we_mgf_from_hash(EVP_MD_type(mdMGF1)), rsa->oaepLabel,
+                        (word32)rsa->oaepLabelLen);
                     PRIVATE_KEY_LOCK();
                     if (ret < 0) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
@@ -1135,9 +1163,6 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                 /* Convert salt length into wolfCrypt value. */
                 int wc_saltLen = we_pss_salt_len_to_wc(rsa->saltLen, rsa->md,
                     &rsa->key, 1);
-                if (wc_saltLen >= 0) {
-                    rsa->saltLen = wc_saltLen;
-                }
                 /* When MGF1 digest is not specified, use signing digest. */
                 mdMGF1 = rsa->mdMGF1 != NULL ? rsa->mdMGF1 : rsa->md;
                 PRIVATE_KEY_UNLOCK();
@@ -1157,10 +1182,16 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
             WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
             paddedSz = wc_RsaEncryptSize(&rsa->key);
             if (paddedSz <= 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize", ret);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize",
+                                      paddedSz);
+                ret = -1;
+            }
+            else if (toLen < (size_t)paddedSz) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Output buffer too small");
                 ret = -1;
             }
             else {
+                tLen = (unsigned int)paddedSz;
                 padded = (unsigned char *)OPENSSL_malloc(paddedSz);
                 if (padded == NULL) {
                     WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
@@ -1198,7 +1229,7 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                     ret = -1;
                 }
                 else {
-                    rc = mp_read_unsigned_bin(&toMp, to, (int)toLen);
+                    rc = mp_read_unsigned_bin(&toMp, to, (int)tLen);
                     if (rc != MP_OKAY) {
                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_read_unsigned_bin",
                                               rc);
@@ -1215,10 +1246,11 @@ static int we_rsa_priv_enc_int(size_t fromLen, const unsigned char *from,
                             ret = -1;
                         }
                         else if (mp_cmp(&toMp, &nMinusTo) == MP_GT) {
-                            rc = mp_to_unsigned_bin(&nMinusTo, to);
+                            rc = mp_to_unsigned_bin_len(&nMinusTo, to,
+                                                        (int)tLen);
                             if (rc != MP_OKAY) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                    "mp_to_unsigned_bin", rc);
+                                    "mp_to_unsigned_bin_len", rc);
                                 ret = -1;
                             }
                         }
@@ -1309,13 +1341,6 @@ static int we_rsa_priv_enc(int fromLen, const unsigned char *from,
         /* Store the padding mode (PKEY variant has it set) and private
          * encrypt. */
         engineRsa->padMode = padding;
-    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-        if ((padding == RSA_PKCS1_PADDING) && engineRsa->mdSet &&
-                                      (EVP_MD_size(engineRsa->md) != fromLen)) {
-            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
-            ret = -1;
-        }
-    #endif
     }
     if (ret == 1) {
         /* Output size is always the length of the prime. */
@@ -1347,6 +1372,9 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     int ret = 1;
     unsigned int tLen = (unsigned int)toLen;
     const EVP_MD *mdMGF1;
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
+    int lockRet;
+#endif
 #ifndef WE_RSA_USE_GLOBAL_RNG
     WC_RNG *rng = &rsa->rng;
 #else
@@ -1357,6 +1385,7 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
     unsigned char* unpadded = NULL;
     mp_int toMp;
     mp_int nMinusTo;
+    int outputSz;
     int rc;
 #endif
 
@@ -1386,8 +1415,9 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
             case RSA_NO_PADDING:
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_NO_PADDING");
             #if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
-                if (wc_LockMutex(we_rng_mutex) != 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", ret);
+                lockRet = wc_LockMutex(we_rng_mutex);
+                if (lockRet != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex", lockRet);
                     ret = -1;
                 }
                 else
@@ -1438,15 +1468,46 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
         #ifdef WE_HAVE_RSA_X931
             case RSA_X931_PADDING:
                 WOLFENGINE_MSG(WE_LOG_PK, "padMode: RSA_X931_PADDING");
-                PRIVATE_KEY_UNLOCK();
-                ret = wc_RsaDirect((byte*)from, (unsigned int)fromLen, to,
-                                   &tLen, &rsa->key, RSA_PUBLIC_DECRYPT, rng);
-                PRIVATE_KEY_LOCK();
-                if (ret < 0) {
-                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect", ret);
+                outputSz = wc_RsaEncryptSize(&rsa->key);
+                if (outputSz <= 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaEncryptSize",
+                                          outputSz);
+                    ret = -1;
+                }
+                else if (toLen < (size_t)outputSz) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Output buffer too small");
                     ret = -1;
                 }
                 else {
+                    tLen = (unsigned int)outputSz;
+                #if defined(WE_RSA_USE_GLOBAL_RNG) && \
+                    !defined(WE_SINGLE_THREADED)
+                    lockRet = wc_LockMutex(we_rng_mutex);
+                    if (lockRet != 0) {
+                        WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_LockMutex",
+                                              lockRet);
+                        ret = -1;
+                    }
+                    else
+                #endif
+                    {
+                        PRIVATE_KEY_UNLOCK();
+                        ret = wc_RsaDirect((byte*)from,
+                            (unsigned int)fromLen, to, &tLen, &rsa->key,
+                            RSA_PUBLIC_DECRYPT, rng);
+                        PRIVATE_KEY_LOCK();
+                        if (ret < 0) {
+                            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaDirect",
+                                                  ret);
+                            ret = -1;
+                        }
+                #if defined(WE_RSA_USE_GLOBAL_RNG) && \
+                    !defined(WE_SINGLE_THREADED)
+                        wc_UnLockMutex(we_rng_mutex);
+                #endif
+                    }
+                }
+                if (ret != -1) {
                     /* 
                      * X9.31 specifies, "If e is odd, then
                      *   - If RR = 12 mod 16, then IR = RR ;
@@ -1455,19 +1516,19 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                      * step. Taking "to" mod 16 is the same as just checking the
                      * lower 4 bits of "to."
                      */
-                    if ((to[toLen-1] & 0x0F) != 12) {
+                    if ((to[tLen-1] & 0x0F) != 12) {
                         rc = mp_init_multi(&toMp, &nMinusTo, NULL, NULL, NULL,
                                            NULL);
                         if (rc != MP_OKAY) {
                             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "mp_init_multi",
-                                ret);
+                                rc);
                             ret = -1;
                         }
                         else {
-                            rc = mp_read_unsigned_bin(&toMp, to, (int)toLen);
+                            rc = mp_read_unsigned_bin(&toMp, to, (int)tLen);
                             if (rc != MP_OKAY) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                    "mp_read_unsigned_bin", ret);
+                                    "mp_read_unsigned_bin", rc);
                                 ret = -1;
                             }
                             else {
@@ -1477,10 +1538,11 @@ static int we_rsa_pub_dec_int(size_t fromLen, const unsigned char *from,
                                     ret = -1;
                                 }
                                 else {
-                                    rc = mp_to_unsigned_bin(&nMinusTo, to);
+                                    rc = mp_to_unsigned_bin_len(&nMinusTo, to,
+                                                                (int)tLen);
                                     if (rc != MP_OKAY) {
                                         WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
-                                            "mp_to_unsigned_bin", rc);
+                                            "mp_to_unsigned_bin_len", rc);
                                         ret = -1;
                                     }
                                 }
@@ -1895,6 +1957,7 @@ static int we_rsa_pkey_init(EVP_PKEY_CTX *ctx)
         wc_FreeRng(&rsa->rng);
     #endif
         wc_FreeRsaKey(&rsa->key);
+        we_rsa_oaep_label_free(rsa->oaepLabel);
         OPENSSL_free(rsa);
     }
 
@@ -1924,6 +1987,7 @@ static void we_rsa_pkey_cleanup(EVP_PKEY_CTX *ctx)
         wc_FreeRng(&rsa->rng);
     #endif
         wc_FreeRsaKey(&rsa->key);
+        we_rsa_oaep_label_free(rsa->oaepLabel);
         OPENSSL_free(rsa);
     }
 
@@ -1983,8 +2047,28 @@ static int we_rsa_pkey_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
         rsaDst->pubExp = rsaSrc->pubExp;
         rsaDst->bits = rsaSrc->bits;
         rsaDst->saltLen = rsaSrc->saltLen;
+        if (rsaSrc->oaepLabel != NULL) {
+            rsaDst->oaepLabel = we_rsa_oaep_label_alloc(
+                    rsaSrc->oaepLabelLen);
+            if (rsaDst->oaepLabel == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "CRYPTO_malloc",
+                                           rsaDst->oaepLabel);
+                ret = 0;
+            }
+            else {
+                if (rsaSrc->oaepLabelLen > 0) {
+                    XMEMCPY(rsaDst->oaepLabel, rsaSrc->oaepLabel,
+                            (size_t)rsaSrc->oaepLabelLen);
+                }
+                rsaDst->oaepLabelLen = rsaSrc->oaepLabelLen;
+            }
+        }
         /* Don't copy wolfSSL RSA key.
          * No public key or private key set. */
+    }
+
+    if (ret != 1) {
+        we_rsa_pkey_cleanup(dst);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_rsa_pkey_copy", ret);
@@ -2061,7 +2145,8 @@ static int we_rsa_pkey_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
  * @param  type  [in]  Type of operation to perform.
  * @param  num   [in]  Integer parameter.
  * @param  ptr   [in]  Pointer parameter.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
@@ -2203,7 +2288,8 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                     ret = 0;
                 }
                 if (ret == 1) {
-                    rsa->pubExp = (int)e;
+                    rsa->pubExp = e;
+                    BN_free(bn);
                 }
                 break;
             case EVP_PKEY_CTRL_RSA_PSS_SALTLEN:
@@ -2314,14 +2400,36 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
             case EVP_PKEY_CTRL_RSA_OAEP_LABEL:
                 WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_RSA_OAEP_LABEL");
-                /* Not needed - seed created internally. */
+                if (rsa->padMode != RSA_PKCS1_OAEP_PADDING || num < 0) {
+                    ret = 0;
+                }
+                else {
+                    unsigned char *label = (unsigned char *)ptr;
+
+                    if (label != rsa->oaepLabel) {
+                        we_rsa_oaep_label_free(rsa->oaepLabel);
+                    }
+                    if (label == NULL || num == 0) {
+                        we_rsa_oaep_label_free(label);
+                        rsa->oaepLabel = NULL;
+                        rsa->oaepLabelLen = 0;
+                    }
+                    else {
+                        rsa->oaepLabel = label;
+                        rsa->oaepLabelLen = num;
+                    }
+                }
                 break;
             case EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL:
                 WOLFENGINE_MSG(WE_LOG_PK,
                                "type: EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL");
-                /* Not needed - seed created internally. */
-                *(unsigned char **)ptr = NULL;
-                ret = 0;
+                if (rsa->padMode != RSA_PKCS1_OAEP_PADDING || ptr == NULL) {
+                    ret = 0;
+                }
+                else {
+                    *(unsigned char **)ptr = rsa->oaepLabel;
+                    ret = rsa->oaepLabelLen;
+                }
                 break;
 
             default:
@@ -2329,7 +2437,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-                ret = 0;
+                ret = -2;
                 break;
         }
     }
@@ -2352,7 +2460,7 @@ static int we_rsa_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  * @param  ctx    [in]  Public key context of operation.
  * @param  type   [in]  Type of operation to perform.
  * @param  value  [in]  Control string dependent value.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 on success or a non-positive OpenSSL control error code.
  */
 static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                                 const char *value)
@@ -2496,12 +2604,12 @@ static int we_rsa_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             rsa->pubExp = e;
         }
     }
-    else {
+    else if (ret == 1) {
         /* Unsupported string. */
         XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl string: %s",
                   type);
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-        ret = 0;
+        ret = -2;
     }
 
     return ret;
@@ -2528,8 +2636,16 @@ static int we_der_encode_digest(const EVP_MD *md, const unsigned char *digest,
                            "digestLen = %zu, encodedDigest = %p]", md,
                            digest, digestLen, encodedDigest);
 
+    if ((md == NULL) || (digest == NULL) || (encodedDigest == NULL) ||
+        (EVP_MD_size(md) <= 0) ||
+        (digestLen != (size_t)EVP_MD_size(md)) ||
+        (digestLen > MAX_DER_DIGEST_SZ - 20)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
+        ret = 0;
+    }
+
     /* Allocate a buffer if not passed in. */
-    if (*encodedDigest == NULL) {
+    if ((ret == 1) && (*encodedDigest == NULL)) {
         *encodedDigest = (unsigned char *)OPENSSL_malloc(MAX_DER_DIGEST_SZ);
         if (*encodedDigest == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
@@ -2608,7 +2724,7 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
         ret = 0;
     }
 
-    if (rsa->md != NULL &&
+    if ((ret == 1) && (rsa->md != NULL) &&
         we_check_rsa_signing_md(EVP_MD_type(rsa->md)) != 1) {
         ret = 0;
     }
@@ -2661,13 +2777,11 @@ static int we_rsa_pkey_sign(EVP_PKEY_CTX *ctx, unsigned char *sig,
     }
 
     if ((ret == 1) && (sig != NULL)) {
-    #if OPENSSL_VERSION_NUMBER >= 0x10101000L
         if ((rsa->md != NULL) && (rsa->padMode == RSA_PKCS1_PADDING) &&
                                      ((size_t)EVP_MD_size(rsa->md) != tbsLen)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest length invalid");
             ret = -1;
         }
-    #endif
         if ((ret == 1) && (rsa->md != NULL) &&
                                           (rsa->padMode == RSA_PKCS1_PADDING)) {
             /* In this case, OpenSSL expects a proper PKCS #1 v1.5
@@ -2753,7 +2867,16 @@ static int we_rsa_pkey_verify_recover(EVP_PKEY_CTX *ctx, unsigned char* out,
 {
     int ret = 1;
     int rc;
+    int keySize;
+    int mdSize;
+    int encodedSize;
+    int prefixSize;
     we_Rsa *rsa = NULL;
+    unsigned char *decoded = NULL;
+    unsigned char *encoded = NULL;
+    const unsigned char *digest = NULL;
+    unsigned char emptyDigest[EVP_MAX_MD_SIZE];
+    unsigned char encodedDigest[MAX_DER_DIGEST_SZ];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_rsa_pkey_verify_recover");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p, out = %p, outSz = %p, "
@@ -2782,15 +2905,82 @@ static int we_rsa_pkey_verify_recover(EVP_PKEY_CTX *ctx, unsigned char* out,
             }
         }
         else {
-            /* Unpad and public decrypt. */
-            rc = we_rsa_pub_dec_int(inSz, in, *outSz, out, rsa);
-            if (rc < 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
-                ret = 0;
+            /* Digest recovery needs room for the encoded form before it is
+             * reduced to the caller's digest-sized buffer. */
+            if (rsa->md != NULL && (rsa->padMode == RSA_PKCS1_PADDING
+#ifdef WE_HAVE_RSA_X931
+                || rsa->padMode == RSA_X931_PADDING
+#endif
+                )) {
+                keySize = wc_RsaEncryptSize(&rsa->key);
+                if (keySize <= 0) {
+                    ret = 0;
+                }
+                else {
+                    decoded = (unsigned char *)OPENSSL_malloc((size_t)keySize);
+                    if (decoded == NULL) {
+                        ret = 0;
+                    }
+                }
             }
-            else {
-                *outSz = rc;
+            if (ret == 1) {
+                rc = we_rsa_pub_dec_int(inSz, in,
+                        decoded != NULL ? (size_t)keySize : *outSz,
+                        decoded != NULL ? decoded : out, rsa);
+                if (rc < 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
+                    ret = 0;
+                }
             }
+            if (ret == 1 && decoded != NULL) {
+                mdSize = EVP_MD_size(rsa->md);
+                if (mdSize <= 0 || mdSize > EVP_MAX_MD_SIZE) {
+                    ret = 0;
+                }
+                else if (rsa->padMode == RSA_PKCS1_PADDING) {
+                    XMEMSET(emptyDigest, 0, (size_t)mdSize);
+                    encoded = encodedDigest;
+                    encodedSize = we_der_encode_digest(rsa->md, emptyDigest,
+                                                       (size_t)mdSize, &encoded);
+                    prefixSize = encodedSize - mdSize;
+                    if (encodedSize <= 0 || prefixSize < 0 ||
+                        rc != encodedSize ||
+                        XMEMCMP(decoded, encodedDigest,
+                                (size_t)prefixSize) != 0) {
+                        ret = 0;
+                    }
+                    else {
+                        digest = decoded + prefixSize;
+                        rc = mdSize;
+                    }
+                }
+#ifdef WE_HAVE_RSA_X931
+                else if (rsa->padMode == RSA_X931_PADDING) {
+                    if (we_rsa_get_x931_hash_code(EVP_MD_type(rsa->md)) == 0 ||
+                        rc != mdSize + 1 ||
+                        decoded[mdSize] !=
+                            we_rsa_get_x931_hash_code(EVP_MD_type(rsa->md))) {
+                        ret = 0;
+                    }
+                    else {
+                        digest = decoded;
+                        rc = mdSize;
+                    }
+                }
+#endif
+                if (ret == 1) {
+                    if (*outSz < (size_t)rc) {
+                        ret = 0;
+                    }
+                    else {
+                        XMEMCPY(out, digest, (size_t)rc);
+                    }
+                }
+            }
+            if (ret == 1) {
+                *outSz = (size_t)rc;
+            }
+            OPENSSL_free(decoded);
         }
     }
 
@@ -2853,11 +3043,18 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
         ret = -1;
     }
     if (ret == 1) {
-        rc = we_rsa_pkey_verify_recover(ctx, decryptedSig, &decLen, sig,
-                                        sigLen);
-        if (rc <= 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pkey_verify_recover", rc);
+        if (!rsa->pubKeySet) {
+            ret = we_rsa_set_public_key_from_ctx(ctx, rsa);
+        }
+    }
+    if (ret == 1) {
+        rc = we_rsa_pub_dec_int(sigLen, sig, decLen, decryptedSig, rsa);
+        if (rc < 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "we_rsa_pub_dec_int", rc);
             ret = 0;
+        }
+        else {
+            decLen = (size_t)rc;
         }
     }
     if ((ret == 1) && (rsa->padMode == RSA_PKCS1_PSS_PADDING)) {
@@ -2961,8 +3158,9 @@ static int we_rsa_pkey_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
  * Encrypt data with a public RSA key.
  *
  * @param  ctx         [in]  Public key context of operation.
- * @param  ciphertext  [in]  Encrypted data.
- * @param  cipherLen   [in]  Length of encrypted data.
+ * @param  ciphertext  [out]  Buffer to hold encrypted data.
+ * @param  cipherLen   [in/out]  Buffer size on input, encrypted length on
+ *                             output.
  * @param  plaintext   [in]  Data to be encrypted.
  * @param  plainLen    [in]  Length of data to be encrypted.
  * @returns  1 on success and 0 on failure.
@@ -3052,8 +3250,8 @@ static int we_rsa_pkey_encrypt(EVP_PKEY_CTX *ctx, unsigned char *ciphertext,
  * Decrypt ciphertext with a private RSA key.
  *
  * @param  ctx         [in]      Private key context of operation.
- * @param  plaintext   [in]      Buffer to hold decrypted data.
- *                               NULL indicates length of signature requested.
+ * @param  plaintext   [out]     Buffer receiving decrypted data, or NULL to
+ *                               request the required buffer length.
  * @param  plainLen    [in/out]  Length of decrypted data.
  * @param  ciphertext  [in]      Data to be decrypted.
  * @param  cipherLen   [in]      Length of encrypted data.

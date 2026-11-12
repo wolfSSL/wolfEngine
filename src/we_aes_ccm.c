@@ -85,6 +85,10 @@ typedef struct we_AesCcm
     int            L;
     /** Flag to indicate whether object initialized. */
     unsigned int   init:1;
+    /** Flag to indicate successful wolfCrypt AES initialization. */
+    unsigned int   aesInit:1;
+    /** Tag generated or explicitly supplied for the current operation. */
+    unsigned int   tagSet:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
     unsigned int   enc:1;
     /** Flag to indicate whether doing this for TLS */
@@ -119,6 +123,9 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         ret = 0;
     }
 
+    if ((ret == 1) && (enc || (aes->enc != (unsigned int)enc))) {
+        aes->tagSet = 0;
+    }
     if ((ret == 1) && (((key == NULL) && (iv == NULL)) || (!aes->init))) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting defaults for we_AesCcm struct");
         /* Default L size for OpenSSL is 8, used to calc nonce/iv size */
@@ -128,7 +135,9 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         aes->ivSet = 0;
         /* No tag set. */
         aes->tagLen = 0;
+        aes->tagSet = 0;
         /* Start with no AAD. */
+        OPENSSL_free(aes->aad);
         aes->aad = NULL;
         aes->aadLen = 0;
         aes->enc = enc;
@@ -136,6 +145,16 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         aes->init = 1;
         /* Not doing CCM for TLS unless ctrl function called. */
         aes->tls = 0;
+    }
+    if ((ret == 1) && (key != NULL) && (!aes->aesInit)) {
+        rc = wc_AesInit(&aes->aes, NULL, INVALID_DEVID);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesInit", rc);
+            ret = 0;
+        }
+        else {
+            aes->aesInit = 1;
+        }
     }
     if ((ret == 1) && (key != NULL)) {
         /* Set the AES-CCM key. */
@@ -153,10 +172,34 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching IV into aes->iv");
         XMEMCPY(aes->iv, iv, aes->ivLen);
     }
+    if (ret == 1) {
+        /* Preserve a pending TLS header, but leave spent TLS mode on reinit. */
+        if (aes->aad == NULL) {
+            aes->tls = 0;
+        }
+        aes->enc = enc;
+    }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_ccm_init", ret);
 
     return ret;
+}
+
+static int we_aes_ccm_cleanup(EVP_CIPHER_CTX *ctx)
+{
+    we_AesCcm *aes = (we_AesCcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+
+    if (aes != NULL) {
+        OPENSSL_free(aes->aad);
+        aes->aad = NULL;
+        aes->aadLen = 0;
+        if (aes->aesInit) {
+            wc_AesFree(&aes->aes);
+            aes->aesInit = 0;
+        }
+    }
+
+    return 1;
 }
 
 /**
@@ -203,10 +246,10 @@ static int we_aes_ccm_tls_cipher(we_AesCcm *aes, unsigned char *out,
     /* Explicit nonce: encrypt uses the saved AAD sequence number, decrypt the
      * record. */
     if (ret == 1) {
-        if (aes->enc && ((aes->aad == NULL) ||
-                (aes->aadLen < EVP_CCM_TLS_EXPLICIT_IV_LEN))) {
+        if ((aes->aad == NULL) ||
+                (aes->aadLen != EVP_AEAD_TLS1_AAD_LEN)) {
             WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                                 "TLS AAD not set before AES-CCM encrypt");
+                                 "TLS AAD not set before AES-CCM operation");
             ret = -1;
         }
         else if (aes->enc) {
@@ -358,19 +401,20 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             ret = (int)len;
         }
     }
-    else if ((ret == 1) && (len > 0)) {
+    else if ((ret == 1) && ((len > 0) || (in != NULL))) {
         if (aes->tagLen == 0) {
-            /* Default to full size tag. */
-            aes->tagLen = EVP_CCM_TLS_TAG_LEN;
+            /* OpenSSL defaults non-TLS CCM tags to 12 bytes. */
+            aes->tagLen = 12;
         }
         if (aes->enc) {
+            aes->tagSet = 0;
             if (!aes->ivSet) {
                 /* Set extern IV. */
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting AES-CCM Nonce");
                 rc = wc_AesCcmSetNonce(&aes->aes, aes->iv, aes->ivLen);
                 if (rc != 0) {
                     WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                          "wc_AesCcmSetExtIV", rc);
+                                          "wc_AesCcmSetNonce", rc);
                     ret = -1;
                 }
             }
@@ -394,17 +438,22 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
                 /* Cache nonce/IV. */
                 XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
+                aes->tagSet = 1;
                 /* Return encrypted data length */
                 ret = (int)len;
             }
         }
+        else if (!aes->tagSet) {
+            ret = -1;
+        }
         else {
+            aes->tagSet = 0;
             /* Decrypt the data. */
             rc = wc_AesCcmDecrypt(&aes->aes, out, in, (word32)len, aes->iv,
                                   aes->ivLen, aes->tag, aes->tagLen,
                                   aes->aad, aes->aadLen);
             if (rc != 0) {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCcmDecrypt_ex", rc);
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesCcmDecrypt", rc);
                 ret = -1;
             }
             if (ret == 1) {
@@ -412,10 +461,6 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
                                        "(AES-CCM):", len);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, (unsigned int)len);
-                WOLFENGINE_MSG(WE_LOG_CIPHER, "Caching nonce/IV in aes->iv");
-
-                /* Cache nonce/IV. */
-                XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
                 /* Return decrypted data length */
                 ret = (int)len;
             }
@@ -425,10 +470,9 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         OPENSSL_free(aes->aad);
         aes->aad = NULL;
         aes->aadLen = 0;
-    } else if ((ret == 1) && (in == NULL)) {
-        /* no error, but no input data or AAD to process, return 0 length */
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "No input data or AAd to process, "
-                       "returning 0");
+    }
+    else if (ret == 1) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "No input data to process, returning 0");
         ret = 0;
     }
 
@@ -440,11 +484,9 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 /**
  * Extra operations for AES-CCM.
  * Supported operations include:
- *  - EVP_CTRL_SET_IV (version 3.0+): get IV from wolfengine object
  *  - EVP_CTRL_AEAD_SET_IVLEN: set the length of an IV/nonce
  *  - EVP_CTRL_GET_IVLEN: get the total IV/nonce length
  *  - EVP_CTRL_CCM_SET_IV_FIXED: set the fixed part of an IV/nonce
- *  - EVP_CTRL_CCM_IV_GEN: set the generated IV/nonce
  *  - EVP_CTRL_AEAD_GET_TAG: get the tag value after encrypt
  *  - EVP_CTRL_AEAD_SET_TAG: set the tag value before decrypt
  *  - EVP_CTRL_AEAD_TLS1_AAD: set AAD for TLS
@@ -452,7 +494,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
  * @param  ctx   [in.out]  EVP cipher context of operation.
  * @param  type  [in]      Type of operation to perform.
  * @param  arg   [in]      Integer argument.
- * @param  ptr   [in]      Pointer argument.
+ * @param  ptr   [in,out]  Pointer argument, direction depends on type.
  * @return  1 on success and 0 on failure.
  */
 static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
@@ -474,14 +516,17 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_INIT:
+                XMEMSET(aes, 0, sizeof(*aes));
+                break;
             case EVP_CTRL_CCM_SET_L:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_CCM_SET_L");
                 /* Set the length field, L
                  *   arg [in] value to use for length field (L)
                  *   ptr [in] Unused
                  */
-                if ((arg <= 0) ||
-                    arg < CCM_LEN_FIELD_MIN_SZ || arg > CCM_LEN_FIELD_MAX_SZ) {
+                if ((arg < CCM_LEN_FIELD_MIN_SZ) ||
+                    (arg > CCM_LEN_FIELD_MAX_SZ)) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
                                          "Invalid CCM length field");
                     ret = 0;
@@ -497,7 +542,8 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] length of IV/nonce to use
                  *   ptr [in] Unused
                  */
-                if ((arg <= 0) || (arg > CCM_NONCE_MAX_SZ)) {
+                if ((arg < CCM_NONCE_MIN_SZ) ||
+                    (arg > CCM_NONCE_MAX_SZ)) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid nonce length");
                     ret = 0;
                 }
@@ -510,7 +556,7 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
             case EVP_CTRL_GET_IVLEN:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_GET_IVLEN");
-                /* Set the generated IV
+                /* Get the IV length
                  *   ptr [out] length of iv
                  */
                 *(int *)ptr = aes->ivLen;
@@ -522,7 +568,10 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] size of fixed part of IV/nonce
                  *   ptr [in] fixed part of IV/nonce data
                  */
-                if (arg == EVP_CCM_TLS_FIXED_IV_LEN) {
+                if (ptr == NULL) {
+                    ret = 0;
+                }
+                else if (arg == EVP_CCM_TLS_FIXED_IV_LEN) {
                     WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting TLS fixed IV len");
                     XMEMCPY(aes->iv, ptr, arg);
                     XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->iv, arg);
@@ -536,13 +585,15 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_GET_TAG");
                 /* Get the tag from encryption.
                  *   arg [in] size of buffer
-                 *   ptr [in] buffer to copy into
+                 *   ptr [out] buffer to copy into
                  */
-                if ((!aes->enc) || (arg <= 0) || (arg > aes->tagLen)) {
+                if ((!aes->enc) || (!aes->tagSet) || (arg <= 0) ||
+                    (arg > aes->tagLen)) {
                     ret = 0;
                 }
                 else {
                     XMEMCPY(ptr, aes->tag, arg);
+                    aes->tagSet = 0;
                 }
                 break;
 
@@ -552,13 +603,18 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   arg [in] size of tag
                  *   ptr [in] tag data to copy
                  */
-                if ((arg <= 0) || (arg > WC_AES_BLOCK_SIZE)) {
-                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid tag size");
+                if ((arg < 4) || (arg > WC_AES_BLOCK_SIZE) ||
+                    ((arg & 1) != 0) || (aes->enc && (ptr != NULL))) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "Invalid tag parameters");
                     ret = 0;
                 }
                 else {
                     if (!aes->enc && (ptr != NULL)) {
                         XMEMCPY(aes->tag, ptr, arg);
+                        aes->tagSet = 1;
+                    }
+                    else if (aes->enc || (arg != aes->tagLen)) {
+                        aes->tagSet = 0;
                     }
                     aes->tagLen = arg;
                 }
@@ -631,6 +687,18 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 }
                 break;
 
+            case EVP_CTRL_COPY:
+                if (ptr != NULL) {
+                    we_AesCcm *dst = (we_AesCcm *)
+                        EVP_CIPHER_CTX_get_cipher_data((EVP_CIPHER_CTX *)ptr);
+
+                    if ((dst != NULL) && (dst != aes)) {
+                        OPENSSL_cleanse(dst, sizeof(*dst));
+                    }
+                }
+                ret = 0;
+                break;
+
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
@@ -650,7 +718,9 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_CUSTOM_IV_LENGTH   | \
      EVP_CIPH_CUSTOM_IV          | \
+     EVP_CIPH_CUSTOM_COPY        | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
+     EVP_CIPH_CTRL_INIT          | \
      EVP_CIPH_FLAG_AEAD_CIPHER   | \
      EVP_CIPH_FLAG_DEFAULT_ASN1  | \
      EVP_CIPH_CCM_MODE)
@@ -680,6 +750,13 @@ static int we_init_aesccm_meth(EVP_CIPHER *cipher)
     }
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_aes_ccm_init);
+    }
+    if (ret == 1) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        ret = EVP_CIPHER_meth_set_cleanup(cipher, we_aes_ccm_cleanup);
+#else
+        cipher->cleanup = we_aes_ccm_cleanup;
+#endif
     }
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_aes_ccm_cipher);

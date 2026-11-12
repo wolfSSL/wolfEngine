@@ -33,6 +33,11 @@
 
 #define DEFAULT_PRIME_LEN 1024
 
+static int we_dh_prime_len_valid(int primeLen)
+{
+    return (primeLen == 1024) || (primeLen == 2048) || (primeLen == 3072);
+}
+
 /**
  * Data required to complete DH operations.
  */
@@ -304,6 +309,22 @@ static int we_dh_set_parameters(const DH *dh, we_Dh *engineDh)
             engineDh->qLen = qBufLen;
         }
     }
+    else if (ret == 1) {
+        if (engineDh->q != NULL) {
+            OPENSSL_free(engineDh->q);
+            engineDh->q = NULL;
+        }
+        engineDh->qLen = 0;
+
+        /* Reinitialize the key because setting q to NULL does not clear an
+         * existing q on every supported wolfCrypt version. */
+        wc_FreeDhKey(&engineDh->key);
+        rc = wc_InitDhKey(&engineDh->key);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_InitDhKey", rc);
+            ret = 0;
+        }
+    }
 
     if (ret == 1) {
         /* Set p, g and q parameters into wolfSSL DH key. */
@@ -447,10 +468,10 @@ static int we_dh_generate_key_int(DH *dh, we_Dh *engineDh)
                         rc);
                     ret = 0;
                 }
-            }
         #if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
-            wc_UnLockMutex(we_rng_mutex);
+                wc_UnLockMutex(we_rng_mutex);
         #endif
+            }
         }
     }
 
@@ -758,7 +779,7 @@ static int we_dh_convert_params(DhKey *wolfDh, DH *osslDh)
     }
     if (ret == 1) {
         /* Allocate buffer for generator. */
-        g = (unsigned char*)OPENSSL_malloc(pLen);
+        g = (unsigned char*)OPENSSL_malloc(gLen == 0 ? 1 : gLen);
         if (g == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "OPENSSL_malloc(g)", g);
             ret = 0;
@@ -784,7 +805,7 @@ static int we_dh_convert_params(DhKey *wolfDh, DH *osslDh)
             ret = 0;
         }
     }
-    if (ret == 1) {
+    if ((ret == 1) && (qLen > 0)) {
         /* Allocate a big number and set value to be: Group prime. */
         qBn = BN_bin2bn(q, qLen, NULL);
         if (qBn == NULL) {
@@ -874,10 +895,10 @@ static int we_dh_paramgen_int(DH *dh, we_Dh *engineDh)
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "wc_DhGenerateParams", rc);
             ret = 0;
         }
-    }
 #if defined(WE_DH_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
-    wc_UnLockMutex(we_rng_mutex);
+        wc_UnLockMutex(we_rng_mutex);
 #endif
+    }
 
     if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_KE, "Converting DH params to OpenSSL DH");
@@ -895,35 +916,109 @@ static int we_dh_paramgen_int(DH *dh, we_Dh *engineDh)
  *
  * @param  dh        [in,out]  OpenSSL DH object.
  * @param  primeLen  [in]      Length of prime.
- * @param  g         [in]      Generator to use. (ignored)
- * @param  cb        [in]      Callback to show generation progress. (ignored)
+ * @param  g         [in]      Generator to use.
+ * @param  cb        [in]      Callback to show generation progress.
  * @returns  1 on success and 0 on failure.
  */
 static int we_dh_generate_params(DH *dh, int primeLen, int g, BN_GENCB *cb)
 {
-    int ret = 1;
-    we_Dh *engineDh;
+    int ret = 0;
+#ifndef HAVE_FIPS
+    we_Dh *engineDh = NULL;
+    DH *params = NULL;
+    const BIGNUM *paramP = NULL;
+    const BIGNUM *paramQ = NULL;
+    const BIGNUM *paramG = NULL;
+    BIGNUM *p = NULL;
+    BIGNUM *q = NULL;
+    BIGNUM *generator = NULL;
+#endif
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_generate_parameters");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [dh = %p, primeLen = %d, g = %d, "
                            "cb = %p]", dh, primeLen, g, cb);
 
-    /* Cannot set g or callback to wolfSSL parameter generation. */
+#ifdef HAVE_FIPS
+    (void)dh;
+    (void)primeLen;
     (void)g;
     (void)cb;
-
-    /* Retrieve internal DH object. */
-    engineDh = (we_Dh *)DH_get_ex_data(dh, WE_DH_EX_DATA_IDX);
-    if (engineDh == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get_ex_data", engineDh);
+    WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Legacy DH parameter generation is not "
+                         "supported in FIPS mode");
+#else
+    ret = 1;
+    if (!we_dh_prime_len_valid(primeLen)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Invalid DH prime bit length");
+        ret = 0;
+    }
+    if ((ret == 1) && (DH_get0_q(dh) != NULL)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Cannot replace DH parameters with q");
         ret = 0;
     }
 
     if (ret == 1) {
-        engineDh->primeLen = primeLen;
-        /* Generate the parameters with wolfSSL and copy into OpenSSL object. */
-        ret = we_dh_paramgen_int(dh, engineDh);
+        engineDh = (we_Dh *)DH_get_ex_data(dh, WE_DH_EX_DATA_IDX);
+        if (engineDh == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_get_ex_data", engineDh);
+            ret = 0;
+        }
     }
+
+    if (ret == 1) {
+        params = DH_new_method(NULL);
+        if (params == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "DH_new_method", params);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        ret = DH_set_method(params, DH_OpenSSL());
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_set_method", ret);
+        }
+    }
+    if (ret == 1) {
+        ret = DH_generate_parameters_ex(params, primeLen, g, cb);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_generate_parameters_ex",
+                                  ret);
+        }
+    }
+    if (ret == 1) {
+        DH_get0_pqg(params, &paramP, &paramQ, &paramG);
+        p = BN_dup(paramP);
+        if (paramQ != NULL)
+            q = BN_dup(paramQ);
+        generator = BN_dup(paramG);
+        if ((p == NULL) || ((paramQ != NULL) && (q == NULL)) ||
+            (generator == NULL)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_KE, "Failed to duplicate DH params");
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        ret = DH_set0_pqg(dh, p, q, generator);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_set0_pqg", ret);
+        }
+        else {
+            p = NULL;
+            q = NULL;
+            generator = NULL;
+        }
+    }
+    if (ret == 1) {
+        ret = we_dh_set_parameters(dh, engineDh);
+        if (ret != 1) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "we_dh_set_parameters", ret);
+        }
+    }
+
+    BN_free(generator);
+    BN_free(q);
+    BN_free(p);
+    DH_free(params);
+#endif
 
     WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_generate_parameters", ret);
 
@@ -1028,7 +1123,7 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
  *  - EVP_PKEY_CTRL_DH_PARAMGEN_GENERATOR: intended to set the generator, "g",
  *    but doesn't actually do this, as wolfCrypt doesn't allow you to specify
  *    the generator used in DH key creation.
- *  - EVP_PKEY_CTRL_DH_PAD: pad out secret to input length.
+ *  - EVP_PKEY_CTRL_DH_PAD: pad secret to the DH modulus size.
  *  - EVP_PKEY_CTRL_PEER_KEY: intended to set the peer key, but doesn't actually
  *    do this, as we can get the peer key directly from the ctx when needed.
  *
@@ -1036,7 +1131,8 @@ static void we_dh_pkey_cleanup(EVP_PKEY_CTX *ctx)
  * @param  type  [in]  Type of operation to perform.
  * @param  num   [in]  Integer parameter.
  * @param  ptr   [in]  Pointer parameter.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
@@ -1064,7 +1160,7 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 WOLFENGINE_MSG(WE_LOG_KE,
                                "EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN");
                 /* These are the sizes allowed by wolfCrypt. */
-                if (num != 1024 && num != 2048 && num != 3072) {
+                if (!we_dh_prime_len_valid(num)) {
                     WOLFENGINE_ERROR_MSG(WE_LOG_KE,
                                          "Invalid DH prime bit length.");
                     ret = 0;
@@ -1085,7 +1181,7 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 ret = 0;
                 break;
             case EVP_PKEY_CTRL_DH_PAD:
-                dh->pad = num;
+                dh->pad = num != 0;
                 break;
             case EVP_PKEY_CTRL_PEER_KEY:
                 WOLFENGINE_MSG(WE_LOG_KE, "EVP_PKEY_CTRL_PEER_KEY");
@@ -1098,7 +1194,7 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
                 WOLFENGINE_ERROR_MSG(WE_LOG_KE, errBuff);
-                ret = 0;
+                ret = -2;
                 break;
         }
     }
@@ -1112,13 +1208,14 @@ static int we_dh_pkey_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  * Extra operations for working with DH.
  * Supported operations include:
  *  - "dh_param": set the named parameters.
- *  - "dh_pad": pad out secret to input length.
+ *  - "dh_pad": pad secret to the DH modulus size.
  *  - "dh_paramgen_prime_len": set the length of the prime, "p."
  *
  * @param  ctx    [in]  Public key context of operation.
  * @param  type   [in]  Type of operation to perform.
  * @param  value  [in]  String representing value.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                                const char* value) {
@@ -1218,7 +1315,7 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         }
         /* Set padding requirement for secret output. */
         else if (XSTRCMP(type, "dh_pad") == 0) {
-            dh->pad = XATOI(value);
+            dh->pad = XATOI(value) != 0;
         }
         else if (XSTRCMP(type, "dh_paramgen_prime_len") == 0) {
             ret = we_dh_pkey_ctrl(ctx, EVP_PKEY_CTRL_DH_PARAMGEN_PRIME_LEN,
@@ -1229,7 +1326,7 @@ static int we_dh_pkey_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl string %s",
                       type);
             WOLFENGINE_ERROR_MSG(WE_LOG_KE, errBuff);
-            ret = 0;
+            ret = -2;
         }
     }
 
@@ -1403,6 +1500,7 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
     DH *peerDh = NULL;
     const BIGNUM *peerPub = NULL;
     size_t totalLen = *secretLen;
+    size_t dhLen = 0;
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_pkey_derive");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [ctx = %p, secret = %p, "
@@ -1433,16 +1531,25 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "EVP_PKEY_get0_DH", ourDh);
             ret = 0;
         }
+        else {
+            dhLen = (size_t)DH_size(ourDh);
+        }
     }
 
     if ((ret == 1) && (secret == NULL)) {
         /* Return the length of the secret only. */
-        *secretLen = DH_size(ourDh);
+        *secretLen = dhLen;
     }
     else if (ret == 1) {
+        if (engineDh->pad && (totalLen < dhLen)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_KE, "DH secret buffer too small");
+            ret = 0;
+        }
+
         /* Get the peer's key. */
-        peerKey = EVP_PKEY_CTX_get0_peerkey(ctx);
-        if (peerKey == NULL) {
+        if (ret == 1)
+            peerKey = EVP_PKEY_CTX_get0_peerkey(ctx);
+        if ((ret == 1) && (peerKey == NULL)) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE,
                                        "EVP_PKEY_CTX_get0_peerkey", peerKey);
             ret = 0;
@@ -1480,13 +1587,11 @@ static int we_dh_pkey_derive(EVP_PKEY_CTX *ctx, unsigned char *secret,
             }
         }
 
-        /* When padding required and total buffer size is bigger than secret
-         * generated, ensure the buffer is zero padded at the front. */
-        if ((ret == 1) && engineDh->pad && (totalLen != *secretLen)) {
-            XMEMMOVE(secret + totalLen - *secretLen, secret, *secretLen);
-            XMEMSET(secret, 0, totalLen - *secretLen);
-            /* Return the original length. */
-            *secretLen = (int)totalLen;
+        /* Pad the generated secret to the DH modulus size. */
+        if ((ret == 1) && engineDh->pad && (dhLen > *secretLen)) {
+            XMEMMOVE(secret + dhLen - *secretLen, secret, *secretLen);
+            XMEMSET(secret, 0, dhLen - *secretLen);
+            *secretLen = dhLen;
         }
     }
 

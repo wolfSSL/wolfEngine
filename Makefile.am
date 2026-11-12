@@ -1,5 +1,5 @@
 SUFFIXES = 
-TESTS =
+TESTS = test/unit_static.test test/engine_bind.test
 noinst_PROGRAMS =
 noinst_HEADERS =
 check_PROGRAMS =
@@ -7,7 +7,7 @@ dist_noinst_SCRIPTS =
 DISTCLEANFILES =
 CLEANFILES =
 pkginclude_HEADERS =
-EXTRA_DIST =
+EXTRA_DIST = test/unit_static.test test/engine_bind.test
 
 ACLOCAL_AMFLAGS = -I m4
 

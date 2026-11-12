@@ -21,12 +21,16 @@
 
 #include "unit.h"
 
+#include <limits.h>
+#include <openssl/err.h>
+
 #ifndef EVP_CCM_TLS_FIXED_IV_LEN
 #define EVP_CCM_TLS_FIXED_IV_LEN        EVP_GCM_TLS_FIXED_IV_LEN
 #endif
 #ifndef EVP_CCM_TLS_TAG_LEN
 #define EVP_CCM_TLS_TAG_LEN             EVP_GCM_TLS_TAG_LEN
 #endif
+#define CCM_TAG_DEFAULT_LEN             12
 
 #if defined(WE_HAVE_AESGCM) || defined(WE_HAVE_AESCCM)
 
@@ -91,8 +95,8 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
         err = EVP_EncryptUpdate(ctx, NULL, &encLen, aad + 1,
                                 (int)strlen((char *)aad) - 1) != 1;
     }
-    if (err == 0 && len > 0) {
-        /* Update with msg, if len > 0 (not GMAC) */
+    if (err == 0 && (len > 0 || ccm)) {
+        /* CCM authenticates empty messages during the payload update. */
         err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, len) != 1;
         if (encLen != len) {
             err = 1;
@@ -165,9 +169,11 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
             err = 1;
         }
     }
-    if (err == 0 && len > 0) {
-        /* Not used in GMAC test (len == 0) */
+    if (err == 0 && (len > 0 || ccm)) {
         err = EVP_DecryptUpdate(ctx, dec, &decLen, enc, len) != 1;
+        if (err == 0 && ccm && len == 0) {
+            err = decLen != 0;
+        }
     } else {
         /* Reset decLen, represented AAD length above */
         decLen = 0;
@@ -176,7 +182,7 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
     /* Bug in older versions has tag_set cleared and causes failure. */
     if (err == 0) {
 #else
-    if (err == 0 && (!ccm || len == 0)) {
+    if (err == 0 && !ccm) {
 #endif
         err = EVP_DecryptFinal_ex(ctx, dec + decLen, &decLen) != 1;
     }
@@ -492,6 +498,10 @@ static int test_aes_tag_tls_dec(ENGINE *e, const EVP_CIPHER *cipher,
     if (err == 0) {
         PRINT_BUFFER("Decrypted", msg + EVP_GCM_TLS_EXPLICIT_IV_LEN, dLen);
         (void)dLen;
+    }
+    if ((err == 0) && (e != NULL)) {
+        PRINT_MSG("TLS decrypt requires a fresh record header");
+        err = EVP_Cipher(ctx, msg, msg, len) >= 0;
     }
 
     EVP_CIPHER_CTX_free(ctx);
@@ -1173,11 +1183,435 @@ int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data)
 #endif /* HAVE_FIPS || HAVE_FIPS_VERSION */
 }
 
+int test_aes_gcm_ctx_copy_rejected(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    int finalLen;
+    EVP_CIPHER_CTX *src = NULL;
+    EVP_CIPHER_CTX *dst = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad[4] = {1, 2, 3, 4};
+    unsigned char msg[4] = {5, 6, 7, 8};
+    unsigned char enc[sizeof(msg)];
+    unsigned char tag[16];
+
+    (void)data;
+
+    err = (src = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = (dst = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(src, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(src, NULL, &len, aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_copy(dst, src) == 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(src, enc, &len, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(src, enc + len, &finalLen) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(src, EVP_CTRL_AEAD_GET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+
+    EVP_CIPHER_CTX_free(dst);
+    EVP_CIPHER_CTX_free(src);
+
+    return err;
+}
+
+int test_aes_gcm_cleanup_empty_ctx(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *active = NULL;
+    EVP_CIPHER_CTX *empty = NULL;
+    const EVP_CIPHER *cipher = NULL;
+    int (*cleanup)(EVP_CIPHER_CTX *) = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+
+    (void)data;
+
+    err = (active = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = (empty = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(active, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        cipher = EVP_CIPHER_CTX_cipher(active);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        cleanup = EVP_CIPHER_meth_get_cleanup(cipher);
+#else
+        cleanup = cipher->cleanup;
+#endif
+        err = (cleanup == NULL) || (cleanup(empty) != 1);
+    }
+
+    EVP_CIPHER_CTX_free(empty);
+    EVP_CIPHER_CTX_free(active);
+    return err;
+}
+
+int test_aes_gcm_aad_length_bounds(ENGINE *e, void *data)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    int err = 0;
+    int len;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher = NULL;
+    int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                    const unsigned char *, size_t) = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad = 0;
+
+    (void)data;
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        cipher = EVP_CIPHER_CTX_cipher(ctx);
+        doCipher = EVP_CIPHER_meth_get_do_cipher(cipher);
+        err = doCipher == NULL;
+    }
+    if (err == 0) {
+        size_t oversized = (size_t)INT_MAX + 1U;
+
+        err = doCipher(ctx, NULL, &aad, oversized) >= 0;
+    }
+    if ((err == 0) && (sizeof(size_t) > sizeof(unsigned int))) {
+        size_t oversized = (size_t)UINT_MAX + 2U;
+
+        err = doCipher(ctx, NULL, &aad, oversized) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, &aad, sizeof(aad)) != 1;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+#else
+    (void)e;
+    (void)data;
+    return 0;
+#endif
+}
+
+int test_aes_gcm_auth_error_queue(ENGINE *e, void *data)
+{
+    int err = 0;
+    int i;
+    int len = 0;
+    int finalLen;
+    int ret;
+    int flags;
+    int line;
+    unsigned long code;
+    unsigned long expectedError;
+    const char *file;
+    const char *detail;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad[] = "AAD";
+    unsigned char msg[] = "Test pattern";
+    unsigned char enc[sizeof(msg)];
+    unsigned char dec[sizeof(msg)];
+    unsigned char tag[16];
+    unsigned char tlsAad[EVP_AEAD_TLS1_AAD_LEN] = {0};
+    unsigned char record[EVP_GCM_TLS_EXPLICIT_IV_LEN + sizeof(msg) +
+                         EVP_GCM_TLS_TAG_LEN] = {0};
+    unsigned char recordCopy[sizeof(record)];
+
+    (void)data;
+
+    err = test_aes_tag_enc(NULL, EVP_aes_128_gcm(), key, iv, sizeof(iv),
+                           aad, msg, sizeof(msg), enc, tag, 0, 0);
+    if (err == 0) {
+        tag[0] ^= 1;
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_DecryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                  sizeof(tag), tag) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+    }
+    if (err == 0) {
+        ERR_clear_error();
+        ret = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen);
+        err = 1;
+        if (ret <= 0) {
+            while ((code = ERR_get_error_line_data(&file, &line, &detail,
+                                                    &flags)) != 0) {
+                if ((ERR_GET_LIB(code) == ERR_LIB_USER) &&
+                    ((flags & ERR_TXT_STRING) != 0) &&
+                    (strstr(detail, "wolfEngine AES-GCM") != NULL)) {
+                    err = 0;
+                    break;
+                }
+            }
+        }
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    ctx = NULL;
+    if (err == 0) {
+        tlsAad[8] = 23;
+        tlsAad[9] = 3;
+        tlsAad[10] = 3;
+        tlsAad[12] = sizeof(record) - EVP_GCM_TLS_TAG_LEN;
+        XMEMCPY(record + EVP_GCM_TLS_EXPLICIT_IV_LEN, msg, sizeof(msg));
+        err = test_aes_tag_tls_enc(NULL, EVP_aes_128_gcm(), key, iv,
+                                   EVP_GCM_TLS_FIXED_IV_LEN, tlsAad, record,
+                                   sizeof(record), 0);
+    }
+    if (err == 0) {
+        record[sizeof(record) - 1] ^= 1;
+        tlsAad[12] = sizeof(record);
+    }
+    for (i = 0; (err == 0) && (i < 4); i++) {
+        XMEMCPY(recordCopy, record, sizeof(record));
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+        if (err == 0) {
+            err = EVP_DecryptInit_ex(ctx, EVP_aes_128_gcm(),
+                                      (i & 1) ? e : NULL, key, NULL) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                      EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                      sizeof(tlsAad), tlsAad) !=
+                                      EVP_GCM_TLS_TAG_LEN;
+        }
+        if (err == 0) {
+            PRINT_MSG("TLS GCM authentication failure preserves error state");
+            ERR_clear_error();
+            if (i >= 2) {
+                ERR_put_error(ERR_LIB_USER, 0, 101, __FILE__, __LINE__);
+            }
+            expectedError = ERR_peek_error();
+            ret = EVP_Cipher(ctx, recordCopy, recordCopy, sizeof(recordCopy));
+            code = ERR_get_error();
+            err = (ret >= 0) || (code != expectedError) ||
+                  (ERR_peek_error() != 0);
+        }
+        EVP_CIPHER_CTX_free(ctx);
+        ctx = NULL;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    ERR_clear_error();
+    return err;
+}
+
+int test_aes_gcm_ctrl_output_buffers(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad[] = "AAD";
+    unsigned char msg[] = "Test pattern";
+    unsigned char enc[sizeof(msg)];
+    unsigned char expectedEnc[sizeof(msg)];
+    unsigned char tag[16] = {0};
+    unsigned char expectedTag[16] = {0};
+#if !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
+    unsigned char generated[8] = {0};
+#endif
+
+    (void)data;
+    iv[11] = 1;
+
+    err = test_aes_tag_enc(NULL, EVP_aes_128_gcm(), key, iv, sizeof(iv),
+                           aad, msg, sizeof(msg), expectedEnc, expectedTag,
+                           0, 0);
+    if (err == 0) {
+        err = test_aes_tag_enc(e, EVP_aes_128_gcm(), key, iv, sizeof(iv),
+                               aad, msg, sizeof(msg), enc, tag, 0, 0);
+    }
+    if (err == 0) {
+        err = memcmp(enc, expectedEnc, sizeof(enc)) != 0;
+    }
+    if (err == 0) {
+        err = memcmp(tag, expectedTag, sizeof(tag)) != 0;
+    }
+
+#if !defined(HAVE_FIPS) && !defined(HAVE_FIPS_VERSION)
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  -1, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN,
+                                  sizeof(generated), generated) != 1;
+    }
+    if (err == 0) {
+        err = memcmp(generated, iv + sizeof(iv) - sizeof(generated),
+                     sizeof(generated)) != 0;
+    }
+#endif
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
 #endif /* WE_HAVE_AESGCM */
 
 /******************************************************************************/
 
 #ifdef WE_HAVE_AESCCM
+
+static int test_aes_ccm_default_tag_encrypt(ENGINE *e, unsigned char *enc,
+                                            unsigned char *tag)
+{
+    int err = 0;
+    int encLen = 0;
+    unsigned char key[16];
+    unsigned char iv[13];
+    unsigned char msg[] = "Test pattern";
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    XMEMSET(key, 0, sizeof(key));
+    XMEMSET(iv, 0, sizeof(iv));
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_ccm(), e, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN,
+                                  sizeof(iv), NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &encLen, NULL, sizeof(msg)) != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        encLen = -1;
+        err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, 0) != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = encLen != 0;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, iv) != 1;
+    }
+    if ((err == 0) && (e != NULL)) {
+        err = EVP_EncryptUpdate(ctx, NULL, &encLen, NULL, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, enc, &encLen, msg, sizeof(msg)) != 1;
+    }
+    if (err == 0) {
+        err = encLen != (int)sizeof(msg);
+    }
+    if (err == 0) {
+        err = EVP_EncryptFinal_ex(ctx, enc + encLen, &encLen) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                  CCM_TAG_DEFAULT_LEN, tag) != 1;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+    return err;
+}
+
+static int test_aes_ccm_default_tag(ENGINE *e)
+{
+    int err = 0;
+    unsigned char enc[sizeof("Test pattern")];
+    unsigned char encOSSL[sizeof("Test pattern")];
+    unsigned char tag[CCM_TAG_DEFAULT_LEN];
+    unsigned char tagOSSL[CCM_TAG_DEFAULT_LEN];
+
+    err = test_aes_ccm_default_tag_encrypt(NULL, encOSSL, tagOSSL);
+    if (err == 0) {
+        err = test_aes_ccm_default_tag_encrypt(e, enc, tag);
+    }
+    if (err == 0) {
+        err = XMEMCMP(enc, encOSSL, sizeof(enc)) != 0;
+    }
+    if (err == 0) {
+        err = XMEMCMP(tag, tagOSSL, sizeof(tag)) != 0;
+    }
+
+    return err;
+}
+
+static int test_aes_ccm_empty(ENGINE *e, const EVP_CIPHER *cipher)
+{
+    int err;
+    unsigned char key[32] = {0};
+    unsigned char iv[13] = {0};
+    unsigned char aad[] = "AAD";
+    unsigned char msg[1] = {0};
+    unsigned char enc[1] = {0};
+    unsigned char dec[1] = {0};
+    unsigned char tag[16];
+    unsigned char expectedTag[sizeof(tag)];
+
+    PRINT_MSG("CCM authenticates empty messages with AAD");
+    err = test_aes_tag_enc(NULL, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                           enc, expectedTag, 1, 0);
+    if (err == 0) {
+        err = test_aes_tag_dec(NULL, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, expectedTag, dec, 1, 0);
+    }
+    if (err == 0) {
+        expectedTag[0] ^= 1;
+        err = test_aes_tag_dec(NULL, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, expectedTag, dec, 1, 0) == 0;
+    }
+    if (err == 0) {
+        err = test_aes_tag_dec(e, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, expectedTag, dec, 1, 0) == 0;
+    }
+    if (err == 0) {
+        expectedTag[0] ^= 1;
+        err = test_aes_tag_dec(e, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, expectedTag, dec, 1, 0);
+    }
+    if (err == 0) {
+        err = test_aes_tag_enc(e, cipher, key, iv, sizeof(iv), aad, msg, 0,
+                               enc, tag, 1, 0);
+    }
+    if (err == 0) {
+        err = XMEMCMP(tag, expectedTag, sizeof(tag)) != 0;
+    }
+
+    return err;
+}
 
 int test_aes128_ccm(ENGINE *e, void *data)
 {
@@ -1185,6 +1619,12 @@ int test_aes128_ccm(ENGINE *e, void *data)
 
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 0);
+    if (err == 0) {
+        err = test_aes_ccm_default_tag(e);
+    }
+    if (err == 0) {
+        err = test_aes_ccm_empty(e, EVP_aes_128_ccm());
+    }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */
@@ -1204,6 +1644,9 @@ int test_aes192_ccm(ENGINE *e, void *data)
 
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 0);
+    if (err == 0) {
+        err = test_aes_ccm_empty(e, EVP_aes_192_ccm());
+    }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */
@@ -1223,6 +1666,9 @@ int test_aes256_ccm(ENGINE *e, void *data)
 
     /* test with default length field (L) */
     err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 0);
+    if (err == 0) {
+        err = test_aes_ccm_empty(e, EVP_aes_256_ccm());
+    }
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
     /* test with modified length field (L) of 7 */

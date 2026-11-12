@@ -54,6 +54,19 @@ int EVP_MD_meth_set_update(EVP_MD *md, int (*update)(EVP_MD_CTX *ctx,
     return 1;
 }
 
+int EVP_MD_meth_set_copy(EVP_MD *md, int (*copy)(EVP_MD_CTX *to,
+                                                 const EVP_MD_CTX *from))
+{
+    md->copy = copy;
+    return 1;
+}
+
+int (*EVP_MD_meth_get_copy(const EVP_MD *md))(EVP_MD_CTX *to,
+                                              const EVP_MD_CTX *from)
+{
+    return md->copy;
+}
+
 int EVP_MD_meth_set_final(EVP_MD *md, int (*final)(EVP_MD_CTX *ctx,
                                                    unsigned char *md))
 {
@@ -149,6 +162,13 @@ int EVP_CIPHER_meth_set_init(EVP_CIPHER *cipher,
     return 1;
 }
 
+int EVP_CIPHER_meth_set_cleanup(EVP_CIPHER *cipher,
+                                int (*cleanup)(EVP_CIPHER_CTX *ctx))
+{
+    cipher->cleanup = cleanup;
+    return 1;
+}
+
 int EVP_CIPHER_meth_set_do_cipher(EVP_CIPHER *cipher,
                                   int (*do_cipher) (EVP_CIPHER_CTX *ctx,
                                   unsigned char *out,
@@ -193,23 +213,46 @@ void EVP_CIPHER_meth_free(EVP_CIPHER *cipher)
 size_t EC_KEY_priv2buf(const EC_KEY *eckey, unsigned char **pbuf)
 {
     const BIGNUM *priv_key_bn = NULL;
-    size_t priv_len = 0;
+    const EC_GROUP *group = NULL;
+    BIGNUM *order = NULL;
+    int priv_len = 0;
+    int order_len = 0;
+    size_t ret = 0;
     unsigned char *priv_key_buf = NULL;
 
     priv_key_bn = EC_KEY_get0_private_key(eckey);
+    if (priv_key_bn == NULL)
+        return 0;
+    group = EC_KEY_get0_group(eckey);
+    if (group == NULL)
+        return 0;
+
+    order = BN_new();
+    if (order == NULL)
+        return 0;
+    if (EC_GROUP_get_order(group, order, NULL) != 1)
+        goto end;
+
     priv_len = BN_num_bytes(priv_key_bn);
+    order_len = BN_num_bytes(order);
+    if ((priv_len <= 0) || (order_len <= 0) || (priv_len > order_len))
+        goto end;
 
-    if (priv_len == 0)
-        return 0;
-
-    priv_key_buf = OPENSSL_malloc(priv_len);
+    priv_key_buf = OPENSSL_zalloc((size_t)order_len);
     if (priv_key_buf == NULL)
-        return 0;
-    
-    BN_bn2bin(priv_key_bn, priv_key_buf);
+        goto end;
+    if (BN_bn2bin(priv_key_bn,
+                  priv_key_buf + order_len - priv_len) != priv_len) {
+        goto end;
+    }
     *pbuf = priv_key_buf;
+    priv_key_buf = NULL;
+    ret = (size_t)order_len;
 
-    return priv_len;
+end:
+    OPENSSL_clear_free(priv_key_buf, (size_t)order_len);
+    BN_free(order);
+    return ret;
 }
 
 void OPENSSL_clear_free(void *str, size_t num)
@@ -392,17 +435,17 @@ int RSA_meth_set_keygen(RSA_METHOD *meth,
 
 RSA_METHOD *RSA_meth_new(const char *name, int flags)
 {
-    RSA_METHOD *meth = OPENSSL_zalloc(sizeof(*meth));
+    RSA_METHOD *meth = NULL;
 
+    if (name != NULL) {
+        meth = OPENSSL_zalloc(sizeof(*meth));
+    }
     if (meth != NULL) {
         meth->flags = flags;
-        if (name != NULL) {
-            meth->name = name;
-            return meth;
-        }
+        meth->name = name;
     }
 
-    return NULL;
+    return meth;
 }
 
 void RSA_meth_free(RSA_METHOD *meth)
@@ -518,17 +561,17 @@ int RSA_set0_crt_params(RSA *r, BIGNUM *dmp1, BIGNUM *dmq1, BIGNUM *iqmp)
 
 DH_METHOD *DH_meth_new(const char *name, int flags)
 {
-    DH_METHOD *dhm = OPENSSL_zalloc(sizeof(*dhm));
+    DH_METHOD *dhm = NULL;
 
+    if (name != NULL) {
+        dhm = OPENSSL_zalloc(sizeof(*dhm));
+    }
     if (dhm != NULL) {
         dhm->flags = flags;
-        if (name != NULL) {
-            dhm->name = name;
-            return dhm;
-        }
+        dhm->name = name;
     }
 
-    return NULL;
+    return dhm;
 }
 
 void DH_meth_free(DH_METHOD *dhm)

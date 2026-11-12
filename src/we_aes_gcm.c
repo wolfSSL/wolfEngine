@@ -19,7 +19,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <limits.h>
+
 #include <wolfengine/we_internal.h>
+#include <openssl/err.h>
 
 /* May not be available in FIPS builds of wolfSSL */
 #ifndef GCM_NONCE_MAX_SZ
@@ -32,6 +35,15 @@
 #endif
 
 #ifdef WE_HAVE_AESGCM
+
+#define WE_GCM_BACKEND_FAILURE 100
+
+static void we_aes_gcm_set_error(const char* operation)
+{
+    ERR_put_error(ERR_LIB_USER, 0, WE_GCM_BACKEND_FAILURE,
+                  __FILE__, __LINE__);
+    ERR_add_error_data(2, "wolfEngine AES-GCM: ", operation);
+}
 
 /*
  * AES-GCM
@@ -135,6 +147,10 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     }
 
     if (ret == 1) {
+        /* Preserve a pending TLS header, but leave spent TLS mode on reinit. */
+        if (aes->aad == NULL) {
+            aes->tls = 0;
+        }
         aes->enc = enc;
     }
 
@@ -143,7 +159,6 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     return ret;
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 /**
  * Cleanup the internal AES-GCM object. Does not free object.
  *
@@ -161,9 +176,7 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
     /* Get the AES-GCM data to work with. */
     aes = (we_AesGcm *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     if (aes == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER,
-                                   "EVP_CIPHER_CTX_get_cipher_data", aes);
-        ret = 0;
+        return 1;
     }
 
     if (ret == 1) {
@@ -185,7 +198,6 @@ static int we_aes_gcm_cleanup(EVP_CIPHER_CTX *ctx)
 
     return ret;
 }
-#endif
 
 /**
  * Increment the 64-bit invocation field at the end of the IV/nonce.
@@ -237,9 +249,10 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
         ret = -1;
     }
     /* TLS AAD carries the record sequence number and must be set first. */
-    if ((ret == 1) && aes->enc && (aes->aad == NULL)) {
+    if ((ret == 1) && ((aes->aad == NULL) ||
+            (aes->aadLen != EVP_AEAD_TLS1_AAD_LEN))) {
         WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
-                             "TLS AAD not set before AES-GCM encrypt");
+                             "TLS AAD not set before AES-GCM operation");
         ret = -1;
     }
     /* Doing the TLS variation. */
@@ -262,6 +275,7 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
             aes->aadLen);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex", rc);
+            we_aes_gcm_set_error("encryption failed");
             ret = -1;
         }
         /* Advance the explicit nonce for the next record, matching OpenSSL. */
@@ -295,6 +309,10 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                               EVP_GCM_TLS_TAG_LEN, aes->aad, aes->aadLen);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt", rc);
+            /* DTLS silently discards records that fail authentication. */
+            if (rc != AES_GCM_AUTH_E) {
+                we_aes_gcm_set_error("decryption failed");
+            }
             ret = -1;
         }
         if (ret == 1) {
@@ -334,23 +352,32 @@ static int we_aes_gcm_update_aad(we_AesGcm* aes, const unsigned char* in,
 {
     int ret;
     unsigned char *p;
+    size_t newLen;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_update_aad");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [aes = %p, in = %p, len = %zu]",
                            aes, in, len);
 
-    /* Resize stored AAD and append new data. */
-    p = (unsigned char*)OPENSSL_realloc(aes->aad, aes->aadLen + (int)len);
-    if (p == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
+    if ((aes->aadLen < 0) || (len > (size_t)INT_MAX) ||
+        (len > (size_t)(INT_MAX - aes->aadLen))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "AES-GCM AAD length too large");
         ret = -1;
     }
     else {
-        /* Copy in new data after existing data. */
-        aes->aad = p;
-        XMEMCPY(aes->aad + aes->aadLen, in, len);
-        aes->aadLen += len;
-        ret = (int)len;
+        /* Resize stored AAD and append new data. */
+        newLen = (size_t)aes->aadLen + len;
+        p = (unsigned char*)OPENSSL_realloc(aes->aad, newLen);
+        if (p == NULL) {
+            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
+            ret = -1;
+        }
+        else {
+            /* Copy in new data after existing data. */
+            aes->aad = p;
+            XMEMCPY(aes->aad + aes->aadLen, in, len);
+            aes->aadLen = (int)newLen;
+            ret = (int)len;
+        }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_gcm_update_aad", ret);
@@ -376,7 +403,7 @@ static int we_aes_gcm_update(we_AesGcm* aes, const unsigned char* in,
     int ret;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_update");
-    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [aes = %p, in = %p, len = %d, "
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [aes = %p, in = %p, len = %zu, "
                            "out = %p]", aes, in, len, out);
 
     if (len != 0 && in != NULL) {
@@ -435,6 +462,7 @@ static int we_aes_gcm_final(we_AesGcm* aes)
         ret = wc_AesGcmSetExtIV(&aes->aes, aes->iv, aes->ivLen);
         if (ret != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmSetExtIV", ret);
+            we_aes_gcm_set_error("IV setup failed");
             ret = -1;
         }
         else {
@@ -454,10 +482,11 @@ static int we_aes_gcm_final(we_AesGcm* aes)
             if (ret != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex",
                                       ret);
+                we_aes_gcm_set_error("encryption failed");
                 ret = -1;
             }
             else {
-                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %zu bytes "
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %d bytes "
                                        "(AES-GCM):", aes->tmpLen);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, aes->tmp, aes->tmpLen);
                 WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "AES-GCM tag:");
@@ -471,10 +500,11 @@ static int we_aes_gcm_final(we_AesGcm* aes)
                                    aes->tagLen, aes->aad, aes->aadLen);
             if (ret != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt", ret);
+                we_aes_gcm_set_error("decryption failed");
                 ret = -1;
             }
             else {
-                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %zu bytes "
+                WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Decrypted %d bytes "
                                        "(AES-GCM):", aes->tmpLen);
                 WOLFENGINE_BUFFER(WE_LOG_CIPHER, aes->tmp, aes->tmpLen);
             }
@@ -563,7 +593,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
  *  - EVP_CTRL_GET_IVLEN: get the total IV/nonce length
  *  - EVP_CTRL_AEAD_SET_IVLEN: set the length of an IV/nonce
  *  - EVP_CTRL_GCM_SET_IV_FIXED: set the fixed part of an IV/nonce
- *  - EVP_CTRL_GCM_IV_GEN: set the generated IV/nonce
+ *  - EVP_CTRL_GCM_IV_GEN: get the generated IV/nonce
  *  - EVP_CTRL_AEAD_GET_TAG: get the tag value after encrypt
  *  - EVP_CTRL_AEAD_SET_TAG: set the tag value before decrypt
  *  - EVP_CTRL_AEAD_TLS1_AAD: set AAD for TLS
@@ -571,7 +601,7 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
  * @param  ctx   [in.out]  EVP cipher context of operation.
  * @param  type  [in]      Type of operation to perform.
  * @param  arg   [in]      Integer argument.
- * @param  ptr   [in]      Pointer argument.
+ * @param  ptr   [in,out]  Pointer argument; direction depends on type.
  * @return  1 on success and 0 on failure.
  */
 static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
@@ -613,6 +643,23 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 aes->tmp = NULL;
                 aes->tmpLen = 0;
                 aes->outputBuf = NULL;
+                break;
+
+            case EVP_CTRL_COPY:
+                /* OpenSSL passes the live source as ctx and the copied
+                 * destination as ptr. Clear only the destination's copied
+                 * pointers before rejecting the unsupported copy. */
+                if (ptr != NULL) {
+                    we_AesGcm *dst = (we_AesGcm *)
+                        EVP_CIPHER_CTX_get_cipher_data((EVP_CIPHER_CTX *)ptr);
+
+                    if (dst != NULL) {
+                        OPENSSL_cleanse(dst, sizeof(*dst));
+                    }
+                }
+                WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                     "AES-GCM context copy not supported");
+                ret = 0;
                 break;
 
             case EVP_CTRL_AEAD_SET_IVLEN:
@@ -695,9 +742,9 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
             case EVP_CTRL_GCM_IV_GEN:
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_GCM_IV_GEN");
-                /* Set the generated IV
+                /* Get the generated IV
                  *   arg [in] size of generated IV/nonce
-                 *   ptr [in] generated IV/nonce data
+                 *   ptr [out] generated IV/nonce data
                  */
                 if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ) || (ptr == NULL) ||
                         (arg > aes->ivLen) || (!aes->ivFixed)) {
@@ -716,7 +763,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 WOLFENGINE_MSG(WE_LOG_CIPHER, "EVP_CTRL_AEAD_GET_TAG");
                 /* Get the tag from encryption.
                  *   arg [in] size of buffer
-                 *   ptr [in] buffer to copy into
+                 *   ptr [out] buffer to copy into
                  */
                 if ((!aes->enc) || (arg <= 0) || (arg > aes->tagLen)) {
                     ret = 0;
@@ -827,6 +874,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 #define AES_GCM_FLAGS              \
     (EVP_CIPH_FLAG_CUSTOM_CIPHER | \
      EVP_CIPH_CUSTOM_IV          | \
+     EVP_CIPH_CUSTOM_COPY        | \
      EVP_CIPH_CUSTOM_IV_LENGTH   | \
      EVP_CIPH_ALWAYS_CALL_INIT   | \
      EVP_CIPH_CTRL_INIT          | \
@@ -860,11 +908,9 @@ static int we_init_aesgcm_meth(EVP_CIPHER *cipher)
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_aes_gcm_init);
     }
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_cleanup(cipher, we_aes_gcm_cleanup);
     }
-#endif
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_aes_gcm_cipher);
     }

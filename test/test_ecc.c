@@ -402,6 +402,60 @@ int test_eckeygen_p224(ENGINE *e, void *data)
 #endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
+#if defined(WE_HAVE_EC_P384) && OPENSSL_VERSION_NUMBER < 0x30000000L
+static int test_eckeygen_copy(ENGINE *e)
+{
+    int err;
+    int shared = 0;
+    EVP_PKEY_CTX *src = NULL;
+    EVP_PKEY_CTX *dst = NULL;
+    EVP_PKEY *key = NULL;
+    EC_KEY *ecKey = NULL;
+    const EC_GROUP *group = NULL;
+
+    err = (src = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, e)) == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(src) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_ec_paramgen_curve_nid(src,
+                                                     NID_X9_62_prime256v1) != 1;
+    }
+    if (err == 0) {
+        dst = EVP_PKEY_CTX_dup(src);
+        err = dst == NULL;
+    }
+    if (err == 0) {
+        shared = EVP_PKEY_CTX_get_data(src) == EVP_PKEY_CTX_get_data(dst);
+        err = EVP_PKEY_CTX_set_ec_paramgen_curve_nid(src, NID_secp384r1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(dst, &key) != 1;
+    }
+    if (err == 0) {
+        ecKey = EVP_PKEY_get1_EC_KEY(key);
+        err = ecKey == NULL;
+    }
+    if (err == 0) {
+        group = EC_KEY_get0_group(ecKey);
+        err = group == NULL;
+    }
+    if (err == 0) {
+        err = EC_GROUP_get_curve_name(group) != NID_X9_62_prime256v1;
+    }
+
+    if (shared) {
+        EVP_PKEY_CTX_set_data(dst, NULL);
+    }
+    EC_KEY_free(ecKey);
+    EVP_PKEY_free(key);
+    EVP_PKEY_CTX_free(dst);
+    EVP_PKEY_CTX_free(src);
+
+    return err;
+}
+#endif
+
 int test_eckeygen_p256_by_nid(ENGINE *e, void *data)
 {
     int err;
@@ -420,6 +474,11 @@ int test_eckeygen_p256_by_nid(ENGINE *e, void *data)
         PRINT_MSG("Generate key");
         err = EVP_PKEY_keygen(ctx, &key) != 1;
     }
+#if defined(WE_HAVE_EC_P384) && OPENSSL_VERSION_NUMBER < 0x30000000L
+    if (err == 0) {
+        err = test_eckeygen_copy(e);
+    }
+#endif
 
     EVP_PKEY_free(key);
     EVP_PKEY_CTX_free(ctx);
@@ -815,12 +874,165 @@ int test_ecdh_p224(ENGINE *e, void *data)
 #endif /* WE_HAVE_EC_P224 */
 
 #ifdef WE_HAVE_EC_P256
+#ifdef WE_HAVE_SHA256
+static int test_ecdh_kdf_output_length(ENGINE *e)
+{
+    int err = 0;
+    int i;
+    EVP_PKEY *key = NULL;
+    EVP_PKEY *peerKey = NULL;
+#ifdef WE_HAVE_EC_P384
+    EVP_PKEY *otherPeer = NULL;
+#endif
+    unsigned char output[2][16];
+    const unsigned char *p;
+
+    p = ecc_key_der_256;
+    key = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p, sizeof(ecc_key_der_256));
+    if (key == NULL)
+        err = 1;
+    if (err == 0) {
+        p = ecc_peerkey_der_256;
+        peerKey = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p,
+                                 sizeof(ecc_peerkey_der_256));
+        err = peerKey == NULL;
+    }
+#ifdef WE_HAVE_EC_P384
+    if (err == 0) {
+        p = ecc_peerkey_der_384;
+        otherPeer = d2i_PrivateKey(EVP_PKEY_EC, NULL, &p,
+                                   sizeof(ecc_peerkey_der_384));
+        err = otherPeer == NULL;
+    }
+#endif
+
+    for (i = 0; (i < 2) && (err == 0); i++) {
+        EVP_PKEY_CTX *ctx;
+        int configuredLen = 0;
+        size_t outputLen = sizeof(output[i]);
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        if (i == 1)
+            err = EVP_PKEY_set1_engine(key, e) != 1;
+        ctx = err == 0 ? EVP_PKEY_CTX_new(key, NULL) : NULL;
+#else
+        ctx = EVP_PKEY_CTX_new(key, i == 0 ? NULL : e);
+#endif
+        if (ctx == NULL)
+            err = 1;
+        if (err == 0)
+            err = EVP_PKEY_derive_init(ctx) != 1;
+#ifdef WE_HAVE_EC_P384
+        if ((err == 0) && (i == 1))
+            err = EVP_PKEY_derive_set_peer(ctx, otherPeer) == 1;
+#endif
+        if (err == 0)
+            err = EVP_PKEY_derive_set_peer(ctx, peerKey) != 1;
+        if (err == 0)
+            err = EVP_PKEY_CTX_set_ecdh_kdf_type(ctx,
+                                                 EVP_PKEY_ECDH_KDF_X9_63) != 1;
+        if (err == 0)
+            err = EVP_PKEY_CTX_set_ecdh_kdf_md(ctx, EVP_sha256()) != 1;
+        if (err == 0)
+            err = EVP_PKEY_CTX_set_ecdh_kdf_outlen(ctx, (int)outputLen) != 1;
+        if (err == 0)
+            err = EVP_PKEY_CTX_get_ecdh_kdf_outlen(ctx, &configuredLen) != 1;
+        if (err == 0)
+            err = configuredLen != (int)outputLen;
+        if ((err == 0) && (i == 1)) {
+            err = EVP_PKEY_CTX_set_ecdh_kdf_md(ctx, NULL) != 1;
+            if (err == 0)
+                err = EVP_PKEY_CTX_set_ecdh_kdf_md(ctx, EVP_sha256()) != 1;
+            if (err == 0)
+                err = EVP_PKEY_CTX_set_ecdh_kdf_outlen(ctx, 0) == 1;
+        }
+        if (err == 0)
+            err = EVP_PKEY_derive(ctx, output[i], &outputLen) != 1;
+        if (err == 0) {
+            err = outputLen != sizeof(output[i]);
+            if (err != 0) {
+                PRINT_ERR_MSG("ECDH KDF output length differs from result");
+            }
+        }
+        if ((err == 0) && (i == 1)) {
+            size_t shortLen = sizeof(output[i]) - 1;
+
+            err = EVP_PKEY_derive(ctx, output[i], &shortLen) == 1;
+        }
+
+        EVP_PKEY_CTX_free(ctx);
+    }
+    if (err == 0)
+        err = XMEMCMP(output[0], output[1], sizeof(output[0])) != 0;
+
+#ifdef WE_HAVE_EC_P384
+    EVP_PKEY_free(otherPeer);
+#endif
+    EVP_PKEY_free(peerKey);
+    EVP_PKEY_free(key);
+
+    return err;
+}
+#endif /* WE_HAVE_SHA256 */
+
+#if defined(WE_HAVE_ECKEYGEN) && OPENSSL_VERSION_NUMBER >= 0x1000212fL
+static int test_ec_paramgen_string_controls(ENGINE *e)
+{
+    int err;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *params = NULL;
+    const EC_KEY *ecKey;
+    const EC_GROUP *group;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_EC, e);
+    err = ctx == NULL;
+    if (err == 0)
+        err = EVP_PKEY_paramgen_init(ctx) != 1;
+    if (err == 0)
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "ec_paramgen_curve", "P-256") != 1;
+    if (err == 0)
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "ec_param_enc", "named_curve") != 1;
+    if (err == 0)
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "ec_param_enc", "explicit") != -2;
+    if (err == 0)
+        err = EVP_PKEY_paramgen(ctx, &params) != 1;
+    if (err == 0) {
+        ecKey = EVP_PKEY_get0_EC_KEY(params);
+        group = ecKey != NULL ? EC_KEY_get0_group(ecKey) : NULL;
+        err = group == NULL ||
+              EC_GROUP_get_curve_name(group) != NID_X9_62_prime256v1 ||
+              EC_GROUP_get_asn1_flag(group) != OPENSSL_EC_NAMED_CURVE;
+    }
+
+    EVP_PKEY_free(params);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+#endif /* WE_HAVE_ECKEYGEN && OPENSSL_VERSION_NUMBER >= 0x1000212fL */
+
 int test_ecdh_p256(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
-    return test_ecdh(e, ecc_key_der_256, sizeof(ecc_key_der_256),
-                     ecc_peerkey_der_256, sizeof(ecc_peerkey_der_256),
-                     ecc_derived_256, sizeof(ecc_derived_256));
+    err = test_ecdh(e, ecc_key_der_256, sizeof(ecc_key_der_256),
+                    ecc_peerkey_der_256, sizeof(ecc_peerkey_der_256),
+                    ecc_derived_256, sizeof(ecc_derived_256));
+#ifdef WE_HAVE_SHA256
+    if (err == 0) {
+        PRINT_MSG("Check ECDH KDF output length");
+        err = test_ecdh_kdf_output_length(e);
+    }
+#endif /* WE_HAVE_SHA256 */
+#if defined(WE_HAVE_ECKEYGEN) && OPENSSL_VERSION_NUMBER >= 0x1000212fL
+    if (err == 0) {
+        PRINT_MSG("Check EC parameter string controls");
+        err = test_ec_paramgen_string_controls(e);
+    }
+#endif /* WE_HAVE_ECKEYGEN && OPENSSL_VERSION_NUMBER >= 0x1000212fL */
+
+    return err;
 }
 #endif /* WE_HAVE_EC_P256 */
 
@@ -1824,14 +2036,20 @@ int test_ec_key_ecdsa_sign(EC_KEY *key, unsigned char *hash,
     int err;
     unsigned int sigLen;
     PRINT_MSG("test_ec_key_ecdsa_sign");
-    sigLen = (unsigned int)*ecdsaSigLen;
+    sigLen = 0;
     err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
+    if (err == 0) {
+        err = (sigLen == 0) || (sigLen > *ecdsaSigLen);
+    }
     if (err == 0) {
         PRINT_BUFFER("Signature", ecdsaSig, sigLen);
     }
     if (err == 0) {
-        sigLen = (unsigned int)*ecdsaSigLen;
+        sigLen = 0;
         err = ECDSA_sign(0, hash, (int)hashLen, ecdsaSig, &sigLen, key) != 1;
+    }
+    if (err == 0) {
+        err = (sigLen == 0) || (sigLen > *ecdsaSigLen);
     }
     if (err == 0) {
         PRINT_BUFFER("Signature", ecdsaSig, sigLen);
@@ -1867,6 +2085,132 @@ int test_ec_key_ecdsa_verify(EC_KEY *key, unsigned char *hash,
     }
 
     return err;
+}
+
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+static int test_ecdsa_verify_error_logs;
+
+static void test_ecdsa_verify_logging(const int level, const int component,
+                                     const char *const message)
+{
+    if ((level == WE_LOG_ERROR) && (component == WE_LOG_PK) &&
+        strstr(message, "wc_ecc_verify_hash") != NULL) {
+        test_ecdsa_verify_error_logs++;
+    }
+}
+#endif
+
+static int test_ec_key_ecdsa_scalar_range(EC_KEY *key, unsigned char *hash,
+                                         size_t hashLen)
+{
+    int err = 0;
+    int i;
+    int sigLen;
+    BIGNUM *order = NULL;
+    BIGNUM *r = NULL;
+    BIGNUM *s = NULL;
+    ECDSA_SIG *sig = NULL;
+    unsigned char der[140];
+    unsigned char *p;
+
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+    test_ecdsa_verify_error_logs = 0;
+    if (wolfEngine_SetLoggingCb(test_ecdsa_verify_logging) != 0 ||
+            wolfEngine_Debugging_ON() != 0 ||
+            wolfEngine_SetLogLevel(WE_LOG_ERROR) != 0 ||
+            wolfEngine_SetLogComponents(WE_LOG_PK) != 0) {
+        err = 1;
+        goto end;
+    }
+#endif
+    order = BN_new();
+    sig = ECDSA_SIG_new();
+    if (order == NULL || sig == NULL ||
+        EC_GROUP_get_order(EC_KEY_get0_group(key), order, NULL) != 1) {
+        err = 1;
+        goto end;
+    }
+
+    /* ECDSA scalars must be strictly between zero and the group order. */
+    for (i = 0; i < 4 && err == 0; i++) {
+        r = BN_new();
+        s = BN_new();
+        if (r == NULL || s == NULL || BN_one(r) != 1 || BN_one(s) != 1) {
+            err = 1;
+            goto end;
+        }
+        if (i < 2) {
+            BN_zero(i == 0 ? r : s);
+        }
+        else if (BN_copy(i == 2 ? r : s, order) == NULL) {
+            err = 1;
+            goto end;
+        }
+        if (ECDSA_SIG_set0(sig, r, s) != 1) {
+            err = 1;
+            goto end;
+        }
+        r = NULL;
+        s = NULL;
+        sigLen = i2d_ECDSA_SIG(sig, NULL);
+        if (sigLen <= 0 || sigLen > (int)sizeof(der)) {
+            err = 1;
+            goto end;
+        }
+        p = der;
+        err = i2d_ECDSA_SIG(sig, &p) != sigLen;
+        if (err == 0) {
+            err = ECDSA_verify(0, hash, (int)hashLen, der, sigLen, key) != 0;
+        }
+    }
+
+end:
+    BN_free(s);
+    BN_free(r);
+    BN_free(order);
+    ECDSA_SIG_free(sig);
+#if defined(WOLFENGINE_DEBUG) && !defined(TEST_MULTITHREADED)
+    (void)wolfEngine_SetLoggingCb(NULL);
+    (void)wolfEngine_SetLogLevel(WE_LOG_ERROR | WE_LOG_INFO);
+    (void)wolfEngine_SetLogComponents(WE_LOG_COMPONENTS_DEFAULT);
+    wolfEngine_Debugging_OFF();
+    if (test_ecdsa_verify_error_logs != 0) {
+        PRINT_MSG("Invalid ECDSA scalars produced backend error diagnostics");
+        err = 1;
+    }
+#endif
+    return err;
+}
+
+static int test_ec_key_ecdsa_encoding(EC_KEY *key, unsigned char *hash,
+                                     size_t hashLen)
+{
+    static const unsigned char invalidInteger[2][8] = {
+        { 0x30, 0x06, 0x02, 0x01, 0xff, 0x02, 0x01, 0x01 },
+        { 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0xff }
+    };
+    static const unsigned char invalidEncoding[2][9] = {
+        { 0x30, 0x07, 0x02, 0x02, 0x00, 0x01, 0x02, 0x01, 0x01 },
+        { 0x30, 0x06, 0x02, 0x01, 0x01, 0x02, 0x01, 0x01, 0x00 }
+    };
+    int i;
+
+    for (i = 0; i < 2; i++) {
+        if (ECDSA_verify(0, hash, (int)hashLen, invalidInteger[i],
+                         (int)sizeof(invalidInteger[i]), key) != -1) {
+            PRINT_MSG("Invalid ECDSA integer encoding did not return an error");
+            return 1;
+        }
+    }
+    for (i = 0; i < 2; i++) {
+        if (ECDSA_verify(0, hash, (int)hashLen, invalidEncoding[i],
+                         (int)sizeof(invalidEncoding[i]), key) != -1) {
+            PRINT_MSG("Noncanonical ECDSA encoding did not return an error");
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
@@ -1911,6 +2255,22 @@ int test_ec_key_ecdsa(ENGINE *e, const unsigned char *privKey,
         PRINT_MSG("Verify with wolfengine");
         err = test_ec_key_ecdsa_verify(key, buf, sizeof(buf), ecdsaSig,
                                        ecdsaSigLen);
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify ECDSA scalar range with wolfengine");
+        err = test_ec_key_ecdsa_scalar_range(key, buf, sizeof(buf));
+    }
+    if (err == 0) {
+        PRINT_MSG("Verify ECDSA scalar range with OpenSSL");
+        err = test_ec_key_ecdsa_scalar_range(keyOSSL, buf, sizeof(buf));
+    }
+    if (err == 0) {
+        PRINT_MSG("Reject invalid ECDSA integer encoding with wolfengine");
+        err = test_ec_key_ecdsa_encoding(key, buf, sizeof(buf));
+    }
+    if (err == 0) {
+        PRINT_MSG("Reject invalid ECDSA integer encoding with OpenSSL");
+        err = test_ec_key_ecdsa_encoding(keyOSSL, buf, sizeof(buf));
     }
     if (err == 0) {
         PRINT_MSG("Verify bad signature with wolfengine");
