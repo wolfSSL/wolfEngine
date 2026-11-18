@@ -79,10 +79,6 @@ typedef struct we_AesCcm
     unsigned char *aad;
     /** Length of AAD stored. */
     int            aadLen;
-    /** Size of CCM length field, default is 8 for OpenSSL AES unless set
-     *  with ctrl function. wolfSSL calculates L based on nonce, but OpenSSL
-     *  allows ctrl command to set L. */
-    int            L;
     /** Flag to indicate whether object initialized. */
     unsigned int   init:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrpyt (0). */
@@ -121,10 +117,7 @@ static int we_aes_ccm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 
     if ((ret == 1) && (((key == NULL) && (iv == NULL)) || (!aes->init))) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting defaults for we_AesCcm struct");
-        /* Default L size for OpenSSL is 8, used to calc nonce/iv size */
-        aes->L = CCM_LEN_FIELD_MAX_SZ;
-        /* No IV yet, set to default length (15-L). */
-        aes->ivLen = 15 - aes->L;
+        aes->ivLen = 15 - CCM_LEN_FIELD_MAX_SZ;
         aes->ivSet = 0;
         /* No tag set. */
         aes->tagLen = 0;
@@ -441,6 +434,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
  * Extra operations for AES-CCM.
  * Supported operations include:
  *  - EVP_CTRL_SET_IV (version 3.0+): get IV from wolfengine object
+ *  - EVP_CTRL_CCM_SET_L: set the length field size (L); nonce length is 15 - L
  *  - EVP_CTRL_AEAD_SET_IVLEN: set the length of an IV/nonce
  *  - EVP_CTRL_GET_IVLEN: get the total IV/nonce length
  *  - EVP_CTRL_CCM_SET_IV_FIXED: set the fixed part of an IV/nonce
@@ -487,8 +481,9 @@ static int we_aes_ccm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     ret = 0;
                 }
                 else {
-                    WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting aes->L: %d", arg);
-                    aes->L = arg;
+                    WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting aes->ivLen: %d",
+                                   15 - arg);
+                    aes->ivLen = 15 - arg;
                 }
                 break;
             case EVP_CTRL_AEAD_SET_IVLEN:

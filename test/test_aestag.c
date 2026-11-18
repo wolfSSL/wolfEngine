@@ -49,11 +49,7 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
         /* Applications can set CCM length field (L), default is 8 if unset. */
         err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_L, ccmL, NULL) != 1;
     }
-    if (err == 0) {
-        if (ccm && ccmL != 0) {
-            /* adjust IV based on L, should be 15-L */
-            ivLen = 15-ccmL;
-        }
+    else if (err == 0) {
         err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, ivLen,
                                   NULL) != 1;
     }
@@ -138,11 +134,7 @@ static int test_aes_tag_dec(ENGINE *e, const EVP_CIPHER *cipher,
         /* Applications can set CCM length field (L), default is 8 if unset. */
         err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_L, ccmL, NULL) != 1;
     }
-    if (err == 0) {
-        if (ccm && ccmL != 0) {
-            /* adjust IV based on L, should be 15-L */
-            ivLen = 15-ccmL;
-        }
+    else if (err == 0) {
         err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, ivLen,
                                   NULL) != 1;
     }
@@ -1187,9 +1179,15 @@ int test_aes128_ccm(ENGINE *e, void *data)
     err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 0);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-    /* test with modified length field (L) of 7 */
+    /* test with modified length field (L) */
     if (err == 0) {
         err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 7);
+    }
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 2);
+    }
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_128_ccm(), 16, 13, 1, 8);
     }
 #endif
 
@@ -1206,9 +1204,15 @@ int test_aes192_ccm(ENGINE *e, void *data)
     err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 0);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-    /* test with modified length field (L) of 7 */
+    /* test with modified length field (L) */
     if (err == 0) {
         err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 7);
+    }
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 2);
+    }
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_192_ccm(), 24, 13, 1, 8);
     }
 #endif
 
@@ -1225,11 +1229,64 @@ int test_aes256_ccm(ENGINE *e, void *data)
     err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 0);
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
-    /* test with modified length field (L) of 7 */
+    /* test with modified length field (L) */
     if (err == 0) {
         err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 7);
     }
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 2);
+    }
+    if (err == 0) {
+        err = test_aes_tag(e, data, EVP_aes_256_ccm(), 32, 13, 1, 8);
+    }
 #endif
+
+    return err;
+}
+
+/******************************************************************************/
+
+int test_aes128_ccm_set_l_bounds(ENGINE *e, void *data)
+{
+    int err = 0;
+    int i;
+    int ivLen = 0;
+    EVP_CIPHER_CTX *ctx = NULL;
+    static const int goodL[] = { 8, 7, 2 };
+    static const int badL[] = { -1, 0, 1, 9 };
+
+    (void)data;
+
+    err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_ccm(), e, NULL, NULL) != 1;
+    }
+    for (i = 0; (err == 0) && (i < (int)(sizeof(goodL) / sizeof(*goodL)));
+         i++) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_L, goodL[i], NULL) != 1;
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GET_IVLEN, 0,
+                                      &ivLen) != 1;
+        }
+        if (err == 0) {
+            err = (ivLen != 15 - goodL[i]);
+        }
+    }
+    /* L outside 2..8 gives a nonce length outside 7..13 bytes. */
+    for (i = 0; (err == 0) && (i < (int)(sizeof(badL) / sizeof(*badL))); i++) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_L, badL[i], NULL) == 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GET_IVLEN, 0, &ivLen) != 1;
+    }
+    if (err == 0) {
+        /* Rejected values must keep the nonce length from the last L of 2. */
+        err = (ivLen != 13);
+    }
+
+    if (ctx != NULL) {
+        EVP_CIPHER_CTX_free(ctx);
+    }
 
     return err;
 }
