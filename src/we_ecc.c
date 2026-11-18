@@ -2291,45 +2291,50 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"wc_ecc_init", rc);
             ret = -1;
         }
-    }
-    if (ret == 1) {
-        rc = we_ec_set_public(&we_key, curveId, key);
-        if (rc != 1) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"we_ec_set_public", rc);
-            ret = -1;
-        }
-    }
-
-    if (ret == 1) {
-        /* get expected DER sig size, allocate space for DER */
-        sigDerSz = i2d_ECDSA_SIG(sig, NULL);
-        if (sigDerSz == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_ECDSA_SIG(NULL)", sigDerSz);
-            ret = -1;
-        } else {
-            sigDer = (unsigned char*)OPENSSL_malloc(sigDerSz);
-            if (sigDer == NULL) {
-                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc", sigDer);
+        else {
+            rc = we_ec_set_public(&we_key, curveId, key);
+            if (rc != 1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK,"we_ec_set_public", rc);
                 ret = -1;
             }
-        }
-    }
 
-    if (ret == 1) {
-        /* convert sig from ECDSA_SIG to DER */
-        sigDerPtr = sigDer; /* i2d_ECDSA_SIG advances sigDerPtr */
-        sigDerSz = i2d_ECDSA_SIG(sig, &sigDerPtr);
-        if (sigDerSz == 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_ECDSA_SIG", sigDerSz);
-            ret = -1;
-        }
-    }
+            if (ret == 1) {
+                /* get expected DER sig size, allocate space for DER */
+                sigDerSz = i2d_ECDSA_SIG(sig, NULL);
+                if (sigDerSz == 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_ECDSA_SIG(NULL)",
+                                          sigDerSz);
+                    ret = -1;
+                } else {
+                    sigDer = (unsigned char*)OPENSSL_malloc(sigDerSz);
+                    if (sigDer == NULL) {
+                        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                                   sigDer);
+                        ret = -1;
+                    }
+                }
+            }
 
-    if (ret == 1) {
-        rc = wc_ecc_verify_hash(sigDer, sigDerSz, d, dlen, &check_sig, &we_key);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
-            ret = -1;
+            if (ret == 1) {
+                /* convert sig from ECDSA_SIG to DER */
+                sigDerPtr = sigDer; /* i2d_ECDSA_SIG advances sigDerPtr */
+                sigDerSz = i2d_ECDSA_SIG(sig, &sigDerPtr);
+                if (sigDerSz == 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "i2d_ECDSA_SIG", sigDerSz);
+                    ret = -1;
+                }
+            }
+
+            if (ret == 1) {
+                rc = wc_ecc_verify_hash(sigDer, sigDerSz, d, dlen, &check_sig,
+                                        &we_key);
+                if (rc != 0) {
+                    WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
+                    ret = -1;
+                }
+            }
+
+            wc_ecc_free(&we_key);
         }
     }
 
@@ -2344,7 +2349,6 @@ static int we_ecdsa_do_verify(const unsigned char *d, int dlen,
         }
     }
 
-    wc_ecc_free(&we_key);
     if (sigDer != NULL) {
         OPENSSL_free(sigDer);
     }
