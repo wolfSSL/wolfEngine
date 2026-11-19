@@ -32,6 +32,13 @@
 
 #include <wolfengine/we_visibility.h>
 
+#if defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
+    /* Check printf-style format strings and their arguments. */
+    #define WE_PRINTF_FUNC(s, v)  __attribute__((__format__ (__printf__, s, v)))
+#else
+    #define WE_PRINTF_FUNC(s, v)
+#endif
+
 /* wolfEngine debug logging support can be compiled in by defining
  * WOLFENGINE_DEBUG or by using the --enable-debug configure option.
  *
@@ -137,6 +144,7 @@ void WOLFENGINE_LEAVE(int type, const char* msg, int ret);
 WOLFENGINE_API
 void WOLFENGINE_MSG(int type, const char* fmt, ...);
 WOLFENGINE_LOCAL
+WE_PRINTF_FUNC(2, 3)
 void WOLFENGINE_MSG_VERBOSE(int type, const char* fmt, ...);
 WOLFENGINE_API
 void WOLFENGINE_ERROR_LINE(int type, int err, const char* file, int line);

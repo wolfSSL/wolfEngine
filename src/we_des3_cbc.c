@@ -39,6 +39,8 @@ typedef struct we_Des3Cbc
     unsigned int   init:1;
     /** Flag to indicate whether we are doing encrypt (1) or decrypt (0). */
     unsigned int   enc:1;
+    unsigned char  key[DES3_KEY_SIZE];
+    unsigned int   keySet:1;
 } we_Des3Cbc;
 
 /**
@@ -75,7 +77,7 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         }
     }
 
-    if ((ret == 1) && (key != NULL)) {
+    if ((ret == 1) && (key != NULL) && (!des3->init)) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Initializing wolfCrypt Des3 "
                        "structure: %p", &des3->des3);
         rc = wc_Des3Init(&des3->des3, NULL, INVALID_DEVID);
@@ -83,8 +85,9 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3Init", rc);
             ret = 0;
         }
-
-        des3->init = 1;
+        else {
+            des3->init = 1;
+        }
     }
 
     if (ret == 1) {
@@ -96,13 +99,79 @@ static int we_des3_cbc_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                                 enc ? DES_ENCRYPTION : DES_DECRYPTION);
             if (rc != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_Des3_SetKey", rc);
+                OPENSSL_cleanse(des3->key, sizeof(des3->key));
+                des3->keySet = 0;
                 ret = 0;
+            }
+            else {
+                XMEMCPY(des3->key, key, sizeof(des3->key));
+                des3->keySet = 1;
             }
         }
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_init", ret);
 
+    return ret;
+}
+
+/**
+ * Cleanup the internal DES3-CBC object.
+ *
+ * @param  ctx  [in]  EVP cipher context.
+ * @return  1 on success and 0 on failure.
+ */
+static int we_des3_cbc_cleanup(EVP_CIPHER_CTX *ctx)
+{
+    int ret = 1;
+    we_Des3Cbc *des3;
+
+    WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_cleanup");
+
+    des3 = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+    if ((des3 != NULL) && des3->init) {
+        wc_Des3Free(&des3->des3);
+    }
+    if (des3 != NULL) {
+        OPENSSL_cleanse(des3, sizeof(*des3));
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_cleanup", ret);
+
+    return ret;
+}
+
+static int we_des3_cbc_copy(EVP_CIPHER_CTX *ctx, EVP_CIPHER_CTX *dstCtx)
+{
+    we_Des3Cbc *src = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+    we_Des3Cbc *dst;
+    int ret = 1;
+
+    if (src == NULL || dstCtx == NULL) {
+        return 0;
+    }
+    dst = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(dstCtx);
+    if (dst == NULL || dst == src) {
+        return 0;
+    }
+    /* OpenSSL copied buffering and IVs, but backend ownership is independent. */
+    XMEMSET(&dst->des3, 0, sizeof(dst->des3));
+    dst->init = 0;
+    if (src->init) {
+        ret = wc_Des3Init(&dst->des3, NULL, INVALID_DEVID) == 0;
+        if (ret == 1) {
+            dst->init = 1;
+        }
+    }
+    if (ret == 1 && src->keySet) {
+        ret = wc_Des3_SetKey(&dst->des3, src->key,
+                             EVP_CIPHER_CTX_iv(ctx),
+                             src->enc ? DES_ENCRYPTION : DES_DECRYPTION) == 0;
+    }
+    if (ret == 0) {
+        /* OpenSSL skips cipher cleanup after a failed custom copy. */
+        we_des3_cbc_cleanup(dstCtx);
+    }
     return ret;
 }
 
@@ -185,7 +254,7 @@ static int we_des3_cbc_decrypt(EVP_CIPHER_CTX *ctx, we_Des3Cbc* des3,
         rc = wc_Des3_CbcDecrypt(&des3->des3, out, in, (word32)len);
         if (rc != 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                  "wc_Des3_CbcEncrypt 1", rc);
+                                  "wc_Des3_CbcDecrypt", rc);
             ret = 0;
         }
         else {
@@ -246,7 +315,8 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         }
     }
     if (ret == 1) {
-        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), des3->des3.reg, DES_IV_SIZE);
+        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), des3->des3.reg,
+                DES_BLOCK_SIZE);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_des3_cbc_cipher", ret);
@@ -257,7 +327,7 @@ static int we_des3_cbc_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 /**
  * Extra operations for DES3-CBC.
  *
- * No supported operations yet.
+ * Initializes private cipher state.
  *
  * @param  ctx   [in]  EVP cipher context of operation.
  * @param  type  [in]  Type of operation to perform.
@@ -273,10 +343,9 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_des3_cbc_ctrl");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, type = %d, "
-                           "arg = %p, ptr = %p]", ctx, type, arg, ptr);
+                           "arg = %d, ptr = %p]", ctx, type, arg, ptr);
 
     (void)arg;
-    (void)ptr;
 
     /* Get the DES3-CBC data to work with. */
     des3 = (we_Des3Cbc *)EVP_CIPHER_CTX_get_cipher_data(ctx);
@@ -287,6 +356,12 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
     }
     if (ret == 1) {
         switch (type) {
+            case EVP_CTRL_INIT:
+                XMEMSET(des3, 0, sizeof(*des3));
+                break;
+            case EVP_CTRL_COPY:
+                ret = we_des3_cbc_copy(ctx, (EVP_CIPHER_CTX *)ptr);
+                break;
             default:
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
@@ -313,6 +388,8 @@ static int we_des3_cbc_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
  */
 #define DES3_CBC_FLAGS             \
      (EVP_CIPH_FLAG_DEFAULT_ASN1 | \
+     EVP_CIPH_CTRL_INIT          | \
+     EVP_CIPH_CUSTOM_COPY        | \
      EVP_CIPH_CBC_MODE)
 
 /** DES3-CBC EVP cipher method. */
@@ -339,6 +416,13 @@ static int we_init_des3cbc_meth(EVP_CIPHER *cipher)
     }
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_init(cipher, we_des3_cbc_init);
+    }
+    if (ret == 1) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        ret = EVP_CIPHER_meth_set_cleanup(cipher, we_des3_cbc_cleanup);
+#else
+        cipher->cleanup = we_des3_cbc_cleanup;
+#endif
     }
     if (ret == 1) {
         ret = EVP_CIPHER_meth_set_do_cipher(cipher, we_des3_cbc_cipher);

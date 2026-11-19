@@ -19,8 +19,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335, USA
  */
 
+#include <limits.h>
 #include "unit.h"
 #include <wolfengine/we_fips.h>
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    defined(WOLFSSL_PTHREADS) && !defined(TEST_MULTITHREADED)
+#include <wolfengine/we_internal.h>
+#endif
 
 #ifdef WE_HAVE_RSA
 
@@ -581,6 +586,7 @@ int test_rsa_ctrl_str(ENGINE* e, void* data)
 {
     int err;
     EVP_PKEY_CTX* ctx = NULL;
+    void* engineData = NULL;
 
     (void)data;
 
@@ -613,7 +619,25 @@ int test_rsa_ctrl_str(ENGINE* e, void* data)
         err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "2048") <= 0;
     }
     if (err == 0) {
-        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "-1") > 0;
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "-1") != -2;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_unknown_option", "1") != -2;
+    }
+    if (err == 0) {
+        engineData = EVP_PKEY_CTX_get_data(ctx);
+        EVP_PKEY_CTX_set_data(ctx, NULL);
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_keygen_bits", "2048") != 0;
+        EVP_PKEY_CTX_set_data(ctx, engineData);
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_padding_mode", "pkcs1") <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_mgf1_md", "SHA256") != -2;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "rsa_oaep_md", "SHA256") != -2;
     }
 
     /* rsa_pss_saltlen */
@@ -780,6 +804,179 @@ int test_rsa_direct_priv_enc(ENGINE *e, void *data)
     return err;
 }
 
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    defined(WOLFSSL_PTHREADS) && !defined(TEST_MULTITHREADED)
+static int test_rsa_priv_dec_lock_failure(ENGINE *e)
+{
+    int err = 0;
+    int encryptedLen = 0;
+    int decryptedLen;
+    int attrInited = 0;
+    int mutexInited = 0;
+    int mutexLocked = 0;
+    int rngMutexSet = 0;
+    unsigned char plain[20] = { 0 };
+    unsigned char* encrypted = NULL;
+    unsigned char* decrypted = NULL;
+    RSA* weRsaKey = NULL;
+    RSA* osslRsaKey = NULL;
+    pthread_mutexattr_t attr;
+    wolfSSL_Mutex mutex;
+    wolfSSL_Mutex* savedRngMutex = NULL;
+
+    err = load_static_rsa_key(e, rsa_key_der_1024,
+                              sizeof(rsa_key_der_1024), &weRsaKey,
+                              &osslRsaKey) != 1;
+    if (err == 0) {
+        encrypted = OPENSSL_malloc(RSA_size(osslRsaKey));
+        decrypted = OPENSSL_malloc(RSA_size(weRsaKey));
+        err = encrypted == NULL || decrypted == NULL;
+    }
+    if (err == 0) {
+        encryptedLen = RSA_public_encrypt(sizeof(plain), plain, encrypted,
+                                          osslRsaKey, RSA_PKCS1_PADDING);
+        err = encryptedLen <= 0;
+    }
+    if (err == 0) {
+        err = pthread_mutexattr_init(&attr) != 0;
+        attrInited = err == 0;
+    }
+    if (err == 0) {
+        err = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0;
+    }
+    if (err == 0) {
+        err = pthread_mutex_init(&mutex, &attr) != 0;
+        mutexInited = err == 0;
+    }
+    if (err == 0) {
+        err = pthread_mutex_lock(&mutex) != 0;
+        mutexLocked = err == 0;
+    }
+    if (err == 0) {
+        savedRngMutex = we_rng_mutex;
+        we_rng_mutex = &mutex;
+        rngMutexSet = 1;
+
+        decryptedLen = RSA_private_decrypt(encryptedLen, encrypted, decrypted,
+                                           weRsaKey, RSA_PKCS1_PADDING);
+
+        we_rng_mutex = savedRngMutex;
+        rngMutexSet = 0;
+        err = decryptedLen != -1;
+    }
+    if (mutexLocked) {
+        int rc = pthread_mutex_unlock(&mutex);
+
+        if (err == 0) {
+            err = rc != 0;
+        }
+        mutexLocked = 0;
+    }
+
+    if (rngMutexSet) {
+        we_rng_mutex = savedRngMutex;
+    }
+    if (mutexInited) {
+        pthread_mutex_destroy(&mutex);
+    }
+    if (attrInited) {
+        pthread_mutexattr_destroy(&attr);
+    }
+    OPENSSL_free(decrypted);
+    OPENSSL_free(encrypted);
+    RSA_free(osslRsaKey);
+    RSA_free(weRsaKey);
+
+    return err;
+}
+
+#ifdef WE_HAVE_RSA_X931
+static int test_rsa_x931_lock_failure(ENGINE *e)
+{
+    int err = 0;
+    int encryptedLen = 0;
+    int decryptedLen;
+    int attrInited = 0;
+    int mutexInited = 0;
+    int mutexLocked = 0;
+    int rngMutexSet = 0;
+    unsigned char plain[20] = { 0 };
+    unsigned char* encrypted = NULL;
+    unsigned char* decrypted = NULL;
+    RSA* weRsaKey = NULL;
+    RSA* osslRsaKey = NULL;
+    pthread_mutexattr_t attr;
+    wolfSSL_Mutex mutex;
+    wolfSSL_Mutex* savedRngMutex = NULL;
+
+    err = load_static_rsa_key(e, rsa_key_der_1024,
+                              sizeof(rsa_key_der_1024), &weRsaKey,
+                              &osslRsaKey) != 1;
+    if (err == 0) {
+        encrypted = OPENSSL_malloc(RSA_size(osslRsaKey));
+        decrypted = OPENSSL_malloc(RSA_size(weRsaKey));
+        err = encrypted == NULL || decrypted == NULL;
+    }
+    if (err == 0) {
+        encryptedLen = RSA_private_encrypt(sizeof(plain), plain, encrypted,
+                                           osslRsaKey, RSA_X931_PADDING);
+        err = encryptedLen <= 0;
+    }
+    if (err == 0) {
+        err = pthread_mutexattr_init(&attr) != 0;
+        attrInited = err == 0;
+    }
+    if (err == 0) {
+        err = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) != 0;
+    }
+    if (err == 0) {
+        err = pthread_mutex_init(&mutex, &attr) != 0;
+        mutexInited = err == 0;
+    }
+    if (err == 0) {
+        err = pthread_mutex_lock(&mutex) != 0;
+        mutexLocked = err == 0;
+    }
+    if (err == 0) {
+        savedRngMutex = we_rng_mutex;
+        we_rng_mutex = &mutex;
+        rngMutexSet = 1;
+
+        decryptedLen = RSA_public_decrypt(encryptedLen, encrypted, decrypted,
+                                          weRsaKey, RSA_X931_PADDING);
+
+        we_rng_mutex = savedRngMutex;
+        rngMutexSet = 0;
+        err = decryptedLen != -1;
+    }
+    if (mutexLocked) {
+        int rc = pthread_mutex_unlock(&mutex);
+
+        if (err == 0) {
+            err = rc != 0;
+        }
+        mutexLocked = 0;
+    }
+
+    if (rngMutexSet) {
+        we_rng_mutex = savedRngMutex;
+    }
+    if (mutexInited) {
+        pthread_mutex_destroy(&mutex);
+    }
+    if (attrInited) {
+        pthread_mutexattr_destroy(&attr);
+    }
+    OPENSSL_free(decrypted);
+    OPENSSL_free(encrypted);
+    RSA_free(osslRsaKey);
+    RSA_free(weRsaKey);
+
+    return err;
+}
+#endif
+#endif
+
 int test_rsa_direct_priv_dec(ENGINE *e, void *data)
 {
     int err = 0;
@@ -794,6 +991,13 @@ int test_rsa_direct_priv_dec(ENGINE *e, void *data)
         err = test_rsa_direct(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
                               PRIVATE_DECRYPT);
     }
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    defined(WOLFSSL_PTHREADS) && !defined(TEST_MULTITHREADED)
+    if (err == 0) {
+        PRINT_MSG("Check lock failure preserves RSA RNG mutex ownership.");
+        err = test_rsa_priv_dec_lock_failure(e);
+    }
+#endif
 
     return err;
 }
@@ -832,6 +1036,14 @@ int test_rsa_direct_pub_dec(ENGINE *e, void *data)
         err = test_rsa_direct(e, rsa_key_der_1024, sizeof(rsa_key_der_1024),
                               PUBLIC_DECRYPT);
     }
+#if defined(WE_RSA_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED) && \
+    defined(WOLFSSL_PTHREADS) && !defined(TEST_MULTITHREADED) && \
+    defined(WE_HAVE_RSA_X931)
+    if (err == 0) {
+        PRINT_MSG("Check RSA X9.31 public decrypt locks the global RNG.");
+        err = test_rsa_x931_lock_failure(e);
+    }
+#endif
 
     return err;
 }
@@ -961,6 +1173,87 @@ static int test_rsa_sign_verify_pad(ENGINE *e, int padMode, const EVP_MD *md,
     return err;
 }
 
+#ifdef WE_HAVE_RSA_X931
+static int test_rsa_x931_fixed_width(ENGINE *e)
+{
+    int err = 0;
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    const unsigned char *p = rsa_key_der_2048;
+    unsigned char buf[20] = { 0 };
+    unsigned char *rsaSig = NULL;
+    unsigned char *recovered = NULL;
+    size_t rsaSigLen = 0;
+    size_t rsaSigCap = 0;
+    size_t recoveredLen = 0;
+
+    buf[sizeof(buf) - 2] = 0x01;
+    buf[sizeof(buf) - 1] = 0x6c;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        rsaSigCap = (size_t)EVP_PKEY_size(pkey) + 16;
+        rsaSig = (unsigned char *)OPENSSL_malloc(rsaSigCap);
+        err = rsaSig == NULL;
+    }
+
+    if (err == 0) {
+        XMEMSET(rsaSig, 0xa5, rsaSigCap);
+        rsaSigLen = rsaSigCap;
+        err = test_digest_sign(pkey, e, buf, sizeof(buf), EVP_sha256(),
+                               rsaSig, &rsaSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = rsaSigLen != (size_t)EVP_PKEY_size(pkey);
+    }
+    if (err == 0) {
+        err = test_digest_verify(pkey, NULL, buf, sizeof(buf), EVP_sha256(),
+                                 rsaSig, rsaSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        recoveredLen = rsaSigCap;
+        recovered = (unsigned char *)OPENSSL_malloc(recoveredLen);
+        err = recovered == NULL;
+    }
+    if (err == 0) {
+    #if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        err = EVP_PKEY_set1_engine(pkey, e) != 1;
+        if (err == 0) {
+            ctx = EVP_PKEY_CTX_new(pkey, NULL);
+        }
+    #else
+        ctx = EVP_PKEY_CTX_new(pkey, e);
+    #endif
+        err = (err != 0) || (ctx == NULL);
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify_recover_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_X931_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        XMEMSET(recovered, 0xa5, recoveredLen);
+        err = EVP_PKEY_verify_recover(ctx, recovered, &recoveredLen, rsaSig,
+                                      rsaSigLen) != 1;
+    }
+    if (err == 0) {
+        err = recoveredLen > (size_t)EVP_PKEY_size(pkey);
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+    OPENSSL_free(recovered);
+    OPENSSL_free(rsaSig);
+
+    return err;
+}
+#endif
+
 int test_rsa_sign_sha1(ENGINE *e, void *data)
 {
     int err = 0;
@@ -1044,6 +1337,93 @@ int test_rsa_sign_verify_no_pad(ENGINE *e, void *data)
 #endif
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+static int test_rsa_pss_saltlen_persistence(ENGINE *e)
+{
+    int err = 0;
+    int saltLen = 0;
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    const unsigned char *p = rsa_key_der_2048;
+    unsigned char hash[SHA384_DIGEST_LENGTH] = { 0 };
+    unsigned char *sig = NULL;
+    size_t sigLen = 0;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (err == 0) {
+        err = EVP_PKEY_set1_engine(pkey, e) != 1;
+    }
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(pkey, NULL);
+        err = ctx == NULL;
+    }
+#else
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(pkey, e);
+        err = ctx == NULL;
+    }
+#endif
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx,
+                                               RSA_PSS_SALTLEN_AUTO) <= 0;
+    }
+    if (err == 0) {
+        sigLen = (size_t)EVP_PKEY_size(pkey);
+        sig = (unsigned char *)OPENSSL_malloc(sigLen);
+        err = sig == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign(ctx, sig, &sigLen, hash,
+                            SHA256_DIGEST_LENGTH) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_get_rsa_pss_saltlen(ctx, &saltLen) <= 0;
+    }
+    if (err == 0) {
+#ifdef WOLFSSL_PSS_LONG_SALT
+        err = saltLen != RSA_PSS_SALTLEN_AUTO;
+#else
+        err = saltLen != EVP_MD_size(EVP_sha256());
+#endif
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha384()) <= 0;
+    }
+    if (err == 0) {
+        sigLen = (size_t)EVP_PKEY_size(pkey);
+        err = EVP_PKEY_sign(ctx, sig, &sigLen, hash,
+                            SHA384_DIGEST_LENGTH) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_get_rsa_pss_saltlen(ctx, &saltLen) <= 0;
+    }
+    if (err == 0) {
+#ifdef WOLFSSL_PSS_LONG_SALT
+        err = saltLen != RSA_PSS_SALTLEN_AUTO;
+#else
+        err = saltLen != EVP_MD_size(EVP_sha384());
+#endif
+    }
+
+    OPENSSL_free(sig);
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+#endif
+
 int test_rsa_sign_verify_pss(ENGINE *e, void *data)
 {
     int err = 0;
@@ -1062,16 +1442,79 @@ int test_rsa_sign_verify_pss(ENGINE *e, void *data)
         err = test_rsa_sign_verify_pad(e, RSA_PKCS1_PSS_PADDING, EVP_sha384(),
                                        EVP_sha512()) == 1;
     }
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    if (err == 0) {
+        err = test_rsa_pss_saltlen_persistence(e);
+    }
+#endif
 
     return err;
 }
 
 #ifdef WE_HAVE_RSA_X931
+static int test_rsa_x931_sig_leading_zero(ENGINE *e)
+{
+    int err;
+    EVP_PKEY *pkey = NULL;
+    unsigned char sslSig[256];
+    unsigned char weSig[256];
+    size_t sslSigLen = sizeof(sslSig);
+    size_t weSigLen = sizeof(weSig);
+    /* SHA-256 X9.31 signature of this message under rsa_key_der_2048 is
+     * n - s with a leading zero byte. */
+    unsigned char msg[20] = {
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x6c
+    };
+    const unsigned char *p = rsa_key_der_2048;
+
+    PRINT_MSG("Sign message whose X9.31 signature has a leading zero byte");
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p, sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        err = test_digest_sign(pkey, NULL, msg, sizeof(msg), EVP_sha256(),
+                               sslSig, &sslSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = sslSigLen != sizeof(sslSig) || sslSig[0] != 0x00;
+    }
+    if (err == 0) {
+        err = test_digest_sign(pkey, e, msg, sizeof(msg), EVP_sha256(),
+                               weSig, &weSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = weSigLen != sslSigLen ||
+              memcmp(weSig, sslSig, sslSigLen) != 0;
+    }
+    if (err == 0) {
+        err = test_digest_verify(pkey, NULL, msg, sizeof(msg), EVP_sha256(),
+                                 weSig, weSigLen, RSA_X931_PADDING);
+    }
+    if (err == 0) {
+        err = test_digest_verify(pkey, e, msg, sizeof(msg), EVP_sha256(),
+                                 sslSig, sslSigLen, RSA_X931_PADDING);
+    }
+
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
 int test_rsa_sign_verify_x931(ENGINE *e, void *data)
 {
+    int err;
+
     (void)data;
 
-    return test_rsa_sign_verify_pad(e, RSA_X931_PADDING, NULL, NULL);
+    err = test_rsa_sign_verify_pad(e, RSA_X931_PADDING, NULL, NULL);
+    if (err == 0) {
+        err = test_rsa_x931_fixed_width(e);
+    }
+    if (err == 0) {
+        err = test_rsa_x931_sig_leading_zero(e);
+    }
+
+    return err;
 }
 #endif /* WE_HAVE_RSA_X931 */
 
@@ -1261,6 +1704,124 @@ int test_rsa_enc_dec_oaep(ENGINE *e, void *data)
     return err;
 }
 
+static int test_rsa_set_oaep_label(EVP_PKEY_CTX *ctx,
+                                    const unsigned char *value, int len)
+{
+    unsigned char *label = NULL;
+    int ret = 0;
+
+    label = (unsigned char *)OPENSSL_malloc((size_t)len);
+    if (label != NULL) {
+        XMEMCPY(label, value, (size_t)len);
+        ret = EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label, len);
+        if (ret <= 0) {
+            OPENSSL_free(label);
+        }
+    }
+
+    return ret;
+}
+
+int test_rsa_oaep_label(ENGINE *e, void *data)
+{
+    int err = 0;
+    int labelLen;
+    const unsigned char *der = rsa_key_der_2048;
+    const unsigned char labelA[] = "label A";
+    const unsigned char labelB[] = "label B";
+    const unsigned char message[] = "OAEP label test";
+    unsigned char ciphertext[256];
+    unsigned char plaintext[256];
+    unsigned char *gotLabel = NULL;
+    unsigned char *copiedLabel = NULL;
+    size_t ciphertextLen = sizeof(ciphertext);
+    size_t plaintextLen = sizeof(plaintext);
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *encryptCtx = NULL;
+    EVP_PKEY_CTX *copyCtx = NULL;
+    EVP_PKEY_CTX *decryptCtx = NULL;
+
+    (void)data;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        encryptCtx = EVP_PKEY_CTX_new(pkey, e);
+        err = encryptCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_encrypt_init(encryptCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(encryptCtx,
+                                            RSA_PKCS1_OAEP_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = test_rsa_set_oaep_label(encryptCtx, labelA,
+                                      (int)sizeof(labelA)) <= 0;
+    }
+    if (err == 0) {
+        labelLen = EVP_PKEY_CTX_get0_rsa_oaep_label(encryptCtx, &gotLabel);
+        err = labelLen != (int)sizeof(labelA) || gotLabel == NULL ||
+              XMEMCMP(gotLabel, labelA, sizeof(labelA)) != 0;
+    }
+    if (err == 0) {
+        copyCtx = EVP_PKEY_CTX_dup(encryptCtx);
+        err = copyCtx == NULL;
+    }
+    if (err == 0) {
+        labelLen = EVP_PKEY_CTX_get0_rsa_oaep_label(copyCtx, &copiedLabel);
+        err = labelLen != (int)sizeof(labelA) || copiedLabel == gotLabel ||
+              XMEMCMP(copiedLabel, labelA, sizeof(labelA)) != 0;
+    }
+    EVP_PKEY_CTX_free(encryptCtx);
+    encryptCtx = NULL;
+    if (err == 0) {
+        err = EVP_PKEY_encrypt(copyCtx, ciphertext, &ciphertextLen, message,
+                                sizeof(message)) != 1;
+    }
+    if (err == 0) {
+        decryptCtx = EVP_PKEY_CTX_new(pkey, e);
+        err = decryptCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_decrypt_init(decryptCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(decryptCtx,
+                                            RSA_PKCS1_OAEP_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = test_rsa_set_oaep_label(decryptCtx, labelA,
+                                      (int)sizeof(labelA)) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_decrypt(decryptCtx, plaintext, &plaintextLen,
+                                ciphertext, ciphertextLen) != 1;
+    }
+    if (err == 0) {
+        err = plaintextLen != sizeof(message) ||
+              XMEMCMP(plaintext, message, sizeof(message)) != 0;
+    }
+    if (err == 0) {
+        err = test_rsa_set_oaep_label(decryptCtx, labelB,
+                                      (int)sizeof(labelB)) <= 0;
+    }
+    if (err == 0) {
+        plaintextLen = sizeof(plaintext);
+        err = EVP_PKEY_decrypt(decryptCtx, plaintext, &plaintextLen,
+                                ciphertext, ciphertextLen) > 0;
+    }
+
+    EVP_PKEY_CTX_free(decryptCtx);
+    EVP_PKEY_CTX_free(copyCtx);
+    EVP_PKEY_CTX_free(encryptCtx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
 int test_rsa_pkey_keygen(ENGINE *e, void *data)
 {
     int err;
@@ -1310,6 +1871,9 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
         PRINT_MSG("Change the public exponent w/ ctrl command");
         err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_KEYGEN,
                                 EVP_PKEY_CTRL_RSA_KEYGEN_PUBEXP, 0, eCmd) <= 0;
+        if (err == 0) {
+            eCmd = NULL;
+        }
     }
     if (err == 0) {
         PRINT_MSG("Generate RSA key w/ new parameters");
@@ -1325,7 +1889,7 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
         err = BN_num_bits(n) != newKeySize;
     }
     if (err == 0) {
-        err = BN_cmp(eCmd, eKey) != 0;
+        err = BN_get_word(eKey) != 3;
     }
 
     if (err == 0) {
@@ -1340,6 +1904,270 @@ int test_rsa_pkey_keygen(ENGINE *e, void *data)
     BN_free(eCmd);
     EVP_PKEY_free(pkey);
     EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
+int test_rsa_pkey_large_exponent(ENGINE *e, void *data)
+{
+    int err = 0;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+    BIGNUM *requestedExp = NULL;
+    const BIGNUM *keyExp = NULL;
+    const RSA *rsaKey = NULL;
+
+    (void)data;
+
+    if (sizeof(long) <= sizeof(int)) {
+        return 0;
+    }
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, e);
+    err = ctx == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, 2048) <= 0;
+    }
+    if (err == 0) {
+        requestedExp = BN_new();
+        err = requestedExp == NULL;
+    }
+    if (err == 0) {
+        err = BN_set_word(requestedExp, (BN_ULONG)INT_MAX + 6U) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_keygen_pubexp(ctx, requestedExp) <= 0;
+        if (err == 0) {
+            requestedExp = NULL;
+        }
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &pkey) != 1;
+    }
+    if (err == 0) {
+        rsaKey = EVP_PKEY_get0_RSA(pkey);
+        err = rsaKey == NULL;
+    }
+    if (err == 0) {
+        RSA_get0_key(rsaKey, NULL, &keyExp, NULL);
+        err = keyExp == NULL ||
+              BN_get_word(keyExp) != (BN_ULONG)INT_MAX + 6U;
+    }
+
+    BN_free(requestedExp);
+    EVP_PKEY_free(pkey);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+
+int test_rsa_pkey_sign_missing_data(ENGINE *e, void *data)
+{
+    int err = 0;
+    const unsigned char *der = rsa_key_der_1024;
+    unsigned char digest[20] = {0};
+    size_t sigLen = 0;
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    void *engineData = NULL;
+
+    (void)data;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_1024));
+    err = pkey == NULL;
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(pkey, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(ctx) != 1;
+    }
+    if (err == 0) {
+        engineData = EVP_PKEY_CTX_get_data(ctx);
+        err = engineData == NULL;
+    }
+    if (err == 0) {
+        EVP_PKEY_CTX_set_data(ctx, NULL);
+        err = EVP_PKEY_sign(ctx, NULL, &sigLen, digest, sizeof(digest)) > 0;
+        EVP_PKEY_CTX_set_data(ctx, engineData);
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
+int test_rsa_pkey_sign_digest_length(ENGINE *e, void *data)
+{
+    int err = 0;
+    const unsigned char *der = rsa_key_der_2048;
+    unsigned char digest[128] = {0};
+    unsigned char sig[256];
+    size_t sigLen = sizeof(sig);
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+
+    (void)data;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(pkey, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PADDING) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign(ctx, sig, &sigLen, digest, sizeof(digest)) > 0;
+    }
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+
+    return err;
+}
+
+static int test_rsa_verify_recover_digest_padding(ENGINE *e, EVP_PKEY *pkey,
+                                                   int padding)
+{
+    int err = 0;
+    unsigned char digest[32] = {0};
+    unsigned char signature[256];
+    unsigned char recovered[32];
+    unsigned char shortRecovered[33];
+    size_t signatureLen = sizeof(signature);
+    size_t recoveredLen = sizeof(recovered);
+    EVP_PKEY_CTX *signCtx = NULL;
+    EVP_PKEY_CTX *recoverCtx = NULL;
+    EVP_PKEY_CTX *verifyCtx = NULL;
+
+    digest[0] = 0x12;
+    digest[sizeof(digest) - 1] = 0x34;
+
+    signCtx = EVP_PKEY_CTX_new(pkey, e);
+    err = signCtx == NULL;
+    if (err == 0) {
+        err = EVP_PKEY_sign_init(signCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(signCtx, padding) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(signCtx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_sign(signCtx, signature, &signatureLen, digest,
+                            sizeof(digest)) != 1;
+    }
+
+    if (err == 0) {
+        recoverCtx = EVP_PKEY_CTX_new(pkey, e);
+        err = recoverCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify_recover_init(recoverCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(recoverCtx, padding) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(recoverCtx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify_recover(recoverCtx, recovered, &recoveredLen,
+                                      signature, signatureLen) != 1;
+    }
+    if (err == 0) {
+        err = recoveredLen != sizeof(digest) ||
+              XMEMCMP(recovered, digest, sizeof(digest)) != 0;
+    }
+    if (err == 0) {
+        XMEMSET(shortRecovered, 0xa5, sizeof(shortRecovered));
+        recoveredLen = sizeof(digest) - 1;
+        err = EVP_PKEY_verify_recover(recoverCtx, shortRecovered, &recoveredLen,
+                                      signature, signatureLen) > 0 ||
+              shortRecovered[sizeof(digest) - 1] != 0xa5 ||
+              shortRecovered[sizeof(digest)] != 0xa5;
+    }
+
+    if (err == 0) {
+        verifyCtx = EVP_PKEY_CTX_new(pkey, e);
+        err = verifyCtx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify_init(verifyCtx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_rsa_padding(verifyCtx, padding) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_set_signature_md(verifyCtx, EVP_sha256()) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_verify(verifyCtx, signature, signatureLen, digest,
+                              sizeof(digest)) != 1;
+    }
+
+#if defined(WE_HAVE_SHA3_256) && !defined(HAVE_FIPS) && \
+    !defined(HAVE_FIPS_VERSION)
+    if (err == 0 && padding == RSA_PKCS1_PADDING) {
+        err = EVP_PKEY_CTX_set_signature_md(signCtx, EVP_sha3_256()) <= 0;
+    }
+    if (err == 0 && padding == RSA_PKCS1_PADDING) {
+        signatureLen = sizeof(signature);
+        err = EVP_PKEY_sign(signCtx, signature, &signatureLen, digest,
+                            sizeof(digest)) != 1;
+    }
+    if (err == 0 && padding == RSA_PKCS1_PADDING) {
+        recoveredLen = sizeof(recovered);
+        err = EVP_PKEY_verify_recover(recoverCtx, recovered, &recoveredLen,
+                                      signature, signatureLen) > 0;
+    }
+#endif
+
+    EVP_PKEY_CTX_free(verifyCtx);
+    EVP_PKEY_CTX_free(recoverCtx);
+    EVP_PKEY_CTX_free(signCtx);
+
+    return err;
+}
+
+int test_rsa_verify_recover_digest(ENGINE *e, void *data)
+{
+    int err = 0;
+    const unsigned char *der = rsa_key_der_2048;
+    EVP_PKEY *pkey = NULL;
+
+    (void)data;
+
+    pkey = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &der,
+                          (long)sizeof(rsa_key_der_2048));
+    err = pkey == NULL;
+    if (err == 0) {
+        err = test_rsa_verify_recover_digest_padding(e, pkey,
+                                                      RSA_PKCS1_PADDING);
+    }
+#ifdef WE_HAVE_RSA_X931
+    if (err == 0) {
+        err = test_rsa_verify_recover_digest_padding(e, pkey,
+                                                      RSA_X931_PADDING);
+    }
+#endif
+
+    EVP_PKEY_free(pkey);
 
     return err;
 }

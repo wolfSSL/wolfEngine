@@ -43,22 +43,16 @@ static ENGINE *engine_wolfengine(void)
     int rc;
     ENGINE *ret;
 
-    WOLFENGINE_ENTER(WE_LOG_ENGINE, "engine_wolfengine");
-
     /* Known, still-reachable memory leak from openssl internals on 1.0.2 */
     ret = ENGINE_new();
     if (ret == NULL) {
-        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_ENGINE, "ENGINE_new", ret);
         return NULL;
     }
     rc = wolfengine_bind(ret, wolfengine_id);
     if (rc == 0) {
-        WOLFENGINE_ERROR_FUNC(WE_LOG_ENGINE, "wolfengine_bind", rc);
         ENGINE_free(ret);
         return NULL;
     }
-
-    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "engine_wolfengine", 1);
 
     return ret;
 }
@@ -68,18 +62,18 @@ static ENGINE *engine_wolfengine(void)
  */
 void ENGINE_load_wolfengine(void)
 {
-    ENGINE *toadd = engine_wolfengine();
+    ENGINE *toadd;
 
-    WOLFENGINE_ENTER(WE_LOG_ENGINE, "ENGINE_load_wolfengine");
-
+    if (we_engine_bind_available() == 0) {
+        return;
+    }
+    toadd = engine_wolfengine();
     if (!toadd)
         return;
     ENGINE_add(toadd);
     ENGINE_free(toadd);
     /* Known, still-reachable memory leak from openssl internals on 1.0.2 */
     ERR_clear_error();
-
-    WOLFENGINE_LEAVE(WE_LOG_ENGINE, "ENGINE_load_wolfengine", 1);
 }
 
 #ifndef WE_NO_DYNAMIC_ENGINE

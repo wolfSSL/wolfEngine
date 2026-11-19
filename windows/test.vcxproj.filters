@@ -42,6 +42,9 @@
     <ClCompile Include="..\test\test_logging.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\test\test_openssl_bc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\test\test_pbe.c">
       <Filter>Source Files</Filter>
     </ClCompile>

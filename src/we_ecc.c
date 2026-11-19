@@ -132,7 +132,7 @@ static int we_ec_set_private(ecc_key *key, int curveId, const EC_KEY *ecKey)
     unsigned char* privBuf = NULL;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_set_private");
-    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [key = %p, curveId = %p, "
+    WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [key = %p, curveId = %d, "
                            "ecKey = %p]", key, curveId, ecKey);
 
     /* Get the EC key private key as binary data. */
@@ -321,6 +321,8 @@ typedef struct we_Ecc
 #endif
 } we_Ecc;
 
+static void we_ec_cleanup(EVP_PKEY_CTX *ctx);
+
 /**
  * Initialize and set the data required to complete an EC operation.
  *
@@ -332,6 +334,9 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
     int ret, rc;
     we_Ecc *ecc;
     int keyInited = 0;
+#ifndef WE_ECC_USE_GLOBAL_RNG
+    int rngInited = 0;
+#endif
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_init");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [ctx = %p]", ctx);
@@ -358,7 +363,10 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
 #ifndef WE_ECC_USE_GLOBAL_RNG
     if (ret == 1) {
         rc = wc_InitRng(&ecc->rng);
-        if (rc != 0) {
+        if (rc == 0) {
+            rngInited = 1;
+        }
+        else {
             ret = 0;
         }
     }
@@ -385,7 +393,9 @@ static int we_ec_init(EVP_PKEY_CTX *ctx)
 
     if (ret == 0 && ecc != NULL) {
 #ifndef WE_ECC_USE_GLOBAL_RNG
-        wc_FreeRng(&ecc->rng);
+        if (rngInited) {
+            wc_FreeRng(&ecc->rng);
+        }
 #endif
         /* Make sure wolfSSL EC key is freed if initialized. */
         if (keyInited) {
@@ -430,6 +440,7 @@ static int we_ec_p192_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -466,6 +477,7 @@ static int we_ec_p224_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -503,6 +515,7 @@ static int we_ec_p256_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -540,6 +553,7 @@ static int we_ec_p384_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -578,6 +592,7 @@ static int we_ec_p521_init(EVP_PKEY_CTX *ctx)
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_new_by_curve_name",
                                        ecc->group);
             ret = 0;
+            we_ec_cleanup(ctx);
         }
     }
 
@@ -602,15 +617,88 @@ static int we_ec_copy(EVP_PKEY_CTX *dst, const EVP_PKEY_CTX *src)
 static int we_ec_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src)
 #endif
 {
+    int ret = 1;
+    we_Ecc *srcEcc;
+    we_Ecc *dstEcc = NULL;
+
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_copy");
 
-    /* Nothing to copy as src is empty. */
-    (void)src;
-    (void)dst;
+    srcEcc = (we_Ecc *)EVP_PKEY_CTX_get_data(src);
+    EVP_PKEY_CTX_set_data(dst, NULL);
 
-    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_copy", 1);
+    if (srcEcc != NULL) {
+        ret = we_ec_init(dst);
+    }
+    if (ret == 1 && srcEcc != NULL) {
+        dstEcc = (we_Ecc *)EVP_PKEY_CTX_get_data(dst);
+        dstEcc->curveId = srcEcc->curveId;
+        dstEcc->curveName = srcEcc->curveName;
+#ifdef WE_HAVE_ECDSA
+        dstEcc->md = srcEcc->md;
+#endif
+#ifdef WE_HAVE_ECKEYGEN
+        if (srcEcc->group != NULL) {
+            dstEcc->group = EC_GROUP_dup(srcEcc->group);
+            if (dstEcc->group == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "EC_GROUP_dup",
+                                           dstEcc->group);
+                ret = 0;
+            }
+        }
+#endif
+#ifdef WE_HAVE_ECDH
+        dstEcc->coFactor = srcEcc->coFactor;
+        dstEcc->kdfType = srcEcc->kdfType;
+        dstEcc->kdfMd = srcEcc->kdfMd;
+        dstEcc->kdfOutLen = srcEcc->kdfOutLen;
+        if (ret == 1 && srcEcc->peerKey != NULL) {
+            if (srcEcc->peerKeyLen <= 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid peer key length");
+                ret = 0;
+            }
+            else {
+                dstEcc->peerKey = OPENSSL_malloc(srcEcc->peerKeyLen);
+                if (dstEcc->peerKey == NULL) {
+                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                               dstEcc->peerKey);
+                    ret = 0;
+                }
+                else {
+                    XMEMCPY(dstEcc->peerKey, srcEcc->peerKey,
+                            srcEcc->peerKeyLen);
+                    dstEcc->peerKeyLen = srcEcc->peerKeyLen;
+                }
+            }
+        }
+        if (ret == 1 && srcEcc->kdfUkm != NULL) {
+            if (srcEcc->kdfUkmLen <= 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid KDF UKM length");
+                ret = 0;
+            }
+            else {
+                dstEcc->kdfUkm = OPENSSL_malloc(srcEcc->kdfUkmLen);
+                if (dstEcc->kdfUkm == NULL) {
+                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_malloc",
+                                               dstEcc->kdfUkm);
+                    ret = 0;
+                }
+                else {
+                    XMEMCPY(dstEcc->kdfUkm, srcEcc->kdfUkm,
+                            srcEcc->kdfUkmLen);
+                    dstEcc->kdfUkmLen = srcEcc->kdfUkmLen;
+                }
+            }
+        }
+#endif
+    }
 
-    return 1;
+    if (ret == 0 && dstEcc != NULL) {
+        we_ec_cleanup(dst);
+    }
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_copy", ret);
+
+    return ret;
 }
 
 /**
@@ -637,6 +725,10 @@ static void we_ec_cleanup(EVP_PKEY_CTX *ctx)
         if (ecc->peerKey != NULL) {
             OPENSSL_free(ecc->peerKey);
             ecc->peerKey = NULL;
+        }
+        if (ecc->kdfUkm != NULL) {
+            OPENSSL_free(ecc->kdfUkm);
+            ecc->kdfUkm = NULL;
         }
 #endif
 #ifndef WE_ECC_USE_GLOBAL_RNG
@@ -833,6 +925,10 @@ static int we_pkey_ecdsa_verify(EVP_PKEY_CTX *ctx, const unsigned char *sig,
             ecc->pubKeySet = 1;
         }
     }
+    if (ret != 1) {
+        /* Setup failures are errors, not invalid signatures. */
+        ret = -1;
+    }
     /* wolfSSL FIPS is not checking SEQUENCE length. */
     if ((ret == 1) && ((sig == NULL) || (sigLen < 2))) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Signature too short");
@@ -986,10 +1082,12 @@ static int we_ec_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey)
         if (len < 0) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                   "wc_ecc_get_curve_size_from_id", len);
+            ret = 0;
         }
 
         /* New OpenSSL EC_KEY object to hold new key. */
-        ret = (ecKey = EC_KEY_new()) != NULL;
+        if (ret == 1)
+            ret = (ecKey = EC_KEY_new()) != NULL;
     }
 
     if (ret == 1) {
@@ -1082,6 +1180,11 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
     /* Get the internal EC key object. */
     ret = (ecc = (we_Ecc *)EVP_PKEY_CTX_get_data(ctx)) != NULL;
 
+    if ((ret == 1) && (!ecc->privKeySet)) {
+        /* Get the OpenSSL EC_KEY object and set curve id. */
+        ret = we_ec_get_ec_key(ctx, &ecKey, ecc);
+    }
+
     if (ret == 1) {
         ret = we_ecc_check_curve_usage(ecc->curveId);
         if (ret != 1) {
@@ -1090,16 +1193,26 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
     }
 
     if ((ret == 1) && (!ecc->privKeySet)) {
-        /* Get the OpenSSL EC_KEY object and set curve id. */
-        ret = we_ec_get_ec_key(ctx, &ecKey, ecc);
-        if (ret == 1) {
-            /* Set private key in wolfSSL object. */
-            ret = we_ec_set_private(&ecc->key, ecc->curveId, ecKey);
-        }
+        /* Set private key in wolfSSL object. */
+        ret = we_ec_set_private(&ecc->key, ecc->curveId, ecKey);
         if (ret == 1) {
             /* Only do this once as private will not change. */
             ecc->privKeySet = 1;
         }
+    }
+
+    if ((ret == 1) && (ecc->kdfType == EVP_PKEY_ECDH_KDF_X9_63) &&
+        ((ecc->kdfMd == NULL) || (ecc->kdfOutLen <= 0) ||
+         (we_nid_to_wc_hash_type(EVP_MD_type(ecc->kdfMd)) ==
+          WC_HASH_TYPE_NONE))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid ECDH KDF configuration");
+        ret = 0;
+    }
+    if ((ret == 1) && (key != NULL) &&
+        (ecc->kdfType == EVP_PKEY_ECDH_KDF_X9_63) &&
+        (*keyLen < (size_t)ecc->kdfOutLen)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "ECDH KDF output buffer too small");
+        ret = 0;
     }
 
     if ((ret == 1) && (key == NULL)) {
@@ -1109,6 +1222,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
             if (rc < 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK,
                                       "wc_ecc_get_curve_size_from_id", rc);
+                ret = 0;
             }
             else {
                 *keyLen = (size_t)rc;
@@ -1118,6 +1232,19 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
         }
         else {
             *keyLen = ecc->kdfOutLen;
+        }
+    }
+    if ((ret == 1) && (key != NULL) &&
+        ((ecc->peerKey == NULL) || (ecc->peerKeyLen <= 0))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Peer key not set");
+        ret = 0;
+    }
+    if ((ret == 1) && (key != NULL)) {
+        rc = wc_ecc_get_curve_size_from_id(ecc->curveId);
+        if ((rc <= 0) || (ecc->peerKeyLen != (2 * rc + 1)) ||
+            (ecc->peerKey[0] != POINT_CONVERSION_UNCOMPRESSED)) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid peer key encoding");
+            ret = 0;
         }
     }
     if ((ret == 1) && (key != NULL)) {
@@ -1168,6 +1295,7 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                         /* Maximum output size supported for curves supported.
                          */
                         unsigned char out[72];
+                        word32 outputLen = (word32)ecc->kdfOutLen;
 
                         /* Get buffer length. */
                         len = (word32)sizeof(out);
@@ -1186,18 +1314,22 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
                                 we_nid_to_wc_hash_type(EVP_MD_type(ecc->kdfMd));
                             /* KDF secret to key. */
                             rc = wc_X963_KDF(hash, out, len, ecc->kdfUkm,
-                                             ecc->kdfUkmLen, key, (word32)*keyLen);
+                                             ecc->kdfUkmLen, key, outputLen);
                             if (rc != 0) {
                                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_X963_KDF", rc);
                                 ret = 0;
                             }
+                            else {
+                                len = outputLen;
+                            }
                         }
+                        OPENSSL_cleanse(out, sizeof(out));
                     }
-                }
             #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
                 && !defined(WE_SINGLE_THREADED)
-                wc_UnLockMutex(we_rng_mutex);
+                    wc_UnLockMutex(we_rng_mutex);
             #endif
+                }
             }
             if (ret == 1) {
                 /* Return length of secret. */
@@ -1227,7 +1359,8 @@ static int we_ecdh_derive(EVP_PKEY_CTX *ctx, unsigned char *key, size_t *keyLen)
  * @param  type  [in]  Type of operation to perform.
  * @param  num   [in]  Integer parameter.
  * @param  ptr   [in]  Pointer parameter.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
@@ -1235,7 +1368,11 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
     we_Ecc *ecc;
 #ifdef WE_HAVE_ECDH
     EVP_PKEY *peerKey;
+    EVP_PKEY *localKey;
     EC_KEY *ecPeerKey = NULL;
+    const EC_KEY *ecLocalKey;
+    const EC_GROUP *localGroup;
+    const EC_GROUP *peerGroup;
 #endif
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
@@ -1318,14 +1455,32 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 peerKey = (EVP_PKEY *)ptr;
                 /* Get the OpenSSL EC_KEY object. */
             #if OPENSSL_VERSION_NUMBER >= 0x30000000L
-                ret = (ecPeerKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(peerKey)) !=
-                                                                           NULL;
+                if (peerKey != NULL)
+                    ecPeerKey = (EC_KEY*)EVP_PKEY_get0_EC_KEY(peerKey);
             #else
-                ret = (ecPeerKey = EVP_PKEY_get0_EC_KEY(peerKey)) != NULL;
+                if (peerKey != NULL)
+                    ecPeerKey = EVP_PKEY_get0_EC_KEY(peerKey);
             #endif
+                ret = ecPeerKey != NULL;
+                if (ret == 1) {
+                    localKey = EVP_PKEY_CTX_get0_pkey(ctx);
+                    ecLocalKey = localKey != NULL ?
+                                 EVP_PKEY_get0_EC_KEY(localKey) : NULL;
+                    localGroup = ecLocalKey != NULL ?
+                                 EC_KEY_get0_group(ecLocalKey) : NULL;
+                    peerGroup = EC_KEY_get0_group(ecPeerKey);
+                    if ((localGroup == NULL) || (peerGroup == NULL) ||
+                        (EC_GROUP_cmp(localGroup, peerGroup, NULL) != 0)) {
+                        WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                             "Peer key curve does not match");
+                        ret = 0;
+                    }
+                }
                 if (ret == 1) {
                     /* Replace the peerKey data. */
                     OPENSSL_free(ecc->peerKey);
+                    ecc->peerKey = NULL;
+                    ecc->peerKeyLen = 0;
                     /* Get the EC key public key as an uncompressed point. */
                     ecc->peerKeyLen = (int)EC_KEY_key2buf(ecPeerKey,
                         POINT_CONVERSION_UNCOMPRESSED, &ecc->peerKey, NULL);
@@ -1362,17 +1517,37 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 break;
 
             case EVP_PKEY_CTRL_EC_KDF_MD:
-                ecc->kdfMd = (const EVP_MD *)ptr;
+                if ((ptr != NULL) &&
+                    (we_nid_to_wc_hash_type(
+                        EVP_MD_type((const EVP_MD *)ptr)) ==
+                     WC_HASH_TYPE_NONE)) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid KDF digest");
+                    ret = 0;
+                }
+                else {
+                    ecc->kdfMd = (const EVP_MD *)ptr;
+                }
                 break;
             case EVP_PKEY_CTRL_GET_EC_KDF_MD:
                 *(const EVP_MD **)ptr = ecc->kdfMd;
                 break;
 
             case EVP_PKEY_CTRL_EC_KDF_OUTLEN:
-                ecc->kdfOutLen = num;
+                if (num <= 0) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Invalid KDF output length");
+                    ret = 0;
+                }
+                else {
+                    ecc->kdfOutLen = num;
+                }
                 break;
             case EVP_PKEY_CTRL_GET_EC_KDF_OUTLEN:
-                ret = ecc->kdfOutLen;
+                if (ptr == NULL) {
+                    ret = 0;
+                }
+                else {
+                    *(int *)ptr = ecc->kdfOutLen;
+                }
                 break;
 
             case EVP_PKEY_CTRL_EC_KDF_UKM:
@@ -1396,7 +1571,7 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                           type);
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-                ret = 0;
+                ret = -2;
                 break;
         }
     }
@@ -1413,12 +1588,16 @@ static int we_ec_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  *
  * @param  ctx   [in]  Public key context of operation.
  * @param  type  [in]  String representation of value.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                           const char *value)
 {
     int ret = 1;
+#ifdef WE_HAVE_ECKEYGEN
+    int curveNid;
+#endif
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
     we_Ecc *ecc;
 
@@ -1428,25 +1607,62 @@ static int we_ec_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         ret = 0;
     }
 
+    if ((ret == 1) && ((type == NULL) || (value == NULL))) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Missing EC control value");
+        ret = 0;
+    }
+
     if (ret == 1) {
-        if (XSTRNCMP(type, "ecdh_cofactor_mode", 19) == 0) {
+        if (XSTRCMP(type, "ecdh_cofactor_mode") == 0) {
             WOLFENGINE_MSG(WE_LOG_PK, "received type: ecdh_cofactor_mode");
             ecc->coFactor = (XATOI(value) == 1);
         }
-        else if (XSTRNCMP(type, "ecdh_kdf_md", 19) == 0) {
-            ecc->kdfMd = EVP_get_digestbyname(value);
+        else if (XSTRCMP(type, "ecdh_kdf_md") == 0) {
+            const EVP_MD *md = EVP_get_digestbyname(value);
+
             WOLFENGINE_MSG(WE_LOG_PK, "received type: ecdh_kdf_md");
-            if (ecc->kdfMd == NULL) {
+            if ((md == NULL) ||
+                (we_ec_ctrl(ctx, EVP_PKEY_CTRL_EC_KDF_MD, 0, (void *)md) !=
+                 1)) {
                 XSNPRINTF(errBuff, sizeof(errBuff), "Invalid digest %s", value);
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
                 ret = 0;
             }
         }
+    #ifdef WE_HAVE_ECKEYGEN
+        else if (XSTRCMP(type, "ec_paramgen_curve") == 0) {
+            curveNid = OBJ_txt2nid(value);
+            if (curveNid == NID_undef)
+                curveNid = EC_curve_nist2nid(value);
+            if (curveNid == NID_undef) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Unknown EC curve");
+                ret = 0;
+            }
+            else {
+                ret = we_ec_ctrl(ctx, EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID,
+                                 curveNid, NULL);
+            }
+        }
+        else if (XSTRCMP(type, "ec_param_enc") == 0) {
+            if (XSTRCMP(value, "named_curve") != 0) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                     "Unsupported EC parameter encoding");
+                ret = -2;
+            }
+            else if (ecc->group == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "EC group not set");
+                ret = 0;
+            }
+            else {
+                EC_GROUP_set_asn1_flag(ecc->group, OPENSSL_EC_NAMED_CURVE);
+            }
+        }
+    #endif
         else {
             XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl string %s",
                       type);
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-            ret = 0;
+            ret = -2;
         }
     }
 
@@ -1781,6 +1997,9 @@ static int we_ec_key_keygen(EC_KEY *key)
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
                 ret = 0;
             }
+            else {
+                pEcc = &ecc;
+            }
         }
     }
 #ifndef WE_ECC_USE_GLOBAL_RNG
@@ -1795,8 +2014,6 @@ static int we_ec_key_keygen(EC_KEY *key)
     }
 #endif
     if (ret == 1) {
-        pEcc = &ecc;
-
         /* Generate key. */
 #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
@@ -1911,6 +2128,9 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
             WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_init", rc);
             ret = 0;
         }
+        else {
+            pKey = &key;
+        }
     }
 #if !defined(HAVE_FIPS) || \
     (defined(HAVE_FIPS_VERSION) && HAVE_FIPS_VERSION != 2)
@@ -1936,8 +2156,6 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
     }
 #endif /* !HAVE_FIPS || (HAVE_FIPS_VERSION && HAVE_FIPS_VERSION != 2) */
     if (ret == 1) {
-        pKey = &key;
-
         /* Set private key into wolfSSL key object. */
         ret = we_ec_set_private(pKey, curveId, ecdh);
     }
@@ -1981,11 +2199,11 @@ static int we_ec_key_compute_key(unsigned char **psec, size_t *pseclen,
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_shared_secret", rc);
                 ret = 0;
             }
-        }
     #if defined(WE_ECC_USE_GLOBAL_RNG) && defined(ECC_TIMING_RESISTANT) \
         && !defined(WE_SINGLE_THREADED)
-        wc_UnLockMutex(we_rng_mutex);
+            wc_UnLockMutex(we_rng_mutex);
     #endif
+        }
     }
     if (ret == 1) {
         WOLFENGINE_MSG(WE_LOG_PK, "Calculated ECDH shared secret");
@@ -2187,11 +2405,15 @@ static ECDSA_SIG* we_ecdsa_do_sign_ex(const unsigned char *d, int dlen,
         sBN = BN_bin2bn(s_bin, s_size, sBN);
         if (rBN == NULL || sBN == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "BN_bin2bn", NULL);
+            BN_clear_free(rBN);
+            BN_clear_free(sBN);
             err = 1;
         } else {
             rc = ECDSA_SIG_set0(sig, rBN, sBN);
             if (rc != 1) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "ECDSA_SIG_set0", rc);
+                BN_clear_free(rBN);
+                BN_clear_free(sBN);
                 err = 1;
             }
         }
@@ -2433,11 +2655,11 @@ static int we_ec_key_sign(int type, const unsigned char *dgst, int dLen,
     if (ret == 1 && sig == NULL) {
         /* Return signature size in bytes. */
         *sigLen = wc_ecc_sig_size(&key);
-        WOLFENGINE_MSG(WE_LOG_PK, "sig is NULL, returning size: %zu", *sigLen);
+        WOLFENGINE_MSG(WE_LOG_PK, "sig is NULL, returning size: %u", *sigLen);
     }
     if (ret == 1 && sig != NULL) {
         /* Sign hash with wolfSSL. */
-        outLen = *sigLen;
+        outLen = (word32)wc_ecc_sig_size(&key);
 #if defined(WE_ECC_USE_GLOBAL_RNG) && !defined(WE_SINGLE_THREADED)
         rc = wc_LockMutex(we_rng_mutex);
         if (rc != 0) {
@@ -2496,6 +2718,14 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
     ecc_key *pKey = NULL;
     const EC_GROUP *group;
     int curveId;
+    ECDSA_SIG *decodedSig = NULL;
+    const unsigned char *sigIn;
+    unsigned char encodedSig[ECC_MAX_SIG_SIZE];
+    unsigned char *sigOut;
+    int encodedLen;
+    const BIGNUM *r;
+    const BIGNUM *s;
+    const BIGNUM *order;
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_ec_key_verify");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_PK, "ARGS [type = %d, dgst = %p, dLen = %d, "
@@ -2520,12 +2750,45 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         /* Set public key into wolfSSL key object. */
         ret = we_ec_set_public(&key, curveId, ecKey);
     }
+    if (ret != 1) {
+        /* Setup failures are errors, not invalid signatures. */
+        ret = -1;
+    }
+    if (ret == 1) {
+        ret = -1;
+        if (sig != NULL && sigLen > 0 && sigLen <= (int)sizeof(encodedSig)) {
+            sigIn = sig;
+            decodedSig = d2i_ECDSA_SIG(NULL, &sigIn, sigLen);
+            if (decodedSig != NULL && sigIn == sig + sigLen &&
+                i2d_ECDSA_SIG(decodedSig, NULL) == sigLen) {
+                sigOut = encodedSig;
+                encodedLen = i2d_ECDSA_SIG(decodedSig, &sigOut);
+                if (encodedLen == sigLen &&
+                    XMEMCMP(sig, encodedSig, sigLen) == 0) {
+                    /* Encoding errors must not depend on backend results. */
+                    ECDSA_SIG_get0(decodedSig, &r, &s);
+                    if (!BN_is_negative(r) && !BN_is_negative(s)) {
+                        ret = 1;
+                    }
+                }
+            }
+        }
+    }
     if (ret == 1) {
         /* Verify hash with wolfSSL. */
         rc = wc_ecc_verify_hash(sig, sigLen, dgst, dLen, &res, &key);
         if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
             ret = -1;
+            if (rc == MP_ZERO_E || rc == MP_VAL) {
+                order = EC_GROUP_get0_order(group);
+                if (order != NULL && (BN_is_zero(r) || BN_cmp(r, order) >= 0 ||
+                    BN_is_zero(s) || BN_cmp(s, order) >= 0)) {
+                    ret = 0;
+                }
+            }
+            if (ret == -1) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_ecc_verify_hash", rc);
+            }
         }
     }
     if (ret == 1) {
@@ -2540,6 +2803,7 @@ static int we_ec_key_verify(int type, const unsigned char *dgst, int dLen,
         }
     }
 
+    ECDSA_SIG_free(decodedSig);
     wc_ecc_free(pKey);
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_ec_key_verify", ret);
@@ -2604,7 +2868,7 @@ struct ecdh_method {
  * Compute shared secret with a private-key and a peer's public-key.
  * If key-derivation function is given, calls it with shared secret.
  *
- * @param  out     [in]  buffer to hold computed key.
+ * @param  out     [out] buffer to hold computed key.
  * @param  outlen  [in]  size of out buffer.
  * @param  pub_key [in]  peer's public key.
  * @param  ecdh    [in]  private key.
@@ -2647,7 +2911,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
                 ret = (int)outlen;
             }
             else {
-                WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "KDF", ret);
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_KE, "KDF", NULL);
                 ret = -1;
             }
         }
@@ -2658,7 +2922,7 @@ static int we_ecdh_compute_key(void* out, size_t outlen,
     }
 
     if (secret != NULL) {
-        OPENSSL_free(secret);
+        OPENSSL_clear_free(secret, secretLen);
     }
 
     WOLFENGINE_LEAVE(WE_LOG_KE, "we_ecdh_compute_key", ret);

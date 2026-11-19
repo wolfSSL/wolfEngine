@@ -1,0 +1,20 @@
+diff --git a/crypto/dh/dhtest.c b/crypto/dh/dhtest.c
+--- a/crypto/dh/dhtest.c
++++ b/crypto/dh/dhtest.c
+@@ -140,5 +140,13 @@
+     BN_GENCB_set(&_cb, &cb, out);
+-    if (((a = DH_new()) == NULL) || !DH_generate_parameters_ex(a, 1024,
+-                                                               DH_GENERATOR_5,
+-                                                               &_cb))
++    if ((a = DH_new()) == NULL)
++        goto err;
++    if (a->engine != e ||
++        DH_generate_parameters_ex(a, 1024, DH_GENERATOR_5, &_cb) != 0 ||
++        a->p != NULL || a->q != NULL || a->g != NULL || a->engine != e)
++        goto err;
++    BIO_puts(out, "Legacy DH parameter generation rejected in FIPS mode\n");
++    ERR_clear_error();
++    DH_free(a);
++    a = DH_get_2048_256();
++    if (a == NULL || a->engine != e)
+         goto err;

@@ -23,6 +23,8 @@
 
 #ifdef WE_HAVE_PBE
 
+#include <openssl/pkcs12.h>
+
 static const unsigned char pbeData[] = {
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
@@ -73,7 +75,7 @@ static const unsigned char pbeParamPbe[] = {
  *      OBJ <aes128-cbc>
  */
 static const unsigned char pbeParamPbes2Aes128Cbc[] = {
-    0x30, 0x39,
+    0x30, 0x4b,
           0x30, 0x2a,
                 0x06, 0x09,
                       0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,0x05,0x0C,
@@ -85,9 +87,12 @@ static const unsigned char pbeParamPbes2Aes128Cbc[] = {
                       0x30, 0x0a,
                             0x06, 0x08,
                                   0x2A,0x86,0x48,0x86,0xF7,0x0D,0x02,0x09,
-          0x30, 0x0b,
+          0x30, 0x1d,
                 0x06, 0x09,
                       0x60,0x86,0x48,0x01,0x65,0x03,0x04,0x01,0x02,
+                0x04, 0x10,
+                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
 /* Format of parameters:
@@ -105,7 +110,7 @@ static const unsigned char pbeParamPbes2Aes128Cbc[] = {
  *      OBJ <aes256-cbc>
  */
 static const unsigned char pbeParamPbes2Aes256Cbc[] = {
-    0x30, 0x36,
+    0x30, 0x48,
           0x30, 0x27,
                 0x06, 0x09,
                       0x2A,0x86,0x48,0x86,0xF7,0x0D,0x01,0x05,0x0C,
@@ -116,9 +121,12 @@ static const unsigned char pbeParamPbes2Aes256Cbc[] = {
                       0x30, 0x0a,
                             0x06, 0x08,
                                   0x2A,0x86,0x48,0x86,0xF7,0x0D,0x02,0x0A,
-          0x30, 0x0b,
+          0x30, 0x1d,
                 0x06, 0x09,
                       0x60,0x86,0x48,0x01,0x65,0x03,0x04,0x01,0x2A,
+                0x04, 0x10,
+                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
 static int test_pbe_encipher(ASN1_OBJECT *obj, ASN1_TYPE *param,
@@ -212,6 +220,65 @@ static int test_pbe_sha1_des3_pbkdf1_op(const unsigned char *in, size_t inLen,
 {
     return test_pbe_op(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, pbeParamPbe,
         sizeof(pbeParamPbe), in, inLen, out, outLen, enc_dec);
+}
+
+int test_pbe_invalid_params(ENGINE *e, void *data)
+{
+#ifdef NO_PWDBASED
+    (void)e;
+    (void)data;
+    PRINT_MSG("Not using wolfEngine - PBKDF not available in wolfCrypt");
+    return 0;
+#else
+    int err = 0;
+    int cipherNid = 0;
+    int digestNid = 0;
+    EVP_PBE_KEYGEN *keygen = NULL;
+    EVP_CIPHER_CTX *ctx = NULL;
+    ASN1_TYPE *param = NULL;
+
+    (void)e;
+    (void)data;
+
+    if (EVP_PBE_find(EVP_PBE_TYPE_OUTER, NID_id_pbkdf2, &cipherNid,
+                     &digestNid, &keygen) != 1 || keygen == NULL) {
+        PRINT_MSG("Failed to find PBKDF2 callback");
+        err = 1;
+    }
+    ctx = EVP_CIPHER_CTX_new();
+    if ((err == 0) && (ctx == NULL)) {
+        PRINT_MSG("Failed to create PBKDF2 cipher context");
+        err = 1;
+    }
+    if ((err == 0) && (keygen(ctx, "password", 8, NULL, NULL, NULL, 1) != 0)) {
+        PRINT_MSG("PBKDF2 callback accepted missing parameters");
+        err = 1;
+    }
+    param = ASN1_TYPE_new();
+    if ((err == 0) && (param == NULL)) {
+        PRINT_MSG("Failed to create PBKDF2 parameters");
+        err = 1;
+    }
+    if (err == 0) {
+        ASN1_TYPE_set(param, V_ASN1_NULL, NULL);
+        if (keygen(ctx, "password", 8, param, NULL, NULL, 1) != 0) {
+            PRINT_MSG("PBKDF2 callback accepted non-sequence parameters");
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        ASN1_TYPE_set(param, V_ASN1_SEQUENCE, NULL);
+        if (keygen(ctx, "password", 8, param, NULL, NULL, 1) != 0) {
+            PRINT_MSG("PBKDF2 callback accepted an empty sequence");
+            err = 1;
+        }
+    }
+
+    ASN1_TYPE_free(param);
+    EVP_CIPHER_CTX_free(ctx);
+    ERR_clear_error();
+    return err;
+#endif
 }
 
 static int test_pbe_sha1_des3_pbkdf1(void)
@@ -339,6 +406,9 @@ static int test_pbe_pbes2_aes256_cbc(void)
 int test_pbe(ENGINE *e, void *data)
 {
     int err;
+    int cipherNid = NID_undef;
+    int digestNid = NID_undef;
+    EVP_PBE_KEYGEN *keygen = NULL;
 
     (void)e;
     (void)data;
@@ -347,8 +417,20 @@ int test_pbe(ENGINE *e, void *data)
     PRINT_MSG("Not using wolfEngine - PBKDF not available in wolfCrypt");
 #endif
 
-    PRINT_MSG("PBE DES-EDE3-CBC SHA-1");
-    err = test_pbe_sha1_des3_pbkdf1();
+#ifndef NO_PWDBASED
+    if ((EVP_PBE_find(EVP_PBE_TYPE_OUTER,
+            NID_pbe_WithSHA1And3_Key_TripleDES_CBC, &cipherNid, &digestNid,
+            &keygen) != 1) || (keygen == NULL) ||
+            (keygen == PKCS12_PBE_keyivgen)) {
+        PRINT_MSG("wolfEngine PBE key generation is not registered");
+        err = 1;
+    }
+    else
+#endif
+    {
+        PRINT_MSG("PBE DES-EDE3-CBC SHA-1");
+        err = test_pbe_sha1_des3_pbkdf1();
+    }
     if (err == 0) {
         PRINT_MSG("PBES2 AES128-CBC HMAC-SHA-256");
         err = test_pbe_pbes2_aes128_cbc();

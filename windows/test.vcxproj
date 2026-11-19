@@ -326,6 +326,7 @@
     <ClCompile Include="..\test\test_hkdf.c" />
     <ClCompile Include="..\test\test_hmac.c" />
     <ClCompile Include="..\test\test_logging.c" />
+    <ClCompile Include="..\test\test_openssl_bc.c" />
     <ClCompile Include="..\test\test_pbe.c" />
     <ClCompile Include="..\test\test_pkey.c" />
     <ClCompile Include="..\test\test_rand.c" />

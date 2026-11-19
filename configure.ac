@@ -16,6 +16,10 @@ dnl m4_include([m4/ax_check_wolfssl.m4])
 
 AM_INIT_AUTOMAKE([1.11  -Wall -Werror -Wno-portability foreign tar-ustar subdir-objects no-define color-tests])
 LT_INIT([disable-static pic-only])
+AM_CONDITIONAL([BUILD_STATIC_TESTS], [test "$enable_static" = "yes"])
+AS_IF([test "$enable_shared" != "no"], [
+    AC_DEFINE([WE_HAVE_SHARED_LIBRARY], [1], [Build the shared engine library])
+])
 
 # capture user C_EXTRA_FLAGS from ./configure line, CFLAGS may hold -g -O2 even
 # if user doesn't override, no way to tell
@@ -52,6 +56,44 @@ AC_SUBST([WOLFENGINE_LIBRARY_VERSION_SECOND])
 AC_SUBST([WOLFENGINE_LIBRARY_VERSION_THIRD])
 
 LIBS="$LIBS -ldl"
+AC_CHECK_HEADERS([dlfcn.h link.h valgrind/memcheck.h])
+AC_CACHE_CHECK([for the dladdr module-location interface], [we_cv_dladdr], [
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+        #if defined(__linux__) && !defined(_GNU_SOURCE)
+        #define _GNU_SOURCE
+        #endif
+        #include <dlfcn.h>
+    ]], [[
+        Dl_info info;
+        int (*lookup)(const void *, Dl_info *) = dladdr;
+        info.dli_fname = 0;
+        info.dli_fbase = 0;
+        return lookup((const void *)&lookup, &info);
+    ]])], [we_cv_dladdr=yes], [we_cv_dladdr=no])
+])
+AS_IF([test "$we_cv_dladdr" = "yes"], [
+    AC_DEFINE([WE_HAVE_DLADDR], [1],
+              [The complete dladdr module-location interface is available])
+])
+AC_CHECK_FUNCS([dl_iterate_phdr])
+AS_IF([test "$ac_cv_header_link_h" = "yes" &&
+       test "$ac_cv_func_dl_iterate_phdr" = "yes"], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+        #ifndef _GNU_SOURCE
+        #define _GNU_SOURCE
+        #endif
+        #include <link.h>
+    ]], [[
+        struct dl_phdr_info info;
+        info.dlpi_addr = 0;
+        info.dlpi_phdr = 0;
+        info.dlpi_phnum = 0;
+        (void)dl_iterate_phdr(0, &info);
+    ]])], [
+        AC_DEFINE([WE_HAVE_DL_ITERATE_PHDR], [1],
+                  [Program header iteration is available])
+    ])
+])
 
 # OpenSSL
 AC_CHECK_HEADERS([openssl/engine.h])
@@ -338,6 +380,69 @@ if test "$ENABLED_CMAC" = "yes"
 then
     ENABLED_DIGEST="yes"
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_CMAC -DWE_HAVE_EVP_PKEY"
+    we_cmac_saved_CPPFLAGS="$CPPFLAGS"
+    AS_IF([test "$ENABLED_USERSETTINGS" = "yes"], [
+        CPPFLAGS="$CPPFLAGS -DWOLFENGINE_USER_SETTINGS -I$srcdir/include"
+    ])
+    AC_CACHE_CHECK([whether wolfSSL declares wc_CmacFree],
+        [we_cv_cmac_free], [
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+            #ifdef WOLFENGINE_USER_SETTINGS
+            #include "user_settings.h"
+            #else
+            #include <wolfssl/options.h>
+            #endif
+            #include <wolfssl/wolfcrypt/cmac.h>
+        ]], [[
+            (void)&wc_CmacFree;
+        ]])], [we_cv_cmac_free=yes], [we_cv_cmac_free=no])
+    ])
+    AS_IF([test "$we_cv_cmac_free" = "no"], [
+        AC_DEFINE([WE_NO_CMAC_FREE], [1],
+                  [wolfSSL does not provide the CMAC cleanup interface])
+    ])
+    AC_CACHE_CHECK([whether wolfSSL CMAC keeps a buffered message],
+        [we_cv_cmac_buffered_state], [
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+            #ifdef WOLFENGINE_USER_SETTINGS
+            #include "user_settings.h"
+            #else
+            #include <wolfssl/options.h>
+            #endif
+            #include <wolfssl/wolfcrypt/cmac.h>
+            #ifndef WOLFSSL_HASH_KEEP
+            #error CMAC message buffering is disabled
+            #endif
+        ]], [[
+            Cmac cmac;
+            (void)sizeof(cmac.msg);
+            (void)sizeof(cmac.len);
+        ]])], [we_cv_cmac_buffered_state=yes],
+               [we_cv_cmac_buffered_state=no])
+    ])
+    AS_IF([test "$we_cv_cmac_buffered_state" = "yes"], [
+        AC_DEFINE([WE_CMAC_HAS_BUFFERED_STATE], [1],
+                  [wolfSSL CMAC has an owned buffered message])
+    ])
+    AC_CACHE_CHECK([whether wolfSSL AES direct encryption returns a status],
+        [we_cv_aes_direct_status], [
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+            #ifdef WOLFENGINE_USER_SETTINGS
+            #include "user_settings.h"
+            #else
+            #include <wolfssl/options.h>
+            #endif
+            #include <wolfssl/wolfcrypt/aes.h>
+        ]], [[
+            (void)&wc_AesEncryptDirect;
+            return wc_AesEncryptDirect(NULL, NULL, NULL);
+        ]])], [we_cv_aes_direct_status=yes], [we_cv_aes_direct_status=no])
+    ])
+    AS_IF([test "$we_cv_aes_direct_status" = "no"], [
+        AC_DEFINE([WE_AES_DIRECT_RETURNS_VOID], [1],
+                  [wolfSSL AES direct encryption has no return value])
+    ])
+    CPPFLAGS="$we_cmac_saved_CPPFLAGS"
 fi
 
 AC_ARG_ENABLE([hmac],
@@ -670,6 +775,22 @@ AC_ARG_ENABLE([pbe],
 
 if test "$ENABLED_PBE" = "yes"
 then
+    AS_IF([test "$ENABLED_DYNAMIC_ENGINE" = "yes" &&
+           test "$we_cv_dladdr" != "yes"], [
+        AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+            #ifndef _WIN32
+            #error Windows module pinning is unavailable
+            #endif
+            #include <windows.h>
+        ]], [[
+            HMODULE module = NULL;
+            return GetModuleHandleExA(
+                GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                (LPCSTR)(const void *)&module, &module) == 0;
+        ]])], [], [
+            AC_MSG_ERROR([dynamic PBE requires dladdr with Dl_info or Windows module pinning; use --disable-dynamic-engine for static engine loading])
+        ])
+    ])
     AM_CFLAGS="$AM_CFLAGS -DWE_HAVE_PBE"
 fi
 

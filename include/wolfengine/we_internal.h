@@ -58,7 +58,7 @@
 #include <openssl/kdf.h>
 #endif
 #include <openssl/tls1.h>
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+#ifdef WE_HAVE_CMAC
 #include <openssl/cmac.h>
 #endif
 #include <openssl/pkcs12.h>
@@ -132,17 +132,6 @@ WOLFENGINE_LOCAL void *we_memdup(const void *data, size_t siz);
 #endif /* OPENSSL_VERSION_NUMBER >= 0x10100000L */
 #endif /* WE_NO_OPENSSL_MALLOC */
 
-#if defined(__IAR_SYSTEMS_ICC__) || defined(__GNUC__)
-    /* Function is a printf style function. Pretend parameter is string literal.
-     *
-     * @param s  [in]  Index of string literal. Index from 1.
-     * @param v  [in]  Index of first argument to check. 0 means don't.
-     */
-    #define WE_PRINTF_FUNC(s, v)  __attribute__((__format__ (__printf__, s, v)))
-#else
-    #define WE_PRINTF_FUNC(s, v)
-#endif
-
 /*
  * Global random
  */
@@ -150,6 +139,11 @@ WOLFENGINE_LOCAL void *we_memdup(const void *data, size_t siz);
 extern WC_RNG* we_rng;
 #ifndef WE_SINGLE_THREADED
 extern wolfSSL_Mutex* we_rng_mutex;
+WOLFENGINE_LOCAL int we_rng_mutex_is_initialized(void);
+#endif
+WOLFENGINE_LOCAL int we_rng_is_initialized(void);
+#if defined(WE_HAVE_RANDOM) && !defined(WE_STATIC_WOLFSSL)
+WOLFENGINE_LOCAL void we_rand_clear_seed(void);
 #endif
 
 WOLFENGINE_LOCAL int we_pkey_get_nids(const int** nids);
@@ -241,11 +235,14 @@ extern RAND_METHOD* we_random_method;
 
 #ifdef WE_HAVE_HMAC
 
+typedef int (*we_HmacInitCb)(Hmac*, void*, int);
+
 extern EVP_PKEY_METHOD *we_hmac_pkey_method;
 extern EVP_PKEY_ASN1_METHOD *we_hmac_pkey_asn1_method;
 
 WOLFENGINE_LOCAL int we_init_hmac_pkey_meth(void);
 WOLFENGINE_LOCAL int we_init_hmac_pkey_asn1_meth(void);
+WOLFENGINE_LOCAL int we_hmac_pkey_init_ex(EVP_PKEY_CTX*, we_HmacInitCb);
 WOLFENGINE_LOCAL int we_hmac_update(Hmac*, const void*, size_t);
 
 #endif /* WE_HAVE_HMAC */
@@ -257,11 +254,13 @@ WOLFENGINE_LOCAL int we_hmac_update(Hmac*, const void*, size_t);
 #ifdef WE_HAVE_CMAC
 
 #define NID_wolfengine_cmac 101
+extern EVP_CIPHER *we_cmac_ciph;
 extern EVP_PKEY_METHOD *we_cmac_pkey_method;
 extern EVP_PKEY_METHOD *we_cmac_we_pkey_method;
 extern EVP_PKEY_ASN1_METHOD *we_cmac_pkey_asn1_method;
 extern EVP_PKEY_ASN1_METHOD *we_cmac_we_pkey_asn1_method;
 
+WOLFENGINE_LOCAL int we_init_cmac_cipher_meth(void);
 WOLFENGINE_LOCAL int we_init_cmac_pkey_meth(void);
 WOLFENGINE_LOCAL int we_init_cmac_pkey_asn1_meth(void);
 
@@ -354,9 +353,13 @@ WOLFENGINE_LOCAL int we_init_ec_key_meths(void);
  */
 
 #ifdef WE_HAVE_PBE
+WOLFENGINE_LOCAL int we_prepare_pbe_keygen(void);
 WOLFENGINE_LOCAL int we_init_pbe_keygen(void);
+WOLFENGINE_LOCAL int we_pbe_keygen_ready(void);
 #endif
 
 WOLFENGINE_LOCAL int wolfengine_bind(ENGINE *e, const char *id);
+WOLFENGINE_LOCAL int we_engine_bind_available(void);
+WOLFENGINE_LOCAL ENGINE *wolfengine_get_bound_engine(void);
 
 #endif /* INTERNAL_H */

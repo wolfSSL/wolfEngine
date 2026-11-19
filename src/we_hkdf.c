@@ -46,6 +46,8 @@ typedef struct we_Hkdf {
     unsigned char info[WE_MAX_INFO_SIZE];
     /** Size of info in bytes. */
     size_t infoSz;
+    /** Whether a key has been configured. */
+    int keySet;
 } we_Hkdf;
 
 /**
@@ -113,6 +115,32 @@ static void we_hkdf_cleanup(EVP_PKEY_CTX *ctx)
 }
 
 /**
+ * Reset the HKDF parameters for a new derive operation.
+ *
+ * @param  ctx  [in]  PKEY context.
+ * @returns  1 on success.
+ */
+static int we_hkdf_derive_init(EVP_PKEY_CTX *ctx)
+{
+    we_Hkdf *hkdf;
+
+    WOLFENGINE_ENTER(WE_LOG_PK, "we_hkdf_derive_init");
+
+    hkdf = (we_Hkdf *)EVP_PKEY_CTX_get_data(ctx);
+    if (hkdf->key != NULL) {
+        OPENSSL_clear_free(hkdf->key, hkdf->keySz);
+    }
+    if (hkdf->salt != NULL) {
+        OPENSSL_clear_free(hkdf->salt, hkdf->saltSz);
+    }
+    OPENSSL_cleanse(hkdf, sizeof(*hkdf));
+
+    WOLFENGINE_LEAVE(WE_LOG_PK, "we_hkdf_derive_init", 1);
+
+    return 1;
+}
+
+/**
  * Derive the key from the key and info.
  *
  * @param  ctx    [in]      PKEY context.
@@ -143,9 +171,22 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         ret = 0;
     }
     /* Check a key was set - no point otherwise! */
-    if ((ret == 1) && (hkdf->keySz == 0)) {
+    if ((ret == 1) && (hkdf->keySet == 0)) {
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, "No key from app.");
         ret = 0;
+    }
+    if ((ret == 1) &&
+            (hkdf->mode != EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY)) {
+        rc = wc_HashGetDigestSize(hkdf->mdType);
+        if (rc <= 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HashGetDigestSize", rc);
+            ret = 0;
+        }
+        else if ((*keySz > (size_t)(word32)-1) ||
+                 (*keySz > ((size_t)rc * 255U))) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "HKDF output is too large.");
+            ret = 0;
+        }
     }
     if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXTRACT_AND_EXPAND)) {
         PRIVATE_KEY_UNLOCK();
@@ -159,16 +200,30 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
         }
     }
     else if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXTRACT_ONLY)) {
-        PRIVATE_KEY_UNLOCK();
-        rc = wc_HKDF_Extract(hkdf->mdType, hkdf->salt, (word32)hkdf->saltSz,
-            hkdf->key, (word32)hkdf->keySz, key);
-        PRIVATE_KEY_LOCK();
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HKDF_Extract", rc);
+        rc = wc_HashGetDigestSize(hkdf->mdType);
+        if (rc <= 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HashGetDigestSize", rc);
             ret = 0;
         }
-        if (ret == 1) {
-            *keySz = (size_t)wc_HashGetDigestSize(hkdf->mdType);
+        else if (key == NULL) {
+            *keySz = (size_t)rc;
+        }
+        else if (*keySz < (size_t)rc) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_PK, "HKDF output buffer is too small.");
+            ret = 0;
+        }
+        else {
+            PRIVATE_KEY_UNLOCK();
+            rc = wc_HKDF_Extract(hkdf->mdType, hkdf->salt,
+                (word32)hkdf->saltSz, hkdf->key, (word32)hkdf->keySz, key);
+            PRIVATE_KEY_LOCK();
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_HKDF_Extract", rc);
+                ret = 0;
+            }
+            if (ret == 1) {
+                *keySz = (size_t)wc_HashGetDigestSize(hkdf->mdType);
+            }
         }
     }
     else if ((ret == 1) && (hkdf->mode == EVP_PKEY_HKDEF_MODE_EXPAND_ONLY)) {
@@ -201,12 +256,14 @@ static int we_hkdf_derive(EVP_PKEY_CTX *ctx, unsigned char *key,
  * @param  type   [in]  Type of operation to perform.
  * @param  num    [in]  Integer argument.
  * @param  ptr    [in]  Pointer argument.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
 {
     we_Hkdf *hkdf;
     int ret = 1;
+    int mdType;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
     WOLFENGINE_ENTER(WE_LOG_PK, "we_hkdf_ctrl");
@@ -240,37 +297,53 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
         case EVP_PKEY_CTRL_HKDF_MD:
             WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_HKDF_MD");
             /* ptr: EVP md object. */
-            /* Convert EVP_MD to  */
-            hkdf->mdType = we_nid_to_wc_hash_type(EVP_MD_type(ptr));
+            if (ptr == NULL) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest must not be NULL");
+                ret = 0;
+            }
+            else {
+                mdType = we_nid_to_wc_hash_type(EVP_MD_type(ptr));
+                if (mdType == WC_HASH_TYPE_NONE) {
+                    WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not supported");
+                    ret = 0;
+                }
+                else {
+                    hkdf->mdType = mdType;
+                }
+            }
             break;
 
         case EVP_PKEY_CTRL_HKDF_KEY:
             WOLFENGINE_MSG(WE_LOG_PK, "type: EVP_PKEY_CTRL_HKDF_KEY");
             /* num: Number of bytes in buffer.
              * ptr: Buffer holding key data. */
-            /* Number of bytes must be positive. */
+            /* Number of bytes must not be negative. */
             if (num < 0) {
-                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Key size must be positive");
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK,
+                                     "Key size must not be negative");
                 ret = 0;
             }
-            if ((ret == 1) && (hkdf->key != NULL)) {
+            if (hkdf->key != NULL) {
                 /* Setting key - dispose of old key. */
                 OPENSSL_clear_free(hkdf->key, hkdf->keySz);
             }
+            hkdf->key = NULL;
+            hkdf->keySz = 0;
+            hkdf->keySet = 0;
             if (ret == 1) {
-                /* Clear info as this is a new operation. */
-                OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
-                hkdf->infoSz = 0;
-                /* Copy the key. */
-                hkdf->key = OPENSSL_memdup(ptr, num);
-                if (hkdf->key == NULL) {
-                    WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "OPENSSL_memdup(key)",
-                                               hkdf->key);
-                    ret = 0;
+                /* Copy the key when it is not empty. */
+                if (num != 0) {
+                    hkdf->key = OPENSSL_memdup(ptr, num);
+                    if (hkdf->key == NULL) {
+                        WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK,
+                            "OPENSSL_memdup(key)", hkdf->key);
+                        ret = 0;
+                    }
                 }
-                else {
+                if (ret == 1) {
                     /* Store size of key. */
-                    hkdf->keySz  = num;
+                    hkdf->keySz = num;
+                    hkdf->keySet = 1;
                 }
             }
             break;
@@ -284,15 +357,13 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
                 WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Seed size must be positive");
                 ret = 0;
             }
-            if ((ret == 1) && (hkdf->salt != NULL)) {
+            if (hkdf->salt != NULL) {
                 /* Setting salt - dispose of old salt. */
                 OPENSSL_clear_free(hkdf->salt, hkdf->saltSz);
-                hkdf->salt = NULL;
             }
+            hkdf->salt = NULL;
+            hkdf->saltSz = 0;
             if (ret == 1) {
-                /* Clear info as this is a new operation. */
-                OPENSSL_cleanse(hkdf->info, hkdf->infoSz);
-                hkdf->infoSz = 0;
                 /* Copy the salt if there not 0 length. */
                 if (num != 0) {
                     hkdf->salt = OPENSSL_memdup(ptr, num);
@@ -334,7 +405,7 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
             XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %d",
                       type);
             WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-            ret = 0;
+            ret = -2;
             break;
     }
 
@@ -359,12 +430,14 @@ static int we_hkdf_ctrl(EVP_PKEY_CTX *ctx, int type, int num, void *ptr)
  * @param  ctx    [in]  PKEY context.
  * @param  type   [in]  Type of operation to perform.
  * @param  value  [in]  Pointer argument.
- * @returns  1 on success and 0 on failure.
+ * @returns  1 or a queried value on success, 0 on failure,
+ *           or -2 if the control is unsupported.
  */
 static int we_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
                                 const char *value)
 {
     int ret = 1;
+    int mdType;
     we_Hkdf *hkdf;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
@@ -407,7 +480,14 @@ static int we_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
             ret = 0;
         }
         else {
-            hkdf->mdType = we_nid_to_wc_hash_type(EVP_MD_type(md));
+            mdType = we_nid_to_wc_hash_type(EVP_MD_type(md));
+            if (mdType == WC_HASH_TYPE_NONE) {
+                WOLFENGINE_ERROR_MSG(WE_LOG_PK, "Digest not supported");
+                ret = 0;
+            }
+            else {
+                hkdf->mdType = mdType;
+            }
         }
     }
     else if (XSTRNCMP(type, "key", 4) == 0) {
@@ -432,7 +512,7 @@ static int we_hkdf_ctrl_str(EVP_PKEY_CTX *ctx, const char *type,
         /* Unsupported string. */
         XSNPRINTF(errBuff, sizeof(errBuff), "Unsupported ctrl type %s", type);
         WOLFENGINE_ERROR_MSG(WE_LOG_PK, errBuff);
-        ret = 0;
+        ret = -2;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_PK, "we_hkdf_ctrl_str", ret);
@@ -465,7 +545,8 @@ int we_init_hkdf_meth(void)
         EVP_PKEY_meth_set_init(we_hkdf_method, we_hkdf_init);
         EVP_PKEY_meth_set_cleanup(we_hkdf_method, we_hkdf_cleanup);
         EVP_PKEY_meth_set_ctrl(we_hkdf_method, we_hkdf_ctrl, we_hkdf_ctrl_str);
-        EVP_PKEY_meth_set_derive(we_hkdf_method, NULL, we_hkdf_derive);
+        EVP_PKEY_meth_set_derive(we_hkdf_method, we_hkdf_derive_init,
+                               we_hkdf_derive);
     }
 
     if (ret == 0 && we_hkdf_method != NULL) {

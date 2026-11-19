@@ -23,6 +23,10 @@
 
 #ifdef WE_HAVE_DH
 
+#ifndef WE_DH_EX_DATA_IDX
+#define WE_DH_EX_DATA_IDX 0
+#endif
+
 /* dh1024 p */
 static const unsigned char dh_p[] =
 {
@@ -44,6 +48,76 @@ static const unsigned char dh_g[] =
 {
   0x02,
 };
+
+#if defined(WE_DH_USE_GLOBAL_RNG) && defined(WE_HAVE_EVP_PKEY) && \
+    !defined(WE_SINGLE_THREADED) && !defined(TEST_MULTITHREADED) && \
+    !defined(_WIN32)
+extern wolfSSL_Mutex* we_rng_mutex;
+
+static int test_dh_failed_rng_lock(ENGINE* e)
+{
+    int err = 0;
+    int attrInit = 0;
+    int mutexInit = 0;
+    int mutexLocked = 0;
+    int rc;
+    pthread_mutexattr_t attr;
+    wolfSSL_Mutex mutex;
+    wolfSSL_Mutex* savedMutex = we_rng_mutex;
+    EVP_PKEY_CTX* ctx = NULL;
+    EVP_PKEY* params = NULL;
+
+    ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, e);
+    err = ctx == NULL;
+    if (err == 0)
+        err = EVP_PKEY_paramgen_init(ctx) != 1;
+
+    if (err == 0) {
+        rc = pthread_mutexattr_init(&attr);
+        err = rc != 0;
+        attrInit = rc == 0;
+    }
+    if (err == 0) {
+        rc = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK);
+        err = rc != 0;
+    }
+    if (err == 0) {
+        rc = pthread_mutex_init(&mutex, &attr);
+        err = rc != 0;
+        mutexInit = rc == 0;
+    }
+    if (err == 0) {
+        rc = pthread_mutex_lock(&mutex);
+        err = rc != 0;
+        mutexLocked = rc == 0;
+    }
+    if (err == 0) {
+        we_rng_mutex = &mutex;
+        rc = EVP_PKEY_paramgen(ctx, &params);
+        we_rng_mutex = savedMutex;
+        err = rc != 0;
+    }
+    if (err == 0) {
+        rc = pthread_mutex_trylock(&mutex);
+        if (rc == 0) {
+            pthread_mutex_unlock(&mutex);
+            mutexLocked = 0;
+            err = 1;
+        }
+    }
+    if (mutexInit) {
+        if (mutexLocked)
+            pthread_mutex_unlock(&mutex);
+        pthread_mutex_destroy(&mutex);
+    }
+    if (attrInit)
+        pthread_mutexattr_destroy(&attr);
+    EVP_PKEY_free(params);
+    EVP_PKEY_CTX_free(ctx);
+
+    return err;
+}
+#endif
 
 static int test_dh_keygen(DH *dhOpenSSL, DH *dhWolfEngine)
 {
@@ -103,15 +177,155 @@ static int test_dh_keygen(DH *dhOpenSSL, DH *dhWolfEngine)
     return err;
 }
 
+static int test_dh_parameter_refresh(ENGINE *e)
+{
+    int err;
+    DH *dhWithQ = NULL;
+    DH *dhWithoutQ = NULL;
+    const DH_METHOD *method = ENGINE_get_DH(e);
+    BIGNUM *p = NULL;
+    BIGNUM *q = NULL;
+    BIGNUM *g = NULL;
+    BIGNUM *priv = NULL;
+    BIGNUM *peerPub = NULL;
+    void *withQData = NULL;
+    void *withoutQData = NULL;
+    unsigned char secret[sizeof(dh_p)];
+    unsigned char privateKey[64];
+    int i;
+
+    for (i = 0; i < (int)sizeof(privateKey); i++)
+        privateKey[i] = (unsigned char)(i + 1);
+
+    err = method == NULL;
+    if (err == 0) {
+        dhWithQ = DH_new();
+        dhWithoutQ = DH_new();
+        err = (dhWithQ == NULL) || (dhWithoutQ == NULL);
+    }
+    if (err == 0) {
+        err = (DH_set_method(dhWithQ, method) != 1) ||
+              (DH_set_method(dhWithoutQ, method) != 1);
+    }
+    if (err == 0) {
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        q = BN_dup(p);
+        g = BN_new();
+        err = (p == NULL) || (q == NULL) || (g == NULL);
+    }
+    if (err == 0) {
+        err = (BN_sub_word(q, 1) != 1) || (BN_rshift1(q, q) != 1) ||
+              (BN_set_word(g, 4) != 1);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWithQ, p, q, g) != 1;
+        if (err == 0) {
+            p = NULL;
+            q = NULL;
+            g = NULL;
+        }
+    }
+    if (err == 0) {
+        priv = BN_bin2bn(privateKey, sizeof(privateKey), NULL);
+        err = priv == NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_key(dhWithQ, NULL, priv) != 1;
+        if (err == 0)
+            priv = NULL;
+    }
+    if (err == 0)
+        err = DH_generate_key(dhWithQ) != 1;
+
+    if (err == 0) {
+        p = BN_bin2bn(dh_p, sizeof(dh_p), NULL);
+        g = BN_bin2bn(dh_g, sizeof(dh_g), NULL);
+        err = (p == NULL) || (g == NULL);
+    }
+    if (err == 0) {
+        peerPub = BN_new();
+        err = (peerPub == NULL) || (BN_set_word(peerPub, 2) != 1);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWithoutQ, p, NULL, g) != 1;
+        if (err == 0) {
+            p = NULL;
+            g = NULL;
+        }
+    }
+    if (err == 0)
+        err = DH_generate_key(dhWithoutQ) != 1;
+
+    if (err == 0) {
+        withQData = DH_get_ex_data(dhWithQ, WE_DH_EX_DATA_IDX);
+        withoutQData = DH_get_ex_data(dhWithoutQ, WE_DH_EX_DATA_IDX);
+        err = (withQData == NULL) || (withoutQData == NULL);
+    }
+    if (err == 0) {
+        err = DH_set_ex_data(dhWithQ, WE_DH_EX_DATA_IDX, withoutQData) != 1;
+    }
+    if (err == 0) {
+        if (DH_set_ex_data(dhWithoutQ, WE_DH_EX_DATA_IDX, withQData) != 1) {
+            (void)DH_set_ex_data(dhWithQ, WE_DH_EX_DATA_IDX, withQData);
+            err = 1;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("Clear cached q when refreshing q-less DH parameters");
+        err = DH_compute_key(secret, peerPub, dhWithoutQ) <= 0;
+    }
+
+    BN_free(peerPub);
+    BN_clear_free(priv);
+    BN_free(g);
+    BN_free(q);
+    BN_free(p);
+    DH_free(dhWithoutQ);
+    DH_free(dhWithQ);
+
+    return err;
+}
+
+#ifndef HAVE_FIPS
+static int test_dh_paramgen_cb(int event, int iteration, BN_GENCB *cb)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    int *count = (int *)cb->arg;
+#else
+    int *count = (int *)BN_GENCB_get_arg(cb);
+#endif
+
+    (void)event;
+    (void)iteration;
+    (*count)++;
+
+    return 1;
+}
+#endif
+
 int test_dh_pgen(ENGINE *e, void *data)
 {
     int err;
-    DH *dhWolfEngine;
     DH *dhOpenSSL = NULL;
+    DH *dhWolfEngine;
     const DH_METHOD *method = NULL;
+#ifndef HAVE_FIPS
     const BIGNUM *p = NULL;
     const BIGNUM *q = NULL;
     const BIGNUM *g = NULL;
+    const BIGNUM *oldP = NULL;
+    const BIGNUM *oldQ = NULL;
+    const BIGNUM *oldG = NULL;
+    BIGNUM *copyP = NULL;
+    BIGNUM *copyQ = NULL;
+    BIGNUM *copyG = NULL;
+    BIGNUM *existingQ = NULL;
+    BN_GENCB *cb = NULL;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    BN_GENCB cbData;
+#endif
+    int callbackCount = 0;
+#endif
 
     (void)data;
 
@@ -126,26 +340,116 @@ int test_dh_pgen(ENGINE *e, void *data)
     if (err == 0) {
         DH_set_method(dhWolfEngine, method);
     }
+#if defined(WE_DH_USE_GLOBAL_RNG) && defined(WE_HAVE_EVP_PKEY) && \
+    !defined(WE_SINGLE_THREADED) && !defined(TEST_MULTITHREADED) && \
+    !defined(_WIN32)
     if (err == 0) {
-        /* Generator and callback (last param) ignored by wolfEngine. */
-        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_5,
-                                        NULL) != 1;
+        PRINT_MSG("Keep RNG mutex ownership when locking fails");
+        err = test_dh_failed_rng_lock(e);
     }
-
+#endif
+    if (err == 0) {
+        PRINT_MSG("Reject unsupported DH parameter generators");
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, 1, NULL) > 0;
+    }
+    if (err == 0) {
+        PRINT_MSG("Reject unsupported DH prime lengths before generation");
+        err = DH_generate_parameters_ex(dhWolfEngine, 512, DH_GENERATOR_2,
+                                        NULL) > 0;
+    }
+    if (err == 0) {
+        PRINT_MSG("Check rejected DH parameter generation left no prime");
+        err = DH_get0_p(dhWolfEngine) != NULL;
+    }
+#ifdef HAVE_FIPS
+    if (err == 0) {
+        PRINT_MSG("Reject legacy DH parameter generation in FIPS mode");
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_2,
+                                        NULL) > 0;
+    }
+#else
+    if (err == 0) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+        cb = &cbData;
+#else
+        cb = BN_GENCB_new();
+        err = cb == NULL;
+#endif
+    }
+    if (err == 0) {
+        BN_GENCB_set(cb, test_dh_paramgen_cb, &callbackCount);
+        PRINT_MSG("Honor the requested DH generator");
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_2,
+                                        cb) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Forward the DH parameter generation callback");
+        err = callbackCount == 0;
+    }
     if (err == 0) {
         DH_get0_pqg(dhWolfEngine, &p, &q, &g);
-
+        PRINT_MSG("Check generated DH parameters");
+        err = (p == NULL) || (g == NULL) ||
+              (BN_get_word(g) != DH_GENERATOR_2);
+    }
+    if (err == 0) {
         dhOpenSSL = DH_new();
-        err = (dhOpenSSL == NULL);
+        err = dhOpenSSL == NULL;
     }
     if (err == 0) {
-        err = DH_set0_pqg(dhOpenSSL, BN_dup(p), BN_dup(q), BN_dup(g)) != 1;
+        PRINT_MSG("Copy generated DH parameters");
+        copyP = BN_dup(p);
+        if (q != NULL)
+            copyQ = BN_dup(q);
+        copyG = BN_dup(g);
+        err = (copyP == NULL) || ((q != NULL) && (copyQ == NULL)) ||
+              (copyG == NULL);
     }
-
     if (err == 0) {
+        err = DH_set0_pqg(dhOpenSSL, copyP, copyQ, copyG) != 1;
+        if (err == 0) {
+            copyP = NULL;
+            copyQ = NULL;
+            copyG = NULL;
+        }
+    }
+    if (err == 0) {
+        PRINT_MSG("Use generated DH parameters");
         err = test_dh_keygen(dhOpenSSL, dhWolfEngine);
     }
+    if (err == 0) {
+        existingQ = BN_new();
+        err = (existingQ == NULL) || (BN_set_word(existingQ, 23) != 1);
+    }
+    if (err == 0) {
+        err = DH_set0_pqg(dhWolfEngine, NULL, existingQ, NULL) != 1;
+        if (err == 0)
+            existingQ = NULL;
+    }
+    if (err == 0) {
+        DH_get0_pqg(dhWolfEngine, &oldP, &oldQ, &oldG);
+        PRINT_MSG("Reject replacing DH parameters that contain q");
+        err = DH_generate_parameters_ex(dhWolfEngine, 1024, DH_GENERATOR_2,
+                                        NULL) > 0;
+    }
+    if (err == 0) {
+        DH_get0_pqg(dhWolfEngine, &p, &q, &g);
+        err = (p != oldP) || (q != oldQ) || (g != oldG);
+    }
+#endif
+    if (err == 0) {
+        err = test_dh_parameter_refresh(e);
+    }
 
+#ifndef HAVE_FIPS
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    BN_GENCB_free(cb);
+#endif
+    BN_free(existingQ);
+    BN_free(copyG);
+    BN_free(copyQ);
+    BN_free(copyP);
+#endif
     DH_free(dhOpenSSL);
     DH_free(dhWolfEngine);
 
@@ -330,6 +634,109 @@ int test_dh_priv_key_length(ENGINE *e, void *data)
 
 #ifdef WE_HAVE_EVP_PKEY
 
+static int test_dh_pkey_nonzero_padding(ENGINE *e, EVP_PKEY *params,
+                                        int useStringControl)
+{
+    static const unsigned char privateKey[] = {
+        0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+        0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10,
+        0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+        0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20,
+        0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+        0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F, 0x30,
+        0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+        0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x00, 0x64
+    };
+    int err;
+    DH *ourDh = NULL;
+    DH *peerDh = NULL;
+    BIGNUM *priv = NULL;
+    BIGNUM *pub = NULL;
+    EVP_PKEY *ourKey = NULL;
+    EVP_PKEY *peerKey = NULL;
+    EVP_PKEY_CTX *ctx = NULL;
+    unsigned char *secret = NULL;
+    size_t secretLen = 0;
+    DH *paramsDh = (DH *)EVP_PKEY_get0_DH(params);
+
+    err = paramsDh == NULL;
+    if (err == 0) {
+        ourDh = DHparams_dup(paramsDh);
+        peerDh = DHparams_dup(paramsDh);
+        err = (ourDh == NULL) || (peerDh == NULL);
+    }
+    if (err == 0) {
+        priv = BN_bin2bn(privateKey, sizeof(privateKey), NULL);
+        pub = BN_new();
+        err = (priv == NULL) || (pub == NULL);
+    }
+    if (err == 0) {
+        err = BN_set_word(pub, 2) != 1;
+    }
+    if (err == 0) {
+        err = DH_set0_key(ourDh, NULL, priv) != 1;
+        if (err == 0)
+            priv = NULL;
+    }
+    if (err == 0) {
+        err = DH_set0_key(peerDh, pub, NULL) != 1;
+        if (err == 0)
+            pub = NULL;
+    }
+    if (err == 0) {
+        ourKey = EVP_PKEY_new();
+        peerKey = EVP_PKEY_new();
+        err = (ourKey == NULL) || (peerKey == NULL);
+    }
+    if (err == 0) {
+        err = EVP_PKEY_assign_DH(ourKey, ourDh) != 1;
+        if (err == 0)
+            ourDh = NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_assign_DH(peerKey, peerDh) != 1;
+        if (err == 0)
+            peerDh = NULL;
+    }
+    if (err == 0) {
+        ctx = EVP_PKEY_CTX_new(ourKey, e);
+        err = ctx == NULL;
+    }
+    if (err == 0)
+        err = EVP_PKEY_derive_init(ctx) <= 0;
+    if (err == 0)
+        err = EVP_PKEY_derive_set_peer(ctx, peerKey) <= 0;
+    if ((err == 0) && useStringControl) {
+        err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_pad", "2") <= 0;
+    }
+    else if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_DERIVE,
+                               EVP_PKEY_CTRL_DH_PAD, 2, NULL) <= 0;
+    }
+    if (err == 0) {
+        secretLen = (size_t)EVP_PKEY_size(ourKey);
+        secret = (unsigned char *)OPENSSL_malloc(secretLen);
+        err = secret == NULL;
+    }
+    if (err == 0)
+        err = EVP_PKEY_derive(ctx, secret, &secretLen) <= 0;
+    if (err == 0)
+        err = secretLen != (size_t)EVP_PKEY_size(ourKey);
+    if (err == 0)
+        err = secret[0] != 0;
+
+    OPENSSL_free(secret);
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(peerKey);
+    EVP_PKEY_free(ourKey);
+    BN_free(pub);
+    BN_clear_free(priv);
+    DH_free(peerDh);
+    DH_free(ourDh);
+
+    return err;
+}
+
 static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
 {
     int err;
@@ -340,6 +747,11 @@ static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
     size_t secretLenOpenSSL = 0;
     unsigned char *secretWolfEngine = NULL;
     size_t secretLenWolfEngine = 0;
+    unsigned char *paddedSecret = NULL;
+    unsigned char *shortSecret = NULL;
+    size_t paddedSecretLen = 0;
+    size_t shortSecretLen = 0;
+    size_t expectedSecretLen = 0;
 
     ctx = EVP_PKEY_CTX_new(params, e);
     err = ctx == NULL;
@@ -420,6 +832,48 @@ static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
         err = memcmp(secretOpenSSL, secretWolfEngine, secretLenOpenSSL) != 0;
     }
 
+    if (err == 0) {
+        PRINT_MSG("Pad DH secret to the modulus size");
+        EVP_PKEY_CTX_free(ctx);
+        ctx = EVP_PKEY_CTX_new(keyWolfEngine, e);
+        err = ctx == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_init(ctx) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive_set_peer(ctx, keyOpenSSL) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_DH, EVP_PKEY_OP_DERIVE,
+                  EVP_PKEY_CTRL_DH_PAD, 1, NULL) <= 0;
+    }
+    if (err == 0) {
+        expectedSecretLen = (size_t)EVP_PKEY_size(keyWolfEngine);
+        paddedSecretLen = expectedSecretLen + 8;
+        paddedSecret = (unsigned char*)OPENSSL_malloc(paddedSecretLen);
+        err = paddedSecret == NULL;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_derive(ctx, paddedSecret, &paddedSecretLen) <= 0;
+    }
+    if (err == 0) {
+        err = paddedSecretLen != expectedSecretLen;
+    }
+    if (err == 0) {
+        shortSecret = (unsigned char*)OPENSSL_malloc(expectedSecretLen + 1);
+        err = shortSecret == NULL;
+    }
+    if (err == 0) {
+        XMEMSET(shortSecret, 0xa5, expectedSecretLen + 1);
+        shortSecretLen = expectedSecretLen - 1;
+        PRINT_MSG("Reject a short padded DH secret buffer");
+        err = EVP_PKEY_derive(ctx, shortSecret + 1, &shortSecretLen) > 0;
+    }
+    if (err == 0) {
+        err = (shortSecret[0] != 0xa5) ||
+              (shortSecret[expectedSecretLen] != 0xa5);
+    }
     EVP_PKEY_CTX_free(ctx);
     EVP_PKEY_free(keyOpenSSL);
     EVP_PKEY_free(keyWolfEngine);
@@ -428,6 +882,10 @@ static int test_dh_pkey_keygen(ENGINE *e, EVP_PKEY *params)
         OPENSSL_free(secretWolfEngine);
     if (secretOpenSSL != NULL)
         OPENSSL_free(secretOpenSSL);
+    if (paddedSecret != NULL)
+        OPENSSL_free(paddedSecret);
+    if (shortSecret != NULL)
+        OPENSSL_free(shortSecret);
 
     return err;
 }
@@ -538,6 +996,13 @@ int test_dh_pkey(ENGINE* e, void* data)
     if (err == 0) {
         err = test_dh_pkey_keygen(e, params);
     }
+    if (err == 0) {
+        PRINT_MSG("Treat every nonzero DH padding control value as enabled");
+        err = test_dh_pkey_nonzero_padding(e, params, 0);
+    }
+    if (err == 0) {
+        err = test_dh_pkey_nonzero_padding(e, params, 1);
+    }
 
     EVP_PKEY_free(params);
     DH_free(dh);
@@ -549,6 +1014,7 @@ int test_dh_ctrl(ENGINE* e, void* data)
 {
     int err;
     EVP_PKEY_CTX* ctx = NULL;
+    EVP_PKEY* key = NULL;
     int primeLengths[] = {1024, 2048, 3072};
     word32 i;
 
@@ -604,6 +1070,15 @@ int test_dh_ctrl(ENGINE* e, void* data)
     if (err == 0) {
         err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe2048") <= 0;
     }
+    #ifndef HAVE_FFDHE_Q
+    if (err == 0) {
+        PRINT_MSG("Generate a key with named DH parameters");
+        err = EVP_PKEY_keygen_init(ctx) != 1;
+    }
+    if (err == 0) {
+        err = EVP_PKEY_keygen(ctx, &key) != 1;
+    }
+    #endif
     #else
     if (err == 0) {
         err = EVP_PKEY_CTX_ctrl_str(ctx, "dh_param", "ffdhe2048") > 0;
@@ -631,6 +1106,7 @@ int test_dh_ctrl(ENGINE* e, void* data)
     #endif /* HAVE_FFDHE_4096 */
 #endif /* HAVE_PUBLIC_FFDHE */
 
+    EVP_PKEY_free(key);
     EVP_PKEY_CTX_free(ctx);
 
     return err;
