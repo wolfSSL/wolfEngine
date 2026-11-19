@@ -242,9 +242,8 @@ static int we_rand_seed(const void *buf, int num)
 /**
  * Clear the supplemental seed state.
  *
- * OpenSSL can invoke the RAND cleanup callback after destroying the engine,
- * so supplemental seed state uses synchronization independent of the
- * engine-owned RNG mutex when atomic operations are available.
+ * RAND cleanup can run after engine teardown frees the RNG mutex.
+ * The supplemental seed lock must remain usable after that teardown.
  */
 void we_rand_clear_seed(void)
 {

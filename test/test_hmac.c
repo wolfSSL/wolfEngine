@@ -431,6 +431,66 @@ static int test_hmac_short_key_init(ENGINE *e)
 #endif
 }
 
+static int test_hmac_min_key_size(ENGINE *e)
+{
+    int err = 0;
+    int keySz;
+    int ret;
+    unsigned char key[HMAC_FIPS_MIN_KEY + 1];
+    const unsigned char message[] = "HMAC key size boundary";
+    unsigned char mac[EVP_MAX_MD_SIZE];
+    unsigned char expected[EVP_MAX_MD_SIZE];
+    unsigned int expectedLen;
+    size_t macLen;
+    EVP_MD_CTX *ctx = NULL;
+    EVP_PKEY *pkey = NULL;
+
+    XMEMSET(key, 0x0b, sizeof(key));
+    for (keySz = HMAC_FIPS_MIN_KEY - 1;
+         (err == 0) && (keySz <= HMAC_FIPS_MIN_KEY + 1); keySz++) {
+        ctx = EVP_MD_CTX_new();
+        pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, e, key, keySz);
+        err = (ctx == NULL) || (pkey == NULL);
+        if (err == 0) {
+            ret = EVP_DigestSignInit(ctx, NULL, EVP_sha256(), e, pkey);
+#ifdef HAVE_FIPS
+            if (keySz < HMAC_FIPS_MIN_KEY) {
+                PRINT_MSG("Reject HMAC keys below the FIPS minimum");
+                err = ret > 0;
+                EVP_MD_CTX_free(ctx);
+                EVP_PKEY_free(pkey);
+                ctx = NULL;
+                pkey = NULL;
+                ERR_clear_error();
+                continue;
+            }
+#endif /* HAVE_FIPS */
+            err = ret != 1;
+        }
+        if (err == 0) {
+            err = HMAC(EVP_sha256(), key, keySz, message, sizeof(message),
+                       expected, &expectedLen) == NULL;
+        }
+        if (err == 0) {
+            err = EVP_DigestSignUpdate(ctx, message, sizeof(message)) != 1;
+        }
+        if (err == 0) {
+            macLen = sizeof(mac);
+            err = EVP_DigestSignFinal(ctx, mac, &macLen) != 1;
+        }
+        if (err == 0) {
+            err = (macLen != expectedLen) ||
+                  (XMEMCMP(mac, expected, expectedLen) != 0);
+        }
+        EVP_MD_CTX_free(ctx);
+        EVP_PKEY_free(pkey);
+        ctx = NULL;
+        pkey = NULL;
+    }
+
+    return err;
+}
+
 static int test_hmac_failed_copy_cleanup(ENGINE *e)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
@@ -669,6 +729,9 @@ int test_hmac_create(ENGINE *e, void *data)
     }
     if (ret == 0) {
         ret = test_hmac_short_key_init(e);
+    }
+    if (ret == 0) {
+        ret = test_hmac_min_key_size(e);
     }
     if (ret == 0) {
         ret = test_hmac_failed_copy_cleanup(e);

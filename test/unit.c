@@ -797,7 +797,9 @@ static int test_engine_destroyed(void)
 #endif
 
 TEST_CASE test_case[] = {
+#ifndef TEST_MULTITHREADED
     TEST_DECL(test_logging, &debug),
+#endif
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     TEST_DECL(test_openssl_bc_method_name, &flags),
     TEST_DECL(test_openssl_bc_public_ec_key, NULL),
@@ -819,6 +821,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_sha512, NULL),
 #endif
 #ifdef WE_HAVE_AESCCM
+    TEST_DECL(test_aes_ccm_aad_length_bounds, NULL),
     TEST_DECL(test_aes_ccm_keyed_reinit, NULL),
 #endif
 #ifdef WE_HAVE_SHA3_224

@@ -500,7 +500,9 @@ static int we_aes_gcm_final(we_AesGcm* aes)
                                    aes->tagLen, aes->aad, aes->aadLen);
             if (ret != 0) {
                 WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmDecrypt", ret);
-                we_aes_gcm_set_error("decryption failed");
+                if (ret != AES_GCM_AUTH_E) {
+                    we_aes_gcm_set_error("decryption failed");
+                }
                 ret = -1;
             }
             else {

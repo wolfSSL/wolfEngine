@@ -20,6 +20,7 @@
  */
 
 #include <wolfengine/we_internal.h>
+#include <limits.h>
 
 /* May not be available in FIPS builds of wolfSSL */
 #ifndef CCM_NONCE_MAX_SZ
@@ -362,6 +363,7 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     int rc;
     we_AesCcm *aes;
     unsigned char *p;
+    size_t newLen;
 
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_ccm_cipher");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [ctx = %p, out = %p, "
@@ -374,6 +376,10 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                    "EVP_CIPHER_CTX_get_cipher_data", aes);
         ret = -1;
     }
+    if ((ret == 1) && (len > (size_t)INT_MAX)) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "AES-CCM input length too large");
+        ret = -1;
+    }
 
     if ((ret == 1) && aes->tls) {
         ret = we_aes_ccm_tls_cipher(aes, out, in, len);
@@ -384,21 +390,25 @@ static int we_aes_ccm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         ret = (int)len;
     }
     else if ((ret == 1) && (out == NULL)) {
-        /* Resize stored AAD and append new data. */
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "Resizing stored AAD and appending data "
-                       "(%d bytes)", (int)len);
-        p = (unsigned char*)OPENSSL_realloc(aes->aad, aes->aadLen + (int)len);
-        if (p == NULL) {
-            WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
+        if ((aes->aadLen < 0) ||
+            (len > (size_t)(INT_MAX - aes->aadLen))) {
+            WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "AES-CCM AAD length too large");
             ret = -1;
         }
         else {
-            /* Copy in new data after existing data. */
-            aes->aad = p;
-            XMEMCPY(aes->aad + aes->aadLen, in, len);
-            aes->aadLen += len;
-            /* Return size of AAD data added */
-            ret = (int)len;
+            /* Resize stored AAD and append new data. */
+            newLen = (size_t)aes->aadLen + len;
+            p = (unsigned char*)OPENSSL_realloc(aes->aad, newLen);
+            if (p == NULL) {
+                WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_CIPHER, "OPENSSL_realloc", p);
+                ret = -1;
+            }
+            else {
+                aes->aad = p;
+                XMEMCPY(aes->aad + aes->aadLen, in, len);
+                aes->aadLen = (int)newLen;
+                ret = (int)len;
+            }
         }
     }
     else if ((ret == 1) && ((len > 0) || (in != NULL))) {

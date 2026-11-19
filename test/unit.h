@@ -255,6 +255,7 @@ int test_aes128_ccm_tls(ENGINE *e, void *data);
 int test_aes_ccm_tls_multi_record(ENGINE *e, void *data);
 int test_aes_ccm_tls_input_bounds(ENGINE *e, void *data);
 int test_aes_ccm_tls_bad_iv_len(ENGINE *e, void *data);
+int test_aes_ccm_aad_length_bounds(ENGINE *e, void *data);
 
 #endif /* WE_HAVE_AESCCM */
 

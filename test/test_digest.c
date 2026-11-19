@@ -90,6 +90,25 @@ static int test_digest_copy(const EVP_MD *md, ENGINE *e)
         err = (dstLen != expectedLen) ||
               (XMEMCMP(dstDigest, expected, dstLen) != 0);
     }
+    if (err == 0) {
+        PRINT_MSG("Copy a finalized digest context");
+        err = EVP_MD_CTX_copy_ex(dst, src) != 1;
+    }
+    EVP_MD_CTX_free(src);
+    src = NULL;
+    if (err == 0) {
+        err = EVP_DigestInit_ex(dst, NULL, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestUpdate(dst, dstMsg, sizeof(dstMsg) - 1) != 1;
+    }
+    if (err == 0) {
+        err = EVP_DigestFinal_ex(dst, dstDigest, &dstLen) != 1;
+    }
+    if (err == 0) {
+        err = (dstLen != expectedLen) ||
+              (XMEMCMP(dstDigest, expected, dstLen) != 0);
+    }
 
     EVP_MD_CTX_free(dst);
     EVP_MD_CTX_free(src);

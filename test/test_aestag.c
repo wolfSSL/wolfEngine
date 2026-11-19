@@ -32,6 +32,62 @@
 #endif
 #define CCM_TAG_DEFAULT_LEN             12
 
+#ifdef WE_HAVE_AESCCM
+int test_aes_ccm_aad_length_bounds(ENGINE *e, void *data)
+{
+    int err = 0;
+    int len;
+    size_t oversized;
+    EVP_CIPHER_CTX *ctx = NULL;
+    const EVP_CIPHER *cipher;
+    int (*doCipher)(EVP_CIPHER_CTX *, unsigned char *,
+                    const unsigned char *, size_t);
+    unsigned char key[16] = {0};
+    unsigned char iv[12] = {0};
+    unsigned char aad = 0;
+
+    (void)data;
+
+    ctx = EVP_CIPHER_CTX_new();
+    err = ctx == NULL;
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_ccm(), e, key, iv) != 1;
+    }
+    if (err == 0) {
+        cipher = EVP_CIPHER_CTX_cipher(ctx);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        doCipher = EVP_CIPHER_meth_get_do_cipher(cipher);
+#else
+        doCipher = cipher->do_cipher;
+#endif
+        err = doCipher == NULL;
+    }
+    if ((err == 0) && (sizeof(size_t) > sizeof(unsigned int))) {
+        PRINT_MSG("Reject CCM lengths that truncate to a small integer");
+        oversized = (size_t)UINT_MAX + 2U;
+        err = doCipher(ctx, NULL, NULL, oversized) >= 0;
+    }
+    if (err == 0) {
+        oversized = (size_t)INT_MAX + 1U;
+        err = doCipher(ctx, NULL, &aad, oversized) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, &aad, sizeof(aad)) != 1;
+    }
+    if (err == 0) {
+        PRINT_MSG("Reject accumulated CCM AAD length overflow");
+        err = doCipher(ctx, NULL, &aad, INT_MAX) >= 0;
+    }
+    if (err == 0) {
+        err = EVP_EncryptUpdate(ctx, NULL, &len, &aad, sizeof(aad)) != 1;
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+#endif /* WE_HAVE_AESCCM */
+
 #if defined(WE_HAVE_AESGCM) || defined(WE_HAVE_AESCCM)
 
 static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
@@ -43,6 +99,7 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
     int err;
     EVP_CIPHER_CTX *ctx;
     int encLen;
+    unsigned char final[EVP_MAX_BLOCK_LENGTH];
     unsigned int tagLen = 16;
 
     err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
@@ -103,7 +160,7 @@ static int test_aes_tag_enc(ENGINE *e, const EVP_CIPHER *cipher,
         }
     }
     if (err == 0) {
-        err = EVP_EncryptFinal_ex(ctx, enc + encLen, &encLen) != 1;
+        err = EVP_EncryptFinal_ex(ctx, final, &encLen) != 1;
         if (encLen != 0) {
             /* should be no more data left */
             err = 1;
@@ -1318,12 +1375,8 @@ int test_aes_gcm_auth_error_queue(ENGINE *e, void *data)
     int len = 0;
     int finalLen;
     int ret;
-    int flags;
-    int line;
     unsigned long code;
     unsigned long expectedError;
-    const char *file;
-    const char *detail;
     EVP_CIPHER_CTX *ctx = NULL;
     unsigned char key[16] = {0};
     unsigned char iv[12] = {0};
@@ -1341,39 +1394,44 @@ int test_aes_gcm_auth_error_queue(ENGINE *e, void *data)
 
     err = test_aes_tag_enc(NULL, EVP_aes_128_gcm(), key, iv, sizeof(iv),
                            aad, msg, sizeof(msg), enc, tag, 0, 0);
-    if (err == 0) {
-        tag[0] ^= 1;
-        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
-    }
-    if (err == 0) {
-        err = EVP_DecryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, iv) != 1;
-    }
-    if (err == 0) {
-        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
-                                  sizeof(tag), tag) != 1;
-    }
-    if (err == 0) {
-        err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
-    }
-    if (err == 0) {
-        ERR_clear_error();
-        ret = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen);
-        err = 1;
-        if (ret <= 0) {
-            while ((code = ERR_get_error_line_data(&file, &line, &detail,
-                                                    &flags)) != 0) {
-                if ((ERR_GET_LIB(code) == ERR_LIB_USER) &&
-                    ((flags & ERR_TXT_STRING) != 0) &&
-                    (strstr(detail, "wolfEngine AES-GCM") != NULL)) {
-                    err = 0;
-                    break;
-                }
-            }
+    for (i = 0; (err == 0) && (i < 8); i++) {
+        key[0] = (i >= 4) ? 1 : 0;
+        if (i == 0 || i == 4) {
+            tag[0] ^= 1;
         }
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+        if (err == 0) {
+            err = EVP_DecryptInit_ex(ctx, EVP_aes_128_gcm(),
+                                      (i & 1) ? e : NULL, key, iv) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG,
+                                      sizeof(tag), tag) != 1;
+        }
+        if (err == 0) {
+            err = EVP_DecryptUpdate(ctx, NULL, &len, aad,
+                                    (int)strlen((char *)aad)) != 1;
+        }
+        if (err == 0) {
+            err = EVP_DecryptUpdate(ctx, dec, &len, enc, sizeof(enc)) != 1;
+        }
+        if (err == 0) {
+            PRINT_MSG("GCM authentication failure preserves error state");
+            ERR_clear_error();
+            if ((i & 2) != 0) {
+                ERR_put_error(ERR_LIB_USER, 0, 101, __FILE__, __LINE__);
+            }
+            expectedError = ERR_peek_error();
+            ret = EVP_DecryptFinal_ex(ctx, dec + len, &finalLen);
+            code = ERR_get_error();
+            err = (ret > 0) || (code != expectedError) ||
+                  (ERR_peek_error() != 0);
+        }
+        EVP_CIPHER_CTX_free(ctx);
+        ctx = NULL;
     }
 
-    EVP_CIPHER_CTX_free(ctx);
-    ctx = NULL;
+    key[0] = 0;
     if (err == 0) {
         tlsAad[8] = 23;
         tlsAad[9] = 3;

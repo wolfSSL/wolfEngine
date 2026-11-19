@@ -932,7 +932,7 @@ static int we_dh_generate_params(DH *dh, int primeLen, int g, BN_GENCB *cb)
     BIGNUM *p = NULL;
     BIGNUM *q = NULL;
     BIGNUM *generator = NULL;
-#endif
+#endif /* !HAVE_FIPS */
 
     WOLFENGINE_ENTER(WE_LOG_KE, "we_dh_generate_parameters");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_KE, "ARGS [dh = %p, primeLen = %d, g = %d, "
@@ -978,6 +978,7 @@ static int we_dh_generate_params(DH *dh, int primeLen, int g, BN_GENCB *cb)
         }
     }
     if (ret == 1) {
+        /* wolfCrypt cannot honor the requested generator or progress callback. */
         ret = DH_generate_parameters_ex(params, primeLen, g, cb);
         if (ret != 1) {
             WOLFENGINE_ERROR_FUNC(WE_LOG_KE, "DH_generate_parameters_ex",
@@ -1018,7 +1019,7 @@ static int we_dh_generate_params(DH *dh, int primeLen, int g, BN_GENCB *cb)
     BN_free(q);
     BN_free(p);
     DH_free(params);
-#endif
+#endif /* HAVE_FIPS */
 
     WOLFENGINE_LEAVE(WE_LOG_KE, "we_dh_generate_parameters", ret);
 

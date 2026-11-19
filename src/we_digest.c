@@ -959,8 +959,9 @@ static int we_digest_copy(EVP_MD_CTX *dstCtx, const EVP_MD_CTX *srcCtx)
         ret = 0;
     }
     else if ((src->hashType == 0) &&
-             EVP_MD_CTX_test_flags(srcCtx, EVP_MD_CTX_FLAG_NO_INIT)) {
-        /* HMAC reuses cleansed digest storage without initializing it. */
+             EVP_MD_CTX_test_flags(srcCtx, EVP_MD_CTX_FLAG_NO_INIT |
+                                          EVP_MD_CTX_FLAG_CLEANED)) {
+        /* OpenSSL cleanses finalized contexts; HMAC may skip digest init. */
         XMEMSET(dst, 0, sizeof(*dst));
         WOLFENGINE_LEAVE(WE_LOG_DIGEST, "we_digest_copy", ret);
         return ret;
