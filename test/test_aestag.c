@@ -928,6 +928,86 @@ int test_aes128_gcm_fixed(ENGINE *e, void *data)
 
 /******************************************************************************/
 
+int test_aes128_gcm_iv_gen_multi(ENGINE *e, void *data)
+{
+    int err;
+    int i;
+    int j;
+    int outLen;
+    unsigned char key[16];
+    unsigned char fixed[EVP_GCM_TLS_FIXED_IV_LEN];
+    unsigned char aad[] = "AAD";
+    unsigned char msg[] = "Test pattern";
+    unsigned char iv[4][12];
+    unsigned char enc[4][sizeof(msg)];
+    unsigned char tag[4][AES_BLOCK_SIZE];
+    unsigned char dec[sizeof(msg)];
+    int numMsg = (int)(sizeof(iv) / sizeof(iv[0]));
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    (void)data;
+
+    err = (RAND_bytes(key, (int)sizeof(key)) != 1) ||
+          (RAND_bytes(fixed, (int)sizeof(fixed)) != 1);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  (int)sizeof(fixed), fixed) != 1;
+    }
+    /* Several messages on one key, each with the IV IV_GEN reports. */
+    for (i = 0; (err == 0) && (i < numMsg); i++) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN,
+                                  (int)sizeof(iv[i]), iv[i]) != 1;
+        if (err == 0) {
+            err = EVP_EncryptUpdate(ctx, NULL, &outLen, aad,
+                                    (int)strlen((char *)aad)) != 1;
+        }
+        if (err == 0) {
+            err = EVP_EncryptUpdate(ctx, enc[i], &outLen, msg,
+                                    (int)sizeof(msg)) != 1;
+        }
+        if (err == 0) {
+            err = EVP_EncryptFinal_ex(ctx, enc[i] + outLen, &outLen) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG,
+                                      AES_BLOCK_SIZE, tag[i]) != 1;
+        }
+        if (err == 0) {
+            PRINT_BUFFER("Generated IV", iv[i], sizeof(iv[i]));
+            err = memcmp(iv[i], fixed, sizeof(fixed)) != 0;
+        }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+
+    for (i = 0; (err == 0) && (i < numMsg); i++) {
+        for (j = i + 1; (err == 0) && (j < numMsg); j++) {
+            err = memcmp(iv[i], iv[j], sizeof(iv[i])) == 0;
+        }
+    }
+    for (i = 0; (err == 0) && (i < numMsg); i++) {
+        PRINT_MSG("Decrypt with OpenSSL");
+        err = test_aes_tag_dec(NULL, EVP_aes_128_gcm(), key, iv[i],
+                               (int)sizeof(iv[i]), aad, msg, (int)sizeof(msg),
+                               enc[i], tag[i], dec, 0, 0);
+        if (err == 0) {
+            PRINT_MSG("Decrypt with wolfengine");
+            err = test_aes_tag_dec(e, EVP_aes_128_gcm(), key, iv[i],
+                                   (int)sizeof(iv[i]), aad, msg,
+                                   (int)sizeof(msg), enc[i], tag[i], dec, 0, 0);
+        }
+    }
+
+    return err;
+}
+
+/******************************************************************************/
+
 int test_aes128_gcm_tls(ENGINE *e, void *data)
 {
     return test_aes_tag_tls(e, data, EVP_aes_128_gcm(), 16,

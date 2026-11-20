@@ -207,6 +207,27 @@ static void we_aes_gcm_iv_inc(we_AesGcm *aes)
     }
 }
 
+/* Give wolfCrypt the cached IV unless it already holds one.
+ * Returns 1 on success and 0 on failure. */
+static int we_aes_gcm_set_ext_iv(we_AesGcm *aes)
+{
+    int ret = 1;
+    int rc;
+
+    if (!aes->ivSet) {
+        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting external IV");
+        rc = wc_AesGcmSetExtIV(&aes->aes, aes->iv, aes->ivLen);
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmSetExtIV", rc);
+            ret = 0;
+        } else {
+            aes->ivSet = 1;
+        }
+    }
+
+    return ret;
+}
+
 static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
                                  const unsigned char *in, size_t len)
 {
@@ -247,26 +268,30 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
         /* Plaintext is input buffer without IV and tag. */
         word32 encLen = (word32)len - EVP_GCM_TLS_EXPLICIT_IV_LEN
                                     - EVP_GCM_TLS_TAG_LEN;
-        /* Copy the explicit part of the IV into out. */
-        XMEMCPY(out, aes->iv + EVP_GCM_TLS_FIXED_IV_LEN,
-                EVP_GCM_TLS_EXPLICIT_IV_LEN);
 
+        if (we_aes_gcm_set_ext_iv(aes) != 1) {
+            ret = -1;
+        }
         /* Move to start of plaintext and cipher text. */
         in += EVP_GCM_TLS_EXPLICIT_IV_LEN;
         out += EVP_GCM_TLS_EXPLICIT_IV_LEN;
-        /* Encrypt the data except explicit IV.
-         * Tag goes at end of output buffer.
-         */
-        rc = wc_AesGcmEncrypt(&aes->aes, out, in, encLen, aes->iv,
-            aes->ivLen, out + encLen, EVP_GCM_TLS_TAG_LEN, aes->aad,
-            aes->aadLen);
-        if (rc != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex", rc);
-            ret = -1;
-        }
-        /* Advance the explicit nonce for the next record, matching OpenSSL. */
-        we_aes_gcm_iv_inc(aes);
+        /* wolfCrypt takes the IV from its own counter and writes it to
+         * aes->iv. Tag goes at end of output buffer. */
         if (ret == 1) {
+            rc = wc_AesGcmEncrypt_ex(&aes->aes, out, in, encLen, aes->iv,
+                aes->ivLen, out + encLen, EVP_GCM_TLS_TAG_LEN, aes->aad,
+                aes->aadLen);
+            if (rc != 0) {
+                WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmEncrypt_ex",
+                                      rc);
+                ret = -1;
+            }
+        }
+        if (ret == 1) {
+            /* The record's explicit nonce is the IV wolfCrypt used. */
+            XMEMCPY(out - EVP_GCM_TLS_EXPLICIT_IV_LEN,
+                    aes->iv + EVP_GCM_TLS_FIXED_IV_LEN,
+                    EVP_GCM_TLS_EXPLICIT_IV_LEN);
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %d bytes "
                                    "(AES-GCM):", encLen);
             WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, encLen);
@@ -416,7 +441,7 @@ static int we_aes_gcm_update(we_AesGcm* aes, const unsigned char* in,
 
 /**
  * Encrypt/decrypt the data held in the encryption/decryption buffer. Reset the
- * state of the aes object after and increment the IV, if applicable.
+ * state of the aes object after and move to the next IV, if applicable.
  *
  * @param  aes  [in,out]  wolfEngine AES-GCM state object.
  *
@@ -429,17 +454,8 @@ static int we_aes_gcm_final(we_AesGcm* aes)
     WOLFENGINE_ENTER(WE_LOG_CIPHER, "we_aes_gcm_final");
     WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "ARGS [aes = %p]", aes);
 
-    if (!aes->ivSet) {
-        /* Set extern IV. */
-        WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting external IV");
-        ret = wc_AesGcmSetExtIV(&aes->aes, aes->iv, aes->ivLen);
-        if (ret != 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmSetExtIV", ret);
-            ret = -1;
-        }
-        else {
-            aes->ivSet = 1;
-        }
+    if (we_aes_gcm_set_ext_iv(aes) != 1) {
+        ret = -1;
     }
 
     if (ret == 0) {
@@ -494,9 +510,14 @@ static int we_aes_gcm_final(we_AesGcm* aes)
     aes->aadLen = 0;
 
     if (aes->ivInc) {
-        we_aes_gcm_iv_inc(aes);
+        if (aes->enc) {
+            /* wolfCrypt counted past the IV used; IV_GEN reports its next. */
+            XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
+        } else {
+            we_aes_gcm_iv_inc(aes);
+            aes->ivSet = 0;
+        }
         aes->ivInc = 0;
-        aes->ivSet = 0;
     }
 
     WOLFENGINE_LEAVE(WE_LOG_CIPHER, "we_aes_gcm_final", ret);

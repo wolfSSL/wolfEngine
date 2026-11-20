@@ -171,6 +171,7 @@ int test_aes128_gcm(ENGINE *e, void *data);
 int test_aes192_gcm(ENGINE *e, void *data);
 int test_aes256_gcm(ENGINE *e, void *data);
 int test_aes128_gcm_fixed(ENGINE *e, void *data);
+int test_aes128_gcm_iv_gen_multi(ENGINE *e, void *data);
 int test_aes128_gcm_tls(ENGINE *e, void *data);
 int test_aes_gcm_tls_multi_record(ENGINE *e, void *data);
 int test_aes_gcm_tls_input_bounds(ENGINE *e, void *data);

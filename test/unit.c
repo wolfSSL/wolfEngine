@@ -128,6 +128,7 @@ TEST_CASE test_case[] = {
     TEST_DECL(test_aes192_gcm, NULL),
     TEST_DECL(test_aes256_gcm, NULL),
     TEST_DECL(test_aes128_gcm_fixed, NULL),
+    TEST_DECL(test_aes128_gcm_iv_gen_multi, NULL),
     TEST_DECL(test_aes128_gcm_tls, NULL),
     TEST_DECL(test_aes_gcm_tls_multi_record, NULL),
     TEST_DECL(test_aes_gcm_tls_input_bounds, NULL),
