@@ -124,6 +124,12 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
             WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmSetKey", rc);
             ret = 0;
         }
+        /* wolfCrypt's IV does not carry over to a new key: set IV-fixed
+         * again. */
+        if (aes->ivFixed && aes->ivSet) {
+            aes->ivFixed = 0;
+            aes->ivSet = 0;
+        }
     }
     if ((ret == 1) && (iv != NULL)) {
         /* Cache IV - see ctrl func for other ways to set IV. */

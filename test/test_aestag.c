@@ -1118,6 +1118,66 @@ int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data)
         }
     }
     EVP_CIPHER_CTX_free(ctx);
+    ctx = NULL;
+
+    /* Setting the key again needs a new SET_IV_FIXED before a TLS encrypt. */
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) != (int)sizeof(buf);
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) >= 0;
+        if (err) {
+            PRINT_MSG("TLS encrypt after a new key should have failed");
+        }
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN,
+                                  EVP_GCM_TLS_EXPLICIT_IV_LEN, iv) > 0;
+        if (err) {
+            PRINT_MSG("IV_GEN after a new key should have failed");
+        }
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                  EVP_GCM_TLS_FIXED_IV_LEN, iv) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) != (int)sizeof(buf);
+    }
+    EVP_CIPHER_CTX_free(ctx);
+    ctx = NULL;
+    /* That record decrypts with OpenSSL. */
+    if (err == 0) {
+        aad[12] = sizeof(buf);
+        err = test_aes_tag_tls_dec(NULL, EVP_aes_128_gcm(), key, iv,
+                                   EVP_GCM_TLS_FIXED_IV_LEN, aad, buf,
+                                   (int)sizeof(buf), 0);
+    }
 
     return err;
 }
