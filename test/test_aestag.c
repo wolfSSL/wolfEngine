@@ -1258,6 +1258,67 @@ int test_aes_gcm_tls_iv_cache(ENGINE *e, void *data)
     return err;
 }
 
+int test_aes_gcm_tls_iv_fixed_before_key(ENGINE *e, void *data)
+{
+    int err;
+    int i;
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
+    unsigned char rec[2][48];
+    unsigned char key[16];
+    unsigned char fixed[EVP_GCM_TLS_FIXED_IV_LEN];
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    (void)data;
+
+    aad[8]  = 23;
+    aad[9]  = 3;
+    aad[10] = 3;
+
+    err = (RAND_bytes(key, (int)sizeof(key)) != 1) ||
+          (RAND_bytes(fixed, (int)sizeof(fixed)) != 1) ||
+          (RAND_bytes(rec[0], (int)sizeof(rec)) != 1);
+    /* SET_IV_FIXED before the key, on two contexts with the same key. */
+    for (i = 0; (err == 0) && (i < 2); i++) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+        if (err == 0) {
+            err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, NULL,
+                                     NULL) != 1;
+        }
+        if (err == 0) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
+                                      (int)sizeof(fixed), fixed) != 1;
+        }
+        if (err == 0) {
+            err = EVP_EncryptInit_ex(ctx, NULL, e, key, NULL) != 1;
+        }
+        if (err == 0) {
+            aad[12] = sizeof(rec[i]) - EVP_GCM_TLS_TAG_LEN;
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                      EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+        }
+        if (err == 0) {
+            err = EVP_Cipher(ctx, rec[i], rec[i], (int)sizeof(rec[i])) !=
+                  (int)sizeof(rec[i]);
+        }
+        EVP_CIPHER_CTX_free(ctx);
+        ctx = NULL;
+    }
+    if (err == 0) {
+        err = memcmp(rec[0], rec[1], EVP_GCM_TLS_EXPLICIT_IV_LEN) == 0;
+        if (err) {
+            PRINT_MSG("Two contexts used the same nonce");
+        }
+    }
+    aad[12] = sizeof(rec[0]);
+    for (i = 0; (err == 0) && (i < 2); i++) {
+        err = test_aes_tag_tls_dec(NULL, EVP_aes_128_gcm(), key, fixed,
+                                   (int)sizeof(fixed), aad, rec[i],
+                                   (int)sizeof(rec[i]), 0);
+    }
+
+    return err;
+}
+
 /* 
  * OpenSSL doesn't recommend using EVP_Cipher(), but there are applications
  * using it, so we need to support it. With wolfCrypt, AES-GCM decryption cannot

@@ -76,7 +76,50 @@ typedef struct we_AesGcm
     unsigned int   ivInc:1;
     /** Fixed IV/nonce established via EVP_CTRL_GCM_SET_IV_FIXED. */
     unsigned int   ivFixed:1;
+    /** wolfCrypt has yet to build the IV-fixed IV; waits for the key. */
+    unsigned int   ivGen:1;
+    /** Length of the fixed field given to EVP_CTRL_GCM_SET_IV_FIXED. */
+    int            ivFixedLen;
 } we_AesGcm;
+
+/* Have wolfCrypt build the IV from the fixed field in aes->iv and cache it.
+ * Returns 1 on success and 0 on failure. */
+static int we_aes_gcm_gen_iv(EVP_CIPHER_CTX *ctx, we_AesGcm *aes)
+{
+    int ret = 1;
+    int rc;
+
+#ifndef WE_SINGLE_THREADED
+    rc = wc_LockMutex(we_rng_mutex);
+    if (rc != 0) {
+        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_LockMutex", rc);
+        ret = 0;
+    }
+    if (ret == 1)
+#endif
+    {
+        rc = wc_AesGcmSetIV(&aes->aes, aes->ivLen,
+                            aes->ivFixedLen ? aes->iv : NULL, aes->ivFixedLen,
+                            we_rng);
+#ifndef WE_SINGLE_THREADED
+        wc_UnLockMutex(we_rng_mutex);
+#endif
+        if (rc != 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER, "wc_AesGcmSetIV", rc);
+            ret = 0;
+        }
+    }
+    if (ret == 1) {
+        aes->ivSet = 1;
+        XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
+        XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->iv, aes->ivLen);
+    } else {
+        aes->ivFixed = 0;
+    }
+    aes->ivGen = 0;
+
+    return ret;
+}
 
 /**
  * Initialize the AES-GCM encrypt/decrypt operation using wolfSSL.
@@ -138,6 +181,11 @@ static int we_aes_gcm_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         aes->ivSet = 0;
         /* A caller-installed IV must not authorize the TLS IV_GEN path. */
         aes->ivFixed = 0;
+        aes->ivGen = 0;
+    }
+    /* Build the IV-fixed IV that was waiting for a key. */
+    if ((ret == 1) && aes->init && aes->ivGen) {
+        ret = we_aes_gcm_gen_iv(ctx, aes);
     }
 
     if (ret == 1) {
@@ -606,7 +654,6 @@ static int we_aes_gcm_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 {
     int ret = 1;
-    int rc;
     we_AesGcm *aes;
     char errBuff[WOLFENGINE_MAX_LOG_WIDTH];
 
@@ -630,6 +677,8 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                 aes->ivSet = 0;
                 aes->ivInc = 0;
                 aes->ivFixed = 0;
+                aes->ivGen = 0;
+                aes->ivFixedLen = 0;
                 /* No tag set. */
                 aes->tagLen = 0;
                 /* Start with no AAD. */
@@ -678,6 +727,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     aes->ivFixed = 1;
                     /* The next encrypt hands this IV to wolfCrypt. */
                     aes->ivSet = 0;
+                    aes->ivGen = 0;
                 }
                 else {
                     /* Set the fixed IV and have the rest generated. */
@@ -685,33 +735,24 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                                    "generate the rest");
                     if (aes->ivLen == 0)
                         aes->ivLen = GCM_NONCE_MID_SZ;
-                #ifndef WE_SINGLE_THREADED
-                    rc = wc_LockMutex(we_rng_mutex);
-                    if (rc != 0) {
-                        WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                              "wc_LockMutex", rc);
+                    if ((arg < 0) || (arg > aes->ivLen) ||
+                            ((ptr == NULL) && (arg != 0))) {
+                        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER,
+                                             "Invalid fixed IV length");
                         ret = 0;
                     }
-                    if (ret == 1)
-                #endif
-                    {
-                        rc = wc_AesGcmSetIV(&aes->aes, aes->ivLen,
-                                (const byte*)ptr, arg, we_rng);
-                #ifndef WE_SINGLE_THREADED
-                        wc_UnLockMutex(we_rng_mutex);
-                #endif
-                        if (rc != 0) {
-                            WOLFENGINE_ERROR_FUNC(WE_LOG_CIPHER,
-                                                  "wc_AesGcmSetIV", rc);
-                            ret = 0;
-                        }
+                    if ((ret == 1) && (arg > 0)) {
+                        XMEMCPY(aes->iv, ptr, arg);
                     }
                     if (ret == 1) {
-                       aes->ivSet = 1;
-                       aes->ivFixed = 1;
-                       XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
-                       XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), aes->iv,
-                               aes->ivLen);
+                        aes->ivFixedLen = arg;
+                        aes->ivFixed = 1;
+                        aes->ivSet = 0;
+                        aes->ivGen = 1;
+                    }
+                    /* Without a key yet, the IV is built when one is set. */
+                    if ((ret == 1) && aes->init) {
+                        ret = we_aes_gcm_gen_iv(ctx, aes);
                     }
                 }
                 break;
