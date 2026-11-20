@@ -1122,6 +1122,82 @@ int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data)
     return err;
 }
 
+int test_aes_gcm_tls_iv_cache(ENGINE *e, void *data)
+{
+    int err;
+    int j;
+    unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
+    unsigned char buf[48];
+    unsigned char key[16];
+    unsigned char iv[2][EVP_GCM_TLS_FIXED_IV_LEN + EVP_GCM_TLS_EXPLICIT_IV_LEN];
+    unsigned char gen[EVP_GCM_TLS_EXPLICIT_IV_LEN];
+    EVP_CIPHER_CTX *ctx = NULL;
+
+    (void)data;
+
+    aad[8]  = 23;
+    aad[9]  = 3;
+    aad[10] = 3;
+    aad[12] = sizeof(buf) - EVP_GCM_TLS_TAG_LEN;
+
+    err = (RAND_bytes(key, (int)sizeof(key)) != 1) ||
+          (RAND_bytes(iv[0], (int)sizeof(iv)) != 1) ||
+          (RAND_bytes(buf, (int)sizeof(buf)) != 1);
+    if (err == 0) {
+        err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
+    }
+    if (err == 0) {
+        err = EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), e, key, NULL) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED, -1,
+                                  iv[0]) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) != (int)sizeof(buf);
+    }
+    /* IV_GEN after a TLS record reports the next record's nonce. */
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN, (int)sizeof(gen),
+                                  gen) != 1;
+    }
+    if (err == 0) {
+        for (j = (int)sizeof(gen) - 1; (j >= 0) && (++buf[j] == 0); j--) {
+            /* Nothing to do. */
+        }
+        err = memcmp(gen, buf, sizeof(gen)) != 0;
+        if (err) {
+            PRINT_MSG("IV_GEN after a TLS record did not report the next IV");
+        }
+    }
+    /* SET_IV_FIXED(-1) on a used context sets the next record's IV. */
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED, -1,
+                                  iv[1]) != 1;
+    }
+    if (err == 0) {
+        err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                  EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+    }
+    if (err == 0) {
+        err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) != (int)sizeof(buf);
+    }
+    if (err == 0) {
+        err = memcmp(buf, iv[1] + EVP_GCM_TLS_FIXED_IV_LEN,
+                     EVP_GCM_TLS_EXPLICIT_IV_LEN) != 0;
+        if (err) {
+            PRINT_MSG("TLS record did not use the IV from SET_IV_FIXED(-1)");
+        }
+    }
+    EVP_CIPHER_CTX_free(ctx);
+
+    return err;
+}
+
 /* 
  * OpenSSL doesn't recommend using EVP_Cipher(), but there are applications
  * using it, so we need to support it. With wolfCrypt, AES-GCM decryption cannot

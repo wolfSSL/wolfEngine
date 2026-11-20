@@ -292,6 +292,8 @@ static int we_aes_gcm_tls_cipher(we_AesGcm *aes, unsigned char *out,
             XMEMCPY(out - EVP_GCM_TLS_EXPLICIT_IV_LEN,
                     aes->iv + EVP_GCM_TLS_FIXED_IV_LEN,
                     EVP_GCM_TLS_EXPLICIT_IV_LEN);
+            /* IV_GEN reports wolfCrypt's next IV. */
+            XMEMCPY(aes->iv, aes->aes.reg, aes->ivLen);
             WOLFENGINE_MSG_VERBOSE(WE_LOG_CIPHER, "Encrypted %d bytes "
                                    "(AES-GCM):", encLen);
             WOLFENGINE_BUFFER(WE_LOG_CIPHER, out, encLen);
@@ -668,6 +670,8 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                     XMEMCPY(aes->iv, ptr, aes->ivLen);
                     XMEMCPY(EVP_CIPHER_CTX_iv_noconst(ctx), ptr, aes->ivLen);
                     aes->ivFixed = 1;
+                    /* The next encrypt hands this IV to wolfCrypt. */
+                    aes->ivSet = 0;
                 }
                 else {
                     /* Set the fixed IV and have the rest generated. */
