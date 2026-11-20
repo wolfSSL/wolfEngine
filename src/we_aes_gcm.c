@@ -268,7 +268,10 @@ static int we_aes_gcm_set_ext_iv(we_AesGcm *aes)
     int ret = 1;
     int rc;
 
-    if (!aes->ivSet) {
+    if (aes->ivGen) {
+        WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, "IV-fixed IV waits for the key");
+        ret = 0;
+    } else if (!aes->ivSet) {
         WOLFENGINE_MSG(WE_LOG_CIPHER, "Setting external IV");
         rc = wc_AesGcmSetExtIV(&aes->aes, aes->iv, aes->ivLen);
         if (rc != 0) {
@@ -772,7 +775,7 @@ static int we_aes_gcm_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
                  *   ptr [in] generated IV/nonce data
                  */
                 if ((arg <= 0) || (arg > GCM_NONCE_MAX_SZ) || (ptr == NULL) ||
-                        (arg > aes->ivLen) || (!aes->ivFixed)) {
+                        (arg > aes->ivLen) || (!aes->ivFixed) || aes->ivGen) {
                     XSNPRINTF(errBuff, sizeof(errBuff), "Invalid nonce length "
                               "%d", arg);
                     WOLFENGINE_ERROR_MSG(WE_LOG_CIPHER, errBuff);

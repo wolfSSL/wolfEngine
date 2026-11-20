@@ -1266,6 +1266,7 @@ int test_aes_gcm_tls_iv_fixed_before_key(ENGINE *e, void *data)
     unsigned char rec[2][48];
     unsigned char key[16];
     unsigned char fixed[EVP_GCM_TLS_FIXED_IV_LEN];
+    unsigned char gen[EVP_GCM_TLS_EXPLICIT_IV_LEN];
     EVP_CIPHER_CTX *ctx = NULL;
 
     (void)data;
@@ -1288,17 +1289,46 @@ int test_aes_gcm_tls_iv_fixed_before_key(ENGINE *e, void *data)
             err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IV_FIXED,
                                       (int)sizeof(fixed), fixed) != 1;
         }
+        aad[12] = sizeof(rec[i]) - EVP_GCM_TLS_TAG_LEN;
+        /* No IV exists until the key is set. */
+        if ((err == 0) && (i == 0)) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN,
+                                      (int)sizeof(gen), gen) > 0;
+            if (err) {
+                PRINT_MSG("IV_GEN before the key should have failed");
+            }
+        }
+        if ((err == 0) && (i == 0)) {
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
+                                      EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
+        }
+        if ((err == 0) && (i == 0)) {
+            err = EVP_Cipher(ctx, rec[i], rec[i], (int)sizeof(rec[i])) >= 0;
+            if (err) {
+                PRINT_MSG("TLS encrypt before the key should have failed");
+            }
+        }
         if (err == 0) {
             err = EVP_EncryptInit_ex(ctx, NULL, e, key, NULL) != 1;
         }
         if (err == 0) {
-            aad[12] = sizeof(rec[i]) - EVP_GCM_TLS_TAG_LEN;
+            err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_IV_GEN,
+                                      (int)sizeof(gen), gen) != 1;
+        }
+        if (err == 0) {
             err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
                                       EVP_AEAD_TLS1_AAD_LEN, aad) <= 0;
         }
         if (err == 0) {
             err = EVP_Cipher(ctx, rec[i], rec[i], (int)sizeof(rec[i])) !=
                   (int)sizeof(rec[i]);
+        }
+        /* IV_GEN after the key reported the nonce the record used. */
+        if (err == 0) {
+            err = memcmp(rec[i], gen, sizeof(gen)) != 0;
+            if (err) {
+                PRINT_MSG("IV_GEN did not match the record's nonce");
+            }
         }
         EVP_CIPHER_CTX_free(ctx);
         ctx = NULL;
