@@ -1043,6 +1043,7 @@ int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data)
     unsigned char aad[EVP_AEAD_TLS1_AAD_LEN] = {0,};
     unsigned char buf[48];
     unsigned char key[16];
+    unsigned char key2[16];
     unsigned char iv[EVP_GCM_TLS_FIXED_IV_LEN + EVP_GCM_TLS_EXPLICIT_IV_LEN];
     EVP_CIPHER_CTX *ctx = NULL;
 
@@ -1054,6 +1055,7 @@ int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data)
     aad[12] = sizeof(buf) - EVP_GCM_TLS_TAG_LEN;
 
     err = (RAND_bytes(key, (int)sizeof(key)) != 1) ||
+          (RAND_bytes(key2, (int)sizeof(key2)) != 1) ||
           (RAND_bytes(iv, (int)sizeof(iv)) != 1) ||
           (RAND_bytes(buf, (int)sizeof(buf)) != 1);
     /* Encrypt without ever setting the fixed IV must be rejected. */
@@ -1120,7 +1122,7 @@ int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data)
     EVP_CIPHER_CTX_free(ctx);
     ctx = NULL;
 
-    /* Setting the key again needs a new SET_IV_FIXED before a TLS encrypt. */
+    /* A new key needs a new SET_IV_FIXED before a TLS encrypt. */
     if (err == 0) {
         err = (ctx = EVP_CIPHER_CTX_new()) == NULL;
     }
@@ -1139,7 +1141,7 @@ int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data)
         err = EVP_Cipher(ctx, buf, buf, (int)sizeof(buf)) != (int)sizeof(buf);
     }
     if (err == 0) {
-        err = EVP_EncryptInit_ex(ctx, NULL, e, key, NULL) != 1;
+        err = EVP_EncryptInit_ex(ctx, NULL, e, key2, NULL) != 1;
     }
     if (err == 0) {
         err = EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_TLS1_AAD,
@@ -1174,7 +1176,7 @@ int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data)
     /* That record decrypts with OpenSSL. */
     if (err == 0) {
         aad[12] = sizeof(buf);
-        err = test_aes_tag_tls_dec(NULL, EVP_aes_128_gcm(), key, iv,
+        err = test_aes_tag_tls_dec(NULL, EVP_aes_128_gcm(), key2, iv,
                                    EVP_GCM_TLS_FIXED_IV_LEN, aad, buf,
                                    (int)sizeof(buf), 0);
     }
