@@ -1603,6 +1603,7 @@ static int we_rsa_pub_dec(int fromLen, const unsigned char *from,
 static int we_convert_rsa(RsaKey *wolfKey, RSA **osslKey)
 {
     int ret = 1;
+    int rc = 0;
     int derLen = 0;
     unsigned char *der = NULL;
     const unsigned char *derPtr = NULL;
@@ -1629,10 +1630,12 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA **osslKey)
     }
 
     if (ret == 1) {
-        /* DER encode the private key. */
-        derLen = wc_RsaKeyToDer(wolfKey, der, derLen);
-        if (derLen <= 0) {
-            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaKeyToDer", derLen);
+        /* DER encode the private key; derLen stays the buffer size to free. */
+        PRIVATE_KEY_UNLOCK();
+        rc = wc_RsaKeyToDer(wolfKey, der, derLen);
+        PRIVATE_KEY_LOCK();
+        if (rc <= 0) {
+            WOLFENGINE_ERROR_FUNC(WE_LOG_PK, "wc_RsaKeyToDer", rc);
             ret = 0;
         }
     }
@@ -1645,7 +1648,7 @@ static int we_convert_rsa(RsaKey *wolfKey, RSA **osslKey)
         derPtr = (const unsigned char *)der;
         /* Decode into RSA key - will allocate a new key if osslKey is pointing
          * to NULL. */
-        decodedRsa = d2i_RSAPrivateKey(osslKey, &derPtr, derLen);
+        decodedRsa = d2i_RSAPrivateKey(osslKey, &derPtr, rc);
         if (decodedRsa == NULL) {
             WOLFENGINE_ERROR_FUNC_NULL(WE_LOG_PK, "d2i_RSAPrivateKey",
                                        decodedRsa);

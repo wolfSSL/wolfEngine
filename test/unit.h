@@ -171,11 +171,14 @@ int test_aes128_gcm(ENGINE *e, void *data);
 int test_aes192_gcm(ENGINE *e, void *data);
 int test_aes256_gcm(ENGINE *e, void *data);
 int test_aes128_gcm_fixed(ENGINE *e, void *data);
+int test_aes128_gcm_iv_gen_multi(ENGINE *e, void *data);
 int test_aes128_gcm_tls(ENGINE *e, void *data);
 int test_aes_gcm_tls_multi_record(ENGINE *e, void *data);
 int test_aes_gcm_tls_input_bounds(ENGINE *e, void *data);
 int test_aes_gcm_tls_bad_iv_len(ENGINE *e, void *data);
 int test_aes_gcm_tls_fixed_iv_required(ENGINE *e, void *data);
+int test_aes_gcm_tls_iv_cache(ENGINE *e, void *data);
+int test_aes_gcm_tls_iv_fixed_before_key(ENGINE *e, void *data);
 int test_aes_gcm_evp_cipher(ENGINE *e, void *data);
 int test_aes128_gcm_iv_gen_bounds(ENGINE *e, void *data);
 
